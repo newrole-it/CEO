@@ -1,0 +1,398 @@
+// Jobscanner data model.
+// Follows the spirit of the product spec (companies, career pages, jobs,
+// observations, saved searches, matches) narrowed to one owner.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --------------------------------------
+// Auth (Blitz). Session/Token shapes are what @blitzjs/auth expects.
+
+model User {
+  id              Int       @id @default(autoincrement())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  name            String?
+  email           String    @unique
+  hashedPassword  String?
+  role            String    @default("USER")
+  emailVerifiedAt DateTime?
+  timezone        String    @default("Europe/Warsaw")
+  locale          String    @default("en")
+  deletedAt       DateTime?
+
+  tokens   Token[]
+  sessions Session[]
+  searches SavedSearch[]
+  audits   AuditEvent[]
+}
+
+model Session {
+  id                 Int       @id @default(autoincrement())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  expiresAt          DateTime?
+  handle             String    @unique
+  hashedSessionToken String?
+  antiCSRFToken      String?
+  publicData         String?
+  privateData        String?
+
+  user   User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int?
+}
+
+model Token {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  hashedToken String
+  type        String
+  expiresAt   DateTime
+  sentTo      String
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  @@unique([hashedToken, type])
+}
+
+// --------------------------------------
+
+enum SourceType {
+  GREENHOUSE
+  LEVER
+  ASHBY
+  WORKABLE
+  SMARTRECRUITERS
+  GENERIC_HTML
+  WEB_SEARCH
+}
+
+enum ResolutionStatus {
+  PENDING
+  RESOLVED_ATS
+  RESOLVED_GENERIC
+  NO_CAREER_PAGE_FOUND
+  TEMPORARY_FAILURE
+  BLOCKED_OR_NOT_PERMITTED
+  MANUAL_REVIEW
+  PERMANENTLY_UNAVAILABLE
+}
+
+enum WorkplaceType {
+  REMOTE
+  HYBRID
+  ONSITE
+  UNKNOWN
+}
+
+enum JobStatus {
+  ACTIVE
+  POSSIBLY_CLOSED
+  CLOSED
+  UNKNOWN
+}
+
+enum FetchStatus {
+  HEALTHY
+  TEMPORARY_ERROR
+  RATE_LIMITED
+  NOT_FOUND
+  NOT_PERMITTED
+  PARSE_ERROR
+}
+
+enum SearchRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD
+}
+
+model Company {
+  id                   String   @id @default(cuid())
+  name                 String
+  normalizedName       String
+  canonicalDomain      String?  @unique
+  description          String?
+  industry             String?
+  headquartersCountry  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  lastEnrichedAt       DateTime?
+
+  aliases     CompanyAlias[]
+  careerPages CareerPage[]
+  jobs        Job[]
+
+  @@index([normalizedName])
+}
+
+model CompanyAlias {
+  id              String  @id @default(cuid())
+  companyId       String
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  alias           String
+  normalizedAlias String
+  confidence      Float   @default(1)
+
+  @@unique([companyId, normalizedAlias])
+}
+
+model DiscoverySource {
+  id              String    @id @default(cuid())
+  sourceType      String
+  sourceName      String    @unique
+  sourceUrl       String?
+  termsUrl        String?
+  enabled         Boolean   @default(true)
+  rateLimitConfig Json?
+  lastRunAt       DateTime?
+  lastSuccessAt   DateTime?
+  lastErrorAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  runs DiscoveryRun[]
+}
+
+model DiscoveryRun {
+  id                  String    @id @default(cuid())
+  sourceId            String?
+  source              DiscoverySource? @relation(fields: [sourceId], references: [id])
+  searchRunId         String?
+  searchRun           SearchRun? @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  query               String?
+  startedAt           DateTime  @default(now())
+  finishedAt          DateTime?
+  status              String
+  resultsCount        Int       @default(0)
+  newCompaniesCount   Int       @default(0)
+  newCareerPagesCount Int       @default(0)
+  errorCode           String?
+  errorSummary        String?
+  estimatedCost       Float     @default(0)
+}
+
+model CareerPage {
+  id                    String           @id @default(cuid())
+  companyId             String
+  company               Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  url                   String
+  normalizedUrl         String
+  provider              SourceType
+  providerBoardId       String?
+  resolutionStatus      ResolutionStatus @default(RESOLVED_ATS)
+  confidence            Float            @default(1)
+  enabled               Boolean          @default(true)
+  lastCheckedAt         DateTime?
+  lastSuccessfulFetchAt DateTime?
+  nextCheckAt           DateTime?
+  lastErrorCode         String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  jobs         Job[]
+  observations JobObservation[]
+
+  @@unique([provider, providerBoardId])
+  @@index([normalizedUrl])
+}
+
+model Job {
+  id                 String        @id @default(cuid())
+  companyId          String
+  company            Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  careerPageId       String?
+  careerPage         CareerPage?   @relation(fields: [careerPageId], references: [id])
+  externalId         String?
+  sourceType         SourceType
+  sourceBoardId      String?
+  title              String
+  normalizedTitle    String
+  summary            String        @db.Text
+  descriptionText    String        @db.Text
+  locationText       String?
+  normalizedLocation String?
+  countryCode        String?
+  workplaceType      WorkplaceType @default(UNKNOWN)
+  employmentType     String?
+  salaryMin          Float?
+  salaryMax          Float?
+  salaryCurrency     String?
+  originalUrl        String
+  canonicalUrl       String
+  publishedAt        DateTime?
+  firstSeenAt        DateTime      @default(now())
+  lastSeenAt         DateTime      @default(now())
+  lastVerifiedAt     DateTime?
+  closedAt           DateTime?
+  status             JobStatus     @default(ACTIVE)
+  contentHash        String
+  identityKey        String        @unique
+  fingerprint        String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  observations JobObservation[]
+  matches      JobMatch[]
+
+  @@index([fingerprint])
+  @@index([canonicalUrl])
+  @@index([companyId])
+}
+
+model JobObservation {
+  id           String      @id @default(cuid())
+  jobId        String
+  job          Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  careerPageId String?
+  careerPage   CareerPage? @relation(fields: [careerPageId], references: [id])
+  searchRunId  String?
+  searchRun    SearchRun?  @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  observedAt   DateTime    @default(now())
+  contentHash  String
+  fetchStatus  FetchStatus
+  evidence     Json?
+  createdAt    DateTime    @default(now())
+
+  @@index([jobId])
+  @@index([searchRunId])
+}
+
+model SavedSearch {
+  id               String   @id @default(cuid())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  phrase           String
+  locationHint     String?
+  workMode         String   @default("ANY")
+  targetTitles     Json
+  includedKeywords Json
+  excludedKeywords Json
+  seniority        Json
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  runs    SearchRun[]
+  matches JobMatch[]
+
+  @@index([userId, createdAt])
+}
+
+model SearchRun {
+  id               String          @id @default(cuid())
+  savedSearchId    String
+  savedSearch      SavedSearch     @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  status           SearchRunStatus @default(QUEUED)
+  phase            String          @default("queued")
+  progress         Int             @default(0)
+  message          String?
+  expansion        Json?
+  stats            Json?
+  tokenInput       Int             @default(0)
+  tokenOutput      Int             @default(0)
+  estimatedCost    Float           @default(0)
+  errorSummary     String?
+  startedAt        DateTime        @default(now())
+  finishedAt       DateTime?
+  discoveredBoards Int             @default(0)
+  fetchedJobs      Int             @default(0)
+  matchedJobs      Int             @default(0)
+  newJobs          Int             @default(0)
+
+  observations JobObservation[]
+  matches      JobMatch[]
+  logs         SearchLog[]
+  discoveries  DiscoveryRun[]
+
+  @@index([savedSearchId, startedAt])
+}
+
+model SearchLog {
+  id          String    @id @default(cuid())
+  searchRunId String
+  searchRun   SearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  level       String    @default("info")
+  message     String
+
+  @@index([searchRunId, createdAt])
+}
+
+model JobMatch {
+  id              String      @id @default(cuid())
+  jobId           String
+  job             Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedSearchId   String
+  savedSearch     SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  searchRunId     String
+  searchRun       SearchRun   @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  score           Float
+  scoreBreakdown  Json
+  reason          String
+  isNew           Boolean     @default(false)
+  matchedAt       DateTime    @default(now())
+  lastEvaluatedAt DateTime    @updatedAt
+
+  @@unique([jobId, searchRunId])
+  @@index([savedSearchId])
+  @@index([searchRunId, score])
+}
+
+model LlmCache {
+  id          String   @id @default(cuid())
+  cacheKey    String   @unique
+  purpose     String
+  model       String
+  response    Json
+  tokenInput  Int      @default(0)
+  tokenOutput Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model BackgroundTask {
+  id          String     @id @default(cuid())
+  type        String
+  payload     Json
+  status      TaskStatus @default(PENDING)
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(3)
+  runAt       DateTime   @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  finishedAt  DateTime?
+
+  @@index([status, runAt])
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

@@ -1,0 +1,42 @@
+{
+  "_comment": "EXAMPLE DATA ONLY. Values below are illustrative so the fixtures can be scored. Salary amounts are monthly PLN on a B2B net-of-VAT-equivalent basis.",
+  "label": "example-profile-v1 (placeholder, not anyone's real preferences)",
+  "targetTitles": ["Head of Engineering", "CTO", "Engineering Manager", "VP of Engineering", "Director of Engineering"],
+  "relatedTitles": [
+    { "title": "Head of Software Engineering", "weight": 0.95 },
+    { "title": "Head of Software Development", "weight": 0.9 },
+    { "title": "Engineering Director", "weight": 0.9 },
+    { "title": "Software Engineering Manager", "weight": 1 },
+    { "title": "Software Development Manager", "weight": 0.95 },
+    { "title": "Head of Technology", "weight": 0.75 },
+    { "title": "Head of Platform Engineering", "weight": 0.7 },
+    { "title": "Kierownik Zespołu Programistów", "weight": 0.9 },
+    { "title": "Kierownik Działu Rozwoju Oprogramowania", "weight": 0.85 },
+    { "title": "Dyrektor ds. Technologii", "weight": 0.95 },
+    { "title": "Dyrektor ds. Rozwoju Oprogramowania", "weight": 0.85 },
+    { "title": "Dyrektor IT", "weight": 0.55 },
+    { "title": "Kierownik Działu IT", "weight": 0.5 },
+    { "title": "Head of IT", "weight": 0.5 },
+    { "title": "Engineering Team Lead", "weight": 0.45 },
+    { "title": "Lider Zespołu Programistów", "weight": 0.45 }
+  ],
+  "seniority": { "min": "manager", "max": "c_level" },
+  "location": {
+    "homeCity": "Warszawa",
+    "homeCountry": "PL",
+    "remoteRegions": ["PL", "EU", "EMEA"],
+    "hybridCities": ["Warszawa"],
+    "onsiteCities": ["Warszawa"],
+    "relocationOk": false
+  },
+  "salary": {
+    "floorMonthlyPln": 30000,
+    "targetMonthlyPln": 40000,
+    "acceptedContracts": ["b2b", "uop", "employment_foreign"]
+  },
+  "exclusions": {
+    "titleKeywords": ["Sales Engineer", "Solutions Engineer", "Pre-sales", "Recruiter", "Talent Acquisition", "Intern", "Staż", "Praktyki", "Mechanical", "Civil", "Kierownik budowy", "Kierownik sklepu", "Field CTO"],
+    "descriptionKeywords": ["AutoCAD", "plac budowy"],
+    "companies": []
+  }
+}

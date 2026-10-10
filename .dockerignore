@@ -1,0 +1,7 @@
+node_modules
+matching/node_modules
+.next
+uploads
+agent-tools
+.git
+coverage

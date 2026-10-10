@@ -1,0 +1,84 @@
+{
+  "name": "jobscanner",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "blitz dev -p 43123 -H 0.0.0.0",
+    "worker": "tsx src/worker.ts",
+    "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
+    "build": "blitz build",
+    "start": "blitz start -H 0.0.0.0 -p 3000",
+    "studio": "blitz prisma studio",
+    "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
+    "test": "vitest run && npm test --prefix matching && npm run test:flow",
+    "test:watch": "vitest",
+    "test:flow": "DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner_test SESSION_SECRET_KEY=jobscanner-dev-session-secret-key-32b tsx --test test/search-flow.test.ts",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:migrate": "prisma migrate dev"
+  },
+  "prisma": {
+    "schema": "db/schema.prisma",
+    "seed": "tsx db/seed.ts"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 100
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
+  "dependencies": {
+    "@blitzjs/auth": "3.0.2",
+    "@blitzjs/next": "3.0.2",
+    "@blitzjs/rpc": "3.0.2",
+    "@hookform/error-message": "2.0.1",
+    "@hookform/resolvers": "2.9.11",
+    "@prisma/client": "5.4.2",
+    "@radix-ui/react-slot": "1.4.0",
+    "blitz": "3.0.2",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "concurrently": "10.0.6",
+    "formik": "2.4.5",
+    "lucide-react": "1.55.0",
+    "next": "15.0.1",
+    "prisma": "5.4.2",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hook-form": "7.89.0",
+    "secure-password": "4.0.0",
+    "tailwind-merge": "3.7.0",
+    "tsx": "4.23.15",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@next/env": "13.4.19",
+    "@testing-library/jest-dom": "5.16.5",
+    "@testing-library/react": "16.0.1",
+    "@types/node": "18.11.9",
+    "@types/preview-email": "2.0.1",
+    "@types/react": "19.0.0",
+    "@typescript-eslint/eslint-plugin": "5.42.1",
+    "@vitejs/plugin-react": "2.2.0",
+    "ajv": "^7.0.0",
+    "autoprefixer": "10.6.1",
+    "eslint": "8.27.0",
+    "eslint-config-next": "12.3.1",
+    "eslint-config-prettier": "8.5.0",
+    "husky": "8.0.2",
+    "jsdom": "20.0.3",
+    "lint-staged": "13.0.3",
+    "postcss": "8.5.29",
+    "prettier": "^2.7.1",
+    "prettier-plugin-prisma": "4.4.0",
+    "pretty-quick": "3.1.3",
+    "preview-email": "3.0.7",
+    "tailwindcss": "3.4.17",
+    "typescript": "^4.8.4",
+    "vite-tsconfig-paths": "3.6.0",
+    "vitest": "0.25.3"
+  }
+}
