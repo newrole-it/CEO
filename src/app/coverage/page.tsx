@@ -7,9 +7,9 @@ import getCoverage from "./queries/getCoverage"
 
 export const metadata = { title: "Coverage" }
 
-function formatWhen(value: Date | null): string {
+function formatWhen(value: Date | null, overdueLabel?: string): string {
   if (!value) return "Not yet"
-  if (value.getTime() <= Date.now()) return "Due now"
+  if (overdueLabel && value.getTime() <= Date.now()) return overdueLabel
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
@@ -95,7 +95,7 @@ export default async function CoveragePage() {
                     )}
                   </td>
                   <td>{formatWhen(row.lastFetch)}</td>
-                  <td>{row.policy === "link_only" ? "—" : formatWhen(row.nextFetch)}</td>
+                  <td>{row.policy === "link_only" ? "—" : formatWhen(row.nextFetch, "Due now")}</td>
                   <td>
                     {row.jobCount}
                     {row.listedCount > row.jobCount ? ` / ${row.listedCount}` : ""}
