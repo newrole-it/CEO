@@ -1,6 +1,6 @@
 import "./styles/globals.css"
 import { BlitzProvider } from "./blitz-client"
-import { Fraunces, Source_Sans_3 } from "next/font/google"
+import { Caveat, Fraunces, Source_Sans_3 } from "next/font/google"
 
 const sans = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
@@ -12,6 +12,11 @@ const serif = Fraunces({
   variable: "--font-serif",
 })
 
+const note = Caveat({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-note",
+})
+
 export const metadata = {
   title: { default: "Jobscanner", template: "%s · Jobscanner" },
   description: "A personal scanner for public engineering job offers.",
@@ -20,7 +25,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${sans.variable} ${serif.variable} ${sans.className}`}>
+      <body className={`${sans.variable} ${serif.variable} ${note.variable} ${sans.className}`}>
         <script
           dangerouslySetInnerHTML={{
             __html:

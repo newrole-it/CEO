@@ -6,6 +6,7 @@ export default resolver.pipe(resolver.authorize(), async (_input: unknown, ctx) 
   const user = await db.user.findUnique({ where: { id: userId } })
   if (!user) return { deleted: "missing" as const }
   await db.loginLink.deleteMany({ where: { email: user.email } })
+  await db.profileAuditRun.deleteMany({ where: { userId } })
   await db.candidateProfile.deleteMany({ where: { userId } })
   await db.savedSearch.deleteMany({ where: { userId } })
   await db.token.deleteMany({ where: { userId } })

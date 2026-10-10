@@ -53,7 +53,11 @@ export function ProfileEditor({
     try {
       const body = new FormData(event.currentTarget)
       const response = await fetch("/api/profile/import", { method: "POST", body })
-      const payload = (await response.json()) as { draft?: ProfileDraft; error?: string }
+      const payload = (await response.json()) as {
+        draft?: ProfileDraft
+        error?: string
+        audited?: boolean
+      }
       if (!response.ok || !payload.draft) {
         setError(payload.error || "Could not read that profile")
         return
@@ -65,7 +69,9 @@ export function ProfileEditor({
       setLocations(payload.draft.locations.join(", "))
       setLanguages(payload.draft.languages.join(", "))
       setMessage(
-        "Draft ready. Review it, then save. The PDF is deleted after reading and is not stored."
+        payload.audited
+          ? "Draft ready, and the profile audit has been updated. Review the fields, then save. The PDF file is deleted after reading and is not stored."
+          : "Draft ready. Review it, then save. The PDF file is deleted after reading and is not stored."
       )
     } catch {
       setError("Could not read that profile")
@@ -114,7 +120,9 @@ export function ProfileEditor({
         <h2>Import your LinkedIn profile</h2>
         <p className="hint">
           LinkedIn does not allow reading a profile URL. Export a PDF from LinkedIn with More, then
-          Save to PDF. A CV PDF or pasted text works the same way.
+          Save to PDF. A CV PDF or pasted text works the same way. Parsed sections stay on the
+          account for the <Link href="/profile/audit">profile audit</Link>. The PDF file itself is
+          not stored.
         </p>
         <label className="field">
           PDF

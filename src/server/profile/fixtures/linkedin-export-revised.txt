@@ -1,0 +1,29 @@
+Rafał Testowy
+Head of Engineering
+Warsaw, Poland
+
+Summary
+Engineering leader with 12 years in logistics. I lead a team of engineers and own budget ownership for the platform.
+
+Experience
+
+Acme
+Head of Engineering
+Jan 2020 - Present
+Warsaw
+Led a team of engineers. Owned hiring, the roadmap, and budget ownership for the adtech platform.
+
+Beta
+Engineering Manager
+2018 - 2020
+Warsaw
+Led the platform migration for the engineering team and owned delivery through cutover.
+
+Education
+
+Example University
+M.Sc. Computer Science
+2008 - 2013
+
+Skills
+TypeScript · Leadership · budget ownership · architecture · hiring

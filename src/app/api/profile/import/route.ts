@@ -2,8 +2,12 @@ import { randomBytes } from "crypto"
 import { unlink, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
+import db from "db"
+import { getBlitzContext } from "src/app/blitz-server"
 import { createLlmClient } from "src/server/llm/client"
+import { runProfileAuditForUser } from "src/server/profile/audit-store"
 import { extractProfileFromText } from "src/server/profile/extract"
+import { parseLinkedInProfile } from "src/server/profile/linkedin"
 import { extractPdfText } from "src/server/profile/pdf"
 
 export async function POST(request: Request) {
@@ -41,5 +45,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "Add a PDF or paste more of the CV." }, { status: 400 })
   }
   const draft = await extractProfileFromText(text, createLlmClient())
-  return Response.json({ draft })
+  const document = parseLinkedInProfile(text)
+  let audited = false
+  try {
+    const ctx = await getBlitzContext()
+    const userId = ctx.session.userId
+    if (userId && document) {
+      await db.candidateProfile.upsert({
+        where: { userId },
+        update: { linkedinDocument: document, linkedinImportedAt: new Date() },
+        create: { userId, linkedinDocument: document, linkedinImportedAt: new Date() },
+      })
+      await runProfileAuditForUser(userId)
+      audited = true
+    }
+  } catch (error) {
+    console.error("profile import persist failed", error instanceof Error ? error.message : error)
+  }
+  return Response.json({ draft, audited })
 }

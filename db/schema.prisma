@@ -34,6 +34,7 @@ model User {
   searches         SavedSearch[]
   audits           AuditEvent[]
   candidateProfile CandidateProfile?
+  profileAudits    ProfileAuditRun[]
 }
 
 model Session {
@@ -85,30 +86,49 @@ model AuthRateLimit {
 }
 
 model CandidateProfile {
-  id               String   @id @default(cuid())
-  userId           Int      @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  headline         String?
-  currentTitle     String?
-  pastTitles       Json     @default("[]")
-  seniority        String?
-  yearsExperience  Float?
-  skills           Json     @default("[]")
-  industries       Json     @default("[]")
-  locations        Json     @default("[]")
-  languages        Json     @default("[]")
-  salaryFloor      Float?
-  salaryTarget     Float?
-  salaryCurrency   String?
-  salaryPeriod     String?
-  salaryContract   String?
-  industryMode     String   @default("prefer")
-  contracts        Json     @default("[]")
-  remotePreference String?
-  homeCity         String?
-  relocation       Boolean?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  userId             Int       @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline           String?
+  currentTitle       String?
+  pastTitles         Json      @default("[]")
+  seniority          String?
+  yearsExperience    Float?
+  skills             Json      @default("[]")
+  industries         Json      @default("[]")
+  locations          Json      @default("[]")
+  languages          Json      @default("[]")
+  salaryFloor        Float?
+  salaryTarget       Float?
+  salaryCurrency     String?
+  salaryPeriod       String?
+  salaryContract     String?
+  industryMode       String    @default("prefer")
+  contracts          Json      @default("[]")
+  remotePreference   String?
+  homeCity           String?
+  relocation         Boolean?
+  linkedinDocument   Json?
+  linkedinImportedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+// Parsed LinkedIn sections and one audit pass. The PDF itself is not stored.
+model ProfileAuditRun {
+  id            String   @id @default(cuid())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score         Int
+  previousScore Int?
+  summary       String
+  topChanges    Json
+  annotations   Json
+  demand        Json
+  documentHash  String
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // --------------------------------------
