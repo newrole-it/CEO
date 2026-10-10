@@ -182,6 +182,37 @@ describe("career pages", () => {
       sourceType: "SUCCESSFACTORS",
     })
     expect(pairContractVariants([left!, right!])).toHaveLength(2)
+    const elsewhere = buildListedJob({
+      title: "Engineer",
+      companyName: "GFT",
+      locationText: "Berlin",
+      employmentType: "B2B contract",
+      originalUrl: "https://jobs.gft.com/a/3/",
+      sourceType: "SUCCESSFACTORS",
+    })
+    expect(pairContractVariants([left!, elsewhere!])).toHaveLength(2)
+    const b2bCities = buildListedJob({
+      title: "Principal Solution Architect Consultant",
+      companyName: "GFT Technologies SE",
+      locationText: "Łódź, PL, 90-118 Warszawa, PL, 00-839",
+      employmentType: "B2B",
+      salaryText: "270 - 350 PLN/H",
+      originalUrl: "https://jobs.gft.com/b/2/",
+      sourceType: "SUCCESSFACTORS",
+    })
+    const employmentCities = buildListedJob({
+      title: "Principal Solution Architect",
+      companyName: "GFT Technologies SE",
+      locationText: "Łódź, Warszawa, Poznań, Kraków, Wrocław",
+      employmentType: "Employment contract",
+      salaryText: "30000 - 46000 PLN gross",
+      originalUrl: "https://jobs.gft.com/a/1/",
+      sourceType: "SUCCESSFACTORS",
+    })
+    const overlapped = pairContractVariants([employmentCities!, b2bCities!])
+    expect(overlapped).toHaveLength(1)
+    expect(overlapped[0].salaryText).toContain("270 - 350")
+    expect(overlapped[0].salaryText).toContain("30000")
     expect(
       stripPersonalData("Write to ada@gft.com or +48 600 100 200. Recruiter: Anna Nowak")
     ).not.toMatch(/ada@|600|Anna/)
