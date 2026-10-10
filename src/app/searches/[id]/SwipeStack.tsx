@@ -57,7 +57,11 @@ export function SwipeStack({
       t: performance.now(),
       pointer: event.pointerId,
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // A synthetic pointer can still drag when the browser refuses capture.
+    }
     setDrag({ x: 0, y: 0, active: true })
   }
 
