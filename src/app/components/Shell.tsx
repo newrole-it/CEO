@@ -6,6 +6,7 @@ import { FormEvent, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import logout from "src/app/(auth)/mutations/logout"
 import createSearch from "src/app/searches/mutations/createSearch"
+import { MergeDecisions } from "src/app/searches/MergeDecisions"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 
@@ -60,6 +61,7 @@ export function Shell({ children, user }: { children: React.ReactNode; user?: Sh
 
   return (
     <div className="app-shell">
+      <MergeDecisions enabled={signedIn} />
       <header className="topbar">
         <Link href="/" className="brand">
           <div className="brand-mark">

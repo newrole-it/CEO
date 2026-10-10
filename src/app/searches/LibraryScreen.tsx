@@ -2,10 +2,13 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { useMutation, useQuery } from "@blitzjs/rpc"
+import { useQuery } from "@blitzjs/rpc"
+import { statusFromStamps } from "src/shared/triage"
 import listLibrary from "./queries/listLibrary"
-import markMatch from "./mutations/markMatch"
 import { Button } from "src/app/components/ui/button"
+import { TriageButtons } from "./TriageButtons"
+import { UndoToast } from "./UndoToast"
+import { useOfferDecisions } from "./useOfferDecisions"
 
 function safeHref(value: string | null | undefined): string | null {
   if (!value) return null
@@ -27,7 +30,9 @@ export function LibraryScreen({ kind }: { kind: "interested" | "rejected" }) {
     { kind, page },
     { suspense: false, enabled: mounted }
   )
-  const [mark] = useMutation(markMatch)
+  const { decide, undo, toast, canUndo } = useOfferDecisions(async () => {
+    await refetch()
+  })
   const title = kind === "interested" ? "Interested" : "Rejected"
   if (!mounted || (isLoading && !data))
     return <div className="empty-card">Loading {title.toLowerCase()} offers…</div>
@@ -50,8 +55,8 @@ export function LibraryScreen({ kind }: { kind: "interested" | "rejected" }) {
         <h1>{title}</h1>
         <p className="lede">
           {kind === "interested"
-            ? "Offers you marked interested, across saved searches."
-            : "Offers you rejected. They stay out of the default result list until you restore them."}
+            ? "Offers you marked interested. Move one to rejected, or set it back to undecided."
+            : "Offers you rejected. They stay out of the default result list until you mark them interested or undecided."}
         </p>
       </section>
       {data.total === 0 ? (
@@ -76,35 +81,52 @@ export function LibraryScreen({ kind }: { kind: "interested" | "rejected" }) {
                   </div>
                   <p className="why-label">Why it matches you</p>
                   <p className="reason">{result.reason}</p>
+                  <TriageButtons
+                    onReject={() =>
+                      void decide({
+                        matchId: result.id,
+                        jobId: result.jobId,
+                        label: result.job.title,
+                        from: statusFromStamps(result.interestedAt, result.dismissedAt),
+                        to: "rejected",
+                      })
+                    }
+                    onInterested={() =>
+                      void decide({
+                        matchId: result.id,
+                        jobId: result.jobId,
+                        label: result.job.title,
+                        from: statusFromStamps(result.interestedAt, result.dismissedAt),
+                        to: "interested",
+                      })
+                    }
+                  />
                   <div className="actions">
                     {href ? (
-                      <Button asChild>
-                        <a href={href} target="_blank" rel="noreferrer noopener">
-                          Open original
-                        </a>
-                      </Button>
+                      <a
+                        className="text-button"
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        Open original
+                      </a>
                     ) : null}
-                    {kind === "rejected" ? (
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          await mark({ id: result.id, action: "restore" })
-                          await refetch()
-                        }}
-                      >
-                        Restore
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          await mark({ id: result.id, action: "dismiss" })
-                          await refetch()
-                        }}
-                      >
-                        Reject
-                      </Button>
-                    )}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() =>
+                        void decide({
+                          matchId: result.id,
+                          jobId: result.jobId,
+                          label: result.job.title,
+                          from: statusFromStamps(result.interestedAt, result.dismissedAt),
+                          to: "undecided",
+                        })
+                      }
+                    >
+                      Undecided
+                    </button>
                   </div>
                 </div>
               </article>
@@ -130,6 +152,7 @@ export function LibraryScreen({ kind }: { kind: "interested" | "rejected" }) {
           </Button>
         </div>
       ) : null}
+      <UndoToast step={toast} canUndo={canUndo} onUndo={() => void undo()} />
     </div>
   )
 }

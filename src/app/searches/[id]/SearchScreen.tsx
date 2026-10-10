@@ -5,11 +5,16 @@ import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery } from "@blitzjs/rpc"
 import getSearch from "src/app/searches/queries/getSearch"
 import rerunSearch from "src/app/searches/mutations/rerunSearch"
-import markMatch from "src/app/searches/mutations/markMatch"
 import { Button } from "src/app/components/ui/button"
 import { Input } from "src/app/components/ui/input"
 import { polishBoardLinks } from "src/shared/polish-boards"
+import { statusFromStamps } from "src/shared/triage"
 import { WORKDAY_BOARDS } from "src/shared/workday-boards"
+import { TriageButtons } from "../TriageButtons"
+import { UndoToast } from "../UndoToast"
+import { useOfferDecisions } from "../useOfferDecisions"
+import { OfferDialog } from "./OfferDialog"
+import { SwipeStack } from "./SwipeStack"
 
 type ScoreComponent = {
   id: string
@@ -61,6 +66,18 @@ function safeHref(value: string | null | undefined): string | null {
   }
 }
 
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 720px)")
+    const apply = () => setNarrow(media.matches)
+    apply()
+    media.addEventListener("change", apply)
+    return () => media.removeEventListener("change", apply)
+  }, [])
+  return narrow
+}
+
 function variantLines(value: unknown) {
   if (!Array.isArray(value) || value.length < 2) return null
   return (
@@ -101,7 +118,10 @@ export function SearchScreen({ id }: { id: string }) {
   const [contract, setContract] = useState("")
   const [remoteOnly, setRemoteOnly] = useState(false)
   const [salaryOnly, setSalaryOnly] = useState(false)
-  const [showDismissed, setShowDismissed] = useState(false)
+  const [showDecided, setShowDecided] = useState(false)
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const narrow = useNarrow()
   const [industry, setIndustry] = useState("")
   const [minSalary, setMinSalary] = useState("")
   useEffect(() => {
@@ -115,7 +135,7 @@ export function SearchScreen({ id }: { id: string }) {
     contract: contract.trim() || undefined,
     remote: remoteOnly || undefined,
     salary: salaryOnly || undefined,
-    includeDismissed: showDismissed || undefined,
+    includeDecided: showDecided || undefined,
     industry: industry.trim() || undefined,
     minSalary: Number(minSalary) > 0 ? Number(minSalary) : undefined,
   }
@@ -124,7 +144,9 @@ export function SearchScreen({ id }: { id: string }) {
     enabled: mounted,
   })
   const [rerun, { isPending: rerunning }] = useMutation(rerunSearch)
-  const [mark] = useMutation(markMatch)
+  const { decide, undo, toast, canUndo } = useOfferDecisions(async () => {
+    await refetch()
+  })
   const activeStatus = data?.active?.status
   const polling =
     activeStatus === "QUEUED" || activeStatus === "RUNNING" || activeStatus === "RETRYING"
@@ -133,6 +155,40 @@ export function SearchScreen({ id }: { id: string }) {
     refetchInterval: polling ? 1500 : false,
     enabled: mounted && Boolean(data),
   })
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const reject = event.key === "ArrowLeft" || event.key === "j" || event.key === "J"
+      const interested = event.key === "ArrowRight" || event.key === "k" || event.key === "K"
+      if (!reject && !interested) return
+      if (!target?.closest(".results, .swipe-stack, .offer-dialog") && target !== document.body)
+        return
+      const currentId = detailId || highlightId || data?.results[0]?.id
+      const result = data?.results.find((item) => item.id === currentId)
+      if (!result) return
+      event.preventDefault()
+      const visible = data?.results.map((item) => item.id) ?? []
+      const index = visible.indexOf(result.id)
+      const nextId = visible[index + 1] ?? visible[index - 1] ?? null
+      void decide({
+        matchId: result.id,
+        jobId: result.job.id,
+        label: result.job.title,
+        from: statusFromStamps(result.interestedAt, result.dismissedAt),
+        to: reject ? "rejected" : "interested",
+      }).then(() => {
+        if (nextId) {
+          setHighlightId(nextId)
+          requestAnimationFrame(() => document.getElementById(`offer-${nextId}`)?.focus())
+        }
+      })
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [data, decide, detailId, highlightId])
 
   const expansion = useMemo(() => {
     const raw = data?.active?.expansion
@@ -359,23 +415,33 @@ export function SearchScreen({ id }: { id: string }) {
           <label className="chip">
             <input
               type="checkbox"
-              checked={showDismissed}
+              checked={showDecided}
               onChange={(event) => {
                 setPage(1)
-                setShowDismissed(event.target.checked)
+                setShowDecided(event.target.checked)
               }}
             />{" "}
-            Show dismissed
+            Show decided
           </label>
         </div>
       </section>
 
       {failed ? null : data.total === 0 ? (
         <div className="empty-card">
-          <h2>{running ? "Offers will land here" : "No matching offers this time"}</h2>
+          <h2>
+            {running
+              ? "Offers will land here"
+              : data.hiddenDecided > 0 && !showDecided
+              ? "Decided offers are hidden"
+              : "No matching offers this time"}
+          </h2>
           <p className="lede">
             {running
               ? "The local index is scored first. Boards that have not been indexed yet are checked after that."
+              : data.hiddenDecided > 0 && !showDecided
+              ? `${data.hiddenDecided} offer${
+                  data.hiddenDecided === 1 ? " is" : "s are"
+                } interested or rejected. Show decided offers to see them.`
               : "Nothing in the index is close enough to this phrase with these filters. Clear a filter, or wait for the indexer to finish a board."}
           </p>
         </div>
@@ -390,7 +456,35 @@ export function SearchScreen({ id }: { id: string }) {
               {showScores ? "Hide score parts" : "Show score parts"}
             </button>
           </div>
-          <div className="results">
+          <p className="hint triage-hint">
+            J or ← rejects the highlighted offer. K or → marks it interested. Z undoes, including
+            several steps.
+          </p>
+          {narrow && !showDecided ? (
+            <SwipeStack
+              offers={data.results.map((result) => ({
+                id: result.id,
+                title: result.job.title,
+                company: result.job.company,
+                location: result.job.locationText || "Location not stated",
+                reason: result.reason,
+                score: Math.round(result.score + (result.feedbackDelta || 0)),
+              }))}
+              onOpen={(offer) => setDetailId(offer.id)}
+              onDecide={(offer, action) => {
+                const result = data.results.find((item) => item.id === offer.id)
+                if (!result) return
+                void decide({
+                  matchId: result.id,
+                  jobId: result.job.id,
+                  label: result.job.title,
+                  from: statusFromStamps(result.interestedAt, result.dismissedAt),
+                  to: action,
+                })
+              }}
+            />
+          ) : null}
+          <div className={narrow && !showDecided ? "results desktop-results" : "results"}>
             {data.results.map((result) => {
               const salary = money(
                 result.job.salaryMin,
@@ -403,25 +497,56 @@ export function SearchScreen({ id }: { id: string }) {
                   : {}
               const parts = Array.isArray(pack.components) ? pack.components : []
               const penalties = Array.isArray(pack.penalties) ? pack.penalties : []
+              const shown = Math.round(result.score + (result.feedbackDelta || 0))
+              const status = statusFromStamps(result.interestedAt, result.dismissedAt)
+              const choose = (to: "interested" | "rejected" | "undecided") =>
+                decide({
+                  matchId: result.id,
+                  jobId: result.job.id,
+                  label: result.job.title,
+                  from: status,
+                  to,
+                })
               return (
-                <article className="result-card" key={result.id}>
+                <article
+                  className="result-card"
+                  id={`offer-${result.id}`}
+                  key={result.id}
+                  tabIndex={0}
+                  aria-current={highlightId === result.id ? "true" : undefined}
+                  onFocus={() => setHighlightId(result.id)}
+                >
                   <div
                     className="score"
                     title={pack.band ? `${pack.band} match, out of 100` : "Match score out of 100"}
                   >
-                    {Math.round(result.score)}
+                    {shown}
                     {pack.band ? <span className="meta">{pack.band}</span> : null}
                   </div>
                   <div>
                     <header>
                       <div>
                         <p className="company">{result.job.company}</p>
-                        <h3>{result.job.title}</h3>
+                        <h3>
+                          <button
+                            type="button"
+                            className="title-button"
+                            onClick={() => {
+                              setHighlightId(result.id)
+                              setDetailId(result.id)
+                            }}
+                          >
+                            {result.job.title}
+                          </button>
+                        </h3>
                       </div>
                       <div className="badges">
                         {result.isNew ? <span className="badge new">New</span> : null}
-                        {result.seenAt ? <span className="badge">Seen</span> : null}
-                        {result.dismissedAt ? <span className="badge">Dismissed</span> : null}
+                        {result.feedbackDelta < 0 ? (
+                          <span className="badge">Similar to a rejected offer</span>
+                        ) : null}
+                        {status === "interested" ? <span className="badge">Interested</span> : null}
+                        {status === "rejected" ? <span className="badge">Rejected</span> : null}
                         {result.job.status === "POSSIBLY_CLOSED" ? (
                           <span className="badge">Possibly closed</span>
                         ) : null}
@@ -477,54 +602,74 @@ export function SearchScreen({ id }: { id: string }) {
                       </details>
                     ) : null}
                     {variantLines(result.job.variants)}
+                    <TriageButtons
+                      onReject={() => void choose("rejected")}
+                      onInterested={() => void choose("interested")}
+                    />
                     <div className="actions">
                       {safeHref(result.job.originalUrl) ? (
-                        <Button asChild>
-                          <a
-                            href={safeHref(result.job.originalUrl)!}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                          >
-                            Open original
-                          </a>
-                        </Button>
+                        <a
+                          className="text-button"
+                          href={safeHref(result.job.originalUrl)!}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          Open original
+                        </a>
                       ) : null}
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          await mark({ id: result.id, action: "seen" })
-                          await refetch()
-                        }}
-                      >
-                        Mark seen
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          await mark({ id: result.id, action: "interested" })
-                          await refetch()
-                        }}
-                      >
-                        Interested
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          await mark({
-                            id: result.id,
-                            action: result.dismissedAt ? "restore" : "dismiss",
-                          })
-                          await refetch()
-                        }}
-                      >
-                        {result.dismissedAt ? "Restore" : "Reject"}
-                      </Button>
+                      {status !== "undecided" ? (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void choose("undecided")}
+                        >
+                          Undecided
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </article>
               )
             })}
           </div>
+          <OfferDialog
+            offer={(() => {
+              const result = data.results.find((item) => item.id === detailId)
+              if (!result) return null
+              return {
+                title: result.job.title,
+                company: result.job.company,
+                location: result.job.locationText || "Location not stated",
+                reason: result.reason,
+                excerpt: result.job.descriptionText.slice(0, 1200),
+                href: safeHref(result.job.originalUrl),
+              }
+            })()}
+            onClose={() => setDetailId(null)}
+            onReject={() => {
+              const result = data.results.find((item) => item.id === detailId)
+              if (!result) return
+              void decide({
+                matchId: result.id,
+                jobId: result.job.id,
+                label: result.job.title,
+                from: statusFromStamps(result.interestedAt, result.dismissedAt),
+                to: "rejected",
+              }).then(() => setDetailId(null))
+            }}
+            onInterested={() => {
+              const result = data.results.find((item) => item.id === detailId)
+              if (!result) return
+              void decide({
+                matchId: result.id,
+                jobId: result.job.id,
+                label: result.job.title,
+                from: statusFromStamps(result.interestedAt, result.dismissedAt),
+                to: "interested",
+              }).then(() => setDetailId(null))
+            }}
+          />
+          <UndoToast step={toast} canUndo={canUndo} onUndo={() => void undo()} />
           {data.pageCount > 1 ? (
             <div className="chips" style={{ marginTop: 16 }}>
               <Button

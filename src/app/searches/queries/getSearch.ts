@@ -2,6 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
+import { rejectionPenalty } from "src/server/search/feedback"
 
 const input = z.object({
   id: z.string().min(1),
@@ -12,6 +13,7 @@ const input = z.object({
   salary: z.boolean().optional(),
   contract: z.string().trim().max(40).optional(),
   includeDismissed: z.boolean().optional(),
+  includeDecided: z.boolean().optional(),
   industry: z.string().trim().max(40).optional(),
   minSalary: z.number().positive().max(1_000_000).optional(),
 })
@@ -31,6 +33,7 @@ export default resolver.pipe(
       salary,
       contract,
       includeDismissed,
+      includeDecided,
       industry,
       minSalary,
     },
@@ -62,9 +65,10 @@ export default resolver.pipe(
       ...(contract ? { employmentType: { contains: contract, mode: "insensitive" as const } } : {}),
       ...(salary ? { OR: [{ salaryMin: { not: null } }, { salaryMax: { not: null } }] } : {}),
     }
+    const showDecided = Boolean(includeDecided || includeDismissed)
     const where = {
       searchRunId: matchRun?.id ?? "__none__",
-      ...(includeDismissed ? {} : { dismissedAt: null }),
+      ...(showDecided ? {} : { dismissedAt: null, interestedAt: null }),
       ...(industry ? { fitIndustry: { contains: industry, mode: "insensitive" as const } } : {}),
       ...(minSalary != null ? { fitSalaryMonthly: { gte: minSalary } } : {}),
       ...(Object.keys(jobWhere).length ? { job: jobWhere } : {}),
@@ -73,16 +77,62 @@ export default resolver.pipe(
       where: { userId: ctx.session.userId! },
       select: { id: true },
     })
-    const total = matchRun ? await db.jobMatch.count({ where }) : 0
-    const matches = matchRun
+    const rejected = await db.jobMatch.findMany({
+      where: { dismissedAt: { not: null }, savedSearch: { userId: ctx.session.userId! } },
+      orderBy: { dismissedAt: "desc" },
+      take: 40,
+      select: {
+        jobId: true,
+        job: { select: { title: true, company: { select: { name: true } } } },
+      },
+    })
+    const rejectedOffers = rejected.map((row) => ({
+      jobId: row.jobId,
+      title: row.job.title,
+      company: row.job.company.name,
+    }))
+    const light = matchRun
       ? await db.jobMatch.findMany({
           where,
-          orderBy: { score: "desc" },
-          skip: (page - 1) * PAGE_SIZE,
-          take: PAGE_SIZE,
+          select: {
+            id: true,
+            score: true,
+            jobId: true,
+            job: { select: { title: true, company: { select: { name: true } } } },
+          },
+        })
+      : []
+    const ordered = light
+      .map((row) => {
+        const delta = rejectionPenalty(
+          { title: row.job.title, company: row.job.company.name },
+          rejectedOffers.filter((item) => item.jobId !== row.jobId)
+        )
+        return { id: row.id, score: row.score, delta, rank: row.score + delta }
+      })
+      .sort((a, b) => b.rank - a.rank || b.score - a.score || a.id.localeCompare(b.id))
+    const total = ordered.length
+    const pageIds = ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    const deltaById = new Map(pageIds.map((row) => [row.id, row.delta]))
+    const loaded = pageIds.length
+      ? await db.jobMatch.findMany({
+          where: { id: { in: pageIds.map((row) => row.id) } },
           include: { job: { include: { company: true } } },
         })
       : []
+    const byId = new Map(loaded.map((match) => [match.id, match]))
+    const matches = pageIds.flatMap((row) => {
+      const match = byId.get(row.id)
+      return match ? [match] : []
+    })
+    const hiddenDecided = matchRun
+      ? await db.jobMatch.count({
+          where: {
+            searchRunId: matchRun.id,
+            OR: [{ dismissedAt: { not: null } }, { interestedAt: { not: null } }],
+          },
+        })
+      : 0
 
     return {
       search: {
@@ -105,13 +155,16 @@ export default resolver.pipe(
       total,
       pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
       hasProfile: Boolean(profile),
+      hiddenDecided,
       results: matches.map((match) => ({
         id: match.id,
         score: match.score,
+        feedbackDelta: deltaById.get(match.id) ?? 0,
         reason: match.reason,
         isNew: match.isNew,
         seenAt: match.seenAt,
         dismissedAt: match.dismissedAt,
+        interestedAt: match.interestedAt,
         breakdown: match.scoreBreakdown,
         job: {
           id: match.job.id,

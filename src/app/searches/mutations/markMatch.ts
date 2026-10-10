@@ -8,7 +8,7 @@ export default resolver.pipe(
   resolver.zod(
     z.object({
       id: z.string().min(1),
-      action: z.enum(["seen", "dismiss", "restore", "interested"]),
+      action: z.enum(["seen", "dismiss", "restore", "undecided", "interested"]),
     })
   ),
   async ({ id, action }, ctx) => {
@@ -24,13 +24,13 @@ export default resolver.pipe(
         dismissedAt:
           action === "dismiss"
             ? now
-            : action === "restore" || action === "interested"
+            : action === "restore" || action === "undecided" || action === "interested"
             ? null
             : match.dismissedAt,
         interestedAt:
           action === "interested"
             ? now
-            : action === "dismiss" || action === "restore"
+            : action === "dismiss" || action === "restore" || action === "undecided"
             ? null
             : match.interestedAt,
       },

@@ -36,6 +36,7 @@ export default resolver.pipe(
       pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
       results: matches.map((match) => ({
         id: match.id,
+        jobId: match.jobId,
         score: match.score,
         reason: match.reason,
         searchId: match.savedSearch.id,

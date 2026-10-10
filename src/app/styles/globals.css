@@ -784,6 +784,10 @@ details.description summary {
   .margin-note {
     transform: none;
   }
+
+  .desktop-results {
+    display: none;
+  }
 }
 
 .score-panel {
@@ -998,4 +1002,167 @@ details.description summary {
   .margin-note:nth-child(even) {
     transform: none;
   }
+
+  .swipe-card,
+  .undo-toast {
+    transition: none;
+  }
+}
+
+.result-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.title-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.triage-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.reject-button {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.triage-hint {
+  margin: 0 0 12px;
+}
+
+.undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  max-width: min(520px, calc(100% - 24px));
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+}
+
+.undo-toast p {
+  margin: 0;
+}
+
+.undo-toast button,
+.undo-persistent {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.undo-persistent {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .undo-persistent {
+    display: inline-flex;
+    position: fixed;
+    right: 16px;
+    bottom: 92px;
+    z-index: 21;
+    border-radius: 999px;
+    padding: 10px 14px;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+  }
+}
+
+.swipe-stack {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.swipe-stage {
+  position: relative;
+  height: 440px;
+}
+
+.swipe-card {
+  position: absolute;
+  inset: 0;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 22px 20px;
+  box-shadow: var(--shadow);
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.swipe-behind {
+  transform: scale(0.96) translateY(14px);
+  opacity: 0.72;
+}
+
+.swipe-label {
+  position: absolute;
+  top: 18px;
+  border: 3px solid currentColor;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.swipe-no {
+  left: 16px;
+  color: var(--danger);
+  transform: rotate(-8deg);
+}
+
+.swipe-yes {
+  right: 16px;
+  color: var(--accent);
+  transform: rotate(8deg);
+}
+
+.score-inline {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 28px;
+  margin: 8px 0;
+}
+
+.offer-dialog {
+  width: min(640px, calc(100% - 32px));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.offer-dialog::backdrop {
+  background: rgba(28, 25, 21, 0.45);
+}
+
+.offer-dialog h2 {
+  font-family: var(--font-serif), Georgia, serif;
+  margin: 0 0 8px;
 }
