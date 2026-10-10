@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import type { SeedBoard } from "config/seed-boards"
-import { careerListUsesCache } from "src/server/adapters/career-site"
+import { careerListUsesCache, listCareerSite } from "src/server/adapters/career-site"
 import { parseJsonLdJobs } from "src/server/adapters/jsonld"
+import { UnsafeUrlError } from "src/server/security/url-safety"
+import { conditionalHttp } from "./conditional"
 import { identityFor } from "./store"
 import { boardIsIndexable } from "./run"
 import { nextCrawlAt, nextStatus } from "./schedule"
@@ -53,6 +55,63 @@ describe("index schedule", () => {
     expect(identityFor({ ...job, externalId: "Sii Polska", companyName: "Sii Polska" })).toBe(
       "url:https://sii.pl/oferty-pracy/id/30518/business-analyst-f-m-x"
     )
+  })
+
+  it("does not send a sitemap validator on robots.txt or a job page", async () => {
+    const seen = new Map<string, string | undefined>()
+    const { client } = conditionalHttp(
+      {
+        async post() {
+          throw new Error("post is unused")
+        },
+        async get(url, opts) {
+          seen.set(url, opts?.headers?.["If-None-Match"])
+          return {
+            url,
+            status: 200,
+            body: "",
+            contentType: "text/plain",
+            headers: { etag: url.includes("sitemap") ? "sitemap-etag" : "other-etag" },
+          }
+        },
+      },
+      { etag: "stored-etag" }
+    )
+    await client.get("https://careers.epam.com/robots.txt")
+    await client.get("https://careers.epam.com/sitemap.xml.gz")
+    await client.get("https://careers.epam.com/en/vacancy/role")
+    expect(seen.get("https://careers.epam.com/robots.txt")).toBeUndefined()
+    expect(seen.get("https://careers.epam.com/sitemap.xml.gz")).toBe("stored-etag")
+    expect(seen.get("https://careers.epam.com/en/vacancy/role")).toBeUndefined()
+  })
+
+  it("does not treat a failed sitemap as an empty catalog", async () => {
+    const listed = await listCareerSite(
+      "careers.epam.com",
+      {
+        async post() {
+          throw new Error("post is unused")
+        },
+        async get(url) {
+          if (url.endsWith("/robots.txt")) {
+            return {
+              url,
+              status: 200,
+              body: "User-agent: *\nAllow: /\nSitemap: https://careers.epam.com/sitemap.xml.gz\n",
+              contentType: "text/plain",
+            }
+          }
+          if (url.includes("sitemap")) throw new UnsafeUrlError("Redirect missing location")
+          return { url, status: 404, body: "", contentType: "text/plain" }
+        },
+      },
+      "EPAM",
+      { detailBudget: 5, knownUrls: new Set() }
+    )
+    expect(listed.proven).toBe(false)
+    expect(listed.complete).toBe(false)
+    expect(listed.jobs).toEqual([])
+    expect(listed.note).toMatch(/Redirect missing location/)
   })
 
   it("does not serve a stored listing when the indexer is backfilling", () => {

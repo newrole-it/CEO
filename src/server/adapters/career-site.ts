@@ -829,7 +829,7 @@ export async function listCareerSite(
     listing.note = [listing.note, ...notes].filter(Boolean).join(" ").slice(0, 500)
     return listing
   }
-  if (!urls.length && notes.some((note) => /source policy/i.test(note))) {
+  if (!urls.length && notes.length) {
     return {
       jobs: [],
       proven: false,

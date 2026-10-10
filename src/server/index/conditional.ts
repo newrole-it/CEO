@@ -17,7 +17,23 @@ export type ConditionalState = {
   lastModified?: string
 }
 
-function remember(state: ConditionalState, response: HttpResponse) {
+function validatorsApply(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase()
+    return (
+      path.includes("sitemap") ||
+      path.endsWith(".xml") ||
+      path.endsWith(".gz") ||
+      path.endsWith("/jobs.feed.json") ||
+      /\/jobs\/?$/.test(path)
+    )
+  } catch {
+    return false
+  }
+}
+
+function remember(state: ConditionalState, url: string, response: HttpResponse) {
+  if (!validatorsApply(url)) return
   if (response.headers?.etag) state.etag = response.headers.etag
   if (response.headers?.["last-modified"]) state.lastModified = response.headers["last-modified"]
 }
@@ -36,8 +52,9 @@ export function conditionalHttp(
   }
   const client: HttpClient = {
     get: async (url, opts) => {
-      const response = await inner.get(url, { ...opts, headers: headersFor(opts?.headers) })
-      remember(state, response)
+      const headers = validatorsApply(url) ? headersFor(opts?.headers) : opts?.headers
+      const response = await inner.get(url, { ...opts, headers })
+      remember(state, url, response)
       if (response.status === 304) throw new NotModifiedError(response.headers)
       return response
     },
