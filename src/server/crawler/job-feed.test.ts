@@ -6,6 +6,7 @@ import { rememberCompanyPage } from "src/server/discovery/company-pages"
 import { listCareerSite } from "src/server/adapters/career-site"
 import { listSmartRecruiters } from "src/server/adapters/smartrecruiters"
 import type { HttpClient } from "src/server/security/safe-fetch"
+import { UnsafeUrlError } from "src/server/security/url-safety"
 
 const FEED = JSON.stringify({
   "@context": "https://schema.org",
@@ -200,6 +201,46 @@ describe("job feeds and listing-only pages", () => {
     expect(seen.some((url) => url.includes("Java-Developer"))).toBe(false)
     if (previous === undefined) delete process.env.CAREER_DETAIL_LIMIT
     else process.env.CAREER_DETAIL_LIMIT = previous
+  })
+
+  it("keeps Sii job URLs when a later sitemap is outside the allow-list", async () => {
+    const index = `<?xml version="1.0"?><sitemapindex>
+      <sitemap><loc><![CDATA[https://sii.pl/blog-sitemap.xml]]></loc></sitemap>
+      <sitemap><loc><![CDATA[https://sii.pl/job-offer-sitemap.xml]]></loc></sitemap>
+    </sitemapindex>`
+    const jobs = `<?xml version="1.0"?><urlset>
+      <url><loc>https://sii.pl/oferty-pracy/id/30518/business-analyst-f-m-x/</loc></url>
+      <url><loc>https://sii.pl/en/job-ads/id/30518/business-analyst/</loc></url>
+    </urlset>`
+    const page = `<html><head><script type="application/ld+json">
+      {"@type":"JobPosting","title":"Business Analyst","url":"https://sii.pl/oferty-pracy/id/30518/business-analyst-f-m-x/","jobLocation":{"address":{"addressLocality":"Warsaw"}}}
+    </script></head></html>`
+    const { http, seen } = client((url) => {
+      if (url.endsWith("/robots.txt"))
+        return {
+          status: 200,
+          body: "User-agent: *\nAllow: /\nSitemap: https://sii.pl/sitemap.xml\n",
+        }
+      if (url.endsWith("/llms.txt") || url.endsWith("/jobs.feed.json"))
+        return { status: 404, body: "" }
+      if (url.endsWith("/sitemap.xml")) return { status: 200, body: index }
+      if (url.endsWith("/job-offer-sitemap.xml")) return { status: 200, body: jobs }
+      if (url.endsWith("/blog-sitemap.xml")) {
+        throw new UnsafeUrlError("Source policy is limited for Career site: blog sitemap")
+      }
+      if (url.includes("/oferty-pracy/id/")) return { status: 200, body: page }
+      return { status: 404, body: "" }
+    })
+    const listed = await listCareerSite("sii.pl", http, "Sii Polska", {
+      detailBudget: 5,
+      knownUrls: new Set(),
+    })
+    expect(listed.proven).toBe(true)
+    expect(listed.listedCount).toBe(1)
+    expect(listed.jobs.map((job) => job.title)).toEqual(["Business Analyst"])
+    expect(listed.complete).toBe(true)
+    expect(seen.some((url) => url.includes("blog-sitemap"))).toBe(true)
+    expect(seen.some((url) => url.includes("/en/job-ads/"))).toBe(false)
   })
 
   it("stops SmartRecruiters when the posting API switch is off", async () => {

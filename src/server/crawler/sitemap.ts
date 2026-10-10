@@ -28,7 +28,7 @@ export function parseSitemap(xml: string): { urls: SitemapEntry[]; children: str
   return { urls, children }
 }
 
-/** Job sitemaps first, so a long index is not truncated before the offer list. */
+/** Job sitemaps first, so a later disallowed child cannot hide the offer list. */
 export function orderSitemapChildren(children: string[]): string[] {
   return [...children].sort((a, b) => {
     const rank = (url: string) => (/job/i.test(url) ? 0 : 1)

@@ -28,7 +28,7 @@ npm run setup
 npm run dev:all
 ```
 
-`dev:all` starts the site on 127.0.0.1:43123 and the Postgres-backed worker. A scan does nothing until the worker is running. The same worker indexes the full allowed catalog between searches: one request per 5 seconds per host, at most 200 detail pages per host per day, and a daily refresh. Large career sites backfill over several days. `npm start` serves the production build on the same port.
+`dev:all` starts the site on 127.0.0.1:43123 and the Postgres-backed worker. A scan does nothing until the worker is running. The same worker indexes the full allowed catalog between searches: one request per 5 seconds per host, at most 200 detail pages per host per day, and a daily refresh. An unfinished career site stays next until that daily cap, so Allegro, EPAM, and Comarch backfill over several days. `npm start` serves the production build on the same port.
 
 The app works with no API keys. Query expansion falls back to checked examples (or a minimal expander), and scans read the verified seed boards.
 

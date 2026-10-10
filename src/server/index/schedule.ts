@@ -9,7 +9,11 @@ export function nextStatus(current: JobStatus, seen: boolean): JobStatus | null 
   return null
 }
 
-/** Complete boards refresh daily. A capped career site continues the next UTC day. An unfinished board stays due so the catalog backfill can resume. */
+/**
+ * Complete boards refresh daily. A capped career site continues the next UTC day.
+ * An unfinished board stays at the front of the queue until that cap, so a large
+ * sitemap backfills in 200-page days instead of rotating away after one batch.
+ */
 export function nextCrawlAt(now: Date, complete: boolean, budgetExhausted: boolean): Date {
   if (budgetExhausted) {
     const next = new Date(now)
@@ -18,5 +22,5 @@ export function nextCrawlAt(now: Date, complete: boolean, budgetExhausted: boole
     return next
   }
   if (complete) return new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  return now
+  return new Date(0)
 }

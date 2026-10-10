@@ -9,6 +9,7 @@ export const metadata = { title: "Coverage" }
 
 function formatWhen(value: Date | null): string {
   if (!value) return "Not yet"
+  if (value.getTime() <= Date.now()) return "Due now"
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",

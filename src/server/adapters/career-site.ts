@@ -361,7 +361,14 @@ async function collectSitemaps(
   const parsed = parseSitemap(response.body)
   const urls = [...parsed.urls]
   for (const child of orderSitemapChildren(parsed.children).slice(0, 24)) {
-    urls.push(...(await collectSitemaps(child, http, rules, depth + 1)))
+    try {
+      urls.push(...(await collectSitemaps(child, http, rules, depth + 1)))
+    } catch (error) {
+      // A blog or page sitemap on the same host is often outside the allow-list.
+      // Keep the job URLs already collected.
+      if (error instanceof UnsafeUrlError) continue
+      throw error
+    }
   }
   return urls
 }
@@ -678,7 +685,7 @@ async function loadCached(target: CareerTarget, boardId: string): Promise<Listed
     const page = await db.careerPage.findUnique({
       where: { provider_providerBoardId: { provider: target.provider, providerBoardId: boardId } },
     })
-    if (!page?.lastSuccessfulFetchAt) return null
+    if (!page?.lastSuccessfulFetchAt || !page.indexComplete) return null
     const age = Date.now() - page.lastSuccessfulFetchAt.getTime()
     if (age > 24 * 60 * 60 * 1000) return null
     const rows = await db.job.findMany({
@@ -721,6 +728,11 @@ export type CareerListOptions = {
   knownUrls?: ReadonlySet<string>
 }
 
+/** The indexer passes a budget or known URLs and must read the live sitemap, not a short cache. */
+export function careerListUsesCache(options?: CareerListOptions): boolean {
+  return options?.detailBudget == null && options?.knownUrls == null
+}
+
 function safeCanonical(raw: string): string {
   try {
     return canonicalUrl(raw)
@@ -745,7 +757,7 @@ export async function listCareerSite(
   }
   const target = targetFor(boardId, companyName)
   if (!target) return { jobs: [], proven: false, note: "No career-site policy for this board" }
-  const cached = await loadCached(target, boardId)
+  const cached = careerListUsesCache(options) ? await loadCached(target, boardId) : null
   if (cached) {
     return {
       jobs: cached,
@@ -816,6 +828,16 @@ export async function listCareerSite(
     const listing = await readListing(target, http, robots.rules)
     listing.note = [listing.note, ...notes].filter(Boolean).join(" ").slice(0, 500)
     return listing
+  }
+  if (!urls.length && notes.some((note) => /source policy/i.test(note))) {
+    return {
+      jobs: [],
+      proven: false,
+      companyName: target.companyName,
+      note: notes.join(" ").slice(0, 500),
+      listedCount: 0,
+      complete: false,
+    }
   }
   const poland = urls.filter((entry) => entry.loc.toLowerCase().includes("/poland/")).length
   const limit = options?.detailBudget ?? detailLimit()

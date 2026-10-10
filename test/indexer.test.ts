@@ -157,12 +157,101 @@ test("an incomplete career crawl does not close jobs that were not fetched", asy
   assert.equal(page?.indexComplete, false)
 })
 
+test("an index pass reads the live sitemap instead of a short cached listing", async () => {
+  const db = (await import("../db")).default
+  const { storeBoardInventory } = await import("../src/server/index/store")
+  const { listCareerSite } = await import("../src/server/adapters/career-site")
+  const now = new Date("2026-10-10T18:30:00.000Z")
+  await storeBoardInventory({
+    board: {
+      provider: "SUCCESSFACTORS",
+      boardId: "jobs.gft.com",
+      companyName: "GFT Cache Probe",
+      careersUrl: "https://jobs.gft.com/",
+    },
+    listed: {
+      jobs: [
+        {
+          title: "Cached only",
+          companyName: "GFT Cache Probe",
+          originalUrl: "https://jobs.gft.com/job/Cached-Only/9/",
+          sourceType: "SUCCESSFACTORS",
+          sourceBoardId: "jobs.gft.com",
+          workplaceType: "ONSITE",
+          needsHydration: false,
+        },
+      ],
+      proven: true,
+      complete: true,
+      listedCount: 1,
+      note: "cache probe",
+    },
+    now,
+    nextCheckAt: new Date("2026-10-11T18:30:00.000Z"),
+  })
+  const seen: string[] = []
+  const xml = `<?xml version="1.0"?><urlset>
+    <url><loc>https://jobs.gft.com/Poland/job/Warsaw-Live-One/1/</loc></url>
+    <url><loc>https://jobs.gft.com/Poland/job/Krakow-Live-Two/2/</loc></url>
+  </urlset>`
+  const listed = await listCareerSite(
+    "jobs.gft.com",
+    {
+      async post() {
+        throw new Error("post is unused")
+      },
+      async get(url: string) {
+        seen.push(url)
+        if (url.endsWith("/robots.txt")) {
+          return { url, status: 200, body: "User-agent: *\nAllow: /\n", contentType: "text/plain" }
+        }
+        if (url.endsWith("/sitemap.xml")) {
+          return { url, status: 200, body: xml, contentType: "text/xml" }
+        }
+        if (url.includes("/job/")) {
+          return {
+            url,
+            status: 200,
+            body: '<html><span itemprop="title">Live role</span></html>',
+            contentType: "text/html",
+          }
+        }
+        return { url, status: 404, body: "", contentType: "text/plain" }
+      },
+    },
+    "GFT Cache Probe",
+    { detailBudget: 2, knownUrls: new Set(["https://jobs.gft.com/job/Cached-Only/9/"]) }
+  )
+  assert.equal(
+    seen.some((url) => url.endsWith("/sitemap.xml")),
+    true
+  )
+  assert.equal(listed.listedCount, 2)
+  assert.equal(
+    listed.jobs.some((job) => job.title === "Cached only"),
+    false
+  )
+  assert.equal(listed.jobs.length, 2)
+  const page = await db.careerPage.findUnique({
+    where: {
+      provider_providerBoardId: { provider: "SUCCESSFACTORS", providerBoardId: "jobs.gft.com" },
+    },
+  })
+  assert.equal(page?.indexComplete, true)
+})
+
 after(async () => {
   const db = (await import("../db")).default
-  await db.job.deleteMany({ where: { sourceBoardId: { in: ["index-acme", "index.example"] } } })
-  await db.careerPage.deleteMany({
-    where: { providerBoardId: { in: ["index-acme", "index.example"] } },
+  await db.job.deleteMany({
+    where: {
+      sourceBoardId: { in: ["index-acme", "index.example", "jobs.gft.com"] },
+    },
   })
-  await db.company.deleteMany({ where: { name: { in: ["Index Acme", "Index Example"] } } })
+  await db.careerPage.deleteMany({
+    where: { providerBoardId: { in: ["index-acme", "index.example", "jobs.gft.com"] } },
+  })
+  await db.company.deleteMany({
+    where: { name: { in: ["Index Acme", "Index Example", "GFT Cache Probe"] } },
+  })
   await db.$disconnect()
 })

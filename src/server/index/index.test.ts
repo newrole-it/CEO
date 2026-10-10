@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { SeedBoard } from "config/seed-boards"
+import { careerListUsesCache } from "src/server/adapters/career-site"
 import { boardIsIndexable } from "./run"
 import { nextCrawlAt, nextStatus } from "./schedule"
 
@@ -24,11 +25,18 @@ describe("index schedule", () => {
     expect(nextStatus("ACTIVE", true)).toBeNull()
   })
 
-  it("refreshes a complete board in a day and a capped career site on the next UTC day", () => {
+  it("refreshes a complete board in a day and keeps an unfinished board ahead of the queue", () => {
     const now = new Date("2026-10-10T18:00:00.000Z")
     expect(nextCrawlAt(now, true, false).toISOString()).toBe("2026-10-11T18:00:00.000Z")
-    expect(nextCrawlAt(now, false, false).toISOString()).toBe(now.toISOString())
+    expect(nextCrawlAt(now, false, false).toISOString()).toBe("1970-01-01T00:00:00.000Z")
     expect(nextCrawlAt(now, false, true).toISOString()).toBe("2026-10-11T00:15:00.000Z")
+  })
+
+  it("does not serve a stored listing when the indexer is backfilling", () => {
+    expect(careerListUsesCache(undefined)).toBe(true)
+    expect(careerListUsesCache({})).toBe(true)
+    expect(careerListUsesCache({ detailBudget: 30 })).toBe(false)
+    expect(careerListUsesCache({ knownUrls: new Set() })).toBe(false)
   })
 
   it("indexes allowed hosts and skips link-only hosts", () => {
