@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { safeFetch } from "./safe-fetch"
+import { pinnedLookup, safeFetch } from "./safe-fetch"
 
 describe("safeFetch policy on redirects", () => {
   it("drops custom headers when the host changes and blocks a disallowed hop", async () => {
@@ -48,5 +48,16 @@ describe("safeFetch policy on redirects", () => {
     expect(seen[1].token).toBeNull()
     expect(seen[1].accept).toBeTruthy()
     expect(seen[1].url).toContain("example.org")
+  })
+})
+
+describe("pinned DNS lookup", () => {
+  it("returns an address object when the runtime asks for every record", () => {
+    const hits: Array<{ address: string; family: number }> = []
+    pinnedLookup("93.184.216.34")("jobs.gft.com", { all: true }, (error, address) => {
+      expect(error).toBeNull()
+      if (Array.isArray(address)) hits.push(...address)
+    })
+    expect(hits).toEqual([{ address: "93.184.216.34", family: 4 }])
   })
 })

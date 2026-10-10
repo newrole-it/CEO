@@ -1,3 +1,4 @@
+import type { LookupAddress, LookupOptions } from "dns"
 import { lookup } from "dns/promises"
 import { isIP } from "net"
 import { Agent } from "undici"
@@ -69,14 +70,31 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function pinAgent(address: string): Agent {
+/** Node 22 asks for every address (`options.all`). A bare string is then read as an address list and the connect fails. */
+export function pinnedLookup(address: string) {
   const family = isIP(address) || 4
+  return (
+    _hostname: string,
+    options: LookupOptions,
+    callback: (
+      error: NodeJS.ErrnoException | null,
+      address: string | LookupAddress[],
+      family?: number
+    ) => void
+  ) => {
+    if (options.all) {
+      callback(null, [{ address, family }])
+      return
+    }
+    callback(null, address, family)
+  }
+}
+
+function pinAgent(address: string): Agent {
   return new Agent({
     connect: {
-      lookup: (_hostname, options, callback) => {
-        const done = typeof options === "function" ? options : callback
-        done(null, address, family)
-      },
+      // LookupFunction types only the single-address callback. Node 22 sets options.all.
+      lookup: pinnedLookup(address) as never,
     },
   })
 }
