@@ -90,6 +90,19 @@ export async function indexBoard(
           wrapped.client,
           board.companyName
         )
+    if (CAREER.has(board.provider) && listed.complete == null) {
+      listed.complete = listed.proven
+      listed.listedCount = listed.listedCount ?? listed.jobs.length
+      if (!listed.proven) {
+        await noteIndexFailure(
+          board,
+          now,
+          new Date(now.getTime() + 6 * 60 * 60 * 1000),
+          listed.note || "Career page was not proven"
+        )
+        return "failed"
+      }
+    }
     if (!CAREER.has(board.provider)) {
       const emptyBoard = /no open jobs|has no open|empty jobs array/i.test(listed.note || "")
       listed.complete = listed.proven || emptyBoard
