@@ -6,6 +6,9 @@ import type { SeedBoard } from "../config/seed-boards"
 const requested: string[] = []
 
 const http: HttpClient = {
+  async post() {
+    throw new Error("post is unused")
+  },
   async get(url: string) {
     requested.push(url)
     if (url.includes("/boards/wise")) {

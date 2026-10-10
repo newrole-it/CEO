@@ -9,9 +9,10 @@ COPY matching/package.json matching/package-lock.json ./matching/
 RUN npm ci && npm ci --prefix matching
 
 COPY . .
-ENV DATABASE_URL=postgresql://jobscanner:jobscanner@db:5432/jobscanner
-ENV SESSION_SECRET_KEY=jobscanner-dev-session-secret-key-32b
-RUN npx prisma generate && npm run build
+# Build-time placeholders. They are not left in the image environment.
+RUN DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner \
+    SESSION_SECRET_KEY=build-time-placeholder-not-a-runtime-secret \
+    npx prisma generate && npm run build
 
 ENV NODE_ENV=production
 EXPOSE 43123

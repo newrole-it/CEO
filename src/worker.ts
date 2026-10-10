@@ -1,12 +1,15 @@
-import {workerLoop} from "src/server/queue/worker"
+import { workerLoop } from "src/server/queue/worker"
 
-const signal = {stopped: false}
-process.on("SIGINT", () => {
+const signal = { stopped: false }
+
+function stop(kind: NodeJS.Signals) {
+  if (signal.stopped) return
   signal.stopped = true
-})
-process.on("SIGTERM", () => {
-  signal.stopped = true
-})
+  console.log(`Jobscanner worker received ${kind}`)
+}
+
+process.on("SIGINT", () => stop("SIGINT"))
+process.on("SIGTERM", () => stop("SIGTERM"))
 
 console.log("Jobscanner worker listening for search tasks")
 workerLoop(signal)

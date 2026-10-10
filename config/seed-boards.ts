@@ -45,6 +45,7 @@ const PROVIDERS: Record<string, SourceType> = {
   pinpoint: "PINPOINT",
   breezy: "BREEZY",
   bamboohr: "BAMBOOHR",
+  workday: "WORKDAY",
 }
 
 function priorityOf(company: RawCompany): number {
@@ -64,7 +65,6 @@ function boardIdOf(company: RawCompany): string {
 function fromCatalog(companies: RawCompany[]): SeedBoard[] {
   const boards: SeedBoard[] = []
   for (const company of companies) {
-    if (company.ats === "workday") continue
     const provider = PROVIDERS[company.ats]
     if (!provider || !company.slug || !company.name) continue
     if (company.verified === false) continue
@@ -85,7 +85,7 @@ function fromCatalog(companies: RawCompany[]): SeedBoard[] {
   return boards
 }
 
-/** Verified boards from the main catalog plus the Polish add-on. Workday is link-out only. */
+/** Verified boards from the main catalog plus the Polish add-on. Workday is fetched under the career-site policy. */
 export function loadSeedBoards(): SeedBoard[] {
   const main = (catalog as { companies?: RawCompany[] }).companies ?? []
   const polish = (polishCatalog as { companies?: RawCompany[] }).companies ?? []
@@ -97,6 +97,30 @@ export function loadSeedBoards(): SeedBoard[] {
     seen.add(key)
     boards.push(board)
   }
+  boards.push(
+    {
+      provider: "SUCCESSFACTORS",
+      boardId: "jobs.gft.com",
+      companyName: "GFT",
+      careersUrl: "https://jobs.gft.com/",
+      apiUrl: "https://jobs.gft.com/sitemap.xml",
+      openJobsAtCheck: 427,
+      plLocatedJobs: 150,
+      identityConfirmed: true,
+      priority: 1800,
+    },
+    {
+      provider: "SUCCESSFACTORS",
+      boardId: "jobs.allegro.eu",
+      companyName: "Allegro",
+      careersUrl: "https://jobs.allegro.eu/",
+      apiUrl: "https://jobs.allegro.eu/sitemap_index.xml",
+      openJobsAtCheck: 0,
+      plLocatedJobs: 0,
+      identityConfirmed: true,
+      priority: 200,
+    }
+  )
   return boards.sort(
     (a, b) => b.priority - a.priority || a.companyName.localeCompare(b.companyName)
   )
@@ -105,8 +129,8 @@ export function loadSeedBoards(): SeedBoard[] {
 export const seedBoards: SeedBoard[] = loadSeedBoards()
 
 /**
- * Employer Workday boards from the Polish pack. Terms ban automated collection,
- * so these are never added to the fetch list.
+ * Employer Workday boards from the Polish pack. The scan reads sitemap and job
+ * pages. These links stay on the results page so the original board is one click away.
  */
 export function workdayOutboundLinks(): WorkdayBoardLink[] {
   const polish = (polishCatalog as { companies?: RawCompany[] }).companies ?? []

@@ -1,11 +1,12 @@
-import {enhancePrisma} from "blitz"
-import {PrismaClient} from "@prisma/client"
+import { enhancePrisma } from "blitz"
+import { PrismaClient } from "@prisma/client"
 
 const EnhancedPrisma = enhancePrisma(PrismaClient)
+type DbClient = InstanceType<typeof EnhancedPrisma>
 
 export * from "@prisma/client"
 
-const globalForPrisma = globalThis as unknown as {jobscannerDb?: PrismaClient}
+const globalForPrisma = globalThis as unknown as { jobscannerDb?: DbClient }
 
 const db = globalForPrisma.jobscannerDb ?? new EnhancedPrisma()
 

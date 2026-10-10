@@ -14,6 +14,7 @@ import {
   normalizeWhitespace,
 } from "src/server/jobs/normalize"
 import { summarize } from "src/server/jobs/text"
+import { excerpt } from "src/server/crawler/hygiene"
 import { createLlmClient, estimateCost, type LlmClient } from "src/server/llm/client"
 import {
   expansionView,
@@ -79,6 +80,13 @@ const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
   BREEZY: "company_site",
   BAMBOOHR: "company_site",
   GENERIC_HTML: "company_site",
+  SUCCESSFACTORS: "company_site",
+  WORKDAY: "company_site",
+  ICIMS: "company_site",
+  PHENOM: "company_site",
+  AVATURE: "company_site",
+  ERECRUITER: "company_site",
+  JOBVITE: "company_site",
 }
 
 const SCOPED_ATS = new Set<SourceType>([
@@ -88,6 +96,8 @@ const SCOPED_ATS = new Set<SourceType>([
   "PINPOINT",
   "BREEZY",
   "BAMBOOHR",
+  "SUCCESSFACTORS",
+  "WORKDAY",
 ])
 
 async function mapPool<T>(
@@ -239,9 +249,21 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
         await log(
           searchRunId,
           listed.proven
-            ? `${board.companyName}: ${jobs.length} listings`
+            ? `${board.companyName}: ${jobs.length} listings${
+                listed.note ? ` (${listed.note})` : ""
+              }`
             : `${board.companyName}: ${listed.note || "board not proven"}`
         )
+        await db.careerPage.updateMany({
+          where: { provider: board.provider, providerBoardId: board.boardId },
+          data: {
+            lastCheckedAt: now,
+            fetchNote: listed.note?.slice(0, 500) ?? null,
+            ...(listed.proven
+              ? { lastSuccessfulFetchAt: now, lastErrorCode: null }
+              : { lastErrorCode: "NOT_PERMITTED" }),
+          },
+        })
       } catch (error) {
         hardFailures += 1
         const message = error instanceof Error ? error.message : "Board fetch failed"
@@ -259,7 +281,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
     })
 
     if (discovery.pages.length) {
-      const extra = await readJsonLdPages(discovery.pages, http, searchRunId)
+      const extra = await readJsonLdPages(discovery.pages, http, searchRunId, discovery.provider)
       scanned += extra.length
       collected.push(...extra)
     }
@@ -322,15 +344,22 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       const posting = byId.get(score.postingId)
       if (!posting) continue
       const listed = listedByKey.get(posting.id)
-      const explained = await explain(llm, posting, score, profile, index)
+      const explained = await explain(llm, posting, score, profile, index, listed?.llmOptOut)
       tokenInput += explained.tokenInput
       tokenOutput += explained.tokenOutput
       const reason = explained.reason
       const stored = await upsertJob({ posting, listed, score, searchRunId, now })
       const isNew = hadPrior && !seen.has(stored.id)
       if (isNew) newJobs += 1
-      await db.jobMatch.create({
-        data: {
+      await db.jobMatch.upsert({
+        where: { jobId_searchRunId: { jobId: stored.id, searchRunId } },
+        update: {
+          score: score.score,
+          scoreBreakdown: breakdown(score, posting) as unknown as Prisma.InputJsonValue,
+          reason: reason.slice(0, 500),
+          isNew,
+        },
+        create: {
           jobId: stored.id,
           savedSearchId: run.savedSearchId,
           searchRunId,
@@ -510,7 +539,7 @@ async function discoverBoards(args: {
   if (skippedWorkday)
     await log(
       args.searchRunId,
-      `Left ${skippedWorkday} Workday hits as links. Their terms ban automated collection.`
+      `Left ${skippedWorkday} Workday search hits unstored. Seeded Workday boards are read from their sitemaps.`
     )
   if (skippedPlanned)
     await log(
@@ -559,7 +588,8 @@ async function resolveWorkableSlug(url: string, http: HttpClient): Promise<strin
 async function readJsonLdPages(
   pages: string[],
   http: HttpClient,
-  searchRunId: string
+  searchRunId: string,
+  provider: string
 ): Promise<ListedJob[]> {
   const jobs: ListedJob[] = []
   for (const pageUrl of pages) {
@@ -568,7 +598,7 @@ async function readJsonLdPages(
     try {
       const response = await http.get(pageUrl, { maxBytes: 1_500_000, accept: "text/html" })
       if (response.status >= 400) continue
-      const found = parseJsonLdJobs(response.body, response.url)
+      const found = parseJsonLdJobs(response.body, response.url, undefined, { provider })
       jobs.push(...found)
       if (found.length)
         await log(searchRunId, `JSON-LD: ${found.length} postings from a company page`)
@@ -633,9 +663,10 @@ async function explain(
   posting: NormalizedPosting,
   score: ScoreResult,
   profile: ReturnType<typeof liveProfile>,
-  index: number
+  index: number,
+  llmOptOut?: boolean
 ): Promise<{ reason: string; tokenInput: number; tokenOutput: number }> {
-  if (!llm || index >= 6)
+  if (!llm || index >= 6 || llmOptOut)
     return {
       reason: fallbackExplanation(score).summary.slice(0, 500),
       tokenInput: 0,
@@ -644,12 +675,17 @@ async function explain(
   const messages = buildMatchExplanationMessages({ posting, score, profile, language: "en" })
   const system = messages.find((message) => message.role === "system")?.content ?? ""
   const user = messages.find((message) => message.role === "user")?.content ?? ""
-  const result = await llm.completeText({
-    purpose: "match-explanation",
-    system,
-    user,
-    maxTokens: 900,
-  })
+  let result: Awaited<ReturnType<LlmClient["completeText"]>> = null
+  try {
+    result = await llm.completeText({
+      purpose: "match-explanation",
+      system,
+      user,
+      maxTokens: 900,
+    })
+  } catch {
+    result = null
+  }
   if (!result?.data)
     return {
       reason: fallbackExplanation(score).summary.slice(0, 500),
@@ -692,8 +728,16 @@ async function upsertJob(args: {
   const { posting, listed, score, searchRunId, now } = args
   const companyName = normalizeWhitespace(posting.raw.company)
   const normalizedName = normalizeCompanyName(companyName) || companyName.toLowerCase()
-  let company = await db.company.findFirst({ where: { normalizedName } })
-  if (!company) company = await db.company.create({ data: { name: companyName, normalizedName } })
+  let company = await db.company.findUnique({ where: { normalizedName } })
+  if (!company) {
+    try {
+      company = await db.company.create({ data: { name: companyName, normalizedName } })
+    } catch (error) {
+      if (!isUnique(error)) throw error
+      company = await db.company.findUnique({ where: { normalizedName } })
+      if (!company) throw error
+    }
+  }
   await db.companyAlias.upsert({
     where: {
       companyId_normalizedAlias: { companyId: company.id, normalizedAlias: normalizedName },
@@ -737,7 +781,7 @@ async function upsertJob(args: {
     careerPageId = page.id
   }
 
-  const description = cleanDescription(posting.raw.description || "")
+  const description = excerpt(cleanDescription(posting.raw.description || ""))
   const range = posting.salary?.ranges[0]
   const salaryCurrency = range
     ? range.period === "month"
@@ -772,17 +816,34 @@ async function upsertJob(args: {
     sourceBoardId: posting.raw.atsBoard,
     externalId: posting.raw.atsJobId,
     careerPageId,
+    llmOptOut: listed?.llmOptOut ?? false,
+    ...(listed?.variants ? { variants: listed.variants as unknown as Prisma.InputJsonValue } : {}),
   }
   let record = await db.job.findUnique({ where: { identityKey } })
-  if (!record)
+  if (!record) {
     record = await db.job.findFirst({
       where: { fingerprint: posting.fingerprint, companyId: company.id },
     })
-  if (record) record = await db.job.update({ where: { id: record.id }, data })
-  else
-    record = await db.job.create({
-      data: { ...data, companyId: company.id, identityKey, firstSeenAt: now },
+  }
+  if (record) {
+    const taken =
+      record.identityKey === identityKey
+        ? null
+        : await db.job.findUnique({ where: { identityKey } })
+    record = await db.job.update({
+      where: { id: record.id },
+      data: taken && taken.id !== record.id ? data : { ...data, identityKey },
     })
+  } else {
+    try {
+      record = await db.job.create({
+        data: { ...data, companyId: company.id, identityKey, firstSeenAt: now },
+      })
+    } catch (error) {
+      if (!isUnique(error)) throw error
+      record = await db.job.update({ where: { identityKey }, data })
+    }
+  }
   await db.jobObservation.create({
     data: {
       jobId: record.id,
@@ -793,7 +854,7 @@ async function upsertJob(args: {
       evidence: {
         title: posting.raw.title,
         sourceType,
-        url: posting.raw.url,
+        url: posting.canonicalUrl,
         score: score.score,
         band: score.band,
       },
@@ -819,5 +880,14 @@ function careerUrl(provider: SourceType, boardId: string): string {
   if (provider === "PINPOINT") return `https://${tenantHost(boardId, "pinpointhq.com")}/`
   if (provider === "BREEZY") return `https://${tenantHost(boardId, "breezy.hr")}/`
   if (provider === "BAMBOOHR") return `https://${tenantHost(boardId, "bamboohr.com")}/careers`
+  if (provider === "SUCCESSFACTORS") return `https://${boardId.replace(/^https?:\/\//, "")}/`
+  if (provider === "WORKDAY") {
+    const match = boardId.match(/^([^/]+)\/wd(\d+)\/(.+)$/i)
+    if (match) return `https://${match[1]}.wd${match[2]}.myworkdayjobs.com/${match[3]}`
+  }
   return `https://example.com/${boardId}`
+}
+
+function isUnique(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }

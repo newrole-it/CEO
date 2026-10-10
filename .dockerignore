@@ -5,3 +5,6 @@ uploads
 agent-tools
 .git
 coverage
+.env
+.env.*
+!.env.example

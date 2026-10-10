@@ -1,15 +1,15 @@
 "use client"
 
-import {FormEvent, useState} from "react"
-import {useRouter} from "next/navigation"
-import {useMutation} from "@blitzjs/rpc"
+import { FormEvent, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useMutation } from "@blitzjs/rpc"
 import createSearch from "src/app/searches/mutations/createSearch"
-import {Button} from "./ui/button"
-import {Input} from "./ui/input"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
 
 export function SearchForm() {
   const router = useRouter()
-  const [createSearchMutation, {isLoading}] = useMutation(createSearch)
+  const [createSearchMutation, { isPending }] = useMutation(createSearch)
   const [phrase, setPhrase] = useState("")
   const [locationHint, setLocationHint] = useState("")
   const [workMode, setWorkMode] = useState<"ANY" | "REMOTE" | "HYBRID" | "ONSITE">("ANY")
@@ -43,8 +43,8 @@ export function SearchForm() {
           maxLength={160}
           autoFocus
         />
-        <Button type="submit" size="lg" disabled={isLoading}>
-          {isLoading ? "Starting…" : "Scan offers"}
+        <Button type="submit" size="lg" disabled={isPending}>
+          {isPending ? "Starting…" : "Scan offers"}
         </Button>
       </div>
       <div className="extras">
@@ -59,7 +59,11 @@ export function SearchForm() {
         </label>
         <label className="field">
           Work mode
-          <select className="plain" value={workMode} onChange={(event) => setWorkMode(event.target.value as typeof workMode)}>
+          <select
+            className="plain"
+            value={workMode}
+            onChange={(event) => setWorkMode(event.target.value as typeof workMode)}
+          >
             <option value="ANY">Any</option>
             <option value="REMOTE">Remote</option>
             <option value="HYBRID">Hybrid</option>
@@ -68,8 +72,8 @@ export function SearchForm() {
         </label>
       </div>
       <p className="hint">
-        One phrase is enough. Polish or English. The scan expands it, then checks public Greenhouse, Lever, Ashby,
-        Workable, and SmartRecruiters boards.
+        One phrase is enough. Polish or English. The scan expands it, then checks public Greenhouse,
+        Lever, Ashby, Workable, and SmartRecruiters boards.
       </p>
       {error ? <p className="form-error">{error}</p> : null}
     </form>

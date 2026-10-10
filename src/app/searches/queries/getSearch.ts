@@ -1,28 +1,32 @@
-import {resolver} from "@blitzjs/rpc"
-import {NotFoundError} from "blitz"
+import { resolver } from "@blitzjs/rpc"
+import { NotFoundError } from "blitz"
 import db from "db"
-import {z} from "zod"
+import { z } from "zod"
 
 export default resolver.pipe(
   resolver.authorize(),
-  resolver.zod(z.object({id: z.string().min(1)})),
-  async ({id}, ctx) => {
+  resolver.zod(z.object({ id: z.string().min(1) })),
+  async ({ id }, ctx) => {
     const search = await db.savedSearch.findFirst({
-      where: {id, userId: ctx.session.userId!},
-      include: {runs: {orderBy: {startedAt: "desc"}, take: 12}},
+      where: { id, userId: ctx.session.userId! },
+      include: { runs: { orderBy: { startedAt: "desc" }, take: 12 } },
     })
     if (!search) throw new NotFoundError("Search not found")
     const active = search.runs[0] ?? null
     const resultRun = search.runs.find((run) => run.status === "SUCCEEDED") ?? null
     const logRunId = active?.id
     const logs = logRunId
-      ? await db.searchLog.findMany({where: {searchRunId: logRunId}, orderBy: {createdAt: "asc"}, take: 80})
+      ? await db.searchLog.findMany({
+          where: { searchRunId: logRunId },
+          orderBy: { createdAt: "asc" },
+          take: 80,
+        })
       : []
     const matches = resultRun
       ? await db.jobMatch.findMany({
-          where: {searchRunId: resultRun.id},
-          orderBy: {score: "desc"},
-          include: {job: {include: {company: true}}},
+          where: { searchRunId: resultRun.id },
+          orderBy: { score: "desc" },
+          include: { job: { include: { company: true } } },
         })
       : []
 
@@ -36,7 +40,12 @@ export default resolver.pipe(
       },
       active,
       resultRun,
-      logs: logs.map((entry) => ({id: entry.id, level: entry.level, message: entry.message, createdAt: entry.createdAt})),
+      logs: logs.map((entry) => ({
+        id: entry.id,
+        level: entry.level,
+        message: entry.message,
+        createdAt: entry.createdAt,
+      })),
       results: matches.map((match) => ({
         id: match.id,
         score: match.score,
@@ -60,8 +69,9 @@ export default resolver.pipe(
           descriptionText: match.job.descriptionText,
           originalUrl: match.job.originalUrl,
           status: match.job.status,
+          variants: match.job.variants,
         },
       })),
     }
-  },
+  }
 )

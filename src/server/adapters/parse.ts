@@ -54,12 +54,16 @@ export function buildListedJob(input: {
   sourceType: SourceType
   sourceBoardId?: string
   needsHydration?: boolean
+  llmOptOut?: boolean
+  variants?: ListedJob["variants"]
 }): ListedJob | null {
   const title = input.title.replace(/\s+/g, " ").trim()
   if (!title || !input.originalUrl) return null
   let url: string
   try {
-    url = new URL(input.originalUrl).toString()
+    const parsed = new URL(input.originalUrl)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null
+    url = parsed.toString()
   } catch {
     return null
   }
@@ -85,6 +89,8 @@ export function buildListedJob(input: {
     sourceType: input.sourceType,
     sourceBoardId: input.sourceBoardId,
     needsHydration: input.needsHydration ?? !description,
+    llmOptOut: input.llmOptOut,
+    variants: input.variants,
   }
 }
 

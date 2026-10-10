@@ -85,6 +85,18 @@ const SOURCES = [
     sourceUrl: "https://{company}.bamboohr.com/careers/list",
     termsUrl: "https://www.bamboohr.com/terms-of-service.php",
   },
+  {
+    sourceName: "successfactors",
+    sourceType: "SUCCESSFACTORS",
+    sourceUrl: "https://jobs.gft.com/sitemap.xml",
+    termsUrl: "https://www.gft.com/us/en/legal-disclaimer",
+  },
+  {
+    sourceName: "workday",
+    sourceType: "WORKDAY",
+    sourceUrl: "https://www.workday.com/en-us/legal/site-terms.html",
+    termsUrl: "https://www.workday.com/en-us/legal/site-terms.html",
+  },
 ]
 
 async function main() {
@@ -117,10 +129,11 @@ async function main() {
 
   for (const board of seedBoards) {
     const normalizedName = normalizeCompanyName(board.companyName)
-    let company = await db.company.findFirst({ where: { normalizedName } })
-    if (!company) {
-      company = await db.company.create({ data: { name: board.companyName, normalizedName } })
-    }
+    const company = await db.company.upsert({
+      where: { normalizedName },
+      update: {},
+      create: { name: board.companyName, normalizedName },
+    })
     await db.careerPage.upsert({
       where: {
         provider_providerBoardId: { provider: board.provider, providerBoardId: board.boardId },

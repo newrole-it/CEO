@@ -6,9 +6,12 @@ There is no billing, no multi-tenant workspace, and no email alerts. Signup is c
 
 ## Run it
 
-Docker Compose (Postgres, the web app, and the worker):
+Docker Compose (Postgres, the web app, and a separate worker that restarts on failure):
 
 ```bash
+cp .env.example .env
+# SESSION_SECRET_KEY, OWNER_PASSWORD, and POSTGRES_PASSWORD are required.
+# Compose publishes the site and Postgres on 127.0.0.1 only.
 docker compose up --build
 ```
 
@@ -21,12 +24,11 @@ cp .env.example .env
 # create the role and database, then:
 npm install
 npm install --prefix matching
-npx prisma migrate deploy
-npm run db:seed
+npm run setup
 npm run dev:all
 ```
 
-`dev:all` starts the site on port 43123 and the Postgres-backed worker. A scan does nothing until the worker is running.
+`dev:all` starts the site on 127.0.0.1:43123 and the Postgres-backed worker. A scan does nothing until the worker is running. `npm start` serves the production build on the same port.
 
 The app works with no API keys. Query expansion falls back to checked examples (or a minimal expander), and scans read the verified seed boards.
 
@@ -37,8 +39,9 @@ Copy `.env.example`. The values the owner actually has to provide:
 | Variable | Required | What it does |
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string |
-| `SESSION_SECRET_KEY` | yes in production | Cookie signing key, at least 32 characters |
-| `OWNER_EMAIL` / `OWNER_PASSWORD` | for seed | The single account. Password at least 10 characters |
+| `SESSION_SECRET_KEY` | yes | Cookie signing key, at least 32 characters. Compose refuses to start without it |
+| `OWNER_EMAIL` / `OWNER_PASSWORD` | yes for Compose and seed | The single account. Password at least 10 characters |
+| `POSTGRES_PASSWORD` | yes for Compose | Database password. The port is published on 127.0.0.1 only |
 | `LLM_API_KEY` | no | OpenAI-compatible key. Empty uses the deterministic expander and rule-based reasons |
 | `LLM_BASE_URL` / `LLM_MODEL` | with the key | Defaults to OpenAI `gpt-4o-mini`. An xAI base URL works the same way |
 | `BRAVE_SEARCH_API_KEY` | no | Primary discovery. Finds new ATS slugs |
@@ -79,11 +82,13 @@ A board is kept only when it has jobs and, where the payload includes one, a com
 
 Company career pages may be read for schema.org `JobPosting` JSON-LD. Polish boards are not fetched: justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, and bulldogjob. The results page links out to their own search.
 
-Workday career sites are not fetched. Workday's site terms ban data mining and robots. The six Polish-hub boards (Intive, Motorola Solutions, Mastercard, Visa, Samsung, Thomson Reuters) are outbound links on the results page.
+Enterprise career sites follow `sources/enterprise-ats-legal.md` (10 October 2026). SuccessFactors employer sites such as jobs.gft.com are read from the sitemap and job-page microdata. Workday tenants (Intive, Motorola Solutions, Mastercard, Visa, Samsung, Thomson Reuters) are read from the sitemap and JSON-LD, with a short Poland cxs query only when the sitemap is capped. iCIMS, Phenom on employer domains, Avature RSS, eRecruiter employer pages, and Jobvite are allowed with the same limits. jobs.sap.com, legacy SuccessFactors hosts (Allegro on career55.sapsf.eu), Oracle Recruiting, Taleo, careers.phenom.com, Siemens job pages, and HiBob stay link-only.
+
+The crawler sends `JobscannerBot/0.1` with a contact URL, waits at least 5 seconds between requests to a host, fetches at most 200 job pages per host per day, refreshes sitemaps daily, and honors robots.txt. Stored text is a short excerpt plus the canonical link. Recruiter names, emails, and phone numbers are dropped. Pages that opt out of AI input or training, or reserve text-and-data mining, are scored with the rules and are not sent to the model. Logins and bot walls are not bypassed. The Coverage page lists each employer, platform, policy, reason, last fetch, and job count.
 
 Greenhouse EU (`boards-api.eu.greenhouse.io`) was unreachable on the check date and is not called.
 
-Details, rate-limit notes, and the probe scripts are in `sources/` (`source-pack.md` and `source-pack-pl.md`).
+Details and the probe scripts are in `sources/` (`source-pack.md`, `source-pack-pl.md`, and `enterprise-ats-legal.md`).
 
 ## Matching
 

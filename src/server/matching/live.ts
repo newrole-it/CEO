@@ -167,7 +167,12 @@ export async function resolveExpansion(
     const messages = buildQueryExpansionMessages(input)
     const system = messages.find((message) => message.role === "system")?.content ?? ""
     const user = messages.find((message) => message.role === "user")?.content ?? ""
-    const result = await llm.completeText({purpose: "query-expansion", system, user, maxTokens: 1400})
+    let result: Awaited<ReturnType<typeof llm.completeText>> = null
+    try {
+      result = await llm.completeText({purpose: "query-expansion", system, user, maxTokens: 1400})
+    } catch {
+      result = null
+    }
     if (result?.data) {
       try {
         return {expansion: finalizeExpansion(result.data, input), source: "llm", tokenInput: result.tokenInput, tokenOutput: result.tokenOutput}

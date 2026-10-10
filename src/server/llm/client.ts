@@ -1,5 +1,5 @@
-import {createHash} from "crypto"
-import type {z} from "zod"
+import { createHash } from "crypto"
+import type { z } from "zod"
 import db from "db"
 
 export type LlmResult<T> = {
@@ -57,7 +57,10 @@ export function estimateCost(tokenInput: number, tokenOutput: number): number {
 export function createLlmClient(): LlmClient | null {
   const apiKey = process.env.LLM_API_KEY?.trim()
   const model = process.env.LLM_MODEL?.trim() || "gpt-4o-mini"
-  const baseUrl = (process.env.LLM_BASE_URL?.trim() || "https://api.openai.com/v1").replace(/\/$/, "")
+  const baseUrl = (process.env.LLM_BASE_URL?.trim() || "https://api.openai.com/v1").replace(
+    /\/$/,
+    ""
+  )
   if (!apiKey) return null
 
   return {
@@ -71,11 +74,11 @@ export function createLlmClient(): LlmClient | null {
     }): Promise<LlmResult<T> | null> {
       const system = `${args.system}\n${UNTRUSTED_RULE}`
       const cacheKey = hashCacheKey(args.purpose, model, system, args.user)
-      const cached = await db.llmCache.findUnique({where: {cacheKey}})
+      const cached = await db.llmCache.findUnique({ where: { cacheKey } })
       if (cached) {
         const parsed = args.schema.safeParse(cached.response)
         if (parsed.success) {
-          return {data: parsed.data, tokenInput: 0, tokenOutput: 0, cached: true}
+          return { data: parsed.data, tokenInput: 0, tokenOutput: 0, cached: true }
         }
       }
 
@@ -84,8 +87,8 @@ export function createLlmClient(): LlmClient | null {
         temperature: 0,
         max_tokens: args.maxTokens ?? 700,
         messages: [
-          {role: "system", content: system},
-          {role: "user", content: args.user},
+          { role: "system", content: system },
+          { role: "user", content: args.user },
         ],
       }
       const call = async (withFormat: boolean) => {
@@ -95,18 +98,38 @@ export function createLlmClient(): LlmClient | null {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(withFormat ? {...body, response_format: {type: "json_object"}} : body),
+          body: JSON.stringify(
+            withFormat ? { ...body, response_format: { type: "json_object" } } : body
+          ),
           signal: AbortSignal.timeout(30_000),
         })
         return response
       }
 
-      let response = await call(true)
-      if (response.status === 400) response = await call(false)
-      if (!response.ok) return null
-      const payload = (await response.json()) as {
-        choices?: Array<{message?: {content?: string}}>
-        usage?: {prompt_tokens?: number; completion_tokens?: number}
+      let response: Response
+      try {
+        response = await call(true)
+        if (response.status === 400) response = await call(false)
+      } catch (error) {
+        console.error(`LLM ${args.purpose} failed`, error instanceof Error ? error.message : error)
+        return null
+      }
+      if (!response.ok) {
+        console.error(`LLM ${args.purpose} HTTP ${response.status}`)
+        return null
+      }
+      let payload: {
+        choices?: Array<{ message?: { content?: string } }>
+        usage?: { prompt_tokens?: number; completion_tokens?: number }
+      }
+      try {
+        payload = (await response.json()) as typeof payload
+      } catch (error) {
+        console.error(
+          `LLM ${args.purpose} returned invalid JSON`,
+          error instanceof Error ? error.message : error
+        )
+        return null
       }
       const content = payload.choices?.[0]?.message?.content
       if (!content) return null
@@ -121,8 +144,14 @@ export function createLlmClient(): LlmClient | null {
       const tokenInput = payload.usage?.prompt_tokens ?? 0
       const tokenOutput = payload.usage?.completion_tokens ?? 0
       await db.llmCache.upsert({
-        where: {cacheKey},
-        update: {response: parsed.data as object, tokenInput, tokenOutput, model, purpose: args.purpose},
+        where: { cacheKey },
+        update: {
+          response: parsed.data as object,
+          tokenInput,
+          tokenOutput,
+          model,
+          purpose: args.purpose,
+        },
         create: {
           cacheKey,
           purpose: args.purpose,
@@ -132,50 +161,77 @@ export function createLlmClient(): LlmClient | null {
           tokenOutput,
         },
       })
-      return {data: parsed.data, tokenInput, tokenOutput, cached: false}
+      return { data: parsed.data, tokenInput, tokenOutput, cached: false }
     },
     async completeText(args): Promise<LlmResult<string> | null> {
       const system = `${args.system}\n${UNTRUSTED_RULE}`
       const cacheKey = hashCacheKey(args.purpose, model, system, args.user)
-      const cached = await db.llmCache.findUnique({where: {cacheKey}})
-      if (cached && cached.response && typeof cached.response === "object" && !Array.isArray(cached.response)) {
-        const text = (cached.response as {text?: unknown}).text
-        if (typeof text === "string" && text.trim()) return {data: text, tokenInput: 0, tokenOutput: 0, cached: true}
+      const cached = await db.llmCache.findUnique({ where: { cacheKey } })
+      if (
+        cached &&
+        cached.response &&
+        typeof cached.response === "object" &&
+        !Array.isArray(cached.response)
+      ) {
+        const text = (cached.response as { text?: unknown }).text
+        if (typeof text === "string" && text.trim())
+          return { data: text, tokenInput: 0, tokenOutput: 0, cached: true }
       }
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json"},
-        body: JSON.stringify({
-          model,
-          temperature: 0.2,
-          max_tokens: args.maxTokens ?? 1200,
-          response_format: {type: "json_object"},
-          messages: [
-            {role: "system", content: system},
-            {role: "user", content: args.user},
-          ],
-        }),
-        signal: AbortSignal.timeout(30_000),
-      })
-      if (response.status === 400) {
-        const retry = await fetch(`${baseUrl}/chat/completions`, {
+      let response: Response
+      try {
+        response = await fetch(`${baseUrl}/chat/completions`, {
           method: "POST",
-          headers: {Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json"},
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model,
             temperature: 0.2,
             max_tokens: args.maxTokens ?? 1200,
+            response_format: { type: "json_object" },
             messages: [
-              {role: "system", content: system},
-              {role: "user", content: args.user},
+              { role: "system", content: system },
+              { role: "user", content: args.user },
             ],
           }),
           signal: AbortSignal.timeout(30_000),
         })
-        if (!retry.ok) return null
+      } catch (error) {
+        console.error(`LLM ${args.purpose} failed`, error instanceof Error ? error.message : error)
+        return null
+      }
+      if (response.status === 400) {
+        let retry: Response
+        try {
+          retry = await fetch(`${baseUrl}/chat/completions`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model,
+              temperature: 0.2,
+              max_tokens: args.maxTokens ?? 1200,
+              messages: [
+                { role: "system", content: system },
+                { role: "user", content: args.user },
+              ],
+            }),
+            signal: AbortSignal.timeout(30_000),
+          })
+        } catch (error) {
+          console.error(
+            `LLM ${args.purpose} failed`,
+            error instanceof Error ? error.message : error
+          )
+          return null
+        }
+        if (!retry.ok) {
+          console.error(`LLM ${args.purpose} HTTP ${retry.status}`)
+          return null
+        }
         return storeText(retry, cacheKey, args.purpose, model)
       }
-      if (!response.ok) return null
+      if (!response.ok) {
+        console.error(`LLM ${args.purpose} HTTP ${response.status}`)
+        return null
+      }
       return storeText(response, cacheKey, args.purpose, model)
     },
   }
@@ -185,22 +241,31 @@ async function storeText(
   response: Response,
   cacheKey: string,
   purpose: string,
-  model: string,
+  model: string
 ): Promise<LlmResult<string> | null> {
-  const payload = (await response.json()) as {
-    choices?: Array<{message?: {content?: string}}>
-    usage?: {prompt_tokens?: number; completion_tokens?: number}
+  let payload: {
+    choices?: Array<{ message?: { content?: string } }>
+    usage?: { prompt_tokens?: number; completion_tokens?: number }
+  }
+  try {
+    payload = (await response.json()) as typeof payload
+  } catch (error) {
+    console.error(
+      `LLM ${purpose} returned invalid JSON`,
+      error instanceof Error ? error.message : error
+    )
+    return null
   }
   const text = payload.choices?.[0]?.message?.content
   if (!text) return null
   const tokenInput = payload.usage?.prompt_tokens ?? 0
   const tokenOutput = payload.usage?.completion_tokens ?? 0
   await db.llmCache.upsert({
-    where: {cacheKey},
-    update: {response: {text}, tokenInput, tokenOutput, model, purpose},
-    create: {cacheKey, purpose, model, response: {text}, tokenInput, tokenOutput},
+    where: { cacheKey },
+    update: { response: { text }, tokenInput, tokenOutput, model, purpose },
+    create: { cacheKey, purpose, model, response: { text }, tokenInput, tokenOutput },
   })
-  return {data: text, tokenInput, tokenOutput, cached: false}
+  return { data: text, tokenInput, tokenOutput, cached: false }
 }
 
-export {UNTRUSTED_RULE}
+export { UNTRUSTED_RULE }

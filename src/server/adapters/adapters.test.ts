@@ -141,6 +141,9 @@ describe("ATS adapters", () => {
           contentType: "application/json",
         }
       },
+      async post() {
+        throw new Error("post is unused")
+      },
     }
     const closed = await listRecruitee(
       "huuuge",

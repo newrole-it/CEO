@@ -47,6 +47,48 @@ function money(min?: number | null, max?: number | null, currency?: string | nul
   return `${code}${fmt((min ?? max) as number)}`
 }
 
+function safeHref(value: string | null | undefined): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+function variantLines(value: unknown) {
+  if (!Array.isArray(value) || value.length < 2) return null
+  return (
+    <ul className="variants">
+      {value.map((item) => {
+        const variant = item as {
+          contract?: string
+          salaryText?: string
+          url?: string
+          title?: string
+        }
+        const href = safeHref(variant.url)
+        return (
+          <li key={variant.url || variant.title}>
+            <strong>{variant.contract || variant.title}</strong>
+            {variant.salaryText ? ` · ${variant.salaryText}` : ""}
+            {href ? (
+              <>
+                {" "}
+                <a href={href} target="_blank" rel="noreferrer noopener">
+                  Open
+                </a>
+              </>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function SearchScreen({ id }: { id: string }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -57,10 +99,11 @@ export function SearchScreen({ id }: { id: string }) {
     { id },
     { suspense: false, enabled: mounted }
   )
-  const [rerun, { isLoading: rerunning }] = useMutation(rerunSearch)
+  const [rerun, { isPending: rerunning }] = useMutation(rerunSearch)
   const [showScores, setShowScores] = useState(false)
   const activeStatus = data?.active?.status
-  const polling = activeStatus === "QUEUED" || activeStatus === "RUNNING"
+  const polling =
+    activeStatus === "QUEUED" || activeStatus === "RUNNING" || activeStatus === "RETRYING"
   useQuery(
     getSearch,
     { id },
@@ -90,7 +133,10 @@ export function SearchScreen({ id }: { id: string }) {
     )
   }
 
-  const running = data.active?.status === "QUEUED" || data.active?.status === "RUNNING"
+  const running =
+    data.active?.status === "QUEUED" ||
+    data.active?.status === "RUNNING" ||
+    data.active?.status === "RETRYING"
   const failed = data.active?.status === "FAILED" && !data.resultRun
 
   return (
@@ -307,16 +353,23 @@ export function SearchScreen({ id }: { id: string }) {
                     ) : null}
                     {result.job.descriptionText ? (
                       <details className="description">
-                        <summary>Full cleaned description</summary>
+                        <summary>Excerpt</summary>
                         <div className="prose">{result.job.descriptionText}</div>
                       </details>
                     ) : null}
+                    {variantLines(result.job.variants)}
                     <div className="actions">
-                      <Button asChild>
-                        <a href={result.job.originalUrl} target="_blank" rel="noreferrer noopener">
-                          Open original
-                        </a>
-                      </Button>
+                      {safeHref(result.job.originalUrl) ? (
+                        <Button asChild>
+                          <a
+                            href={safeHref(result.job.originalUrl)!}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            Open original
+                          </a>
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </article>

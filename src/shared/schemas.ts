@@ -18,6 +18,13 @@ export const sourceTypeSchema = z.enum([
   "BAMBOOHR",
   "GENERIC_HTML",
   "WEB_SEARCH",
+  "SUCCESSFACTORS",
+  "WORKDAY",
+  "ICIMS",
+  "PHENOM",
+  "AVATURE",
+  "ERECRUITER",
+  "JOBVITE",
 ])
 export type SourceType = z.infer<typeof sourceTypeSchema>
 
@@ -100,7 +107,21 @@ export const createSearchInputSchema = z.object({
 })
 export type CreateSearchInput = z.infer<typeof createSearchInputSchema>
 
+export const jobVariantSchema = z.object({
+  title: z.string(),
+  contract: z.string(),
+  salaryText: z.string().optional(),
+  salaryMin: z.number().optional(),
+  salaryMax: z.number().optional(),
+  salaryCurrency: z.string().optional(),
+  url: z.string().url(),
+  externalId: z.string().optional(),
+})
+export type JobVariant = z.infer<typeof jobVariantSchema>
+
 export const listedJobSchema = sourceJobSchema.extend({
   needsHydration: z.boolean().default(false),
+  llmOptOut: z.boolean().optional(),
+  variants: z.array(jobVariantSchema).optional(),
 })
 export type ListedJob = z.infer<typeof listedJobSchema>

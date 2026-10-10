@@ -5,8 +5,9 @@ export type WorkdayBoardLink = {
 }
 
 /**
- * Workday's site terms ban data mining and robots. These six Polish-hub
- * boards are outbound links only. The server must never fetch them.
+ * Polish-hub Workday tenants. The server may read sitemap.xml and job-page
+ * JSON-LD. /refreshFacet/ and private sites stay blocked. These links open
+ * the original board.
  */
 export const WORKDAY_BOARDS: WorkdayBoardLink[] = [
   {
@@ -42,6 +43,8 @@ export const WORKDAY_BOARDS: WorkdayBoardLink[] = [
 ]
 
 export function isWorkdayHost(hostname: string): boolean {
-  const host = hostname.toLowerCase()
-  return host === "myworkdayjobs.com" || host.endsWith(".myworkdayjobs.com")
+  const host = hostname.toLowerCase().replace(/\.$/, "")
+  return ["myworkdayjobs.com", "myworkdaysite.com", "myworkday.com"].some(
+    (suffix) => host === suffix || host.endsWith(`.${suffix}`)
+  )
 }

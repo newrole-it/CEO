@@ -1,5 +1,5 @@
-import type {Seniority, WorkplaceType} from "src/shared/schemas"
-import {htmlToText} from "./text"
+import type { Seniority, WorkplaceType } from "src/shared/schemas"
+import { htmlToText } from "./text"
 
 const STOP = new Set([
   "a",
@@ -44,7 +44,11 @@ export function inferSeniority(title: string): Seniority {
   const value = ` ${title.toLowerCase()} `
   if (/\b(intern|internship|praktykant|stazysta|stażysta|trainee)\b/.test(value)) return "intern"
   if (/\b(junior|jr|graduate)\b/.test(value)) return "junior"
-  if (/\b(cto|chief technology|chief technical|vp\b|vice president|head of|dyrektor|szef)\b/.test(value)) {
+  if (
+    /\b(cto|chief technology|chief technical|vp\b|vice president|head of|dyrektor|szef)\b/.test(
+      value
+    )
+  ) {
     return "executive"
   }
   if (/\b(director)\b/.test(value)) return "director"
@@ -56,7 +60,11 @@ export function inferSeniority(title: string): Seniority {
   return "unspecified"
 }
 
-export function normalizeTitle(raw: string): {normalized: string; seniority: Seniority; confident: boolean} {
+export function normalizeTitle(raw: string): {
+  normalized: string
+  seniority: Seniority
+  confident: boolean
+} {
   const normalized = normalizeWhitespace(raw).replace(/\s+[-|–—]\s+(remote|hybrid|onsite).*$/i, "")
   const seniority = inferSeniority(normalized)
   return {
@@ -119,7 +127,11 @@ export function inferCountryCode(location: string | undefined): string | undefin
   return undefined
 }
 
-export function inferWorkplace(explicit: string | undefined, location: string | undefined, description: string | undefined): WorkplaceType {
+export function inferWorkplace(
+  explicit: string | undefined,
+  location: string | undefined,
+  description: string | undefined
+): WorkplaceType {
   const blob = `${explicit ?? ""} ${location ?? ""}`.toLowerCase()
   if (/\b(hybrid|hybryd)/.test(blob)) return "HYBRID"
   if (/\b(remote|zdaln|work from home|wfh|distributed)/.test(blob)) return "REMOTE"
@@ -138,19 +150,23 @@ const CURRENCY_BY_SYMBOL: Record<string, string> = {
   zl: "PLN",
 }
 
-export function parseSalary(text: string | undefined): {min?: number; max?: number; currency?: string} {
+export function parseSalary(text: string | undefined): {
+  min?: number
+  max?: number
+  currency?: string
+} {
   if (!text) return {}
   const compact = text.replace(/\u00a0/g, " ")
   const range = compact.match(
-    /(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))?\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7}(?:\.\d+)?)(\s*[kK])?\s*(?:-|–|—|to)\s*(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))?\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7}(?:\.\d+)?)(\s*[kK])?/i,
+    /(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))?\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7}(?:\.\d+)?)(\s*[kK])?\s*(?:-|–|—|to)\s*(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))?\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7}(?:\.\d+)?)(\s*[kK])?/i
   )
   if (!range) {
     const single = compact.match(
-      /(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7})(\s*[kK])?/i,
+      /(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7})(\s*[kK])?/i
     )
     if (!single) return {}
     const amount = amountValue(single[3], single[4])
-    return {min: amount, max: amount, currency: currencyOf(single[1], single[2])}
+    return { min: amount, max: amount, currency: currencyOf(single[1], single[2]) }
   }
   const currency = currencyOf(range[1] || range[5], range[2] || range[6])
   return {
@@ -183,6 +199,9 @@ export function cleanDescription(input: string | undefined): string {
 export function normalizeEmployment(value: string | undefined): string | undefined {
   if (!value) return undefined
   const key = value.toLowerCase().replace(/[_-]+/g, " ")
+  if (key.includes("b2b")) return "B2B"
+  if (key.includes("employment") || key.includes("uop") || key.includes("umowa o prac"))
+    return "Employment contract"
   if (key.includes("full")) return "Full-time"
   if (key.includes("part")) return "Part-time"
   if (key.includes("contract") || key.includes("contractor")) return "Contract"

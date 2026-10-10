@@ -33,7 +33,19 @@ describe("discovery", () => {
     expect(boards.some((board) => board.provider === "BREEZY" && board.boardId === "boldare")).toBe(
       true
     )
-    expect(boards.some((board) => String(board.provider) === "WORKDAY")).toBe(false)
+    expect(
+      boards.some((board) => board.provider === "WORKDAY" && board.boardId === "intive/wd3/Intive")
+    ).toBe(true)
+    expect(
+      boards.some(
+        (board) => board.provider === "SUCCESSFACTORS" && board.boardId === "jobs.gft.com"
+      )
+    ).toBe(true)
+    expect(
+      boards.some(
+        (board) => board.provider === "SUCCESSFACTORS" && board.boardId === "jobs.allegro.eu"
+      )
+    ).toBe(true)
     expect(workdayOutboundLinks().map((link) => link.href)).toEqual(
       WORKDAY_BOARDS.map((link) => link.href)
     )

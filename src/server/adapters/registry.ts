@@ -2,6 +2,7 @@ import type { HttpClient } from "src/server/security/safe-fetch"
 import type { SourceType } from "src/shared/schemas"
 import { listAshby } from "./ashby"
 import { hydrateBamboo, listBamboo } from "./bamboohr"
+import { hydrateCareer, listCareerSite } from "./career-site"
 import { hydrateBreezy, listBreezy } from "./breezy"
 import { hydrateGreenhouse, listGreenhouse } from "./greenhouse"
 import { listLever } from "./lever"
@@ -48,6 +49,8 @@ export const adapters: Adapter[] = [
   { sourceType: "PINPOINT", status: "live", list: listPinpoint, hydrate: undefined },
   { sourceType: "BREEZY", status: "live", list: listBreezy, hydrate: hydrateBreezy },
   { sourceType: "BAMBOOHR", status: "live", list: listBamboo, hydrate: hydrateBamboo },
+  { sourceType: "SUCCESSFACTORS", status: "live", list: listCareerSite, hydrate: hydrateCareer },
+  { sourceType: "WORKDAY", status: "live", list: listCareerSite, hydrate: hydrateCareer },
 ]
 
 export function adapterFor(provider: LiveAts): Adapter {

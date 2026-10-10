@@ -1,6 +1,8 @@
-import type { ListedJob } from "src/shared/schemas"
+import type { ListedJob, SourceType } from "src/shared/schemas"
 import { asDate, buildListedJob } from "./parse"
 import { htmlToText } from "src/server/jobs/text"
+import { aiOptOut, excerpt } from "src/server/crawler/hygiene"
+import { canonicalHref } from "./successfactors"
 
 type JsonRecord = Record<string, unknown>
 
@@ -64,7 +66,12 @@ function walk(node: unknown, found: JsonRecord[]) {
   if (Array.isArray(record["@graph"])) walk(record["@graph"], found)
 }
 
-export function parseJsonLdJobs(html: string, pageUrl: string, companyName?: string): ListedJob[] {
+export function parseJsonLdJobs(
+  html: string,
+  pageUrl: string,
+  companyName?: string,
+  opts?: { provider?: string; sourceType?: SourceType; boardId?: string }
+): ListedJob[] {
   const blocks = Array.from(
     html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
   )
@@ -81,11 +88,19 @@ export function parseJsonLdJobs(html: string, pageUrl: string, companyName?: str
     for (const job of found) {
       const title = textValue(job.title) || textValue(job.name)
       const hiring = asRecord(job.hiringOrganization)
-      const url = textValue(job.url) || pageUrl
+      const stated = textValue(job.url) || canonicalHref(html)
       if (!title) continue
+      if (!stated && opts?.provider === "brave") continue
+      const url = stated || pageUrl
+      let host = ""
+      try {
+        host = new URL(url).hostname
+      } catch {
+        host = ""
+      }
       const salary = salaryFrom(job.baseSalary)
       const description =
-        typeof job.description === "string" ? htmlToText(job.description) : undefined
+        typeof job.description === "string" ? excerpt(htmlToText(job.description)) : undefined
       const listed = buildListedJob({
         externalId: textValue(job.identifier),
         title,
@@ -98,8 +113,10 @@ export function parseJsonLdJobs(html: string, pageUrl: string, companyName?: str
         salaryCurrency: salary.currency,
         publishedAt: asDate(job.datePosted),
         originalUrl: url,
-        sourceType: "GENERIC_HTML",
+        sourceType: opts?.sourceType ?? "GENERIC_HTML",
+        sourceBoardId: opts?.boardId,
         needsHydration: false,
+        llmOptOut: aiOptOut(html, host),
       })
       if (listed) jobs.push(listed)
     }

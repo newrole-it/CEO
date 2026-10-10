@@ -1,4 +1,8 @@
 import { lookup } from "dns/promises"
+import { isIP } from "net"
+import { Agent } from "undici"
+import { FETCH_USER_AGENT } from "src/server/crawler/hygiene"
+import { assertSourcePolicy } from "./source-policy"
 import { assertPublicAddresses, assertSafeUrl, UnsafeUrlError } from "./url-safety"
 
 export type HttpResponse = {
@@ -19,6 +23,16 @@ export type HttpClient = {
       headers?: Record<string, string>
     }
   ) => Promise<HttpResponse>
+  post: (
+    url: string,
+    body: string,
+    opts?: {
+      maxBytes?: number
+      accept?: string
+      timeoutMs?: number
+      headers?: Record<string, string>
+    }
+  ) => Promise<HttpResponse>
 }
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
@@ -26,29 +40,45 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 type LookupFn = (hostname: string) => Promise<string[]>
 
 const nextHostSlot = new Map<string, number>()
-const MIN_INTERVAL_MS = 400
-const HOST_INTERVAL_MS: Record<string, number> = {
-  "apply.workable.com": 1000,
-  "www.workable.com": 1000,
-}
+const MIN_INTERVAL_MS = 5_000
+const HOST_INTERVAL_MS: Record<string, number> = {}
 const MAX_RETRIES = 3
+
+export function noteHostInterval(host: string, ms: number): void {
+  const current = HOST_INTERVAL_MS[host] ?? MIN_INTERVAL_MS
+  HOST_INTERVAL_MS[host] = Math.max(current, ms)
+}
 
 const defaultLookup: LookupFn = async (hostname) => {
   const records = await lookup(hostname, { all: true, verbatim: true })
   return records.map((record) => record.address)
 }
 
-async function waitForHost(host: string): Promise<void> {
+async function waitForHost(host: string, minIntervalMs: number): Promise<void> {
+  const interval = HOST_INTERVAL_MS[host] ?? minIntervalMs
+  if (interval <= 0) return
   const now = Date.now()
   const slot = nextHostSlot.get(host) ?? now
   const start = Math.max(now, slot)
-  nextHostSlot.set(host, start + (HOST_INTERVAL_MS[host] ?? MIN_INTERVAL_MS))
+  nextHostSlot.set(host, start + interval)
   const delay = start - now
   if (delay > 0) await sleep(delay)
 }
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function pinAgent(address: string): Agent {
+  const family = isIP(address) || 4
+  return new Agent({
+    connect: {
+      lookup: (_hostname, options, callback) => {
+        const done = typeof options === "function" ? options : callback
+        done(null, address, family)
+      },
+    },
+  })
 }
 
 async function readCapped(response: Response, maxBytes: number): Promise<string> {
@@ -87,6 +117,8 @@ function responseHeaders(headers: Headers): Record<string, string> {
 export async function safeFetch(
   rawUrl: string,
   options?: {
+    method?: "GET" | "POST"
+    body?: string
     maxBytes?: number
     accept?: string
     timeoutMs?: number
@@ -94,6 +126,7 @@ export async function safeFetch(
     fetchImpl?: FetchLike
     lookupImpl?: LookupFn
     redirectCount?: number
+    minIntervalMs?: number
   }
 ): Promise<HttpResponse> {
   const maxBytes = options?.maxBytes ?? Number(process.env.FETCH_MAX_BYTES || 1_500_000)
@@ -101,70 +134,84 @@ export async function safeFetch(
   const fetchImpl = options?.fetchImpl ?? fetch
   const lookupImpl = options?.lookupImpl ?? defaultLookup
   const redirectCount = options?.redirectCount ?? 0
+  const minIntervalMs = options?.minIntervalMs ?? (options?.fetchImpl ? 0 : MIN_INTERVAL_MS)
   if (redirectCount > 3) throw new UnsafeUrlError("Too many redirects")
 
   const url = assertSafeUrl(rawUrl)
+  assertSourcePolicy(url)
   const addresses = await lookupImpl(url.hostname)
   assertPublicAddresses(addresses)
+  const agent = options?.fetchImpl ? undefined : pinAgent(addresses[0])
 
   let lastError: unknown
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      await waitForHost(url.hostname)
-      const response = await fetchImpl(url.toString(), {
-        method: "GET",
-        redirect: "manual",
-        headers: {
-          Accept: options?.accept ?? "application/json, text/html;q=0.8, */*;q=0.1",
-          "User-Agent": "Jobscanner/0.1 (personal job search; public APIs only)",
-          ...options?.headers,
-        },
-        signal: AbortSignal.timeout(timeoutMs),
-      })
-      if (response.status >= 300 && response.status < 400) {
-        const location = response.headers.get("location")
-        if (!location) throw new UnsafeUrlError("Redirect missing location")
-        const next = new URL(location, url).toString()
-        return safeFetch(next, {
-          ...options,
-          redirectCount: redirectCount + 1,
-          fetchImpl,
-          lookupImpl,
-        })
-      }
-      if (response.status === 429 || response.status >= 500) {
-        const retryAfter = Number(response.headers.get("retry-after"))
-        const wait =
-          Number.isFinite(retryAfter) && retryAfter > 0 && retryAfter < 30
-            ? retryAfter * 1000
-            : 400 * 2 ** attempt
-        if (attempt === MAX_RETRIES) {
-          const body = await readCapped(response, Math.min(maxBytes, 20_000))
-          return {
-            url: url.toString(),
-            status: response.status,
-            body,
-            contentType: response.headers.get("content-type") ?? "",
-            headers: responseHeaders(response.headers),
-          }
+  try {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await waitForHost(url.hostname, minIntervalMs)
+        const response = await fetchImpl(url.toString(), {
+          method: options?.method ?? "GET",
+          redirect: "manual",
+          body: options?.body,
+          headers: {
+            Accept: options?.accept ?? "application/json, text/html;q=0.8, */*;q=0.1",
+            "User-Agent": FETCH_USER_AGENT,
+            ...options?.headers,
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+          ...(agent ? { dispatcher: agent } : {}),
+        } as RequestInit)
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get("location")
+          if (!location) throw new UnsafeUrlError("Redirect missing location")
+          const next = new URL(location, url)
+          const sameHost = next.hostname.toLowerCase() === url.hostname.toLowerCase()
+          return safeFetch(next.toString(), {
+            ...options,
+            body: sameHost ? options?.body : undefined,
+            method: sameHost ? options?.method : "GET",
+            headers: sameHost ? options?.headers : undefined,
+            redirectCount: redirectCount + 1,
+            fetchImpl,
+            lookupImpl,
+            minIntervalMs,
+          })
         }
-        await sleep(wait)
-        continue
+        if (response.status === 429 || response.status >= 500) {
+          const retryAfter = Number(response.headers.get("retry-after"))
+          const wait =
+            Number.isFinite(retryAfter) && retryAfter > 0 && retryAfter < 30
+              ? retryAfter * 1000
+              : 400 * 2 ** attempt
+          if (attempt === MAX_RETRIES) {
+            const body = await readCapped(response, Math.min(maxBytes, 20_000))
+            return {
+              url: url.toString(),
+              status: response.status,
+              body,
+              contentType: response.headers.get("content-type") ?? "",
+              headers: responseHeaders(response.headers),
+            }
+          }
+          await sleep(wait)
+          continue
+        }
+        const body = await readCapped(response, maxBytes)
+        return {
+          url: response.url || url.toString(),
+          status: response.status,
+          body,
+          contentType: response.headers.get("content-type") ?? "",
+          headers: responseHeaders(response.headers),
+        }
+      } catch (error) {
+        lastError = error
+        if (error instanceof UnsafeUrlError) throw error
+        if (attempt === MAX_RETRIES) break
+        await sleep(400 * 2 ** attempt)
       }
-      const body = await readCapped(response, maxBytes)
-      return {
-        url: response.url || url.toString(),
-        status: response.status,
-        body,
-        contentType: response.headers.get("content-type") ?? "",
-        headers: responseHeaders(response.headers),
-      }
-    } catch (error) {
-      lastError = error
-      if (error instanceof UnsafeUrlError) throw error
-      if (attempt === MAX_RETRIES) break
-      await sleep(400 * 2 ** attempt)
     }
+  } finally {
+    await agent?.close()
   }
   throw lastError instanceof Error ? lastError : new Error("Fetch failed")
 }
@@ -172,5 +219,6 @@ export async function safeFetch(
 export function createHttpClient(): HttpClient {
   return {
     get: (url, opts) => safeFetch(url, opts),
+    post: (url, body, opts) => safeFetch(url, { ...opts, method: "POST", body }),
   }
 }

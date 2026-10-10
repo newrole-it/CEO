@@ -80,6 +80,13 @@ enum SourceType {
   BAMBOOHR
   GENERIC_HTML
   WEB_SEARCH
+  SUCCESSFACTORS
+  WORKDAY
+  ICIMS
+  PHENOM
+  AVATURE
+  ERECRUITER
+  JOBVITE
 }
 
 enum ResolutionStatus {
@@ -119,6 +126,7 @@ enum FetchStatus {
 enum SearchRunStatus {
   QUEUED
   RUNNING
+  RETRYING
   SUCCEEDED
   FAILED
 }
@@ -134,7 +142,7 @@ enum TaskStatus {
 model Company {
   id                  String    @id @default(cuid())
   name                String
-  normalizedName      String
+  normalizedName      String    @unique
   canonicalDomain     String?   @unique
   description         String?
   industry            String?
@@ -146,8 +154,6 @@ model Company {
   aliases     CompanyAlias[]
   careerPages CareerPage[]
   jobs        Job[]
-
-  @@index([normalizedName])
 }
 
 model CompanyAlias {
@@ -211,6 +217,7 @@ model CareerPage {
   lastSuccessfulFetchAt DateTime?
   nextCheckAt           DateTime?
   lastErrorCode         String?
+  fetchNote             String?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
@@ -253,6 +260,8 @@ model Job {
   contentHash        String
   identityKey        String        @unique
   fingerprint        String
+  variants           Json?
+  llmOptOut          Boolean       @default(false)
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -391,6 +400,13 @@ model BackgroundTask {
   finishedAt  DateTime?
 
   @@index([status, runAt])
+}
+
+model CrawlBudget {
+  host          String   @id
+  day           String
+  detailFetches Int      @default(0)
+  updatedAt     DateTime @updatedAt
 }
 
 model AuditEvent {

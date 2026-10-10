@@ -60,6 +60,7 @@ export function parseTeamtailorRss(
       originalUrl: link,
       sourceType: "TEAMTAILOR",
       sourceBoardId: boardId,
+      llmOptOut: true,
     })
     return listed ? [listed] : []
   })

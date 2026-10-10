@@ -1,4 +1,4 @@
-import {isIP} from "net"
+import { isIP } from "net"
 
 const ALLOWED_PORTS = new Set(["", "80", "443"])
 
@@ -17,7 +17,10 @@ export class UnsafeUrlError extends Error {
 }
 
 export function isBlockedIp(ip: string): boolean {
-  const normalized = ip.trim().toLowerCase().replace(/^\[|\]$/g, "")
+  const normalized = ip
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
   const family = isIP(normalized)
   if (family === 4) return isBlockedIpv4(normalized)
   if (family === 6) return isBlockedIpv6(normalized)
@@ -26,7 +29,10 @@ export function isBlockedIp(ip: string): boolean {
 
 function isBlockedIpv4(ip: string): boolean {
   const parts = ip.split(".").map((part) => Number(part))
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+  if (
+    parts.length !== 4 ||
+    parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+  ) {
     return true
   }
   const [a, b] = parts
@@ -36,6 +42,7 @@ function isBlockedIpv4(ip: string): boolean {
   if (a === 192 && b === 168) return true
   if (a === 100 && b >= 64 && b <= 127) return true
   if (a === 192 && b === 0 && (parts[2] === 0 || parts[2] === 2)) return true
+  if (a === 198 && (b === 18 || b === 19)) return true
   if (a >= 224) return true
   return false
 }
@@ -43,7 +50,13 @@ function isBlockedIpv4(ip: string): boolean {
 function isBlockedIpv6(ip: string): boolean {
   const value = ip.toLowerCase()
   if (value === "::1" || value === "::" || value === "0:0:0:0:0:0:0:1") return true
-  if (value.startsWith("fe80:") || value.startsWith("fe8") || value.startsWith("fe9") || value.startsWith("fea") || value.startsWith("feb")) {
+  if (
+    value.startsWith("fe80:") ||
+    value.startsWith("fe8") ||
+    value.startsWith("fe9") ||
+    value.startsWith("fea") ||
+    value.startsWith("feb")
+  ) {
     return true
   }
   // Unique local fc00::/7 and link-local / multicast.
@@ -55,6 +68,11 @@ function isBlockedIpv6(ip: string): boolean {
     const v4 = ipv4FromMappedHex(hex)
     if (v4) return isBlockedIpv4(v4)
   }
+  if (value.startsWith("2002:")) return true
+  if (value.startsWith("64:ff9b:") || value === "64:ff9b::") return true
+  if (/^fe[c-f]/.test(value)) return true
+  if (/^::(\d+\.\d+\.\d+\.\d+)$/.test(value)) return true
+  if (/^0:0:0:0:0:0:\d+\.\d+\.\d+\.\d+$/.test(value)) return true
   return false
 }
 
@@ -86,11 +104,18 @@ export function assertSafeUrl(raw: string): URL {
   if (!ALLOWED_PORTS.has(url.port)) {
     throw new UnsafeUrlError("Only ports 80 and 443 are allowed")
   }
-  const hostname = url.hostname.replace(/\.$/, "").toLowerCase()
+  const hostname = url.hostname
+    .replace(/\.$/, "")
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
   if (!hostname || BLOCKED_HOSTNAMES.has(hostname)) {
     throw new UnsafeUrlError("Hostname is not allowed")
   }
-  if (hostname.endsWith(".local") || hostname.endsWith(".internal") || hostname.endsWith(".localhost")) {
+  if (
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    hostname.endsWith(".localhost")
+  ) {
     throw new UnsafeUrlError("Local hostnames are not allowed")
   }
   if (isIP(hostname)) {

@@ -1,16 +1,23 @@
-import {resolver} from "@blitzjs/rpc"
+import { resolver } from "@blitzjs/rpc"
 import db from "db"
 
-export default resolver.pipe(resolver.authorize(), async (_input: null, ctx) => {
+export default resolver.pipe(resolver.authorize(), async (_input: unknown, ctx) => {
   const searches = await db.savedSearch.findMany({
-    where: {userId: ctx.session.userId!, isActive: true},
-    orderBy: {createdAt: "desc"},
+    where: { userId: ctx.session.userId!, isActive: true },
+    orderBy: { createdAt: "desc" },
     take: 30,
     include: {
       runs: {
-        orderBy: {startedAt: "desc"},
+        orderBy: { startedAt: "desc" },
         take: 1,
-        select: {id: true, status: true, matchedJobs: true, newJobs: true, startedAt: true, message: true},
+        select: {
+          id: true,
+          status: true,
+          matchedJobs: true,
+          newJobs: true,
+          startedAt: true,
+          message: true,
+        },
       },
     },
   })
