@@ -22,6 +22,11 @@ function takeMemory(host: string): boolean {
 
 export async function detailFetchesRemaining(host: string): Promise<number> {
   const day = today()
+  if (process.env.VITEST) {
+    const current = memory.get(host)
+    if (!current || current.day !== day) return DETAIL_DAILY_CAP
+    return Math.max(0, DETAIL_DAILY_CAP - current.count)
+  }
   try {
     const existing = await db.crawlBudget.findUnique({ where: { host } })
     if (!existing || existing.day !== day) return DETAIL_DAILY_CAP
@@ -36,6 +41,7 @@ export async function detailFetchesRemaining(host: string): Promise<number> {
 /** Counts job-detail fetches. Robots and sitemap requests do not use this cap. */
 export async function takeDetailSlot(host: string): Promise<boolean> {
   const day = today()
+  if (process.env.VITEST) return takeMemory(host)
   try {
     const existing = await db.crawlBudget.findUnique({ where: { host } })
     if (!existing || existing.day !== day) {

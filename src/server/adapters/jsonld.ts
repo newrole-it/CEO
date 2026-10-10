@@ -28,6 +28,16 @@ function textValue(value: unknown): string | undefined {
   return undefined
 }
 
+/** PropertyValue identifiers carry the job id in `value` and the employer in `name`. */
+function identifierValue(value: unknown): string | undefined {
+  const record = asRecord(value)
+  if (record && (typeof record.value === "string" || typeof record.value === "number")) {
+    const id = String(record.value).trim()
+    if (id) return id
+  }
+  return textValue(value)
+}
+
 function locationText(value: unknown): string | undefined {
   if (Array.isArray(value)) {
     const parts = value
@@ -110,7 +120,7 @@ export function parseJsonLdJobs(
       const description =
         typeof job.description === "string" ? excerpt(htmlToText(job.description)) : undefined
       const listed = buildListedJob({
-        externalId: textValue(job.identifier),
+        externalId: identifierValue(job.identifier),
         title,
         companyName: textValue(hiring?.name) || companyName,
         locationText: locationText(job.jobLocation),

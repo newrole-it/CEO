@@ -51,7 +51,10 @@ function safeCanonical(raw: string): string {
 export function identityFor(job: ListedJob): string {
   const canonical = safeCanonical(job.originalUrl)
   const source = APP_TO_SOURCE[job.sourceType] ?? "company_site"
-  return extractAtsKey(canonical, source, job.externalId, job.sourceBoardId) ?? `url:${canonical}`
+  const key = extractAtsKey(canonical, source, job.externalId, job.sourceBoardId)
+  const company = (job.companyName || "").trim().toLowerCase()
+  if (key && company && key.toLowerCase() === `${source}:${company}`) return `url:${canonical}`
+  return key ?? `url:${canonical}`
 }
 
 function isUnique(error: unknown): boolean {
