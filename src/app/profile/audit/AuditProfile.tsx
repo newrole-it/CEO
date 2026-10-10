@@ -189,7 +189,7 @@ export function AuditProfile({
             </p>
           )}
           <p className="hint">
-            Counts use the latest successful search for each saved role. A missing-keyword mark is
+            Counts use the latest successful search for each target role. A missing-keyword mark is
             added only when the phrase is absent from your profile, at least five matched offers
             contain it, and that is at least 15% of that role&apos;s results.
           </p>

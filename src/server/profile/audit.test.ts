@@ -3,7 +3,7 @@ import { join } from "path"
 import { describe, expect, it } from "vitest"
 import type { LlmClient } from "src/server/llm/client"
 import { buildProfileAudit, progressCopy } from "./audit"
-import { demandFromOffers, factSentence } from "./demand"
+import { demandFromOffers, factSentence, pickLatestRuns } from "./demand"
 import { parseLinkedInProfile, profileText } from "./linkedin"
 
 const fixture = (name: string) => readFileSync(join(__dirname, "fixtures", name), "utf8")
@@ -100,6 +100,16 @@ describe("LinkedIn profile audit", () => {
     })
     expect(quiet).toHaveLength(0)
     expect(facts.find((fact) => fact.phrase === "hiring or headcount")?.matchingOffers).toBe(0)
+    const picked = pickLatestRuns([
+      { phrase: "Head of Engineering", startedAt: new Date("2026-10-10T15:00:00Z"), runId: "old" },
+      { phrase: "Head of Engineering", startedAt: new Date("2026-10-10T23:07:00Z"), runId: "new" },
+      {
+        phrase: "Principal Solution Architect",
+        startedAt: new Date("2026-10-10T17:00:00Z"),
+        runId: "other",
+      },
+    ])
+    expect(picked.map((row) => row.runId).sort()).toEqual(["new", "other"])
   })
 
   it("drops a quote that is not in the profile and refuses an invented percent", async () => {

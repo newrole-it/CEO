@@ -124,6 +124,17 @@ function roleSlug(phrase: string): string {
   return slug || "role"
 }
 
+export function pickLatestRuns<T extends { phrase: string; startedAt: Date }>(rows: T[]): T[] {
+  const chosen = new Map<string, T>()
+  for (const row of rows) {
+    const key = fold(row.phrase.replace(/\s+/g, " ").trim())
+    if (!key) continue
+    const previous = chosen.get(key)
+    if (!previous || row.startedAt.getTime() >= previous.startedAt.getTime()) chosen.set(key, row)
+  }
+  return [...chosen.values()]
+}
+
 export function factSentence(fact: DemandFact): string {
   return `${fact.role} offers in your results mention ${fact.phrase} in ${fact.percent}% of cases (${fact.matchingOffers} of ${fact.totalOffers}); your profile doesn't.`
 }

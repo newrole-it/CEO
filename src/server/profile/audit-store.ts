@@ -1,7 +1,7 @@
 import db from "db"
 import { createLlmClient } from "src/server/llm/client"
 import { buildProfileAudit, builtAuditSchema, type BuiltAudit } from "./audit"
-import { demandFromOffers } from "./demand"
+import { demandFromOffers, pickLatestRuns } from "./demand"
 import { parseStoredDocument, profileText, type LinkedInDocument } from "./linkedin"
 
 export async function demandForUser(userId: number, text: string) {
@@ -13,16 +13,20 @@ export async function demandForUser(userId: number, text: string) {
         where: { status: "SUCCEEDED" },
         orderBy: { startedAt: "desc" },
         take: 1,
-        select: { id: true },
+        select: { id: true, startedAt: true },
       },
     },
   })
+  const latest = pickLatestRuns(
+    searches.flatMap((search) => {
+      const run = search.runs[0]
+      return run ? [{ phrase: search.phrase, startedAt: run.startedAt, runId: run.id }] : []
+    })
+  )
   const roles = []
-  for (const search of searches) {
-    const runId = search.runs[0]?.id
-    if (!runId) continue
+  for (const search of latest) {
     const matches = await db.jobMatch.findMany({
-      where: { searchRunId: runId },
+      where: { searchRunId: search.runId },
       select: { job: { select: { title: true, descriptionText: true, summary: true } } },
     })
     roles.push({
