@@ -4,6 +4,7 @@ import { parseSmartRecruiters } from "./smartrecruiters"
 import { parseWorkableJobs } from "./workable"
 import { parseAshbyJobs } from "./ashby"
 import { isBlockedSlug, namesAgree } from "./blocked"
+import { parseBreezyPositions } from "./breezy"
 import { leverPostingUrls } from "./lever"
 import { parsePersonioXml } from "./personio"
 import { pinpointAcceptsBoard } from "./pinpoint"
@@ -225,6 +226,29 @@ describe("ATS adapters", () => {
       texts: [],
     })
     expect(division).toMatchObject({ ok: true, companyName: "Northwind" })
+  })
+
+  it("reads a Breezy position when country is an object", () => {
+    const parsed = parseBreezyPositions(
+      [
+        {
+          id: "abc",
+          name: "Delivery Lead | Engineering Manager",
+          url: "https://boldare.breezy.hr/p/abc-delivery-lead",
+          published_date: "2026-09-22T06:23:23.339Z",
+          type: { id: "fullTime", name: "Full-Time" },
+          location: { city: "Gliwice", country: { name: "Poland", id: "PL" }, is_remote: false },
+          company: { name: "Boldare" },
+          salary: "",
+        },
+      ],
+      "boldare",
+      "Boldare"
+    )
+    expect(parsed.jobs).toHaveLength(1)
+    expect(parsed.jobs[0]?.locationText).toContain("Gliwice")
+    expect(parsed.jobs[0]?.locationText).toContain("Poland")
+    expect(parsed.jobs[0]?.companyName).toBe("Boldare")
   })
 
   it("tries the Lever EU host first only for eu: boards", () => {

@@ -19,15 +19,25 @@ const positionSchema = z
       .object({
         name: z.string().nullable().optional(),
         city: z.string().nullable().optional(),
-        country: z.string().nullable().optional(),
+        country: z.unknown().optional(),
         is_remote: z.boolean().nullable().optional(),
       })
+      .passthrough()
       .nullable()
       .optional(),
     company: z.object({ name: z.string().nullable().optional() }).nullable().optional(),
-    salary: z.string().nullable().optional(),
+    salary: z.unknown().optional(),
   })
   .passthrough()
+
+function label(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value.trim()
+  if (value && typeof value === "object" && "name" in value) {
+    const name = (value as { name?: unknown }).name
+    if (typeof name === "string" && name.trim()) return name.trim()
+  }
+  return undefined
+}
 
 export function breezyHost(boardId: string): string {
   return tenantHost(boardId, "breezy.hr")
@@ -46,9 +56,16 @@ export function parseBreezyPositions(
   const fromFeed = positions.find((position) => position.company?.name)?.company?.name ?? undefined
   const resolved = companyName || fromFeed || undefined
   const jobs = positions.flatMap((position) => {
-    const location = [position.location?.name, position.location?.city, position.location?.country]
-      .filter(Boolean)
+    const location = [
+      label(position.location?.name),
+      label(position.location?.city),
+      label(position.location?.country),
+    ]
+      .filter(
+        (value, index, all): value is string => Boolean(value) && all.indexOf(value) === index
+      )
       .join(", ")
+    const salary = typeof position.salary === "string" ? position.salary.trim() : ""
     const listed = buildListedJob({
       externalId: String(position.id),
       title: position.name,
@@ -56,7 +73,7 @@ export function parseBreezyPositions(
       locationText: location || undefined,
       employmentType: position.type?.name ?? undefined,
       workplaceType: position.location?.is_remote ? "REMOTE" : mapWorkplace(undefined, location),
-      salaryText: position.salary ?? undefined,
+      salaryText: salary || undefined,
       publishedAt: asDate(position.published_date),
       originalUrl: position.url,
       sourceType: "BREEZY",
