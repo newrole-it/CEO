@@ -25,6 +25,7 @@ export const sourceTypeSchema = z.enum([
   "AVATURE",
   "ERECRUITER",
   "JOBVITE",
+  "CAREER_SITE",
 ])
 export type SourceType = z.infer<typeof sourceTypeSchema>
 

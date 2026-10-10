@@ -87,6 +87,7 @@ enum SourceType {
   AVATURE
   ERECRUITER
   JOBVITE
+  CAREER_SITE
 }
 
 enum ResolutionStatus {

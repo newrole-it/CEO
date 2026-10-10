@@ -23,10 +23,18 @@ function textValue(value: unknown): string | undefined {
   if (!record) return undefined
   if (typeof record.name === "string") return record.name
   if (typeof record["@value"] === "string") return record["@value"]
+  if (typeof record.value === "string" || typeof record.value === "number")
+    return String(record.value)
   return undefined
 }
 
 function locationText(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => locationText(item))
+      .filter((item): item is string => Boolean(item))
+    return [...new Set(parts)].join("; ") || undefined
+  }
   const record = asRecord(value)
   if (!record) return textValue(value)
   const address = asRecord(record.address) ?? record

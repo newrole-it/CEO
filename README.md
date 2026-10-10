@@ -57,7 +57,7 @@ Copy `.env.example`. The values the owner actually has to provide:
 
 1. Expand the phrase into related titles, seniority, synonyms, and exclusions. `site:` queries are built in code from those titles. The model never writes them.
 2. Optionally ask Brave (then Serper) for ATS pages. Hits are used only to recover a board slug or a job URL, then the original ATS API is fetched. Raw search results are not written to the database.
-3. Read the public, unauthenticated job APIs. Seed boards come from `config/seed-companies.json` plus `config/seed-companies-pl.json` (checked 2026-10-10). Allegro's SmartRecruiters board is turned off. Workday boards are links, not fetches.
+3. Read the public, unauthenticated job APIs. Seed boards come from `config/seed-companies.json` plus `config/seed-companies-pl.json` (checked 2026-10-10). Allegro's SmartRecruiters board is turned off. Allegro jobs are read from careers.allegro.eu. Workday tenants are read from the sitemap and JSON-LD.
 4. Normalize title, location, workplace, and salary text, dedupe, and score. The score is deterministic. A model may explain it and cannot change the number.
 5. Save the run. Running the same search again marks offers that were not in the previous succeeded run.
 
@@ -69,7 +69,7 @@ Verified read APIs, all unauthenticated GETs:
 - Lever Postings API (`mode=json`). Boards marked `eu:` try `api.eu.lever.co` first (XTB, OLX). A 404 on the preferred host tries the other host once
 - Ashby public job posting API (`includeCompensation=true`, `workplaceType` over `isRemote`)
 - Workable widget API on `apply.workable.com` (`details=true`). An empty `jobs` array is not a real board
-- SmartRecruiters Posting API, filtered with `country=pl` and `locationType=REMOTE`, paginated. `totalFound: 0` is not a real company: the API returns 200 for invented identifiers
+- SmartRecruiters Posting API, filtered with `country=pl` and `locationType=REMOTE`, paginated. `totalFound: 0` is not a real company: the API returns 200 for invented identifiers. The API stays on. Set `SMARTRECRUITERS_POSTING_API=off` to stop it while the robots.txt decision is open
 - Teamtailor public RSS (`/jobs.rss`, with `offset` and `per_page`). A slug that already contains a dot is a custom domain
 - Recruitee `GET /api/offers/`. Open without a token until 10 February 2027. After that, or on HTTP 401, the board is skipped. Set `RECRUITEE_CAREERS_TOKEN` (`X-Careers-Sites-Token`)
 - Personio public XML (`/xml?language=en`, `.jobs.personio.de` then `.com`)
@@ -82,13 +82,13 @@ A board is kept only when it has jobs and, where the payload includes one, a com
 
 Company career pages may be read for schema.org `JobPosting` JSON-LD. Polish boards are not fetched: justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, and bulldogjob. The results page links out to their own search.
 
-Enterprise career sites follow `sources/enterprise-ats-legal.md` (10 October 2026). SuccessFactors employer sites such as jobs.gft.com are read from the sitemap and job-page microdata. Workday tenants (Intive, Motorola Solutions, Mastercard, Visa, Samsung, Thomson Reuters) are read from the sitemap and JSON-LD, with a short Poland cxs query only when the sitemap is capped. iCIMS, Phenom on employer domains, Avature RSS, eRecruiter employer pages, and Jobvite are allowed with the same limits. jobs.sap.com, legacy SuccessFactors hosts (Allegro on career55.sapsf.eu), Oracle Recruiting, Taleo, careers.phenom.com, Siemens job pages, and HiBob stay link-only.
+Enterprise career sites follow `sources/enterprise-ats-legal.md` and `sources/link-only-alternatives.md` (10 October 2026). SuccessFactors employer sites such as jobs.gft.com and careers.allegro.eu are read from the sitemap and job-page microdata. The legacy Allegro host career55.sapsf.eu stays link-only. Workday tenants (Intive, Motorola Solutions, Mastercard, Visa, Samsung, Thomson Reuters) are read from the sitemap and JSON-LD, with a short Poland cxs query only when the sitemap is capped. iCIMS, Phenom on employer domains, Avature RSS, eRecruiter employer pages, and Jobvite are allowed with the same limits. Callstack is the Recruitee board `callstackpl`. Grupa Pracuj is the published `jobs.feed.json` feed. Sii, Żabka, Bolt, Comarch, EPAM, and Brand24 are employer-domain sitemaps or listings. Wirtualna Polska and Packhelp are listing-only: titles and links are stored, and skk or PeopleForce detail pages are not fetched. Synerise job pages come from web search plus JSON-LD, because `/api/` is disallowed. EPAM's sitemap count is not the live total (the public listing showed about 225). jobs.sap.com, Oracle Recruiting (including Nokia, whose sitemap exists), Taleo, careers.phenom.com, Siemens job pages, HiBob, Dynatrace, Codility, Oviva, Revolut, Future Processing, Saleor, Billtech, and JPMorganChase stay link-only.
 
 The crawler sends `JobscannerBot/0.1` with a contact URL, waits at least 5 seconds between requests to a host, fetches at most 200 job pages per host per day, refreshes sitemaps daily, and honors robots.txt. Stored text is a short excerpt plus the canonical link. Recruiter names, emails, and phone numbers are dropped. Pages that opt out of AI input or training, or reserve text-and-data mining, are scored with the rules and are not sent to the model. Logins and bot walls are not bypassed. The Coverage page lists each employer, platform, policy, reason, last fetch, and job count.
 
 Greenhouse EU (`boards-api.eu.greenhouse.io`) was unreachable on the check date and is not called.
 
-Details and the probe scripts are in `sources/` (`source-pack.md`, `source-pack-pl.md`, and `enterprise-ats-legal.md`).
+Details and the probe scripts are in `sources/` (`source-pack.md`, `source-pack-pl.md`, `enterprise-ats-legal.md`, and `link-only-alternatives.md`).
 
 ## Matching
 

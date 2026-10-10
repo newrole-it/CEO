@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { smartRecruitersPostingApiEnabled } from "config/source-policies"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { isBlockedSlug, namesAgree } from "./blocked"
@@ -110,6 +111,13 @@ export async function listSmartRecruiters(
   http: HttpClient,
   expectedName?: string
 ): Promise<BoardList> {
+  if (!smartRecruitersPostingApiEnabled()) {
+    return {
+      jobs: [],
+      proven: false,
+      note: "SmartRecruiters Posting API is off. Set SMARTRECRUITERS_POSTING_API=on to enable it. A policy decision is pending.",
+    }
+  }
   if (isBlockedSlug("SMARTRECRUITERS", boardId)) {
     return { jobs: [], proven: false, note: `SmartRecruiters slug ${boardId} is blocked` }
   }

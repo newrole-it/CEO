@@ -7,6 +7,12 @@ import getCoverage from "./queries/getCoverage"
 
 export const metadata = { title: "Coverage" }
 
+function policyLabel(policy: string): string {
+  if (policy === "enabled") return "Allowed"
+  if (policy === "limited") return "Allowed with limits"
+  return "Link-only"
+}
+
 export default async function CoveragePage() {
   const user = await invoke(getCurrentUser, null)
   if (!user) redirect("/login")
@@ -18,7 +24,7 @@ export default async function CoveragePage() {
         <h1>Coverage</h1>
         <p className="lede">
           Each employer is fetched only when its policy allows it. Link-only rows stay as outbound
-          links. Reasons come from the 10 October 2026 terms review.
+          links. States follow the 10 October 2026 terms review and the link-only channel check.
         </p>
         <Link href="/">New scan</Link>
       </div>
@@ -51,7 +57,7 @@ export default async function CoveragePage() {
                   </td>
                   <td>{row.platform}</td>
                   <td>
-                    <span className={`policy ${row.policy}`}>{row.policy.replace("_", " ")}</span>
+                    <span className={`policy ${row.policy}`}>{policyLabel(row.policy)}</span>
                   </td>
                   <td>
                     {row.lastFetch

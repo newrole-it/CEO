@@ -12,6 +12,42 @@ export type SourcePolicy = {
 const SAP_TERMS = "https://www.sap.com/about/legal/terms-of-use.html"
 const WORKDAY_TERMS = "https://www.workday.com/en-us/legal/site-terms.html"
 
+const CAREER_ALLOW = [
+  "/sitemap",
+  "/jobs.feed.json",
+  "/llms.txt",
+  "/job/",
+  "/jobs/",
+  "/job-offer",
+  "/job-offers",
+  "/oferta-pracy",
+  "/oferty-pracy",
+  "/vacancy",
+  "/careers",
+  "/career",
+  "/positions",
+]
+
+const CAREER_DENY = ["/api/", "/wp-admin/", "/wp-login", "/wp-json/"]
+
+export const SMARTRECRUITERS_API_REASON =
+  "The public Posting API stays on while a policy decision is pending. api.smartrecruiters.com robots.txt allows LinkedInBot on /v1/companies/ and disallows every other crawler. Set SMARTRECRUITERS_POSTING_API=off to stop those calls. jobs.smartrecruiters.com pages stay allowed."
+
+function careerPolicy(state: PolicyState, reason: string, termsUrl: string): SourcePolicy {
+  return {
+    platform: "Career site",
+    state,
+    reason,
+    termsUrl,
+    allowPaths: CAREER_ALLOW,
+    denyPaths: CAREER_DENY,
+  }
+}
+
+function linkOnly(platform: string, reason: string, termsUrl: string): SourcePolicy {
+  return { platform, state: "link_only", reason, termsUrl }
+}
+
 export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
   successfactors: {
     platform: "SuccessFactors",
@@ -58,7 +94,7 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
     platform: "Oracle Recruiting Cloud",
     state: "link_only",
     reason:
-      "Oracle.com terms ban robots and scrapers, and the footer links those terms. REST is marked internal use.",
+      "Oracle.com terms ban robots and scrapers. Nokia publishes /sitemaps/sitemapIndex, and the verdict stays link-only.",
     termsUrl: "https://www.oracle.com/legal/terms.html",
   },
   taleo: {
@@ -128,6 +164,61 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
       "HiBob's terms ban scraping, and the career host answers with a bot wall. That wall is not bypassed.",
     termsUrl: "https://www.hibob.com/privacy/terms-and-conditions/",
   },
+  peopleforce: {
+    platform: "PeopleForce",
+    state: "link_only",
+    reason:
+      "PeopleForce robots.txt disallows / for every crawler. Use the employer's own listing page. Detail links stay link-outs.",
+    termsUrl: "https://peopleforce.io/",
+  },
+  dynatrace: {
+    platform: "Dynatrace",
+    state: "link_only",
+    reason:
+      "Dynatrace terms ban robots and crawlers on the site and associated sites. The career site is not fetched.",
+    termsUrl: "https://www.dynatrace.com/company/trust-center/terms-of-use/",
+  },
+  revolut: {
+    platform: "Revolut",
+    state: "link_only",
+    reason:
+      "robots.txt allows /careers/, and every other URL returns 403. That wall is not bypassed. Link out from site:revolut.com/careers/position.",
+    termsUrl: "https://revolut.com/",
+  },
+  oviva: {
+    platform: "Oviva",
+    state: "link_only",
+    reason: "oviva.com returns 403 to the crawler. That wall is not bypassed.",
+    termsUrl: "https://oviva.com/",
+  },
+  codility: {
+    platform: "Codility",
+    state: "link_only",
+    reason:
+      "The WordPress careers endpoint currently errors, and the HiBob host is a bot wall. Re-check later. Nothing is fetched.",
+    termsUrl: "https://codility.com/",
+  },
+  "future-processing": {
+    platform: "Future Processing",
+    state: "link_only",
+    reason:
+      "The public listing returns an error and no job URLs. Unresolved, so it stays link-only.",
+    termsUrl: "https://kariera.future-processing.pl/",
+  },
+  notion: {
+    platform: "Notion",
+    state: "link_only",
+    reason:
+      "Public Notion pages are a JavaScript shell. The public API needs an owner token. Link-only.",
+    termsUrl: "https://www.notion.so/terms",
+  },
+  jpmorgan: {
+    platform: "JPMorganChase",
+    state: "link_only",
+    reason:
+      "careers.jpmorgan.com has no job links, and the Oracle pod answers 403. Oracle terms also ban robots.",
+    termsUrl: "https://www.oracle.com/legal/terms.html",
+  },
   "job-board": {
     platform: "Job board",
     state: "link_only",
@@ -143,15 +234,97 @@ export const HOST_POLICIES: Record<string, SourcePolicy> = {
   "jobs.siemens.com": PLATFORM_POLICIES.siemens,
   "careers.phenom.com": PLATFORM_POLICIES["phenom-vendor"],
   "careers.mastercard.com": PLATFORM_POLICIES.phenom,
-  "jobs.allegro.eu": {
-    platform: "SuccessFactors",
-    state: "limited",
+  "careers.allegro.eu": {
+    ...PLATFORM_POLICIES.successfactors,
     reason:
-      "The public WordPress site may be read. Job inventory is on career55.sapsf.eu, whose robots.txt disallows /, so those pages are link-only.",
-    termsUrl: "https://jobs.allegro.eu/",
-    allowPaths: ["/sitemap", "/robots.txt", "/offer", "/"],
-    denyPaths: ["/wp-admin/", "/wp-login"],
+      "Career Site Builder on careers.allegro.eu lists 288 jobs in the sitemap, with microdata on /job/ pages. Allowed with limits. career55.sapsf.eu stays link-only because its robots.txt disallows /. jobs.allegro.eu has no job inventory.",
+    termsUrl: "https://careers.allegro.eu/",
   },
+  "jobs.allegro.eu": linkOnly(
+    "SuccessFactors",
+    "The WordPress site has no job inventory. Offers are on careers.allegro.eu.",
+    "https://jobs.allegro.eu/"
+  ),
+  "www.pracujwgp.pl": careerPolicy(
+    "enabled",
+    "Published jobs.feed.json DataFeed. Daily. Item URLs on skk.erecruiter.pl are stored and not fetched.",
+    "https://www.pracujwgp.pl/"
+  ),
+  "pracujwgp.pl": careerPolicy(
+    "enabled",
+    "Published jobs.feed.json DataFeed. Daily. Item URLs on skk.erecruiter.pl are stored and not fetched.",
+    "https://www.pracujwgp.pl/"
+  ),
+  "sii.pl": careerPolicy(
+    "limited",
+    "Sitemap and JSON-LD on /oferty-pracy/ pages. Allowed with limits. datePosted can be evergreen.",
+    "https://sii.pl/"
+  ),
+  "www.sii.pl": careerPolicy(
+    "limited",
+    "Sitemap and JSON-LD on /oferty-pracy/ pages. Allowed with limits. datePosted can be evergreen.",
+    "https://sii.pl/"
+  ),
+  "careers.zabkagroup.com": careerPolicy(
+    "limited",
+    "Sitemap and JSON-LD on job pages. Allowed with limits. About 118 roles, mostly retail and logistics.",
+    "https://careers.zabkagroup.com/"
+  ),
+  "bolt.eu": careerPolicy(
+    "limited",
+    "The positions listing and job HTML on bolt.eu are allowed with limits. The careers sitemap is slightly stale, so the listing is the source.",
+    "https://bolt.eu/en/careers/positions/"
+  ),
+  "www.bolt.eu": careerPolicy(
+    "limited",
+    "The positions listing and job HTML on bolt.eu are allowed with limits. The careers sitemap is slightly stale, so the listing is the source.",
+    "https://bolt.eu/en/careers/positions/"
+  ),
+  "career.comarch.com": careerPolicy(
+    "limited",
+    "Sitemap job-offer pages are HTML without JSON-LD. Allowed with limits. The visible total was not published.",
+    "https://career.comarch.com/"
+  ),
+  "careers.epam.com": careerPolicy(
+    "limited",
+    "Sitemap and JSON-LD on /en/vacancy/ are allowed with limits. The sitemap has thousands of URLs and the public listing showed about 225, so the sitemap count is not the live total.",
+    "https://careers.epam.com/"
+  ),
+  "kariera.wp.pl": careerPolicy(
+    "limited",
+    "The listing page is allowed with limits. Offer links point at skk.erecruiter.pl and are stored as link-outs. Those detail pages are not fetched.",
+    "https://kariera.wp.pl/oferty-pracy"
+  ),
+  "packhelp.com": careerPolicy(
+    "limited",
+    "The listing page is allowed with limits. PeopleForce detail hosts disallow crawlers, so those links stay link-outs.",
+    "https://packhelp.com/career/"
+  ),
+  "www.packhelp.com": careerPolicy(
+    "limited",
+    "The listing page is allowed with limits. PeopleForce detail hosts disallow crawlers, so those links stay link-outs.",
+    "https://packhelp.com/career/"
+  ),
+  "brand24.com": careerPolicy(
+    "limited",
+    "Own-domain WordPress pages under /careers/ are allowed with limits. brand24.peopleforce.io stays link-only.",
+    "https://brand24.com/careers/"
+  ),
+  "www.brand24.com": careerPolicy(
+    "limited",
+    "Own-domain WordPress pages under /careers/ are allowed with limits. brand24.peopleforce.io stays link-only.",
+    "https://brand24.com/careers/"
+  ),
+  "synerise.com": careerPolicy(
+    "limited",
+    "Partial. Job pages at /careers/{slug} have JSON-LD and may be fetched. The listing API /api/cms/job-postings is disallowed by robots.txt, so openings are discovered from web search.",
+    "https://www.synerise.com/careers"
+  ),
+  "www.synerise.com": careerPolicy(
+    "limited",
+    "Partial. Job pages at /careers/{slug} have JSON-LD and may be fetched. The listing API /api/cms/job-postings is disallowed by robots.txt, so openings are discovered from web search.",
+    "https://www.synerise.com/careers"
+  ),
 }
 
 export type CoverageEmployer = {
@@ -177,11 +350,11 @@ export const COVERAGE_EMPLOYERS: CoverageEmployer[] = [
   {
     employer: "Allegro",
     platform: "SuccessFactors",
-    boardId: "jobs.allegro.eu",
+    boardId: "careers.allegro.eu",
     policy: "limited",
-    reason: HOST_POLICIES["jobs.allegro.eu"].reason,
-    termsUrl: HOST_POLICIES["career55.sapsf.eu"].termsUrl,
-    href: "https://jobs.allegro.eu/",
+    reason: HOST_POLICIES["careers.allegro.eu"].reason,
+    termsUrl: HOST_POLICIES["careers.allegro.eu"].termsUrl,
+    href: "https://careers.allegro.eu/",
   },
   {
     employer: "SAP",
@@ -302,7 +475,128 @@ export const COVERAGE_EMPLOYERS: CoverageEmployer[] = [
     reason: PLATFORM_POLICIES.hibob.reason,
     termsUrl: PLATFORM_POLICIES.hibob.termsUrl,
   },
+  coverageHost("Grupa Pracuj", "www.pracujwgp.pl", "https://www.pracujwgp.pl/jobs.feed.json"),
+  coverageHost("Sii Polska", "sii.pl", "https://sii.pl/oferty-pracy"),
+  coverageHost("Żabka Group", "careers.zabkagroup.com", "https://careers.zabkagroup.com/"),
+  coverageHost("Bolt", "bolt.eu", "https://bolt.eu/en/careers/positions/"),
+  coverageHost("Comarch", "career.comarch.com", "https://career.comarch.com/"),
+  coverageHost("EPAM", "careers.epam.com", "https://careers.epam.com/"),
+  coverageHost("Wirtualna Polska", "kariera.wp.pl", "https://kariera.wp.pl/oferty-pracy"),
+  coverageHost("Packhelp", "packhelp.com", "https://packhelp.com/career/"),
+  coverageHost("Brand24", "brand24.com", "https://brand24.com/careers/"),
+  coverageHost("Synerise", "www.synerise.com", "https://www.synerise.com/careers"),
+  {
+    employer: "Callstack",
+    platform: "Recruitee",
+    boardId: "callstackpl",
+    policy: "enabled",
+    reason:
+      "Public offers API at callstackpl.recruitee.com. A token is required from 10 February 2027.",
+    termsUrl: "https://recruitee.com/terms",
+    href: "https://callstackpl.recruitee.com/",
+  },
+  {
+    employer: "Nokia",
+    platform: "Oracle Recruiting Cloud",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.oracle.reason,
+    termsUrl: PLATFORM_POLICIES.oracle.termsUrl,
+    href: "https://jobs.nokia.com/",
+  },
+  {
+    employer: "Dynatrace",
+    platform: "Dynatrace",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.dynatrace.reason,
+    termsUrl: PLATFORM_POLICIES.dynatrace.termsUrl,
+    href: "https://careers.dynatrace.com/",
+  },
+  {
+    employer: "Codility",
+    platform: "Codility",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.codility.reason,
+    termsUrl: PLATFORM_POLICIES.codility.termsUrl,
+    href: "https://codility.com/careers",
+  },
+  {
+    employer: "Oviva",
+    platform: "Oviva",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.oviva.reason,
+    termsUrl: PLATFORM_POLICIES.oviva.termsUrl,
+    href: "https://oviva.com/careers/",
+  },
+  {
+    employer: "Revolut",
+    platform: "Revolut",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.revolut.reason,
+    termsUrl: PLATFORM_POLICIES.revolut.termsUrl,
+    href: "https://revolut.com/careers/",
+  },
+  {
+    employer: "Future Processing",
+    platform: "Future Processing",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES["future-processing"].reason,
+    termsUrl: PLATFORM_POLICIES["future-processing"].termsUrl,
+    href: "https://kariera.future-processing.pl/oferty-pracy/",
+  },
+  {
+    employer: "Saleor",
+    platform: "Notion",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.notion.reason,
+    termsUrl: PLATFORM_POLICIES.notion.termsUrl,
+    href: "https://saleor.notion.site/open-positions",
+  },
+  {
+    employer: "Billtech",
+    platform: "Notion",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.notion.reason,
+    termsUrl: PLATFORM_POLICIES.notion.termsUrl,
+    href: "https://billtech.notion.site/",
+  },
+  {
+    employer: "JPMorganChase",
+    platform: "JPMorganChase",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.jpmorgan.reason,
+    termsUrl: PLATFORM_POLICIES.jpmorgan.termsUrl,
+    href: "https://careers.jpmorgan.com/",
+  },
+  {
+    employer: "PeopleForce",
+    platform: "PeopleForce",
+    policy: "link_only",
+    reason: PLATFORM_POLICIES.peopleforce.reason,
+    termsUrl: PLATFORM_POLICIES.peopleforce.termsUrl,
+  },
+  {
+    employer: "SmartRecruiters Posting API",
+    platform: "SmartRecruiters",
+    boardId: "smartrecruiters-api",
+    policy: "enabled",
+    reason: SMARTRECRUITERS_API_REASON,
+    termsUrl: "https://www.smartrecruiters.com/legal/terms-of-use/",
+    href: "https://developers.smartrecruiters.com/docs/posting-api",
+  },
 ]
+
+function coverageHost(employer: string, host: string, href: string): CoverageEmployer {
+  const policy = HOST_POLICIES[host]
+  return {
+    employer,
+    platform: policy.platform,
+    boardId: host,
+    policy: policy.state,
+    reason: policy.reason,
+    termsUrl: policy.termsUrl,
+    href,
+  }
+}
 
 function employer(name: string, platform: string, boardId: string, href: string): CoverageEmployer {
   return {
@@ -349,7 +643,29 @@ export function platformKeyForHost(hostname: string): string | null {
   if (hostMatches(host, "erecruiter.pl")) return "erecruiter"
   if (host === "jobs.jobvite.com" || hostMatches(host, "jobvite.com")) return "jobvite"
   if (host === "careers.hibob.com" || host.endsWith(".careers.hibob.com")) return "hibob"
+  if (hostMatches(host, "peopleforce.io")) return "peopleforce"
+  if (hostMatches(host, "dynatrace.com")) return "dynatrace"
+  if (hostMatches(host, "revolut.com")) return "revolut"
+  if (hostMatches(host, "oviva.com")) return "oviva"
+  if (host === "codility.com" || host.endsWith(".codility.com")) return "codility"
+  if (hostMatches(host, "future-processing.pl")) return "future-processing"
+  if (hostMatches(host, "notion.site") || hostMatches(host, "notion.so")) return "notion"
+  if (hostMatches(host, "jpmorgan.com") || hostMatches(host, "jpmorganchase.com")) return "jpmorgan"
   return null
+}
+
+/** Default on. SMARTRECRUITERS_POSTING_API=off, false, or 0 disables the Posting API. */
+export function smartRecruitersPostingApiEnabled(): boolean {
+  const raw = (process.env.SMARTRECRUITERS_POSTING_API ?? "on").trim().toLowerCase()
+  return raw !== "off" && raw !== "false" && raw !== "0"
+}
+
+export function coverageRows(): CoverageEmployer[] {
+  const apiOn = smartRecruitersPostingApiEnabled()
+  return COVERAGE_EMPLOYERS.map((row) => {
+    if (row.boardId !== "smartrecruiters-api") return row
+    return { ...row, policy: apiOn ? "enabled" : "link_only" }
+  })
 }
 
 export type FetchDecision = {
@@ -371,6 +687,23 @@ function pathAllowed(pathAndQuery: string, policy: SourcePolicy): boolean {
 
 export function decideFetch(url: URL): FetchDecision {
   const host = url.hostname.toLowerCase().replace(/\.$/, "")
+  if (host === "api.smartrecruiters.com") {
+    const enabled = smartRecruitersPostingApiEnabled()
+    if (url.pathname === "/robots.txt" || enabled) {
+      return {
+        allow: true,
+        state: enabled ? "enabled" : "link_only",
+        platform: "SmartRecruiters",
+        reason: SMARTRECRUITERS_API_REASON,
+      }
+    }
+    return {
+      allow: false,
+      state: "link_only",
+      platform: "SmartRecruiters",
+      reason: SMARTRECRUITERS_API_REASON,
+    }
+  }
   if (host === "skk.erecruiter.pl" || host === "form.erecruiter.pl") {
     const policy = {
       ...PLATFORM_POLICIES.erecruiter,

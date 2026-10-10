@@ -22,6 +22,7 @@ export type HttpClient = {
       accept?: string
       timeoutMs?: number
       headers?: Record<string, string>
+      encoding?: "utf8" | "base64"
     }
   ) => Promise<HttpResponse>
   post: (
@@ -99,9 +100,9 @@ function pinAgent(address: string): Agent {
   })
 }
 
-async function readCapped(response: Response, maxBytes: number): Promise<string> {
+async function readCappedBytes(response: Response, maxBytes: number): Promise<Uint8Array> {
   const reader = response.body?.getReader()
-  if (!reader) return ""
+  if (!reader) return new Uint8Array()
   const chunks: Uint8Array[] = []
   let total = 0
   while (true) {
@@ -121,7 +122,17 @@ async function readCapped(response: Response, maxBytes: number): Promise<string>
     merged.set(chunk, offset)
     offset += chunk.byteLength
   }
-  return new TextDecoder("utf-8", { fatal: false }).decode(merged)
+  return merged
+}
+
+async function readCapped(
+  response: Response,
+  maxBytes: number,
+  encoding?: "utf8" | "base64"
+): Promise<string> {
+  const bytes = await readCappedBytes(response, maxBytes)
+  if (encoding === "base64") return Buffer.from(bytes).toString("base64")
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes)
 }
 
 function responseHeaders(headers: Headers): Record<string, string> {
@@ -141,6 +152,7 @@ export async function safeFetch(
     accept?: string
     timeoutMs?: number
     headers?: Record<string, string>
+    encoding?: "utf8" | "base64"
     fetchImpl?: FetchLike
     lookupImpl?: LookupFn
     redirectCount?: number
@@ -201,7 +213,7 @@ export async function safeFetch(
               ? retryAfter * 1000
               : 400 * 2 ** attempt
           if (attempt === MAX_RETRIES) {
-            const body = await readCapped(response, Math.min(maxBytes, 20_000))
+            const body = await readCapped(response, Math.min(maxBytes, 20_000), options?.encoding)
             return {
               url: url.toString(),
               status: response.status,
@@ -213,7 +225,7 @@ export async function safeFetch(
           await sleep(wait)
           continue
         }
-        const body = await readCapped(response, maxBytes)
+        const body = await readCapped(response, maxBytes, options?.encoding)
         return {
           url: response.url || url.toString(),
           status: response.status,

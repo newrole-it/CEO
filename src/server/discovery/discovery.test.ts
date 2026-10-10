@@ -43,7 +43,17 @@ describe("discovery", () => {
     ).toBe(true)
     expect(
       boards.some(
-        (board) => board.provider === "SUCCESSFACTORS" && board.boardId === "jobs.allegro.eu"
+        (board) => board.provider === "SUCCESSFACTORS" && board.boardId === "careers.allegro.eu"
+      )
+    ).toBe(true)
+    expect(boards.some((board) => board.boardId === "jobs.allegro.eu")).toBe(false)
+    expect(
+      boards.some((board) => board.provider === "RECRUITEE" && board.boardId === "callstackpl")
+    ).toBe(true)
+    expect(boards.find((board) => board.boardId === "careers.epam.com")?.openJobsAtCheck).toBe(225)
+    expect(
+      boards.some(
+        (board) => board.provider === "CAREER_SITE" && board.boardId === "www.pracujwgp.pl"
       )
     ).toBe(true)
     expect(workdayOutboundLinks().map((link) => link.href)).toEqual(

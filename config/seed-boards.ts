@@ -62,6 +62,27 @@ function boardIdOf(company: RawCompany): string {
   return company.slug
 }
 
+function careerBoard(
+  boardId: string,
+  companyName: string,
+  apiUrl: string,
+  openJobsAtCheck: number,
+  priority: number,
+  plLocatedJobs = 0
+): SeedBoard {
+  return {
+    provider: "CAREER_SITE",
+    boardId,
+    companyName,
+    careersUrl: apiUrl,
+    apiUrl,
+    openJobsAtCheck,
+    plLocatedJobs,
+    identityConfirmed: true,
+    priority,
+  }
+}
+
 function fromCatalog(companies: RawCompany[]): SeedBoard[] {
   const boards: SeedBoard[] = []
   for (const company of companies) {
@@ -97,6 +118,11 @@ export function loadSeedBoards(): SeedBoard[] {
     seen.add(key)
     boards.push(board)
   }
+  for (const board of boards) {
+    if (board.provider === "RECRUITEE" && board.boardId === "callstackpl") {
+      board.priority = Math.max(board.priority, 820)
+    }
+  }
   boards.push(
     {
       provider: "SUCCESSFACTORS",
@@ -111,15 +137,43 @@ export function loadSeedBoards(): SeedBoard[] {
     },
     {
       provider: "SUCCESSFACTORS",
-      boardId: "jobs.allegro.eu",
+      boardId: "careers.allegro.eu",
       companyName: "Allegro",
-      careersUrl: "https://jobs.allegro.eu/",
-      apiUrl: "https://jobs.allegro.eu/sitemap_index.xml",
-      openJobsAtCheck: 0,
+      careersUrl: "https://careers.allegro.eu/",
+      apiUrl: "https://careers.allegro.eu/sitemap.xml",
+      openJobsAtCheck: 288,
       plLocatedJobs: 0,
       identityConfirmed: true,
-      priority: 200,
-    }
+      priority: 1700,
+    },
+    careerBoard(
+      "www.pracujwgp.pl",
+      "Grupa Pracuj",
+      "https://www.pracujwgp.pl/jobs.feed.json",
+      9,
+      860
+    ),
+    careerBoard("sii.pl", "Sii Polska", "https://sii.pl/sitemap.xml", 251, 1100, 251),
+    careerBoard(
+      "careers.zabkagroup.com",
+      "Żabka Group",
+      "https://careers.zabkagroup.com/sitemap_index.xml",
+      118,
+      220
+    ),
+    careerBoard("bolt.eu", "Bolt", "https://bolt.eu/en/careers/positions/", 197, 240),
+    careerBoard(
+      "career.comarch.com",
+      "Comarch",
+      "https://career.comarch.com/sitemap.xml",
+      474,
+      230
+    ),
+    careerBoard("careers.epam.com", "EPAM", "https://careers.epam.com/sitemap.xml.gz", 225, 840),
+    careerBoard("kariera.wp.pl", "Wirtualna Polska", "https://kariera.wp.pl/oferty-pracy", 27, 210),
+    careerBoard("packhelp.com", "Packhelp", "https://packhelp.com/career/", 6, 200),
+    careerBoard("brand24.com", "Brand24", "https://brand24.com/careers/", 1, 190),
+    careerBoard("www.synerise.com", "Synerise", "https://www.synerise.com/careers", 12, 180)
   )
   return boards.sort(
     (a, b) => b.priority - a.priority || a.companyName.localeCompare(b.companyName)

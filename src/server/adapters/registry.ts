@@ -51,6 +51,7 @@ export const adapters: Adapter[] = [
   { sourceType: "BAMBOOHR", status: "live", list: listBamboo, hydrate: hydrateBamboo },
   { sourceType: "SUCCESSFACTORS", status: "live", list: listCareerSite, hydrate: hydrateCareer },
   { sourceType: "WORKDAY", status: "live", list: listCareerSite, hydrate: hydrateCareer },
+  { sourceType: "CAREER_SITE", status: "live", list: listCareerSite, hydrate: hydrateCareer },
 ]
 
 export function adapterFor(provider: LiveAts): Adapter {

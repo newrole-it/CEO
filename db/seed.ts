@@ -97,6 +97,12 @@ const SOURCES = [
     sourceUrl: "https://www.workday.com/en-us/legal/site-terms.html",
     termsUrl: "https://www.workday.com/en-us/legal/site-terms.html",
   },
+  {
+    sourceName: "career_site",
+    sourceType: "CAREER_SITE",
+    sourceUrl: "https://www.pracujwgp.pl/jobs.feed.json",
+    termsUrl: "https://www.pracujwgp.pl/",
+  },
 ]
 
 async function main() {

@@ -1077,6 +1077,26 @@
    "has_eu_remote_eng_leadership_role_at_check": false,
    "has_pl_or_remote_eng_leadership_role_at_check": false,
    "sample_matching_roles": []
+  },
+  {
+   "name": "Callstack",
+   "ats": "recruitee",
+   "slug": "callstackpl",
+   "board_url": "https://callstackpl.recruitee.com/",
+   "api_url": "https://callstackpl.recruitee.com/api/offers/",
+   "hq_or_relevant_locations": "Wrocław",
+   "ats_evidence": "Recruitee widget career.recruitee.com/api/c/7305 exposes careers_url callstackpl.recruitee.com and company_name Callstack",
+   "verified": true,
+   "verified_at": "2026-10-10T17:15:00Z",
+   "open_jobs_count_at_check": 2,
+   "identity_confirmed": true,
+   "notes": "Token deadline 2027-02-10. Offers at check: IT Security Officer (remote), Head of Customer Success (Wrocław).",
+   "pl_located_jobs_at_check": 1,
+   "remote_flagged_jobs_at_check": 1,
+   "has_pl_eng_leadership_role_at_check": false,
+   "has_eu_remote_eng_leadership_role_at_check": false,
+   "has_pl_or_remote_eng_leadership_role_at_check": false,
+   "sample_matching_roles": ["Head of Customer Success"]
   }
  ],
  "flagged_not_used": [
@@ -1514,7 +1534,7 @@
    "name": "Allegro",
    "entry": "smartrecruiters/Allegro",
    "change": "set verified=false",
-   "reason": "Only SR posting announces switch to SAP (SuccessFactors) and SR decommissioning; jobs.allegro.eu links career55.sapsf.eu (allegrospz). No verified public feed -> unsupported."
+   "reason": "SmartRecruiters stays verified=false. Jobs moved to the Career Site Builder at careers.allegro.eu (288 jobs, allowed with limits). career55.sapsf.eu stays link-only (robots Disallow: /)."
   },
   {
    "name": "Brainly",
@@ -1527,7 +1547,7 @@
   {
    "name": "Allegro",
    "found": "SAP SuccessFactors career site career55.sapsf.eu?career_company=allegrospz (linked from jobs.allegro.eu)",
-   "status": "UNSUPPORTED (no verified public feed); use web search / JSON-LD on jobs.allegro.eu job pages (UNVERIFIED)"
+   "status": "SUPPORTED via careers.allegro.eu (SF Career Site Builder, 288 jobs, allowed with limits). career55.sapsf.eu stays link-only."
   },
   {
    "name": "Revolut",
@@ -1537,52 +1557,52 @@
   {
    "name": "Synerise",
    "found": "own careers pages synerise.com/careers/<role> with schema.org JobPosting JSON-LD; applications via form.erecruiter.pl",
-   "status": "PROPRIETARY + eRecruiter forms; JSON-LD fallback works on job pages"
+   "status": "PARTIAL. Job pages allowed (JSON-LD). Listing API /api/cms/job-postings is robots-disallowed. Discover via web search."
   },
   {
    "name": "Codility",
    "found": "codility.careers.hibob.com (HiBob careers SPA; /api/job-ad -> 401)",
-   "status": "UNSUPPORTED (HiBob, no public feed found)"
+   "status": "LINK-ONLY. WP careers endpoint currently errors. HiBob host is a bot wall. Re-check later."
   },
   {
    "name": "Packhelp",
    "found": "packhelp.peopleforce.io/careers (PeopleForce; server-rendered HTML with /careers/v/<id>-<slug> links, no JSON-LD)",
-   "status": "UNSUPPORTED feed; HTML list only (UNVERIFIED terms)"
+   "status": "Listing on packhelp.com/career/ allowed with limits. packhelp.peopleforce.io robots Disallow: / so details stay link-out."
   },
   {
    "name": "Wirtualna Polska",
    "found": "kariera.wp.pl/oferty-pracy -> erecruiter.pl RecruitmentForm links",
-   "status": "eRecruiter (no public feed)"
+   "status": "Listing kariera.wp.pl/oferty-pracy allowed with limits. skk.erecruiter.pl details stay link-out."
   },
   {
    "name": "Grupa Pracuj",
    "found": "grupapracuj.pl/kariera -> skk.erecruiter.pl/Offer.aspx links",
-   "status": "eRecruiter (no public feed)"
+   "status": "SUPPORTED. Published https://www.pracujwgp.pl/jobs.feed.json (allowed, daily). skk item URLs are not fetched."
   },
   {
    "name": "Żabka Group",
    "found": "careers.zabkagroup.com ('Elevator' markers in HTML; eRecruiter docs list Żabka as Career Sites Builder client)",
-   "status": "UNVERIFIED which product; no public feed"
+   "status": "SUPPORTED with limits. careers.zabkagroup.com sitemap plus JSON-LD. About 118 jobs."
   },
   {
    "name": "Sii Polska",
    "found": "own job search sii.pl/oferty-pracy",
-   "status": "PROPRIETARY"
+   "status": "SUPPORTED with limits. sii.pl sitemap plus JSON-LD. 251 jobs. datePosted can be evergreen."
   },
   {
    "name": "Comarch",
    "found": "own SPA career.comarch.com",
-   "status": "PROPRIETARY"
+   "status": "SUPPORTED with limits. career.comarch.com sitemap, HTML titles. 474 sitemap URLs. Visible total unverified."
   },
   {
    "name": "Brand24",
    "found": "WordPress pages brand24.com/careers/<role>",
-   "status": "PROPRIETARY (HTML)"
+   "status": "SUPPORTED with limits. brand24.com/careers/{slug}/ own-domain HTML. PeopleForce host stays link-only."
   },
   {
    "name": "Future Processing",
    "found": "WordPress kariera.future-processing.pl",
-   "status": "PROPRIETARY (HTML); ATS not visible"
+   "status": "LINK-ONLY / UNRESOLVED. Listing broken, 0 job URLs."
   },
   {
    "name": "Booksy",
@@ -1597,22 +1617,22 @@
   {
    "name": "Dynatrace (Gdańsk)",
    "found": "careers page is JS-rendered; no ATS host in static HTML",
-   "status": "UNRESOLVED"
+   "status": "LINK-ONLY. CSB is reachable (109 jobs) but Dynatrace terms ban crawlers."
   },
   {
    "name": "Nokia (Wrocław/Kraków)",
    "found": "jobs.nokia.com -> Oracle Recruiting Cloud (oraclecloud.com, site CX_1)",
-   "status": "UNSUPPORTED (Oracle HCM; no verified public feed)"
+   "status": "LINK-ONLY. Sitemap /sitemaps/sitemapIndex exists (624 vs 623 visible). Oracle terms ban robots."
   },
   {
    "name": "EPAM",
    "found": "careers.epam.com own site (SuccessFactors marker)",
-   "status": "PROPRIETARY"
+   "status": "SUPPORTED with limits. Sitemap JSON-LD. Public listing showed about 225 jobs, so 4298 sitemap URLs are not the live total."
   },
   {
    "name": "Bolt",
    "found": "bolt.eu/en/careers/positions own site (careers-v3)",
-   "status": "PROPRIETARY"
+   "status": "SUPPORTED with limits. bolt.eu/en/careers/positions/ listing (197). Sitemap is slightly stale."
   },
   {
    "name": "Grid Dynamics",
@@ -1622,12 +1642,12 @@
   {
    "name": "Callstack",
    "found": "callstack.com/careers embeds Recruitee widget (jobs-widget.recruiteecdn.com) but tenant slug not exposed; callstack.recruitee.com has 0 offers",
-   "status": "UNRESOLVED"
+   "status": "SUPPORTED. Recruitee slug callstackpl, 2 offers. Token deadline 2027-02-10."
   },
   {
    "name": "Saleor / Billtech",
    "found": "Notion pages (saleor.notion.site/open-positions, billtech.notion.site)",
-   "status": "UNSUPPORTED (Notion)"
+   "status": "LINK-ONLY. Notion shells."
   },
   {
    "name": "UXPin / Railwaymen",

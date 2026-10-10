@@ -155,3 +155,9 @@ See §1. Additional evidence:
 4. **Workday cxs:** undocumented, not robots-disallowed, and possibly arguable as a "Workday API". The sitemap cap of 100 is observed, not documented.
 5. **Oracle REST "internal use only"** and Taleo RSS weren't explored further, by design.
 6. **Coverage gaps:** no PL employer found on Taleo, and the Taleo example employers weren't identified. HiBob couldn't be inspected because of the bot wall. EUR-Lex, curia and BAILII blocked direct fetches, so the CJEU wording comes from search-indexed copies and AC&R.
+
+## Corrections 2026-10-10 (from link-only-alternatives.md)
+- **Allegro:** `careers.allegro.eu` is an SF Career Site Builder front end for the same company (`allegrospz`). Robots allows jobs, the sitemap lists all 288 visible jobs, and pages carry microdata. Allegro moves from link-only to **allowed with limits** (CSB rule). The legacy `career55.sapsf.eu` host stays link-only.
+- **Oracle CE sitemaps exist:** a hidden header link leads to `{site}/sitemaps/sitemapIndex` → `jobpostings` (Nokia: 624 URLs vs 623 visible), as Oracle's "Configure Sitemap for Search Engine Indexing" doc describes. The verdict stays link-only because of the Oracle ToU.
+- **SmartRecruiters:** `api.smartrecruiters.com/robots.txt` disallows `*` (only LinkedInBot is allowed on `/v1/companies/`). This needs a policy decision (UNCERTAIN).
+- **PeopleForce** tenants (`*.peopleforce.io`) have robots `Disallow: /` for `*`, so they are link-only. Use the employer's own listing page instead.

@@ -1,12 +1,12 @@
 import { resolver } from "@blitzjs/rpc"
-import { COVERAGE_EMPLOYERS } from "config/source-policies"
+import { coverageRows } from "config/source-policies"
 import db from "db"
 
 export default resolver.pipe(resolver.authorize(), async () => {
   const pages = await db.careerPage.findMany({
     include: { _count: { select: { jobs: true } } },
   })
-  return COVERAGE_EMPLOYERS.map((row) => {
+  return coverageRows().map((row) => {
     const page = row.boardId
       ? pages.find((item) => item.providerBoardId === row.boardId)
       : undefined

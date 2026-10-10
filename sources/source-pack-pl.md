@@ -76,6 +76,8 @@ Normalized schema: title, location, remote, department, employment_type, posted_
 - Jobvite: key + secret + companyId needed. No PL tenant found.
 - HiBob (Codility), PeopleForce (Packhelp), SAP SuccessFactors (Allegro, `career55.sapsf.eu`), Oracle Recruiting (Nokia): no public feed verified. Treat them as search + JSON-LD sources.
 
+**Corrected 2026-10-10 (link-only-alternatives.md).** PeopleForce tenants (`*.peopleforce.io`) send `User-agent: *` / `Disallow: /`. They are link-only. Use the employer's own listing page. Allegro's jobs are on `careers.allegro.eu` (Career Site Builder, 288 jobs, allowed with limits). `career55.sapsf.eu` stays link-only. Nokia's Oracle sitemap exists at `/sitemaps/sitemapIndex` and stays link-only because of the Oracle terms. Callstack is Recruitee `callstackpl`. Grupa Pracuj publishes `https://www.pracujwgp.pl/jobs.feed.json`.
+
 ## 3. Seed list (`seed-companies-pl.json`)
 - 52 verified boards (HTTP 200, parseable, ≥1 open job, identity checked), 13 feed types. By `ats`: traffit 17, recruitee 7, teamtailor 6, workday 6, lever 3, lever_eu 2, smartrecruiters 3, ashby 2, greenhouse 2, breezy 1, personio 1, workable 1, bamboohr 1.
 - Measured: 560 Poland-located jobs across the 52. PL engineering-leadership title hits at check (7 companies): Boldare, STX Next, Spyrosoft, InPost, Billennium, ICEYE, Visa. 0 EU-remote leadership hits.
@@ -92,3 +94,7 @@ Normalized schema: title, location, remote, department, employment_type, posted_
 - `site:traffit.com ("Engineering Manager" OR "Kierownik" OR "Head of")`
 - `site:breezy.hr "Engineering Manager" Poland`, `site:jobs.eu.lever.co "Engineering Manager"`, `site:job-boards.eu.greenhouse.io "Poland"`
 - `site:myworkdayjobs.com "Engineering Manager" Poland` (then call cxs sparingly or just link out)
+
+## 5. Channel check, 2026-10-10
+
+See `link-only-alternatives.md`. Seeded channels: Allegro `careers.allegro.eu` (allowed with limits, 288 jobs), Callstack Recruitee `callstackpl` (allowed), Grupa Pracuj `jobs.feed.json` (allowed), Sii, Żabka, Bolt, Comarch, EPAM, Brand24 (allowed with limits), Wirtualna Polska and Packhelp (listing only, details link out), Synerise (search plus JSON-LD; `/api/` disallowed). EPAM `openJobsAtCheck` is 225, not the sitemap's 4,298. Nokia, Dynatrace, Codility, Oviva, Revolut, Future Processing, Saleor, Billtech, and JPMorganChase stay link-only. SmartRecruiters Posting API stays on via `SMARTRECRUITERS_POSTING_API` (default on) until that robots decision is made.

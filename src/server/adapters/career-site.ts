@@ -1,18 +1,25 @@
+import { gunzipSync } from "zlib"
 import db from "db"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { noteHostInterval } from "src/server/security/safe-fetch"
 import { UnsafeUrlError } from "src/server/security/url-safety"
 import type { ListedJob, SourceType } from "src/shared/schemas"
 import { takeDetailSlot } from "src/server/crawler/budget"
+import { excerpt } from "src/server/crawler/hygiene"
+import { feedUrlFromLlms, parseJobFeed } from "src/server/crawler/job-feed"
+import { extractListingLinks, htmlJobTitle } from "src/server/crawler/listing"
 import { emptyRobots, parseRobots, robotsAllows, type RobotsRules } from "src/server/crawler/robots"
 import { parseSitemap, type SitemapEntry } from "src/server/crawler/sitemap"
 import { pairContractVariants } from "src/server/crawler/variants"
+import { htmlToText } from "src/server/jobs/text"
 import { parseJsonLdJobs } from "./jsonld"
 import { buildListedJob } from "./parse"
 import { parseSuccessFactorsJob } from "./successfactors"
 import type { BoardList } from "./types"
 
-type Platform = "successfactors" | "workday"
+type Platform = "successfactors" | "workday" | "career"
+type DetailKind = "microdata" | "jsonld" | "html" | "none"
+type CareerMode = "sitemap" | "feed" | "listing" | "search"
 
 type CareerTarget = {
   platform: Platform
@@ -20,27 +27,199 @@ type CareerTarget = {
   companyName: string
   siteUrl: string
   host: string
+  boardId: string
   sitemapUrl?: string
   blockedHost?: string
   cxs?: { tenant: string; cluster: string; site: string }
+  mode: CareerMode
+  feedUrl?: string
+  listingUrl?: string
+  jobPath: (pathname: string) => boolean
+  detail: DetailKind
+  discoverFeed: boolean
+  rankPlaces: boolean
+  countCaution?: string
 }
 
-const KNOWN: Record<string, Omit<CareerTarget, "provider">> = {
+const PLACES = [
+  "poland",
+  "warsaw",
+  "warszawa",
+  "krakow",
+  "kraków",
+  "wroclaw",
+  "wrocław",
+  "gdansk",
+  "gdańsk",
+  "poznan",
+  "poznań",
+  "lodz",
+  "łódź",
+  "remote",
+  "europe",
+]
+
+function pathIncludes(fragment: string): (pathname: string) => boolean {
+  return (pathname) => pathname.toLowerCase().includes(fragment.toLowerCase())
+}
+
+function pathMatches(pattern: RegExp): (pathname: string) => boolean {
+  return (pathname) => pattern.test(pathname)
+}
+
+const KNOWN: Record<string, Omit<CareerTarget, "provider" | "boardId">> = {
   "jobs.gft.com": {
     platform: "successfactors",
     companyName: "GFT",
     siteUrl: "https://jobs.gft.com/",
     host: "jobs.gft.com",
     sitemapUrl: "https://jobs.gft.com/sitemap.xml",
+    mode: "sitemap",
+    jobPath: pathIncludes("/job/"),
+    detail: "microdata",
+    discoverFeed: false,
+    rankPlaces: false,
   },
-  "jobs.allegro.eu": {
+  "careers.allegro.eu": {
     platform: "successfactors",
     companyName: "Allegro",
-    siteUrl: "https://jobs.allegro.eu/",
-    host: "jobs.allegro.eu",
-    sitemapUrl: "https://jobs.allegro.eu/sitemap_index.xml",
+    siteUrl: "https://careers.allegro.eu/",
+    host: "careers.allegro.eu",
+    sitemapUrl: "https://careers.allegro.eu/sitemap.xml",
     blockedHost: "career55.sapsf.eu",
+    mode: "sitemap",
+    jobPath: pathIncludes("/job/"),
+    detail: "microdata",
+    discoverFeed: false,
+    rankPlaces: true,
   },
+  "www.pracujwgp.pl": {
+    platform: "career",
+    companyName: "Grupa Pracuj",
+    siteUrl: "https://www.pracujwgp.pl/",
+    host: "www.pracujwgp.pl",
+    mode: "feed",
+    feedUrl: "https://www.pracujwgp.pl/jobs.feed.json",
+    jobPath: () => false,
+    detail: "none",
+    discoverFeed: true,
+    rankPlaces: false,
+  },
+  "sii.pl": {
+    platform: "career",
+    companyName: "Sii Polska",
+    siteUrl: "https://sii.pl/",
+    host: "sii.pl",
+    sitemapUrl: "https://sii.pl/sitemap.xml",
+    mode: "sitemap",
+    jobPath: pathIncludes("/oferty-pracy/id/"),
+    detail: "jsonld",
+    discoverFeed: true,
+    rankPlaces: false,
+  },
+  "careers.zabkagroup.com": {
+    platform: "career",
+    companyName: "Żabka Group",
+    siteUrl: "https://careers.zabkagroup.com/",
+    host: "careers.zabkagroup.com",
+    sitemapUrl: "https://careers.zabkagroup.com/sitemap_index.xml",
+    mode: "sitemap",
+    jobPath: pathMatches(/\/(?:oferta-pracy|job-offer)\/[^/]+/i),
+    detail: "jsonld",
+    discoverFeed: true,
+    rankPlaces: false,
+  },
+  "bolt.eu": {
+    platform: "career",
+    companyName: "Bolt",
+    siteUrl: "https://bolt.eu/en/careers/positions/",
+    host: "bolt.eu",
+    listingUrl: "https://bolt.eu/en/careers/positions/",
+    mode: "listing",
+    jobPath: pathMatches(/\/careers\/positions\/[0-9a-f-]{8,}/i),
+    detail: "html",
+    discoverFeed: false,
+    rankPlaces: false,
+  },
+  "career.comarch.com": {
+    platform: "career",
+    companyName: "Comarch",
+    siteUrl: "https://career.comarch.com/",
+    host: "career.comarch.com",
+    sitemapUrl: "https://career.comarch.com/sitemap.xml",
+    mode: "sitemap",
+    jobPath: pathMatches(/\/job-offers\/[^/]+/i),
+    detail: "html",
+    discoverFeed: true,
+    rankPlaces: false,
+  },
+  "careers.epam.com": {
+    platform: "career",
+    companyName: "EPAM",
+    siteUrl: "https://careers.epam.com/",
+    host: "careers.epam.com",
+    sitemapUrl: "https://careers.epam.com/sitemap.xml.gz",
+    mode: "sitemap",
+    jobPath: pathIncludes("/vacancy/"),
+    detail: "jsonld",
+    discoverFeed: true,
+    rankPlaces: true,
+    countCaution:
+      "The public listing showed about 225 jobs, so this sitemap count is not the live total. datePosted values were uniform, so freshness is uncertain.",
+  },
+  "kariera.wp.pl": {
+    platform: "career",
+    companyName: "Wirtualna Polska",
+    siteUrl: "https://kariera.wp.pl/oferty-pracy",
+    host: "kariera.wp.pl",
+    listingUrl: "https://kariera.wp.pl/oferty-pracy",
+    mode: "listing",
+    jobPath: () => false,
+    detail: "none",
+    discoverFeed: false,
+    rankPlaces: false,
+  },
+  "packhelp.com": {
+    platform: "career",
+    companyName: "Packhelp",
+    siteUrl: "https://packhelp.com/career/",
+    host: "packhelp.com",
+    listingUrl: "https://packhelp.com/career/",
+    mode: "listing",
+    jobPath: () => false,
+    detail: "none",
+    discoverFeed: false,
+    rankPlaces: false,
+  },
+  "brand24.com": {
+    platform: "career",
+    companyName: "Brand24",
+    siteUrl: "https://brand24.com/careers/",
+    host: "brand24.com",
+    sitemapUrl: "https://brand24.com/sitemap.xml",
+    listingUrl: "https://brand24.com/careers/",
+    mode: "sitemap",
+    jobPath: pathMatches(/\/careers\/[^/]+\/?$/i),
+    detail: "html",
+    discoverFeed: true,
+    rankPlaces: false,
+  },
+  "www.synerise.com": {
+    platform: "career",
+    companyName: "Synerise",
+    siteUrl: "https://www.synerise.com/careers",
+    host: "www.synerise.com",
+    listingUrl: "https://www.synerise.com/careers",
+    mode: "search",
+    jobPath: pathMatches(/\/careers\/[^/]+\/?$/i),
+    detail: "jsonld",
+    discoverFeed: false,
+    rankPlaces: false,
+  },
+}
+
+function sameSite(left: string, right: string): boolean {
+  return left.toLowerCase().replace(/^www\./, "") === right.toLowerCase().replace(/^www\./, "")
 }
 
 function workdayTarget(boardId: string, companyName?: string): CareerTarget | null {
@@ -56,14 +235,26 @@ function workdayTarget(boardId: string, companyName?: string): CareerTarget | nu
     companyName: companyName || tenant,
     siteUrl: `https://${host}/${site}`,
     host,
+    boardId,
     cxs: { tenant, cluster, site },
+    mode: "sitemap",
+    jobPath: pathIncludes("/job/"),
+    detail: "jsonld",
+    discoverFeed: false,
+    rankPlaces: false,
   }
 }
 
 function targetFor(boardId: string, companyName?: string): CareerTarget | null {
   const known = KNOWN[boardId.toLowerCase()]
   if (known) {
-    return { ...known, provider: "SUCCESSFACTORS", companyName: companyName || known.companyName }
+    const provider: SourceType = known.platform === "career" ? "CAREER_SITE" : "SUCCESSFACTORS"
+    return {
+      ...known,
+      provider,
+      boardId,
+      companyName: companyName || known.companyName,
+    }
   }
   return workdayTarget(boardId, companyName)
 }
@@ -74,9 +265,10 @@ function detailLimit(): number {
   return Math.min(200, parsed)
 }
 
-function rankUrl(loc: string): number {
+function rankUrl(loc: string, target: CareerTarget): number {
   const lower = loc.toLowerCase()
   if (lower.includes("principal-solution-architect")) return 0
+  if (target.rankPlaces && PLACES.some((place) => lower.includes(place))) return 1
   if (lower.includes("/poland/")) return 1
   if (lower.includes("/job/")) return 2
   return 3
@@ -116,6 +308,27 @@ async function readRobots(
   }
 }
 
+async function fetchText(
+  url: string,
+  http: HttpClient,
+  accept: string,
+  maxBytes: number
+): Promise<{ status: number; body: string; url: string }> {
+  const gzip = /\.gz(\?|$)/i.test(url)
+  const response = await http.get(url, {
+    accept,
+    maxBytes,
+    encoding: gzip ? "base64" : undefined,
+  })
+  if (!gzip || response.status >= 400) return response
+  const bytes = Buffer.from(response.body, "base64")
+  const body =
+    bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b
+      ? gunzipSync(bytes).toString("utf8")
+      : bytes.toString("utf8")
+  return { ...response, body }
+}
+
 async function collectSitemaps(
   start: string,
   http: HttpClient,
@@ -130,10 +343,12 @@ async function collectSitemaps(
     return []
   }
   if (!robotsAllows(rules, path)) return []
-  const response = await http.get(start, {
-    accept: "application/xml, text/xml",
-    maxBytes: 5_000_000,
-  })
+  const response = await fetchText(
+    start,
+    http,
+    "application/xml, text/xml, application/gzip",
+    8_000_000
+  )
   if (response.status >= 400) return []
   const parsed = parseSitemap(response.body)
   const urls = [...parsed.urls]
@@ -143,16 +358,40 @@ async function collectSitemaps(
   return urls
 }
 
-function jobUrls(entries: SitemapEntry[]): SitemapEntry[] {
+function jobUrls(entries: SitemapEntry[], target: CareerTarget): SitemapEntry[] {
   const seen = new Set<string>()
   const jobs: SitemapEntry[] = []
   for (const entry of entries) {
-    if (!/\/job\//i.test(entry.loc)) continue
+    let pathname = ""
+    try {
+      pathname = new URL(entry.loc).pathname
+    } catch {
+      continue
+    }
+    if (!target.jobPath(pathname)) continue
     if (seen.has(entry.loc)) continue
     seen.add(entry.loc)
     jobs.push(entry)
   }
-  return jobs.sort((a, b) => rankUrl(a.loc) - rankUrl(b.loc) || a.loc.localeCompare(b.loc))
+  return jobs.sort(
+    (a, b) => rankUrl(a.loc, target) - rankUrl(b.loc, target) || a.loc.localeCompare(b.loc)
+  )
+}
+
+function htmlJob(html: string, pageUrl: string, target: CareerTarget): ListedJob | null {
+  const title = htmlJobTitle(html)
+  if (!title) return null
+  const meta = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1]
+  const description = excerpt(htmlToText(meta || ""))
+  return buildListedJob({
+    title,
+    companyName: target.companyName,
+    descriptionText: description || undefined,
+    originalUrl: pageUrl,
+    sourceType: target.provider,
+    sourceBoardId: target.boardId,
+    needsHydration: false,
+  })
 }
 
 async function fetchJobPage(
@@ -167,9 +406,10 @@ async function fetchJobPage(
   } catch {
     return null
   }
-  if (url.hostname.toLowerCase() !== target.host) return null
+  if (!sameSite(url.hostname, target.host)) return null
   if (url.searchParams.get("loginFlowRequired") === "true") return null
   if (!robotsAllows(rules, url.pathname)) return null
+  if (target.detail === "none") return null
   const allowed = await takeDetailSlot(target.host)
   if (!allowed) return null
   const headers: Record<string, string> = {}
@@ -180,22 +420,195 @@ async function fetchJobPage(
     headers,
   })
   if (response.status === 304 || response.status >= 400) return null
-  if (target.platform === "successfactors") {
-    return parseSuccessFactorsJob(
-      response.body,
-      response.url || url.toString(),
-      target.companyName,
-      target.siteUrl && target.host
-    )
+  const pageUrl = response.url || url.toString()
+  const html = response.body
+  if (target.detail === "microdata" || target.platform === "successfactors") {
+    return parseSuccessFactorsJob(html, pageUrl, target.companyName, target.boardId)
   }
-  const found = parseJsonLdJobs(response.body, response.url || url.toString(), target.companyName, {
+  if (target.detail === "html") return htmlJob(html, pageUrl, target)
+  const found = parseJsonLdJobs(html, pageUrl, target.companyName, {
     provider: "career",
-    sourceType: "WORKDAY",
-    boardId: target.cxs
-      ? `${target.cxs.tenant}/wd${target.cxs.cluster}/${target.cxs.site}`
-      : target.host,
+    sourceType: target.provider,
+    boardId: target.boardId,
   })
-  return found[0] ?? null
+  return found[0] ?? htmlJob(html, pageUrl, target)
+}
+
+function isLinkOutHost(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  return host.endsWith("erecruiter.pl") || host.endsWith("peopleforce.io")
+}
+
+function listedFromTitle(title: string, url: string, target: CareerTarget): ListedJob | null {
+  return buildListedJob({
+    title,
+    companyName: target.companyName,
+    originalUrl: url,
+    sourceType: target.provider,
+    sourceBoardId: target.boardId,
+    needsHydration: false,
+  })
+}
+
+async function readListing(
+  target: CareerTarget,
+  http: HttpClient,
+  rules: RobotsRules
+): Promise<BoardList> {
+  const listingUrl = target.listingUrl || target.siteUrl
+  let path = "/"
+  try {
+    path = new URL(listingUrl).pathname
+  } catch {
+    return {
+      jobs: [],
+      proven: false,
+      companyName: target.companyName,
+      note: "Listing URL is invalid.",
+    }
+  }
+  if (!robotsAllows(rules, path)) {
+    return {
+      jobs: [],
+      proven: false,
+      companyName: target.companyName,
+      note: "The listing path is disallowed by robots.txt.",
+    }
+  }
+  const response = await http.get(listingUrl, { accept: "text/html", maxBytes: 1_500_000 })
+  if (response.status >= 400) {
+    return {
+      jobs: [],
+      proven: false,
+      companyName: target.companyName,
+      note: `Listing page returned ${response.status}.`,
+    }
+  }
+  const pageUrl = response.url || listingUrl
+  const candidates = extractListingLinks(response.body, pageUrl).flatMap((link) => {
+    let url: URL
+    try {
+      url = new URL(link.url)
+    } catch {
+      return []
+    }
+    const same = sameSite(url.hostname, target.host)
+    if (same && target.jobPath(url.pathname)) return [link]
+    if (!same && target.detail === "none" && isLinkOutHost(url.hostname)) return [link]
+    return []
+  })
+  const jobs: ListedJob[] = []
+  const limit = detailLimit()
+  let fetched = 0
+  for (const link of candidates) {
+    const host = new URL(link.url).hostname
+    const enrich =
+      target.detail !== "none" &&
+      sameSite(host, target.host) &&
+      fetched < limit &&
+      robotsAllows(rules, new URL(link.url).pathname)
+    if (!enrich) {
+      const listed = listedFromTitle(link.title, link.url, target)
+      if (listed) jobs.push(listed)
+      continue
+    }
+    const slot = await takeDetailSlot(target.host)
+    if (!slot) {
+      const listed = listedFromTitle(link.title, link.url, target)
+      if (listed) jobs.push(listed)
+      continue
+    }
+    fetched += 1
+    try {
+      const page = await http.get(link.url, { accept: "text/html", maxBytes: 1_500_000 })
+      if (page.status >= 400) {
+        const listed = listedFromTitle(link.title, link.url, target)
+        if (listed) jobs.push(listed)
+        continue
+      }
+      const parsed =
+        target.detail === "jsonld"
+          ? parseJsonLdJobs(page.body, page.url || link.url, target.companyName, {
+              provider: "career",
+              sourceType: target.provider,
+              boardId: target.boardId,
+            })[0]
+          : htmlJob(page.body, page.url || link.url, target)
+      const chosen = parsed ?? listedFromTitle(link.title, link.url, target)
+      if (chosen) jobs.push(chosen)
+    } catch (error) {
+      if (error instanceof UnsafeUrlError) break
+      const listed = listedFromTitle(link.title, link.url, target)
+      if (listed) jobs.push(listed)
+    }
+  }
+  const note =
+    target.mode === "search" && jobs.length === 0
+      ? "Listing API /api/cms/job-postings is disallowed by robots.txt. Job pages are fetched when web search finds them."
+      : `${candidates.length} links on the listing. Fetched ${fetched} detail pages. Off-host detail links stay link-outs.`
+  return {
+    jobs: jobs.filter((job): job is ListedJob => Boolean(job)),
+    proven: jobs.length > 0 || target.mode === "search",
+    companyName: target.companyName,
+    note,
+  }
+}
+
+async function tryFeed(
+  target: CareerTarget,
+  http: HttpClient,
+  rules: RobotsRules
+): Promise<BoardList | null> {
+  const origin = `https://${target.host}`
+  let feedUrl = target.feedUrl
+  if (robotsAllows(rules, "/llms.txt")) {
+    try {
+      const llms = await http.get(`${origin}/llms.txt`, { accept: "text/plain", maxBytes: 200_000 })
+      if (llms.status < 400) {
+        const found = feedUrlFromLlms(llms.body, `${origin}/`)
+        if (found) feedUrl = found
+      }
+    } catch (error) {
+      if (error instanceof UnsafeUrlError) return null
+    }
+  }
+  if (!feedUrl && target.mode === "feed") feedUrl = `${origin}/jobs.feed.json`
+  if (!feedUrl && target.discoverFeed) feedUrl = `${origin}/jobs.feed.json`
+  if (!feedUrl) return null
+  let feedHost = ""
+  let path = "/"
+  try {
+    const parsed = new URL(feedUrl)
+    feedHost = parsed.hostname
+    path = parsed.pathname
+  } catch {
+    return null
+  }
+  if (!sameSite(feedHost, target.host)) return null
+  if (!robotsAllows(rules, path)) return null
+  try {
+    const response = await http.get(feedUrl, {
+      accept: "application/json, text/plain",
+      maxBytes: 2_000_000,
+    })
+    if (response.status >= 400) return null
+    const jobs = parseJobFeed(response.body, {
+      companyName: target.companyName,
+      boardId: target.boardId,
+      sourceType: target.provider,
+      feedUrl,
+    })
+    if (!jobs.length) return null
+    return {
+      jobs,
+      proven: true,
+      companyName: target.companyName,
+      note: `Published feed listed ${jobs.length} jobs. Detail hosts were not fetched.`,
+    }
+  } catch (error) {
+    if (error instanceof UnsafeUrlError) return null
+    throw error
+  }
 }
 
 async function cxsPoland(target: CareerTarget, http: HttpClient): Promise<ListedJob[]> {
@@ -242,7 +655,7 @@ async function cxsPoland(target: CareerTarget, http: HttpClient): Promise<Listed
         locationText: posting.locationsText,
         originalUrl,
         sourceType: "WORKDAY",
-        sourceBoardId: `${tenant}/wd${cluster}/${site}`,
+        sourceBoardId: target.boardId,
         needsHydration: true,
       })
       if (listed) jobs.push(listed)
@@ -252,6 +665,7 @@ async function cxsPoland(target: CareerTarget, http: HttpClient): Promise<Listed
 }
 
 async function loadCached(target: CareerTarget, boardId: string): Promise<ListedJob[] | null> {
+  if (process.env.VITEST) return null
   try {
     const page = await db.careerPage.findUnique({
       where: { provider_providerBoardId: { provider: target.provider, providerBoardId: boardId } },
@@ -297,6 +711,14 @@ export async function listCareerSite(
   http: HttpClient,
   companyName?: string
 ): Promise<BoardList> {
+  if (boardId.toLowerCase() === "jobs.allegro.eu") {
+    return {
+      jobs: [],
+      proven: false,
+      companyName: companyName || "Allegro",
+      note: "Allegro jobs are on careers.allegro.eu. jobs.allegro.eu has no inventory, and career55.sapsf.eu stays link-only.",
+    }
+  }
   const target = targetFor(boardId, companyName)
   if (!target) return { jobs: [], proven: false, note: "No career-site policy for this board" }
   const cached = await loadCached(target, boardId)
@@ -329,9 +751,33 @@ export async function listCareerSite(
     }
   }
 
+  if (target.discoverFeed || target.mode === "feed") {
+    const feed = await tryFeed(target, http, robots.rules)
+    if (feed) {
+      feed.note = [feed.note, ...notes].filter(Boolean).join(" ").slice(0, 500)
+      return feed
+    }
+    if (target.mode === "feed") {
+      return {
+        jobs: [],
+        proven: false,
+        companyName: target.companyName,
+        note: ["No jobs.feed.json DataFeed was published.", ...notes].join(" ").slice(0, 500),
+      }
+    }
+  }
+
+  if (target.mode === "listing" || target.mode === "search") {
+    const listing = await readListing(target, http, robots.rules)
+    listing.note = [listing.note, ...notes].filter(Boolean).join(" ").slice(0, 500)
+    return listing
+  }
+
   const sitemapSeeds = [
-    ...(robots.rules.sitemaps || []),
-    ...(target.sitemapUrl ? [target.sitemapUrl] : []),
+    ...new Set([
+      ...(robots.rules.sitemaps || []),
+      ...(target.sitemapUrl ? [target.sitemapUrl] : []),
+    ]),
   ]
   const entries: SitemapEntry[] = []
   for (const seed of sitemapSeeds.slice(0, 6)) {
@@ -341,7 +787,12 @@ export async function listCareerSite(
       if (error instanceof UnsafeUrlError) notes.push(error.message)
     }
   }
-  const urls = jobUrls(entries)
+  const urls = jobUrls(entries, target)
+  if (!urls.length && target.listingUrl) {
+    const listing = await readListing(target, http, robots.rules)
+    listing.note = [listing.note, ...notes].filter(Boolean).join(" ").slice(0, 500)
+    return listing
+  }
   const poland = urls.filter((entry) => entry.loc.toLowerCase().includes("/poland/")).length
   const limit = detailLimit()
   const parsed: ListedJob[] = []
@@ -377,10 +828,11 @@ export async function listCareerSite(
   }
 
   const jobs = target.platform === "successfactors" ? pairContractVariants(parsed) : parsed
+  const caution = target.countCaution ? ` ${target.countCaution}` : ""
   notes.unshift(
     `${urls.length} job URLs in the sitemap${
       poland ? ` (${poland} under /Poland/)` : ""
-    }. Fetched ${parsed.length} pages.${cxsNote}`
+    }.${caution} Fetched ${parsed.length} pages.${cxsNote}`
   )
   return {
     jobs,

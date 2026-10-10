@@ -5,6 +5,7 @@ import { tenantHost } from "src/server/adapters/hosts"
 import { adapterFor, type BoardList, type LiveAts } from "src/server/adapters/registry"
 import { parseJsonLdJobs } from "src/server/adapters/jsonld"
 import { boardKey, classifyHit, workableSlugFromHtml } from "src/server/discovery/boards"
+import { rememberCompanyPage } from "src/server/discovery/company-pages"
 import { pickDiscoveryQueries } from "src/server/discovery/queries"
 import { searchWeb, type WebHit } from "src/server/discovery/web-search"
 import { canonicalUrl as appCanonicalUrl, sha256 } from "src/server/jobs/dedupe"
@@ -80,6 +81,7 @@ const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
   BREEZY: "company_site",
   BAMBOOHR: "company_site",
   GENERIC_HTML: "company_site",
+  CAREER_SITE: "company_site",
   SUCCESSFACTORS: "company_site",
   WORKDAY: "company_site",
   ICIMS: "company_site",
@@ -98,6 +100,7 @@ const SCOPED_ATS = new Set<SourceType>([
   "BAMBOOHR",
   "SUCCESSFACTORS",
   "WORKDAY",
+  "CAREER_SITE",
 ])
 
 async function mapPool<T>(
@@ -503,7 +506,7 @@ async function discoverBoards(args: {
           newSlugs += addBoard(args.boards, classified.provider, classified.boardId, args.disabled)
           continue
         }
-        if (pages.length < 2) pages.push(hit.url)
+        rememberCompanyPage(pages, hit.url)
       }
       added += newSlugs
       await db.discoveryRun.create({
@@ -598,7 +601,22 @@ async function readJsonLdPages(
     try {
       const response = await http.get(pageUrl, { maxBytes: 1_500_000, accept: "text/html" })
       if (response.status >= 400) continue
-      const found = parseJsonLdJobs(response.body, response.url, undefined, { provider })
+      let sourceType: SourceType | undefined
+      let boardId: string | undefined
+      try {
+        const host = new URL(pageUrl).hostname.toLowerCase()
+        if (host === "synerise.com" || host.endsWith(".synerise.com")) {
+          sourceType = "CAREER_SITE"
+          boardId = host
+        }
+      } catch {
+        sourceType = undefined
+      }
+      const found = parseJsonLdJobs(response.body, response.url, undefined, {
+        provider,
+        sourceType,
+        boardId,
+      })
       jobs.push(...found)
       if (found.length)
         await log(searchRunId, `JSON-LD: ${found.length} postings from a company page`)
@@ -880,7 +898,8 @@ function careerUrl(provider: SourceType, boardId: string): string {
   if (provider === "PINPOINT") return `https://${tenantHost(boardId, "pinpointhq.com")}/`
   if (provider === "BREEZY") return `https://${tenantHost(boardId, "breezy.hr")}/`
   if (provider === "BAMBOOHR") return `https://${tenantHost(boardId, "bamboohr.com")}/careers`
-  if (provider === "SUCCESSFACTORS") return `https://${boardId.replace(/^https?:\/\//, "")}/`
+  if (provider === "SUCCESSFACTORS" || provider === "CAREER_SITE")
+    return `https://${boardId.replace(/^https?:\/\//, "")}/`
   if (provider === "WORKDAY") {
     const match = boardId.match(/^([^/]+)\/wd(\d+)\/(.+)$/i)
     if (match) return `https://${match[1]}.wd${match[2]}.myworkdayjobs.com/${match[3]}`

@@ -69,6 +69,42 @@ describe("source policy", () => {
     )
     expect(decideFetch(new URL("https://www.linkedin.com/jobs/view/1")).allow).toBe(false)
   })
+
+  it("follows the link-only channel check", () => {
+    expect(decideFetch(new URL("https://careers.allegro.eu/job/engineer/1/")).allow).toBe(true)
+    expect(decideFetch(new URL("https://careers.allegro.eu/sitemap.xml")).allow).toBe(true)
+    expect(decideFetch(new URL("https://jobs.allegro.eu/job-offers/")).allow).toBe(false)
+    expect(decideFetch(new URL("https://www.pracujwgp.pl/jobs.feed.json")).allow).toBe(true)
+    expect(decideFetch(new URL("https://www.pracujwgp.pl/llms.txt")).allow).toBe(true)
+    expect(decideFetch(new URL("https://sii.pl/oferty-pracy/id/1/role/")).allow).toBe(true)
+    expect(decideFetch(new URL("https://careers.epam.com/en/vacancy/role_en")).allow).toBe(true)
+    expect(decideFetch(new URL("https://www.synerise.com/careers/engineer")).allow).toBe(true)
+    expect(decideFetch(new URL("https://www.synerise.com/api/cms/job-postings")).allow).toBe(false)
+    expect(decideFetch(new URL("https://packhelp.peopleforce.io/careers/v/1")).allow).toBe(false)
+    expect(decideFetch(new URL("https://apply.careers.dynatrace.com/job/1/")).allow).toBe(false)
+    expect(decideFetch(new URL("https://revolut.com/careers/position/abc")).allow).toBe(false)
+    expect(decideFetch(new URL("https://oviva.com/careers/")).allow).toBe(false)
+    expect(
+      decideFetch(new URL("https://codility.com/wp-json/codility-blocks/v1/careers-jobs")).allow
+    ).toBe(false)
+    expect(decideFetch(new URL("https://kariera.future-processing.pl/oferty-pracy/")).allow).toBe(
+      false
+    )
+    expect(decideFetch(new URL("https://careers.jpmorgan.com/")).allow).toBe(false)
+    expect(decideFetch(new URL("https://jobs.smartrecruiters.com/acme/1")).allow).toBe(true)
+    const previous = process.env.SMARTRECRUITERS_POSTING_API
+    delete process.env.SMARTRECRUITERS_POSTING_API
+    expect(
+      decideFetch(new URL("https://api.smartrecruiters.com/v1/companies/acme/postings")).allow
+    ).toBe(true)
+    process.env.SMARTRECRUITERS_POSTING_API = "off"
+    expect(
+      decideFetch(new URL("https://api.smartrecruiters.com/v1/companies/acme/postings")).allow
+    ).toBe(false)
+    expect(decideFetch(new URL("https://api.smartrecruiters.com/robots.txt")).allow).toBe(true)
+    if (previous === undefined) delete process.env.SMARTRECRUITERS_POSTING_API
+    else process.env.SMARTRECRUITERS_POSTING_API = previous
+  })
 })
 
 describe("robots and sitemaps", () => {
