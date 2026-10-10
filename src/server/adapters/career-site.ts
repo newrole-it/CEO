@@ -267,7 +267,14 @@ function detailLimit(): number {
 
 function rankUrl(loc: string, target: CareerTarget): number {
   const lower = loc.toLowerCase()
-  if (lower.includes("principal-solution-architect")) return 0
+  if (
+    lower.includes("principal-solution-architect") ||
+    /engineering-manager|head-of-engineering|director-of-engineering|vp-engineering|vp-of-engineering/.test(
+      lower
+    )
+  ) {
+    return 0
+  }
   if (target.rankPlaces && PLACES.some((place) => lower.includes(place))) return 1
   if (lower.includes("/poland/")) return 1
   if (lower.includes("/job/")) return 2

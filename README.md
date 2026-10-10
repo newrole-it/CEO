@@ -47,6 +47,8 @@ Copy `.env.example`. The values the owner actually has to provide:
 | `BRAVE_SEARCH_API_KEY` | no | Primary discovery. Finds new ATS slugs |
 | `SERPER_API_KEY` | no | Used only when Brave is missing or a Brave call fails |
 | `SCAN_SEED_LIMIT` | no | Boards per scan. Default 40. `0` reads the full verified catalog |
+| `CAREER_DETAIL_LIMIT` | no | Job pages per career host per scan. Default 40, hard cap 200 per host per day |
+| `SMARTRECRUITERS_POSTING_API` | no | Default `on`. `off`, `false`, or `0` stops `api.smartrecruiters.com`. Compose forwards it |
 | `DISCOVERY_QUERY_LIMIT` | no | `site:` queries per scan. Default 14. Polish boards and Workday are never queried |
 | `RECRUITEE_CAREERS_TOKEN` | no | Employer token. Required for Recruitee after 10 February 2027 |
 | `MATCH_SALARY_FLOOR_PLN` and `FX_*_PLN` | no | Neutral matching defaults and placeholder FX overrides |

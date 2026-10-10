@@ -178,6 +178,30 @@ describe("job feeds and listing-only pages", () => {
     ])
   })
 
+  it("reads an engineering-manager page before the rest of a large sitemap", async () => {
+    const previous = process.env.CAREER_DETAIL_LIMIT
+    process.env.CAREER_DETAIL_LIMIT = "1"
+    const xml = `<?xml version="1.0"?><urlset>
+      <url><loc>https://jobs.gft.com/Poland/job/Lodz-Java-Developer/1/</loc></url>
+      <url><loc>https://jobs.gft.com/job/Valencia-Engineering-Manager/2/</loc></url>
+    </urlset>`
+    const { http, seen } = client((url) => {
+      if (url.endsWith("/robots.txt")) return { status: 200, body: "User-agent: *\nAllow: /\n" }
+      if (url.endsWith("/sitemap.xml")) return { status: 200, body: xml }
+      if (url.includes("Engineering-Manager"))
+        return {
+          status: 200,
+          body: '<html><span itemprop="title">Engineering Manager</span></html>',
+        }
+      return { status: 500, body: "later page" }
+    })
+    const listed = await listCareerSite("jobs.gft.com", http, "GFT")
+    expect(listed.jobs.map((job) => job.title)).toEqual(["Engineering Manager"])
+    expect(seen.some((url) => url.includes("Java-Developer"))).toBe(false)
+    if (previous === undefined) delete process.env.CAREER_DETAIL_LIMIT
+    else process.env.CAREER_DETAIL_LIMIT = previous
+  })
+
   it("stops SmartRecruiters when the posting API switch is off", async () => {
     const previous = process.env.SMARTRECRUITERS_POSTING_API
     process.env.SMARTRECRUITERS_POSTING_API = "off"
