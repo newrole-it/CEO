@@ -23,14 +23,17 @@ model User {
   hashedPassword  String?
   role            String    @default("USER")
   emailVerifiedAt DateTime?
+  linkedinSub     String?   @unique
+  imageUrl        String?
   timezone        String    @default("Europe/Warsaw")
   locale          String    @default("en")
   deletedAt       DateTime?
 
-  tokens   Token[]
-  sessions Session[]
-  searches SavedSearch[]
-  audits   AuditEvent[]
+  tokens           Token[]
+  sessions         Session[]
+  searches         SavedSearch[]
+  audits           AuditEvent[]
+  candidateProfile CandidateProfile?
 }
 
 model Session {
@@ -61,6 +64,51 @@ model Token {
   userId Int
 
   @@unique([hashedToken, type])
+}
+
+model LoginLink {
+  id          String    @id @default(cuid())
+  email       String
+  hashedToken String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requestIp   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
+model AuthRateLimit {
+  key         String   @id
+  windowStart DateTime
+  count       Int      @default(0)
+}
+
+model CandidateProfile {
+  id               String   @id @default(cuid())
+  userId           Int      @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline         String?
+  currentTitle     String?
+  pastTitles       Json     @default("[]")
+  seniority        String?
+  yearsExperience  Float?
+  skills           Json     @default("[]")
+  industries       Json     @default("[]")
+  locations        Json     @default("[]")
+  languages        Json     @default("[]")
+  salaryFloor      Float?
+  salaryTarget     Float?
+  salaryCurrency   String?
+  salaryPeriod     String?
+  salaryContract   String?
+  industryMode     String   @default("prefer")
+  contracts        Json     @default("[]")
+  remotePreference String?
+  homeCity         String?
+  relocation       Boolean?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 // --------------------------------------
@@ -360,21 +408,24 @@ model SearchLog {
 }
 
 model JobMatch {
-  id              String      @id @default(cuid())
-  jobId           String
-  job             Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  savedSearchId   String
-  savedSearch     SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
-  searchRunId     String
-  searchRun       SearchRun   @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
-  score           Float
-  scoreBreakdown  Json
-  reason          String
-  isNew           Boolean     @default(false)
-  seenAt          DateTime?
-  dismissedAt     DateTime?
-  matchedAt       DateTime    @default(now())
-  lastEvaluatedAt DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  jobId            String
+  job              Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedSearchId    String
+  savedSearch      SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  searchRunId      String
+  searchRun        SearchRun   @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  score            Float
+  scoreBreakdown   Json
+  reason           String
+  isNew            Boolean     @default(false)
+  seenAt           DateTime?
+  dismissedAt      DateTime?
+  interestedAt     DateTime?
+  fitIndustry      String?
+  fitSalaryMonthly Float?
+  matchedAt        DateTime    @default(now())
+  lastEvaluatedAt  DateTime    @updatedAt
 
   @@unique([jobId, searchRunId])
   @@index([savedSearchId])

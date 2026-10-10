@@ -1,29 +1,38 @@
 import Link from "next/link"
-import {redirect} from "next/navigation"
-import {invoke} from "src/app/blitz-server"
-import {Shell} from "src/app/components/Shell"
-import {Button} from "src/app/components/ui/button"
+import { invoke } from "src/app/blitz-server"
+import { Shell } from "src/app/components/Shell"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import listSearches from "./queries/listSearches"
 
-export const metadata = {title: "Past scans"}
+export const metadata = { title: "Saved searches" }
 
 export default async function SearchesPage() {
   const user = await invoke(getCurrentUser, null)
-  if (!user) redirect("/login")
-  const searches = await invoke(listSearches, null)
+  const searches = user ? await invoke(listSearches, null) : []
   return (
-    <Shell name={user.name || user.email}>
+    <Shell user={user}>
       <div className="hero">
         <p className="kicker">Library</p>
-        <h1>Past scans</h1>
-        <p className="lede">Each phrase is kept. Opening one shows the last results, and running it again marks offers that were not there before.</p>
-        <Button asChild>
-          <Link href="/">New scan</Link>
-        </Button>
+        <h1>Saved searches</h1>
+        <p className="lede">
+          Each phrase stays on this account. Opening one shows the last results. Running it again
+          marks offers that were not there before.
+        </p>
       </div>
-      {searches.length === 0 ? (
-        <div className="empty-card">No scans yet.</div>
+      {!user ? (
+        <div className="empty-card">
+          <p>
+            <Link href="/login">Sign in</Link> to see searches saved on an account. A search started
+            in this browser is still available from its own link.
+          </p>
+        </div>
+      ) : searches.length === 0 ? (
+        <div className="empty-card">
+          <h2>No saved searches yet</h2>
+          <p className="lede">
+            <Link href="/">Search for a role</Link> and it will be kept here.
+          </p>
+        </div>
       ) : (
         <div className="search-list">
           {searches.map((search) => (
@@ -31,14 +40,21 @@ export default async function SearchesPage() {
               <strong>{search.phrase}</strong>
               <span>
                 {search.latest
-                  ? `${search.latest.status.toLowerCase()} · ${search.latest.matchedJobs} offers${search.latest.newJobs ? ` · ${search.latest.newJobs} new` : ""}`
+                  ? `${search.latest.status.toLowerCase()} · ${search.latest.matchedJobs} offers${
+                      search.latest.newJobs ? ` · ${search.latest.newJobs} new` : ""
+                    }`
                   : "queued"}
               </span>
               <span>
-                {[search.locationHint, search.workMode !== "ANY" ? search.workMode : null].filter(Boolean).join(" · ") ||
-                  "Any location"}
+                {[search.locationHint, search.workMode !== "ANY" ? search.workMode : null]
+                  .filter(Boolean)
+                  .join(" · ") || "Any location"}
               </span>
-              <span>{new Intl.DateTimeFormat("en-GB", {day: "numeric", month: "short"}).format(search.createdAt)}</span>
+              <span>
+                {new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
+                  search.createdAt
+                )}
+              </span>
             </Link>
           ))}
         </div>

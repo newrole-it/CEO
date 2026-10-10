@@ -11,6 +11,8 @@ import type { ScoreResult } from "../../../matching/scoring"
 import type { NormalizedPosting, RawPosting, Source } from "../../../matching/types"
 import { createLlmClient, type LlmClient } from "src/server/llm/client"
 import { liveMatchingConfig, liveProfile, titleIsRelevant } from "src/server/matching/live"
+import { extractJobIndustry } from "src/server/profile/industry"
+import { rankAgainstProfile, toSignals, bandFor } from "src/server/profile/rank"
 import type { SourceType } from "src/shared/schemas"
 
 export const RELEVANCE_FLOOR = 40
@@ -138,7 +140,22 @@ export async function publishIndexedMatches(args: {
   })
   if (!raws.length) return 0
   const profile = liveProfile(args.expansion)
-  const matched = runMatching(raws, profile, args.now, liveMatchingConfig())
+  const config = liveMatchingConfig()
+  const matched = runMatching(raws, profile, args.now, config)
+  const saved = await db.savedSearch.findUnique({
+    where: { id: args.savedSearchId },
+    select: {
+      user: {
+        select: {
+          locale: true,
+          candidateProfile: true,
+        },
+      },
+    },
+  })
+  const signals = saved?.user.candidateProfile
+    ? toSignals(saved.user.candidateProfile, saved.user.locale)
+    : null
   const byId = new Map(matched.postings.map((posting) => [posting.id, posting]))
   const ranked = matched.ranked.filter((score) => score.score >= floor)
   const prior = await db.jobMatch.findMany({
@@ -152,23 +169,70 @@ export async function publishIndexedMatches(args: {
   const hadPrior = prior.length > 0
   const llm = args.llm === undefined ? createLlmClient() : args.llm
   let index = 0
+  let industryBudget = llm ? 20 : 0
   for (const score of ranked) {
     const posting = byId.get(score.postingId)
     if (!posting) continue
     const job = jobs.find((item) => item.id === score.postingId)
-    const reason = await explain(llm, posting, score, profile, index, job?.llmOptOut ?? false)
+    let fit: ReturnType<typeof rankAgainstProfile> | null = null
+    if (signals) {
+      const useLlm = llm && industryBudget > 0 && !job?.llmOptOut ? llm : null
+      if (useLlm) industryBudget -= 1
+      const jobIndustry = await extractJobIndustry(
+        job?.title ?? posting.titleNorm,
+        job?.descriptionText ?? posting.raw.description ?? "",
+        useLlm
+      )
+      const salary =
+        posting.salary &&
+        (posting.salary.monthlyPlnMin != null || posting.salary.monthlyPlnMax != null)
+          ? { min: posting.salary.monthlyPlnMin, max: posting.salary.monthlyPlnMax }
+          : null
+      fit = rankAgainstProfile({
+        queryScore: score.score,
+        signals,
+        config,
+        title: job?.title ?? "",
+        description: job?.descriptionText ?? "",
+        location: job?.locationText ?? "",
+        workplace: job?.workplaceType ?? "",
+        salary,
+        jobIndustry,
+      })
+    }
+    const reason = fit
+      ? fit.why
+      : await explain(llm, posting, score, profile, index, job?.llmOptOut ?? false)
     index += 1
     const isNew = hadPrior && !seen.has(score.postingId)
     const data = {
-      score: score.score,
+      score: fit ? fit.score : score.score,
       scoreBreakdown: {
-        band: score.band,
+        band: fit ? bandFor(fit.score) : score.band,
         gate: score.gate,
         components: score.components,
         penalties: score.penalties,
+        queryScore: score.score,
+        ...(fit
+          ? {
+              profile: {
+                why: fit.why,
+                salaryDelta: fit.salaryDelta,
+                industryDelta: fit.industryDelta,
+                disclosed: fit.disclosed,
+                monthlyMin: fit.monthlyMin,
+                monthlyMax: fit.monthlyMax,
+                industry: fit.industry,
+                requirement: fit.requirement,
+                relation: fit.relation,
+              },
+            }
+          : {}),
       } as unknown as Prisma.InputJsonValue,
       reason,
       isNew,
+      fitIndustry: fit?.industry ?? null,
+      fitSalaryMonthly: fit?.salaryMonthly ?? null,
     }
     await db.jobMatch.upsert({
       where: { jobId_searchRunId: { jobId: score.postingId, searchRunId: args.searchRunId } },

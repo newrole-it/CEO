@@ -1,8 +1,8 @@
 # Jobscanner
 
-Personal job-offer scanner for one owner. Type a role in Polish or English. Jobscanner expands it into related titles, reads public ATS boards, and ranks what is open. Every result links to the original posting.
+Personal job-offer scanner. Type a role in Polish or English. Jobscanner expands it into related titles, reads public ATS boards, and ranks what is open. Every result links to the original posting. Search works without an account. Sign in to keep a profile, and the same page ranks offers against your salary and industry.
 
-There is no billing, no multi-tenant workspace, and no email alerts. Signup is closed. One account is created by the seed.
+There is no billing and no email alerts. The first email you enter creates an account and signs you in on that device. Later sign-ins use a one-time link. LinkedIn sign-in uses OpenID Connect and only receives your name, email, and picture. The seeded owner stays the admin.
 
 ## Run it
 
@@ -15,7 +15,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open http://127.0.0.1:43123 and sign in with the owner account (`rafal@jobscanner.local` / `jobscanner-local`, unless you changed `OWNER_EMAIL` and `OWNER_PASSWORD`).
+Open http://127.0.0.1:43123. Search is public. The owner account is `rafal@jobscanner.local` / `jobscanner-local`, unless you changed `OWNER_EMAIL` and `OWNER_PASSWORD`. Everyone else uses email or LinkedIn.
 
 Without Docker, the same process is Postgres plus two processes:
 
@@ -40,7 +40,10 @@ Copy `.env.example`. The values the owner actually has to provide:
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string |
 | `SESSION_SECRET_KEY` | yes | Cookie signing key, at least 32 characters. Compose refuses to start without it |
-| `OWNER_EMAIL` / `OWNER_PASSWORD` | yes for Compose and seed | The single account. Password at least 10 characters |
+| `OWNER_EMAIL` / `OWNER_PASSWORD` | yes for Compose and seed | Admin account. Password at least 10 characters. Password sign-in stays available for this account |
+| `APP_ORIGIN` | no | Public origin for magic links and the LinkedIn callback. Default `http://127.0.0.1:43123` |
+| `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | no | LinkedIn OpenID Connect. Empty disables the LinkedIn button's success path |
+| `EMAIL_PROVIDER` | no | `console` (default, logs the link), `resend`, or `smtp` |
 | `POSTGRES_PASSWORD` | yes for Compose | Database password. The port is published on 127.0.0.1 only |
 | `LLM_API_KEY` | no | OpenAI-compatible key. Empty uses the deterministic expander and rule-based reasons |
 | `LLM_BASE_URL` / `LLM_MODEL` | with the key | Defaults to OpenAI `gpt-4o-mini`. An xAI base URL works the same way |
@@ -54,6 +57,25 @@ Copy `.env.example`. The values the owner actually has to provide:
 | `MATCH_SALARY_FLOOR_PLN` and `FX_*_PLN` | no | Neutral matching defaults and placeholder FX overrides |
 
 `LLM_INPUT_USD_PER_MILLION` and `LLM_OUTPUT_USD_PER_MILLION` only affect the cost estimate. Token counts are stored either way.
+
+`RESEND_API_KEY` is used when `EMAIL_PROVIDER=resend`. `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASSWORD` are used when `EMAIL_PROVIDER=smtp`.
+
+## Accounts and profile
+
+Search does not require an account. The first time an email is entered, Jobscanner creates the user and signs that browser in. A later sign-in emails a link that works once and expires after 15 minutes. The token is stored as a hash. Requests are limited to 5 per email and 20 per IP each hour. With `EMAIL_PROVIDER=console`, the link is printed in the web server log.
+
+LinkedIn uses the official OpenID Connect flow, scopes `openid`, `profile`, and `email`.
+
+1. Create an app at [linkedin.com/developers/apps](https://www.linkedin.com/developers/apps).
+2. Add the product “Sign In with LinkedIn using OpenID Connect”.
+3. Set the authorized redirect URL to `http://127.0.0.1:43123/api/auth/linkedin/callback` (or `${APP_ORIGIN}/api/auth/linkedin/callback`).
+4. Put the client id and secret in `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`.
+
+LinkedIn does not share a CV. After a search, import a profile by uploading the PDF from LinkedIn (More → Save to PDF), any CV PDF, or pasted text. The file is deleted after text extraction. Only the structured profile is stored. Settings has delete-my-data. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source.
+
+When a profile exists, ranking stays on top of the query. The query relevance floor (40) still applies first. Salary is compared with the profile floor and target as monthly PLN (UoP gross × 1.25, B2B net of VAT as-is). Offers without a salary stay visible and are labeled “salary not disclosed”. Offers clearly below the floor drop in score and remain listed. Industry is extracted per posting (model, validated, cached, with a keyword fallback). Same and adjacent industries score higher. Unknown is neutral. A different industry is a mild penalty, stronger only when the posting requires that domain. The profile preference is stick, prefer (default), or any. None of those modes hide an offer. Results can filter by industry and a minimum monthly salary; the minimum hides undisclosed salaries.
+
+This is not legal advice. Crawl limits are unchanged: one request per 5 seconds per host, 200 detail pages per host per day, daily refresh.
 
 ## What a scan does
 

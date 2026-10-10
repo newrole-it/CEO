@@ -27,6 +27,7 @@ type PackBreakdown = {
   penalties?: ScorePenalty[]
   monthlyPln?: { min: number | null; max: number | null } | null
   assumptions?: string[]
+  profile?: { why?: string }
 }
 
 function formatWhen(value: Date | string | null | undefined) {
@@ -101,6 +102,8 @@ export function SearchScreen({ id }: { id: string }) {
   const [remoteOnly, setRemoteOnly] = useState(false)
   const [salaryOnly, setSalaryOnly] = useState(false)
   const [showDismissed, setShowDismissed] = useState(false)
+  const [industry, setIndustry] = useState("")
+  const [minSalary, setMinSalary] = useState("")
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -113,6 +116,8 @@ export function SearchScreen({ id }: { id: string }) {
     remote: remoteOnly || undefined,
     salary: salaryOnly || undefined,
     includeDismissed: showDismissed || undefined,
+    industry: industry.trim() || undefined,
+    minSalary: Number(minSalary) > 0 ? Number(minSalary) : undefined,
   }
   const [data, { isLoading, error, refetch }] = useQuery(getSearch, queryInput, {
     suspense: false,
@@ -304,7 +309,30 @@ export function SearchScreen({ id }: { id: string }) {
               setContract(event.target.value)
             }}
           />
+          <Input
+            aria-label="Industry"
+            placeholder="Industry, such as fintech"
+            value={industry}
+            onChange={(event) => {
+              setPage(1)
+              setIndustry(event.target.value)
+            }}
+          />
+          <Input
+            aria-label="Minimum monthly salary in PLN"
+            placeholder="Minimum monthly PLN"
+            inputMode="numeric"
+            value={minSalary}
+            onChange={(event) => {
+              setPage(1)
+              setMinSalary(event.target.value.replace(/[^\d]/g, ""))
+            }}
+          />
         </div>
+        <p className="hint">
+          A minimum salary hides offers that do not disclose pay. Industry narrows to the extracted
+          industry. Both apply after a profile is saved and the search is run again.
+        </p>
         <div className="chips" style={{ marginTop: 12 }}>
           <label className="chip">
             <input
@@ -405,11 +433,12 @@ export function SearchScreen({ id }: { id: string }) {
                     </header>
                     <div className="facts">
                       <span>{result.job.locationText || "Location not stated"}</span>
-                      {salary ? <span>{salary}</span> : <span>Salary not listed</span>}
+                      {salary ? <span>{salary}</span> : <span>salary not disclosed</span>}
                       <span>Published {formatWhen(result.job.publishedAt)}</span>
                       <span>First seen {formatWhen(result.job.firstSeenAt)}</span>
                       <span>{result.job.sourceType.toLowerCase().replace(/_/g, " ")}</span>
                     </div>
+                    {pack.profile ? <p className="why-label">Why it matches you</p> : null}
                     <p className="reason">{result.reason}</p>
                     {result.job.summary ? <p className="summary">{result.job.summary}</p> : null}
                     {showScores && parts.length ? (
@@ -472,6 +501,15 @@ export function SearchScreen({ id }: { id: string }) {
                       <Button
                         variant="outline"
                         onClick={async () => {
+                          await mark({ id: result.id, action: "interested" })
+                          await refetch()
+                        }}
+                      >
+                        Interested
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
                           await mark({
                             id: result.id,
                             action: result.dismissedAt ? "restore" : "dismiss",
@@ -479,7 +517,7 @@ export function SearchScreen({ id }: { id: string }) {
                           await refetch()
                         }}
                       >
-                        {result.dismissedAt ? "Restore" : "Dismiss"}
+                        {result.dismissedAt ? "Restore" : "Reject"}
                       </Button>
                     </div>
                   </div>
@@ -507,6 +545,24 @@ export function SearchScreen({ id }: { id: string }) {
           ) : null}
         </>
       )}
+      {!failed && !data.hasProfile ? (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 22, marginBottom: 8 }}>Import your LinkedIn profile</h2>
+          <p className="hint">
+            Sign in with LinkedIn or email, then upload the PDF from LinkedIn: More, then Save to
+            PDF. A CV PDF or pasted text works too. Jobscanner does not read LinkedIn profile URLs.
+            Salary and industry then explain why an offer matches you.
+          </p>
+          <div className="actions">
+            <Button asChild>
+              <Link href="/profile">Import profile</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }

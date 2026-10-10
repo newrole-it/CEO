@@ -27,11 +27,11 @@ function policyLabel(policy: string): string {
 
 export default async function CoveragePage() {
   const user = await invoke(getCurrentUser, null)
-  if (!user) redirect("/login")
+  if (!user || user.role !== "ADMIN") redirect("/")
   const coverage = await invoke(getCoverage, null)
   const rows = coverage.rows
   return (
-    <Shell name={user.name || user.email}>
+    <Shell user={user}>
       <div className="hero">
         <p className="kicker">Sources</p>
         <h1>Coverage</h1>

@@ -4,7 +4,7 @@ import db from "db"
 
 const OPEN = ["ACTIVE", "POSSIBLY_CLOSED"] as const
 
-export default resolver.pipe(resolver.authorize(), async () => {
+export default resolver.pipe(resolver.authorize("ADMIN"), async () => {
   const [totalJobs, pages] = await Promise.all([
     db.job.count({ where: { status: { in: [...OPEN] } } }),
     db.careerPage.findMany({

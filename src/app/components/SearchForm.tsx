@@ -14,6 +14,7 @@ export function SearchForm() {
   const [locationHint, setLocationHint] = useState("")
   const [workMode, setWorkMode] = useState<"ANY" | "REMOTE" | "HYBRID" | "ONSITE">("ANY")
   const [error, setError] = useState<string | null>(null)
+  const [showExtras, setShowExtras] = useState(false)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -44,36 +45,44 @@ export function SearchForm() {
           autoFocus
         />
         <Button type="submit" size="lg" disabled={isPending}>
-          {isPending ? "Starting…" : "Scan offers"}
+          {isPending ? "Starting…" : "Search"}
         </Button>
       </div>
-      <div className="extras">
-        <label className="field">
-          Location hint, optional
-          <Input
-            value={locationHint}
-            onChange={(event) => setLocationHint(event.target.value)}
-            placeholder="Poland, Berlin, remote-friendly"
-            maxLength={120}
-          />
-        </label>
-        <label className="field">
-          Work mode
-          <select
-            className="plain"
-            value={workMode}
-            onChange={(event) => setWorkMode(event.target.value as typeof workMode)}
-          >
-            <option value="ANY">Any</option>
-            <option value="REMOTE">Remote</option>
-            <option value="HYBRID">Hybrid</option>
-            <option value="ONSITE">On-site</option>
-          </select>
-        </label>
-      </div>
+      <button
+        className="text-button extras-toggle"
+        type="button"
+        onClick={() => setShowExtras((value) => !value)}
+      >
+        {showExtras ? "Hide location and work mode" : "Location and work mode"}
+      </button>
+      {showExtras ? (
+        <div className="extras">
+          <label className="field">
+            Location hint, optional
+            <Input
+              value={locationHint}
+              onChange={(event) => setLocationHint(event.target.value)}
+              placeholder="Poland, Berlin, remote-friendly"
+              maxLength={120}
+            />
+          </label>
+          <label className="field">
+            Work mode
+            <select
+              className="plain"
+              value={workMode}
+              onChange={(event) => setWorkMode(event.target.value as typeof workMode)}
+            >
+              <option value="ANY">Any</option>
+              <option value="REMOTE">Remote</option>
+              <option value="HYBRID">Hybrid</option>
+              <option value="ONSITE">On-site</option>
+            </select>
+          </label>
+        </div>
+      ) : null}
       <p className="hint">
-        One phrase is enough. Polish or English. The scan expands it, then checks public Greenhouse,
-        Lever, Ashby, Workable, and SmartRecruiters boards.
+        One phrase is enough, in Polish or English. No account is required to search.
       </p>
       {error ? <p className="form-error">{error}</p> : null}
     </form>

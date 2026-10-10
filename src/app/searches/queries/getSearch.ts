@@ -12,6 +12,8 @@ const input = z.object({
   salary: z.boolean().optional(),
   contract: z.string().trim().max(40).optional(),
   includeDismissed: z.boolean().optional(),
+  industry: z.string().trim().max(40).optional(),
+  minSalary: z.number().positive().max(1_000_000).optional(),
 })
 
 const PAGE_SIZE = 20
@@ -19,7 +21,21 @@ const PAGE_SIZE = 20
 export default resolver.pipe(
   resolver.authorize(),
   resolver.zod(input),
-  async ({ id, page, location, company, remote, salary, contract, includeDismissed }, ctx) => {
+  async (
+    {
+      id,
+      page,
+      location,
+      company,
+      remote,
+      salary,
+      contract,
+      includeDismissed,
+      industry,
+      minSalary,
+    },
+    ctx
+  ) => {
     const search = await db.savedSearch.findFirst({
       where: { id, userId: ctx.session.userId! },
       include: { runs: { orderBy: { startedAt: "desc" }, take: 12 } },
@@ -49,8 +65,14 @@ export default resolver.pipe(
     const where = {
       searchRunId: matchRun?.id ?? "__none__",
       ...(includeDismissed ? {} : { dismissedAt: null }),
+      ...(industry ? { fitIndustry: { contains: industry, mode: "insensitive" as const } } : {}),
+      ...(minSalary != null ? { fitSalaryMonthly: { gte: minSalary } } : {}),
       ...(Object.keys(jobWhere).length ? { job: jobWhere } : {}),
     }
+    const profile = await db.candidateProfile.findUnique({
+      where: { userId: ctx.session.userId! },
+      select: { id: true },
+    })
     const total = matchRun ? await db.jobMatch.count({ where }) : 0
     const matches = matchRun
       ? await db.jobMatch.findMany({
@@ -82,6 +104,7 @@ export default resolver.pipe(
       pageSize: PAGE_SIZE,
       total,
       pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+      hasProfile: Boolean(profile),
       results: matches.map((match) => ({
         id: match.id,
         score: match.score,

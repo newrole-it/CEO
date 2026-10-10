@@ -1,6 +1,6 @@
 import "./styles/globals.css"
-import {BlitzProvider} from "./blitz-client"
-import {Fraunces, Source_Sans_3} from "next/font/google"
+import { BlitzProvider } from "./blitz-client"
+import { Fraunces, Source_Sans_3 } from "next/font/google"
 
 const sans = Source_Sans_3({
   subsets: ["latin", "latin-ext"],
@@ -13,14 +13,20 @@ const serif = Fraunces({
 })
 
 export const metadata = {
-  title: {default: "Jobscanner", template: "%s · Jobscanner"},
+  title: { default: "Jobscanner", template: "%s · Jobscanner" },
   description: "A personal scanner for public engineering job offers.",
 }
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${sans.variable} ${serif.variable} ${sans.className}`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;else if(window.matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.dataset.theme='dark'}catch(e){}",
+          }}
+        />
         <BlitzProvider>{children}</BlitzProvider>
       </body>
     </html>

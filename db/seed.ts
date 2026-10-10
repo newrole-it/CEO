@@ -117,6 +117,9 @@ async function main() {
       data: { email, name, hashedPassword, role: "ADMIN", timezone: "Europe/Warsaw", locale: "pl" },
     })
     console.log(`Created owner ${email}`)
+  } else if (existing.role !== "ADMIN") {
+    await db.user.update({ where: { id: existing.id }, data: { role: "ADMIN" } })
+    console.log(`Promoted owner ${email} to admin`)
   } else {
     console.log(`Owner ${email} already exists`)
   }
