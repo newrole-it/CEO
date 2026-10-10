@@ -7,7 +7,7 @@ export const FETCH_USER_AGENT =
 export function stripPersonalData(text: string): string {
   return text
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
-    .replace(/(?:\+|00)\d[\d\s().-]{6,}\d/g, "")
+    .replace(/(?<!\d)(?:\+\d|00\d)[\d\s().-]{6,}\d/g, "")
     .replace(
       /\b(?:recruiter|hiring manager|talent partner|kontakt)\s*:\s*[A-ZŁŚŻŹĆŃ][\p{L}'-]+(?:\s+[A-ZŁŚŻŹĆŃ][\p{L}'-]+){0,2}/giu,
       ""

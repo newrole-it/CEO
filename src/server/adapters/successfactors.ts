@@ -33,20 +33,49 @@ function layoutValue(html: string, label: string): string | undefined {
     `joblayouttoken-label">\\s*${label.replace(
       /[.*+?^${}()|[\]\\]/g,
       "\\$&"
-    )}[\\s\\S]*?</span>\\s*([^<]*)`,
+    )}[\\s\\S]*?</span>([\\s\\S]{0,1500})`,
     "i"
   )
-  const value = html
-    .match(pattern)?.[1]
-    ?.replace(/\u00a0/g, " ")
+  const chunk = html.match(pattern)?.[1]
+  if (!chunk) return undefined
+  const trimmed = chunk.replace(/^\s+/, "")
+  const raw = trimmed.startsWith("<") ? elementInner(trimmed) : trimmed.split("<")[0] ?? ""
+  const value = raw
+    .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")
     .trim()
   return value || undefined
 }
 
+function elementInner(fragment: string): string {
+  const open = fragment.match(/^<([a-zA-Z0-9]+)\b[^>]*>/)
+  if (!open) return htmlToText(fragment.slice(0, 400))
+  const tag = open[1].toLowerCase()
+  const re = new RegExp(`</?${tag}\\b[^>]*>`, "gi")
+  re.lastIndex = open[0].length
+  let depth = 1
+  let match: RegExpExecArray | null
+  while ((match = re.exec(fragment))) {
+    if (match[0].startsWith("</")) depth -= 1
+    else if (!match[0].endsWith("/>")) depth += 1
+    if (depth === 0) return htmlToText(fragment.slice(open[0].length, match.index))
+  }
+  return htmlToText(fragment.slice(open[0].length, open[0].length + 500))
+}
+
 function descriptionBlock(html: string): string {
-  const match = html.match(/itemprop=["']description["'][^>]*>([\s\S]*?)<\/span>/i)
-  return match ? htmlToText(match[1]) : ""
+  const marker = html.match(/itemprop=["']description["'][^>]*>/i)
+  if (!marker || marker.index == null) return ""
+  const fragment = html.slice(marker.index + marker[0].length)
+  const re = /<\/?span\b[^>]*>/gi
+  let depth = 1
+  let match: RegExpExecArray | null
+  while ((match = re.exec(fragment))) {
+    if (match[0].startsWith("</")) depth -= 1
+    else if (!match[0].endsWith("/>")) depth += 1
+    if (depth === 0) return htmlToText(fragment.slice(0, match.index))
+  }
+  return htmlToText(fragment.slice(0, 8000))
 }
 
 function labeledLine(text: string, label: string): string | undefined {
@@ -79,7 +108,10 @@ export function parseSuccessFactorsJob(
   const contract = labeledLine(description, "Type of contract")
   const salaryText = labeledLine(description, "Salary range")
   const workplace = layoutValue(html, "Working place:")
-  const location = layoutValue(html, "Location:")
+  const location =
+    layoutValue(html, "Working Location:") ||
+    layoutValue(html, "Location:") ||
+    metaContent(html, "streetAddress")
   const posted = metaContent(html, "datePosted") || layoutValue(html, "Date:")
   const id = page.pathname.match(/(\d+)\/?$/)?.[1]
   const listed = buildListedJob({

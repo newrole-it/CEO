@@ -168,12 +168,18 @@ export function parseSalary(text: string | undefined): {
     const amount = amountValue(single[3], single[4])
     return { min: amount, max: amount, currency: currencyOf(single[1], single[2]) }
   }
-  const currency = currencyOf(range[1] || range[5], range[2] || range[6])
+  const currency =
+    currencyOf(range[1] || range[5], range[2] || range[6]) || trailingCurrency(compact)
   return {
     min: amountValue(range[3], range[4]),
     max: amountValue(range[7], range[8]),
     currency,
   }
+}
+
+function trailingCurrency(text: string): string | undefined {
+  const code = text.match(/\b(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)\b/i)?.[1]
+  return code?.toUpperCase()
 }
 
 function currencyOf(code: string | undefined, symbol: string | undefined): string | undefined {

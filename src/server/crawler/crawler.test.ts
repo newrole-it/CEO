@@ -135,6 +135,35 @@ describe("career pages", () => {
     expect(paired[0].salaryText?.toLowerCase()).toContain("employment")
   })
 
+  it("reads nested SuccessFactors description and layout spans", () => {
+    const html = `
+      <span itemprop="title">Principal Solution Architect</span>
+      <span class="joblayouttoken-label">Working place: </span>
+      <span data-careersite-propertyid="shifttype">Hybrid</span>
+      <span class="joblayouttoken-label">Working Location: </span>
+      <span data-careersite-propertyid="facility">Łódź, Warszawa</span>
+      <span itemprop="description" class="rtltextaligneligible">
+        <span class="jobdescription"><p><span><strong>Type of contract:</strong> Employment contract</span></p>
+        <p><span><strong>Salary range: </strong>30000 - 46000 PLN gross</span></p>
+        <p><span>As a Principal Solution Architect, you will advise stakeholders.</span></p></span>
+      </span>
+    `
+    const job = parseSuccessFactorsJob(
+      html,
+      "https://jobs.gft.com/Poland/job/x/1/",
+      "GFT",
+      "jobs.gft.com"
+    )
+    expect(job?.salaryText).toContain("30000")
+    expect(job?.salaryMin).toBe(30000)
+    expect(job?.salaryMax).toBe(46000)
+    expect(job?.salaryCurrency).toBe("PLN")
+    expect(job?.employmentType).toMatch(/employment/i)
+    expect(job?.workplaceType).toBe("HYBRID")
+    expect(job?.locationText).toContain("Łódź")
+    expect(job?.descriptionText).toContain("advise stakeholders")
+  })
+
   it("does not merge two employment posts and strips personal data", () => {
     const left = buildListedJob({
       title: "Engineer",
@@ -156,6 +185,7 @@ describe("career pages", () => {
     expect(
       stripPersonalData("Write to ada@gft.com or +48 600 100 200. Recruiter: Anna Nowak")
     ).not.toMatch(/ada@|600|Anna/)
+    expect(stripPersonalData("Salary range: 30000 - 46000 PLN gross")).toContain("30000 - 46000")
     expect(excerpt("x".repeat(400)).length).toBeLessThanOrEqual(300)
     expect(aiOptOut('<meta name="robots" content="ai-input=no">', "example.com")).toBe(true)
     expect(aiOptOut("<p>Hello</p>", "jobs.siemens.com")).toBe(true)
