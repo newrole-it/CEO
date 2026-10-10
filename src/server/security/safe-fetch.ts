@@ -195,7 +195,8 @@ export async function safeFetch(
           if (!location) throw new UnsafeUrlError("Redirect missing location")
           const next = new URL(location, url)
           const sameHost = next.hostname.toLowerCase() === url.hostname.toLowerCase()
-          return safeFetch(next.toString(), {
+          // Await so a rejected redirect is handled before finally closes the agent.
+          return await safeFetch(next.toString(), {
             ...options,
             body: sameHost ? options?.body : undefined,
             method: sameHost ? options?.method : "GET",
