@@ -43,7 +43,9 @@ Copy `.env.example`. The values the owner actually has to provide:
 | `LLM_BASE_URL` / `LLM_MODEL` | with the key | Defaults to OpenAI `gpt-4o-mini`. An xAI base URL works the same way |
 | `BRAVE_SEARCH_API_KEY` | no | Primary discovery. Finds new ATS slugs |
 | `SERPER_API_KEY` | no | Used only when Brave is missing or a Brave call fails |
-| `SCAN_SEED_LIMIT` | no | Boards per scan. Default 40. `0` reads all 189 |
+| `SCAN_SEED_LIMIT` | no | Boards per scan. Default 40. `0` reads the full verified catalog |
+| `DISCOVERY_QUERY_LIMIT` | no | `site:` queries per scan. Default 14. Polish boards and Workday are never queried |
+| `RECRUITEE_CAREERS_TOKEN` | no | Employer token. Required for Recruitee after 10 February 2027 |
 | `MATCH_SALARY_FLOOR_PLN` and `FX_*_PLN` | no | Neutral matching defaults and placeholder FX overrides |
 
 `LLM_INPUT_USD_PER_MILLION` and `LLM_OUTPUT_USD_PER_MILLION` only affect the cost estimate. Token counts are stored either way.
@@ -52,7 +54,7 @@ Copy `.env.example`. The values the owner actually has to provide:
 
 1. Expand the phrase into related titles, seniority, synonyms, and exclusions. `site:` queries are built in code from those titles. The model never writes them.
 2. Optionally ask Brave (then Serper) for ATS pages. Hits are used only to recover a board slug or a job URL, then the original ATS API is fetched. Raw search results are not written to the database.
-3. Read Greenhouse, Lever, Ashby, Workable, and SmartRecruiters through their public, unauthenticated job APIs. Seed boards come from `config/seed-companies.json` (189 boards checked on 2026-10-10).
+3. Read the public, unauthenticated job APIs. Seed boards come from `config/seed-companies.json` plus `config/seed-companies-pl.json` (checked 2026-10-10). Allegro's SmartRecruiters board is turned off. Workday boards are links, not fetches.
 4. Normalize title, location, workplace, and salary text, dedupe, and score. The score is deterministic. A model may explain it and cannot change the number.
 5. Save the run. Running the same search again marks offers that were not in the previous succeeded run.
 
@@ -61,18 +63,27 @@ Copy `.env.example`. The values the owner actually has to provide:
 Verified read APIs, all unauthenticated GETs:
 
 - Greenhouse Job Board API, list without `content=true`, detail with `pay_transparency=true`
-- Lever Postings API (`mode=json`)
+- Lever Postings API (`mode=json`). Boards marked `eu:` try `api.eu.lever.co` first (XTB, OLX). A 404 on the preferred host tries the other host once
 - Ashby public job posting API (`includeCompensation=true`, `workplaceType` over `isRemote`)
 - Workable widget API on `apply.workable.com` (`details=true`). An empty `jobs` array is not a real board
 - SmartRecruiters Posting API, filtered with `country=pl` and `locationType=REMOTE`, paginated. `totalFound: 0` is not a real company: the API returns 200 for invented identifiers
+- Teamtailor public RSS (`/jobs.rss`, with `offset` and `per_page`). A slug that already contains a dot is a custom domain
+- Recruitee `GET /api/offers/`. Open without a token until 10 February 2027. After that, or on HTTP 401, the board is skipped. Set `RECRUITEE_CAREERS_TOKEN` (`X-Careers-Sites-Token`)
+- Personio public XML (`/xml?language=en`, `.jobs.personio.de` then `.com`)
+- Traffit public API (`/public/job_posts/published`, page headers). Awarded posts are skipped
+- Pinpoint `postings.json`. Every slug is identity-checked against `job.division.name` and the posting text. A demo board (`ACME`, "Head of DEI") is rejected. The hostname is not identity
+
+Breezy `/json` and BambooHR `/careers/list` are included so the verified Boldare and Miquido boards can be read. Both feeds are undocumented. BambooHR descriptions come from `/careers/{id}/detail`.
 
 A board is kept only when it has jobs and, where the payload includes one, a company name. Slugs that belonged to the wrong company on the check date are in `src/server/adapters/blocked.ts` and are never used.
 
 Company career pages may be read for schema.org `JobPosting` JSON-LD. Polish boards are not fetched: justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, and bulldogjob. The results page links out to their own search.
 
-Teamtailor, Recruitee, and Personio have a reserved adapter slot (`PLANNED_ATS`) and are not called. Their endpoints were not verified.
+Workday career sites are not fetched. Workday's site terms ban data mining and robots. The six Polish-hub boards (Intive, Motorola Solutions, Mastercard, Visa, Samsung, Thomson Reuters) are outbound links on the results page.
 
-Details, rate-limit notes, and the probe scripts are in `sources/`.
+Greenhouse EU (`boards-api.eu.greenhouse.io`) was unreachable on the check date and is not called.
+
+Details, rate-limit notes, and the probe scripts are in `sources/` (`source-pack.md` and `source-pack-pl.md`).
 
 ## Matching
 
@@ -94,7 +105,8 @@ That runs URL-safety, adapter, and discovery unit tests, the matching pack, and 
 
 - `src/app` — the one-page UI, Blitz auth, and RPCs
 - `src/server/search/pipeline.ts` — one scan
-- `src/server/adapters` — the five live ATS adapters and the unverified slots
+- `src/server/adapters` — live ATS adapters, plus the unverified Greenhouse EU slot
+- `config/seed-companies-pl.json` — verified Polish-market boards
 - `src/server/security` — URL checks and the fetch client (timeouts, size cap, per-host spacing, redirects re-checked)
 - `src/worker.ts` — claims `BackgroundTask` rows. No Redis
 - `config/seed-companies.json` — the verified board list

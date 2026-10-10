@@ -1,5 +1,6 @@
-import type {SourceType} from "src/shared/schemas"
-import {isPolishBoardHost} from "src/shared/polish-boards"
+import type { SourceType } from "src/shared/schemas"
+import { isPolishBoardHost } from "src/shared/polish-boards"
+import { isWorkdayHost } from "src/shared/workday-boards"
 
 export type DetectedBoard = {
   provider: Exclude<SourceType, "GENERIC_HTML" | "WEB_SEARCH">
@@ -22,35 +23,78 @@ export function detectBoard(raw: string): DetectedBoard | null {
     return null
   }
   const host = url.hostname.toLowerCase()
-  const parts = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part))
+  const parts = url.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((part) => decodeURIComponent(part))
 
   if (host === "boards.greenhouse.io" || host === "job-boards.greenhouse.io") {
     const boardId = firstSegment(url.pathname)
-    return boardId ? {provider: "GREENHOUSE", boardId} : null
+    return boardId ? { provider: "GREENHOUSE", boardId } : null
   }
   if (host === "boards-api.greenhouse.io") {
     const index = parts.findIndex((part) => part === "boards")
     const boardId = index >= 0 ? parts[index + 1] : undefined
-    return boardId ? {provider: "GREENHOUSE", boardId} : null
+    return boardId ? { provider: "GREENHOUSE", boardId } : null
   }
-  if (host === "jobs.lever.co" || host === "jobs.eu.lever.co") {
-    const boardId = firstSegment(url.pathname)
-    return boardId ? {provider: "LEVER", boardId} : null
+  if (host === "jobs.eu.lever.co" || host === "api.eu.lever.co") {
+    const boardId = leverSlugFrom(host, parts, url.pathname)
+    return boardId ? { provider: "LEVER", boardId: `eu:${boardId}` } : null
+  }
+  if (host === "jobs.lever.co" || host === "api.lever.co") {
+    const boardId = leverSlugFrom(host, parts, url.pathname)
+    return boardId ? { provider: "LEVER", boardId } : null
   }
   if (host === "jobs.ashbyhq.com") {
     const boardId = firstSegment(url.pathname)
-    return boardId ? {provider: "ASHBY", boardId} : null
+    return boardId ? { provider: "ASHBY", boardId } : null
   }
   if (host === "apply.workable.com") {
     const boardId = firstSegment(url.pathname)
     if (!boardId || boardId.toLowerCase() === "j") return null
-    return {provider: "WORKABLE", boardId}
+    return { provider: "WORKABLE", boardId }
   }
   if (host === "jobs.smartrecruiters.com" || host === "careers.smartrecruiters.com") {
     const boardId = firstSegment(url.pathname)
-    return boardId ? {provider: "SMARTRECRUITERS", boardId} : null
+    return boardId ? { provider: "SMARTRECRUITERS", boardId } : null
+  }
+  const tenant = tenantBoard(host)
+  if (tenant) return tenant
+  return null
+}
+
+function leverSlugFrom(host: string, parts: string[], pathname: string): string | null {
+  if (host.startsWith("api.")) {
+    const index = parts.findIndex((part) => part === "postings")
+    const slug = index >= 0 ? parts[index + 1] : undefined
+    return slug || null
+  }
+  return firstSegment(pathname)
+}
+
+function tenantBoard(host: string): DetectedBoard | null {
+  const rules: Array<{ root: string; provider: DetectedBoard["provider"] }> = [
+    { root: "teamtailor.com", provider: "TEAMTAILOR" },
+    { root: "recruitee.com", provider: "RECRUITEE" },
+    { root: "jobs.personio.de", provider: "PERSONIO" },
+    { root: "jobs.personio.com", provider: "PERSONIO" },
+    { root: "traffit.com", provider: "TRAFFIT" },
+    { root: "pinpointhq.com", provider: "PINPOINT" },
+    { root: "breezy.hr", provider: "BREEZY" },
+    { root: "bamboohr.com", provider: "BAMBOOHR" },
+  ]
+  for (const rule of rules) {
+    const slug = tenantSlug(host, rule.root)
+    if (slug) return { provider: rule.provider, boardId: slug }
   }
   return null
+}
+
+function tenantSlug(host: string, root: string): string | null {
+  if (host === root || !host.endsWith(`.${root}`)) return null
+  const slug = host.slice(0, -(root.length + 1))
+  if (!slug || slug.includes(".") || RESERVED.has(slug) || slug === "www") return null
+  return slug
 }
 
 export function boardKey(provider: string, boardId: string): string {
@@ -58,30 +102,33 @@ export function boardKey(provider: string, boardId: string): string {
 }
 
 export type HitClass =
-  | {kind: "ats"; provider: DetectedBoard["provider"]; boardId: string}
-  | {kind: "workable-shortcode"}
-  | {kind: "polish"}
-  | {kind: "unverified-ats"; vendor: "teamtailor" | "recruitee" | "personio"}
-  | {kind: "other"}
+  | { kind: "ats"; provider: DetectedBoard["provider"]; boardId: string }
+  | { kind: "workable-shortcode" }
+  | { kind: "polish" }
+  | { kind: "workday" }
+  | { kind: "unverified-ats"; vendor: "greenhouse-eu" }
+  | { kind: "other" }
 
 export function classifyHit(raw: string): HitClass {
   let url: URL
   try {
     url = new URL(raw)
   } catch {
-    return {kind: "other"}
+    return { kind: "other" }
   }
   const host = url.hostname.toLowerCase()
-  if (isPolishBoardHost(host)) return {kind: "polish"}
-  if (host.endsWith(".teamtailor.com") || host === "teamtailor.com") return {kind: "unverified-ats", vendor: "teamtailor"}
-  if (host.endsWith(".recruitee.com") || host === "recruitee.com") return {kind: "unverified-ats", vendor: "recruitee"}
-  if (host.endsWith("personio.de") || host.endsWith("personio.com")) return {kind: "unverified-ats", vendor: "personio"}
-  if (host === "apply.workable.com" && url.pathname.split("/").filter(Boolean)[0]?.toLowerCase() === "j") {
-    return {kind: "workable-shortcode"}
+  if (isPolishBoardHost(host)) return { kind: "polish" }
+  if (isWorkdayHost(host)) return { kind: "workday" }
+  if (host.endsWith("eu.greenhouse.io")) return { kind: "unverified-ats", vendor: "greenhouse-eu" }
+  if (
+    host === "apply.workable.com" &&
+    url.pathname.split("/").filter(Boolean)[0]?.toLowerCase() === "j"
+  ) {
+    return { kind: "workable-shortcode" }
   }
   const board = detectBoard(raw)
-  if (board) return {kind: "ats", provider: board.provider, boardId: board.boardId}
-  return {kind: "other"}
+  if (board) return { kind: "ats", provider: board.provider, boardId: board.boardId }
+  return { kind: "other" }
 }
 
 /** Pull a Workable account slug out of a shortcode page. The HTML is not stored. */

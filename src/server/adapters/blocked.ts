@@ -1,4 +1,4 @@
-import type {SourceType} from "src/shared/schemas"
+import type { SourceType } from "src/shared/schemas"
 
 /**
  * Slugs that answered HTTP 200 for the wrong company on 2026-10-10.

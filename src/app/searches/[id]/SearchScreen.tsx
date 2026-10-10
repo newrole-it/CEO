@@ -1,12 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import {useEffect, useMemo, useState} from "react"
-import {useMutation, useQuery} from "@blitzjs/rpc"
+import { useEffect, useMemo, useState } from "react"
+import { useMutation, useQuery } from "@blitzjs/rpc"
 import getSearch from "src/app/searches/queries/getSearch"
 import rerunSearch from "src/app/searches/mutations/rerunSearch"
-import {Button} from "src/app/components/ui/button"
-import {polishBoardLinks} from "src/shared/polish-boards"
+import { Button } from "src/app/components/ui/button"
+import { polishBoardLinks } from "src/shared/polish-boards"
+import { WORKDAY_BOARDS } from "src/shared/workday-boards"
 
 type ScoreComponent = {
   id: string
@@ -16,13 +17,13 @@ type ScoreComponent = {
   reason: string
 }
 
-type ScorePenalty = {id: string; points: number; reason: string}
+type ScorePenalty = { id: string; points: number; reason: string }
 
 type PackBreakdown = {
   band?: string
   components?: ScoreComponent[]
   penalties?: ScorePenalty[]
-  monthlyPln?: {min: number | null; max: number | null} | null
+  monthlyPln?: { min: number | null; max: number | null } | null
   assumptions?: string[]
 }
 
@@ -30,33 +31,46 @@ function formatWhen(value: Date | string | null | undefined) {
   if (!value) return "Date unknown"
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return "Date unknown"
-  return new Intl.DateTimeFormat("en-GB", {day: "numeric", month: "short", year: "numeric"}).format(date)
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date)
 }
 
 function money(min?: number | null, max?: number | null, currency?: string | null) {
   if (min == null && max == null) return null
   const code = currency ? `${currency} ` : ""
-  const fmt = (value: number) => new Intl.NumberFormat("en-GB", {maximumFractionDigits: 0}).format(value)
+  const fmt = (value: number) =>
+    new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(value)
   if (min != null && max != null && min !== max) return `${code}${fmt(min)}–${fmt(max)}`
   return `${code}${fmt((min ?? max) as number)}`
 }
 
-export function SearchScreen({id}: {id: string}) {
+export function SearchScreen({ id }: { id: string }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
     setMounted(true)
   }, [])
-  const [data, {isLoading, error, refetch}] = useQuery(getSearch, {id}, {suspense: false, enabled: mounted})
-  const [rerun, {isLoading: rerunning}] = useMutation(rerunSearch)
+  const [data, { isLoading, error, refetch }] = useQuery(
+    getSearch,
+    { id },
+    { suspense: false, enabled: mounted }
+  )
+  const [rerun, { isLoading: rerunning }] = useMutation(rerunSearch)
   const [showScores, setShowScores] = useState(false)
   const activeStatus = data?.active?.status
   const polling = activeStatus === "QUEUED" || activeStatus === "RUNNING"
-  useQuery(getSearch, {id}, {suspense: false, refetchInterval: polling ? 1500 : false, enabled: mounted && Boolean(data)})
+  useQuery(
+    getSearch,
+    { id },
+    { suspense: false, refetchInterval: polling ? 1500 : false, enabled: mounted && Boolean(data) }
+  )
 
   const expansion = useMemo(() => {
     const raw = data?.active?.expansion
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
-    return raw as {titles?: string[]; exclusions?: string[]; source?: string; notes?: string}
+    return raw as { titles?: string[]; exclusions?: string[]; source?: string; notes?: string }
   }, [data?.active?.expansion])
 
   if (!mounted || (isLoading && !data)) {
@@ -65,7 +79,7 @@ export function SearchScreen({id}: {id: string}) {
   if (error || !data) {
     return (
       <div className="error-card">
-        <h1 className="h1" style={{fontSize: 36}}>
+        <h1 className="h1" style={{ fontSize: 36 }}>
           That scan is not available
         </h1>
         <p>It may belong to another session, or the id is wrong.</p>
@@ -82,10 +96,15 @@ export function SearchScreen({id}: {id: string}) {
   return (
     <div>
       <div className="hero">
-        <p className="kicker">{running ? "Scan in progress" : data.active?.status === "FAILED" ? "Scan failed" : "Scan"}</p>
+        <p className="kicker">
+          {running ? "Scan in progress" : data.active?.status === "FAILED" ? "Scan failed" : "Scan"}
+        </p>
         <h1>{data.search.phrase}</h1>
         <p className="lede">
-          {[data.search.locationHint, data.search.workMode !== "ANY" ? data.search.workMode.toLowerCase() : null]
+          {[
+            data.search.locationHint,
+            data.search.workMode !== "ANY" ? data.search.workMode.toLowerCase() : null,
+          ]
             .filter(Boolean)
             .join(" · ") || "No location or work-mode constraint."}
         </p>
@@ -94,7 +113,7 @@ export function SearchScreen({id}: {id: string}) {
             variant="outline"
             disabled={running || rerunning}
             onClick={async () => {
-              await rerun({id})
+              await rerun({ id })
               await refetch()
             }}
           >
@@ -111,11 +130,13 @@ export function SearchScreen({id}: {id: string}) {
             {data.active?.tokenInput || data.active?.tokenOutput
               ? ` · ${data.active.tokenInput + data.active.tokenOutput} tokens`
               : ""}
-            {data.active && data.active.estimatedCost > 0 ? ` · ~$${data.active.estimatedCost.toFixed(4)}` : ""}
+            {data.active && data.active.estimatedCost > 0
+              ? ` · ~$${data.active.estimatedCost.toFixed(4)}`
+              : ""}
           </span>
         </div>
         <div className="bar" aria-hidden>
-          <span style={{width: `${data.active?.progress ?? 0}%`}} />
+          <span style={{ width: `${data.active?.progress ?? 0}%` }} />
         </div>
         {expansion?.titles?.length ? (
           <>
@@ -145,15 +166,43 @@ export function SearchScreen({id}: {id: string}) {
         ) : null}
       </section>
 
-      <section className="panel" style={{marginTop: 16}}>
-        <h2 style={{fontSize: 22, marginBottom: 8}}>Polish boards, as links</h2>
+      <section className="panel" style={{ marginTop: 16 }}>
+        <h2 style={{ fontSize: 22, marginBottom: 8 }}>Polish boards, as links</h2>
         <p className="hint">
-          justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, and bulldogjob have no public API, and their terms forbid
-          automated downloading. These open their own search. Jobscanner does not fetch them.
+          justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, and bulldogjob have no public API,
+          and their terms forbid automated downloading. These open their own search. Jobscanner does
+          not fetch them.
         </p>
-        <div className="chips" style={{marginTop: 12}}>
+        <div className="chips" style={{ marginTop: 12 }}>
           {polishBoardLinks(data.search.phrase).map((link) => (
-            <a key={link.name} className="chip" href={link.href} target="_blank" rel="noreferrer noopener">
+            <a
+              key={link.name}
+              className="chip"
+              href={link.href}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {link.name}
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <h2 style={{ fontSize: 22, marginBottom: 8 }}>Workday career sites, as links</h2>
+        <p className="hint">
+          Workday&apos;s site terms ban data mining and robots. These open the employer board.
+          Jobscanner does not fetch them.
+        </p>
+        <div className="chips" style={{ marginTop: 12 }}>
+          {WORKDAY_BOARDS.map((link) => (
+            <a
+              key={link.href}
+              className="chip"
+              href={link.href}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               {link.name}
             </a>
           ))}
@@ -174,7 +223,9 @@ export function SearchScreen({id}: {id: string}) {
           <div className="section-head">
             <h2>
               {data.results.length} offer{data.results.length === 1 ? "" : "s"}
-              {data.resultRun && data.active && data.resultRun.id !== data.active.id ? " from the last finished scan" : ""}
+              {data.resultRun && data.active && data.resultRun.id !== data.active.id
+                ? " from the last finished scan"
+                : ""}
             </h2>
             <button className="chip" type="button" onClick={() => setShowScores((value) => !value)}>
               {showScores ? "Hide score parts" : "Show score parts"}
@@ -182,13 +233,23 @@ export function SearchScreen({id}: {id: string}) {
           </div>
           <div className="results">
             {data.results.map((result) => {
-              const salary = money(result.job.salaryMin, result.job.salaryMax, result.job.salaryCurrency)
-              const pack = result.breakdown && typeof result.breakdown === "object" ? (result.breakdown as PackBreakdown) : {}
+              const salary = money(
+                result.job.salaryMin,
+                result.job.salaryMax,
+                result.job.salaryCurrency
+              )
+              const pack =
+                result.breakdown && typeof result.breakdown === "object"
+                  ? (result.breakdown as PackBreakdown)
+                  : {}
               const parts = Array.isArray(pack.components) ? pack.components : []
               const penalties = Array.isArray(pack.penalties) ? pack.penalties : []
               return (
                 <article className="result-card" key={result.id}>
-                  <div className="score" title={pack.band ? `${pack.band} match, out of 100` : "Match score out of 100"}>
+                  <div
+                    className="score"
+                    title={pack.band ? `${pack.band} match, out of 100` : "Match score out of 100"}
+                  >
                     {Math.round(result.score)}
                     {pack.band ? <span className="meta">{pack.band}</span> : null}
                   </div>
@@ -201,7 +262,9 @@ export function SearchScreen({id}: {id: string}) {
                       <div className="badges">
                         {result.isNew ? <span className="badge new">New</span> : null}
                         <span className="badge mode">{result.job.workplaceType}</span>
-                        {result.job.employmentType ? <span className="badge">{result.job.employmentType}</span> : null}
+                        {result.job.employmentType ? (
+                          <span className="badge">{result.job.employmentType}</span>
+                        ) : null}
                       </div>
                     </header>
                     <div className="facts">
@@ -209,7 +272,7 @@ export function SearchScreen({id}: {id: string}) {
                       {salary ? <span>{salary}</span> : <span>Salary not listed</span>}
                       <span>Published {formatWhen(result.job.publishedAt)}</span>
                       <span>First seen {formatWhen(result.job.firstSeenAt)}</span>
-                      <span>{result.job.sourceType.toLowerCase().replace("_", " ")}</span>
+                      <span>{result.job.sourceType.toLowerCase().replace(/_/g, " ")}</span>
                     </div>
                     <p className="reason">{result.reason}</p>
                     {result.job.summary ? <p className="summary">{result.job.summary}</p> : null}
@@ -231,10 +294,12 @@ export function SearchScreen({id}: {id: string}) {
                             {penalty.reason}
                           </div>
                         ))}
-                        {pack.monthlyPln && (pack.monthlyPln.min != null || pack.monthlyPln.max != null) ? (
+                        {pack.monthlyPln &&
+                        (pack.monthlyPln.min != null || pack.monthlyPln.max != null) ? (
                           <div>
                             <strong>monthly PLN</strong>
-                            Compared as {pack.monthlyPln.min ?? "?"}–{pack.monthlyPln.max ?? "?"} PLN / month, B2B net of VAT.
+                            Compared as {pack.monthlyPln.min ?? "?"}–{pack.monthlyPln.max ?? "?"}{" "}
+                            PLN / month, B2B net of VAT.
                             {pack.assumptions?.length ? ` ${pack.assumptions.join("; ")}` : ""}
                           </div>
                         ) : null}

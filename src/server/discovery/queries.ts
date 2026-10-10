@@ -1,18 +1,76 @@
-const ATS = new Set(["greenhouse", "lever", "ashby", "workable", "smartrecruiters"])
+const ATS = new Set([
+  "greenhouse",
+  "lever",
+  "lever_eu",
+  "ashby",
+  "workable",
+  "smartrecruiters",
+  "teamtailor",
+  "recruitee",
+  "personio",
+  "traffit",
+  "pinpoint",
+  "breezy",
+  "bamboohr",
+])
 
-export type SiteQuery = {source: string; site: string; query: string}
+const FIRST_SOURCES = [
+  "greenhouse",
+  "lever",
+  "lever_eu",
+  "ashby",
+  "workable",
+  "smartrecruiters",
+  "teamtailor",
+  "recruitee",
+  "personio",
+  "traffit",
+  "pinpoint",
+  "breezy",
+  "bamboohr",
+]
+
+const EXTRA_SITES: Array<{ source: string; site: string }> = [
+  { source: "lever_eu", site: "jobs.eu.lever.co" },
+  { source: "recruitee", site: "recruitee.com" },
+  { source: "personio", site: "jobs.personio.de" },
+  { source: "traffit", site: "traffit.com" },
+  { source: "pinpoint", site: "pinpointhq.com" },
+  { source: "breezy", site: "breezy.hr" },
+  { source: "bamboohr", site: "bamboohr.com" },
+]
+
+export type SiteQuery = { source: string; site: string; query: string }
 
 /**
- * Discovery calls are capped. Polish boards, LinkedIn, and unverified ATS hosts
- * are never requested. One query per live ATS comes first so a short budget
- * still covers Greenhouse, Lever, Ashby, Workable, and SmartRecruiters.
+ * The matching pack already emits teamtailor.com. These hosts are added here
+ * so site: syntax stays in code. Polish boards and Workday are never queried.
+ */
+export function extraAtsQueries(sites: SiteQuery[]): SiteQuery[] {
+  const sample = sites.find((item) => ATS.has(item.source) && item.query.startsWith("site:"))
+  if (!sample) return []
+  const rest = sample.query.replace(/^site:\S+\s*/, "").trim()
+  if (!rest) return []
+  return EXTRA_SITES.filter((item) => !sites.some((site) => site.site === item.site)).map(
+    (item) => ({
+      source: item.source,
+      site: item.site,
+      query: `site:${item.site} ${rest}`,
+    })
+  )
+}
+
+/**
+ * Discovery calls are capped. Polish boards, LinkedIn, and Workday are never
+ * requested. One query per live ATS comes first.
  */
 export function pickDiscoveryQueries(sites: SiteQuery[], limit = discoveryQueryLimit()): string[] {
-  const eligible = sites.filter((item) => ATS.has(item.source))
+  const eligible = [...sites, ...extraAtsQueries(sites)].filter((item) => ATS.has(item.source))
   const picked: string[] = []
   const seenSource = new Set<string>()
-  for (const item of eligible) {
-    if (seenSource.has(item.source)) continue
+  for (const source of FIRST_SOURCES) {
+    const item = eligible.find((candidate) => candidate.source === source)
+    if (!item || seenSource.has(item.source)) continue
     seenSource.add(item.source)
     picked.push(item.query)
     if (picked.length >= limit) return picked
@@ -27,8 +85,8 @@ export function pickDiscoveryQueries(sites: SiteQuery[], limit = discoveryQueryL
 
 export function discoveryQueryLimit(): number {
   const raw = process.env.DISCOVERY_QUERY_LIMIT
-  if (raw == null || raw.trim() === "") return 8
+  if (raw == null || raw.trim() === "") return 14
   const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed < 0) return 8
+  if (!Number.isFinite(parsed) || parsed < 0) return 14
   return Math.floor(parsed)
 }

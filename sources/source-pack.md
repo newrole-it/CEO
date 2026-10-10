@@ -188,3 +188,4 @@ Pipeline tip: from each hit, extract `{ats, slug}` with regexes (`job-boards\.gr
 - Full-board responses can be large (Palantir on Lever ≈ 6 MB, Ramp on Ashby ≈ 3 MB). Fetch without `content=true` / `details=true` first, filter titles, then fetch details only for matches.
 - SmartRecruiters `limit` max is 100, so paginate with `offset` (Bosch alone has 4,933 postings). Always pass `country=pl` and/or `locationType=REMOTE`.
 - Identify the client honestly with a User-Agent. Some Lever responses returned 403 to a bare `Python-urllib` UA; setting a UA fixed it.
+- Polish-market feeds (Traffit, Recruitee, Teamtailor, Personio, Pinpoint, Lever EU, and the Workday link-out list) are in `source-pack-pl.md` and `config/seed-companies-pl.json`.

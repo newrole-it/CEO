@@ -1,10 +1,10 @@
-import {z} from "zod"
-import type {HttpClient} from "src/server/security/safe-fetch"
-import type {ListedJob} from "src/shared/schemas"
-import {isBlockedSlug, namesAgree} from "./blocked"
-import {asDate, buildListedJob, itemsFrom, readJson} from "./parse"
-import {htmlToText} from "src/server/jobs/text"
-import type {BoardList} from "./types"
+import { z } from "zod"
+import type { HttpClient } from "src/server/security/safe-fetch"
+import type { ListedJob } from "src/shared/schemas"
+import { isBlockedSlug, namesAgree } from "./blocked"
+import { asDate, buildListedJob, itemsFrom, readJson } from "./parse"
+import { htmlToText } from "src/server/jobs/text"
+import type { BoardList } from "./types"
 
 const postingSchema = z
   .object({
@@ -21,8 +21,10 @@ const postingSchema = z
         fullLocation: z.string().optional(),
       })
       .optional(),
-    typeOfEmployment: z.object({label: z.string().optional()}).optional(),
-    company: z.object({identifier: z.string().optional(), name: z.string().optional()}).optional(),
+    typeOfEmployment: z.object({ label: z.string().optional() }).optional(),
+    company: z
+      .object({ identifier: z.string().optional(), name: z.string().optional() })
+      .optional(),
   })
   .passthrough()
 
@@ -31,9 +33,9 @@ const detailSchema = postingSchema.extend({
     .object({
       sections: z
         .object({
-          jobDescription: z.object({text: z.string().optional()}).optional(),
-          qualifications: z.object({text: z.string().optional()}).optional(),
-          additionalInformation: z.object({text: z.string().optional()}).optional(),
+          jobDescription: z.object({ text: z.string().optional() }).optional(),
+          qualifications: z.object({ text: z.string().optional() }).optional(),
+          additionalInformation: z.object({ text: z.string().optional() }).optional(),
         })
         .optional(),
     })
@@ -41,10 +43,15 @@ const detailSchema = postingSchema.extend({
 })
 
 export function parseSmartRecruiters(payload: unknown, boardId: string): ListedJob[] {
-  const root = z.object({content: z.array(z.unknown()).optional()}).passthrough().safeParse(payload)
+  const root = z
+    .object({ content: z.array(z.unknown()).optional() })
+    .passthrough()
+    .safeParse(payload)
   const list = root.success ? root.data.content ?? (Array.isArray(payload) ? payload : []) : []
   return itemsFrom(list, postingSchema).flatMap((job) => {
-    const location = job.location?.fullLocation || [job.location?.city, job.location?.region, job.location?.country].filter(Boolean).join(", ")
+    const location =
+      job.location?.fullLocation ||
+      [job.location?.city, job.location?.region, job.location?.country].filter(Boolean).join(", ")
     const workplace = job.location?.remote ? "REMOTE" : job.location?.hybrid ? "HYBRID" : undefined
     const listed = buildListedJob({
       externalId: job.id,
@@ -54,7 +61,9 @@ export function parseSmartRecruiters(payload: unknown, boardId: string): ListedJ
       employmentType: job.typeOfEmployment?.label,
       workplaceType: workplace,
       publishedAt: asDate(job.releasedDate),
-      originalUrl: `https://jobs.smartrecruiters.com/${encodeURIComponent(boardId)}/${encodeURIComponent(job.id)}`,
+      originalUrl: `https://jobs.smartrecruiters.com/${encodeURIComponent(
+        boardId
+      )}/${encodeURIComponent(job.id)}`,
       sourceType: "SMARTRECRUITERS",
       sourceBoardId: boardId,
       needsHydration: true,
@@ -64,28 +73,45 @@ export function parseSmartRecruiters(payload: unknown, boardId: string): ListedJ
 }
 
 export function smartRecruitersListUrl(boardId: string, query: string): string {
-  return `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(boardId)}/postings?${query}`
+  return `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(
+    boardId
+  )}/postings?${query}`
 }
 
 export function smartRecruitersJobUrl(boardId: string, jobId: string): string {
-  return `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(boardId)}/postings/${encodeURIComponent(jobId)}`
+  return `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(
+    boardId
+  )}/postings/${encodeURIComponent(jobId)}`
 }
 
-async function fetchSrPage(boardId: string, http: HttpClient, filter: string, offset: number): Promise<{totalFound: number; jobs: ListedJob[]}> {
-  const response = await http.get(smartRecruitersListUrl(boardId, `${filter}&limit=100&offset=${offset}`), {
-    maxBytes: 4_000_000,
-    accept: "application/json",
-  })
-  if (response.status === 404) return {totalFound: 0, jobs: []}
-  if (response.status >= 400) throw new Error(`SmartRecruiters ${boardId} returned ${response.status}`)
-  const payload = readJson(response.body) as {totalFound?: unknown}
+async function fetchSrPage(
+  boardId: string,
+  http: HttpClient,
+  filter: string,
+  offset: number
+): Promise<{ totalFound: number; jobs: ListedJob[] }> {
+  const response = await http.get(
+    smartRecruitersListUrl(boardId, `${filter}&limit=100&offset=${offset}`),
+    {
+      maxBytes: 4_000_000,
+      accept: "application/json",
+    }
+  )
+  if (response.status === 404) return { totalFound: 0, jobs: [] }
+  if (response.status >= 400)
+    throw new Error(`SmartRecruiters ${boardId} returned ${response.status}`)
+  const payload = readJson(response.body) as { totalFound?: unknown }
   const totalFound = typeof payload.totalFound === "number" ? payload.totalFound : 0
-  return {totalFound, jobs: parseSmartRecruiters(payload, boardId)}
+  return { totalFound, jobs: parseSmartRecruiters(payload, boardId) }
 }
 
-export async function listSmartRecruiters(boardId: string, http: HttpClient, expectedName?: string): Promise<BoardList> {
+export async function listSmartRecruiters(
+  boardId: string,
+  http: HttpClient,
+  expectedName?: string
+): Promise<BoardList> {
   if (isBlockedSlug("SMARTRECRUITERS", boardId)) {
-    return {jobs: [], proven: false, note: `SmartRecruiters slug ${boardId} is blocked`}
+    return { jobs: [], proven: false, note: `SmartRecruiters slug ${boardId} is blocked` }
   }
   // country=pl and locationType=REMOTE keep large boards (Bosch is thousands) off the full dump.
   const filters = ["country=pl", "locationType=REMOTE"]
@@ -112,9 +138,14 @@ export async function listSmartRecruiters(boardId: string, http: HttpClient, exp
     }
   }
   if (expectedName && !namesAgree(expectedName, companyName)) {
-    return {jobs: [], proven: false, companyName, note: `SmartRecruiters ${boardId} is ${companyName}, not ${expectedName}`}
+    return {
+      jobs: [],
+      proven: false,
+      companyName,
+      note: `SmartRecruiters ${boardId} is ${companyName}, not ${expectedName}`,
+    }
   }
-  return {jobs, proven: true, companyName}
+  return { jobs, proven: true, companyName }
 }
 
 export async function hydrateSmartRecruiters(job: ListedJob, http: HttpClient): Promise<ListedJob> {
@@ -123,11 +154,15 @@ export async function hydrateSmartRecruiters(job: ListedJob, http: HttpClient): 
     maxBytes: 2_000_000,
     accept: "application/json",
   })
-  if (response.status >= 400) return {...job, needsHydration: false}
+  if (response.status >= 400) return { ...job, needsHydration: false }
   const parsed = detailSchema.safeParse(readJson(response.body))
-  if (!parsed.success) return {...job, needsHydration: false}
+  if (!parsed.success) return { ...job, needsHydration: false }
   const sections = parsed.data.jobAd?.sections
-  const html = [sections?.jobDescription?.text, sections?.qualifications?.text, sections?.additionalInformation?.text]
+  const html = [
+    sections?.jobDescription?.text,
+    sections?.qualifications?.text,
+    sections?.additionalInformation?.text,
+  ]
     .filter(Boolean)
     .join("\n")
   return {

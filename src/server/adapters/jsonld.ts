@@ -1,6 +1,6 @@
-import type {ListedJob} from "src/shared/schemas"
-import {asDate, buildListedJob} from "./parse"
-import {htmlToText} from "src/server/jobs/text"
+import type { ListedJob } from "src/shared/schemas"
+import { asDate, buildListedJob } from "./parse"
+import { htmlToText } from "src/server/jobs/text"
 
 type JsonRecord = Record<string, unknown>
 
@@ -28,25 +28,28 @@ function locationText(value: unknown): string | undefined {
   const record = asRecord(value)
   if (!record) return textValue(value)
   const address = asRecord(record.address) ?? record
-  const parts = [textValue(address.addressLocality), textValue(address.addressRegion), textValue(address.addressCountry)].filter(
-    Boolean,
-  ) as string[]
+  const parts = [
+    textValue(address.addressLocality),
+    textValue(address.addressRegion),
+    textValue(address.addressCountry),
+  ].filter(Boolean) as string[]
   return parts.join(", ") || textValue(record.name)
 }
 
-function salaryFrom(value: unknown): {min?: number; max?: number; currency?: string} {
+function salaryFrom(value: unknown): { min?: number; max?: number; currency?: string } {
   const record = asRecord(value)
   if (!record) return {}
   const currency = typeof record.currency === "string" ? record.currency : undefined
   const quantitative = asRecord(record.value) ?? record
   const min = numberValue(quantitative.minValue ?? quantitative.value)
   const max = numberValue(quantitative.maxValue ?? quantitative.value)
-  return {min, max, currency}
+  return { min, max, currency }
 }
 
 function numberValue(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value
-  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value)
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))
+    return Number(value)
   return undefined
 }
 
@@ -62,7 +65,9 @@ function walk(node: unknown, found: JsonRecord[]) {
 }
 
 export function parseJsonLdJobs(html: string, pageUrl: string, companyName?: string): ListedJob[] {
-  const blocks = Array.from(html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))
+  const blocks = Array.from(
+    html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+  )
   const jobs: ListedJob[] = []
   for (const block of blocks) {
     let parsed: unknown
@@ -79,7 +84,8 @@ export function parseJsonLdJobs(html: string, pageUrl: string, companyName?: str
       const url = textValue(job.url) || pageUrl
       if (!title) continue
       const salary = salaryFrom(job.baseSalary)
-      const description = typeof job.description === "string" ? htmlToText(job.description) : undefined
+      const description =
+        typeof job.description === "string" ? htmlToText(job.description) : undefined
       const listed = buildListedJob({
         externalId: textValue(job.identifier),
         title,

@@ -1,5 +1,6 @@
-import {z} from "zod"
-import type {ListedJob, SourceType, WorkplaceType} from "src/shared/schemas"
+import { z } from "zod"
+import type { ListedJob, SourceType, WorkplaceType } from "src/shared/schemas"
+import { decodeEntities } from "src/server/jobs/text"
 import {
   cleanDescription,
   inferWorkplace,
@@ -13,10 +14,20 @@ export function asDate(value: unknown): Date | undefined {
     return Number.isNaN(date.getTime()) ? undefined : date
   }
   if (typeof value === "string" && value.trim()) {
-    const date = new Date(value)
+    const date = new Date(normalizeTimestamp(value))
     return Number.isNaN(date.getTime()) ? undefined : date
   }
   return undefined
+}
+
+/** Traffit and Recruitee publish timestamps with a space, and Recruitee appends "UTC". */
+function normalizeTimestamp(value: string): string {
+  let text = value.trim()
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(text)) {
+    text = text.replace(" ", "T").replace(/\s*UTC$/i, "Z")
+    if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(text)) text += "Z"
+  }
+  return text
 }
 
 export function mapWorkplace(value: unknown, location?: string): WorkplaceType {
@@ -52,7 +63,9 @@ export function buildListedJob(input: {
   } catch {
     return null
   }
-  const description = cleanDescription(input.descriptionText || input.descriptionHtml)
+  const description = cleanDescription(
+    decodeEntities(input.descriptionText || input.descriptionHtml || "")
+  )
   const parsedSalary = input.salaryText ? parseSalary(input.salaryText) : {}
   const workplace = input.workplaceType ?? inferWorkplace(undefined, input.locationText, undefined)
   return {

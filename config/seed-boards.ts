@@ -1,6 +1,8 @@
-import type {SourceType} from "src/shared/schemas"
-import {isBlockedSlug} from "src/server/adapters/blocked"
+import type { SourceType } from "src/shared/schemas"
+import { isBlockedSlug } from "src/server/adapters/blocked"
+import { WORKDAY_BOARDS, type WorkdayBoardLink } from "src/shared/workday-boards"
 import catalog from "./seed-companies.json"
+import polishCatalog from "./seed-companies-pl.json"
 
 export type SeedBoard = {
   provider: SourceType
@@ -32,9 +34,17 @@ type RawCompany = {
 const PROVIDERS: Record<string, SourceType> = {
   greenhouse: "GREENHOUSE",
   lever: "LEVER",
+  lever_eu: "LEVER",
   ashby: "ASHBY",
   workable: "WORKABLE",
   smartrecruiters: "SMARTRECRUITERS",
+  traffit: "TRAFFIT",
+  recruitee: "RECRUITEE",
+  teamtailor: "TEAMTAILOR",
+  personio: "PERSONIO",
+  pinpoint: "PINPOINT",
+  breezy: "BREEZY",
+  bamboohr: "BAMBOOHR",
 }
 
 function priorityOf(company: RawCompany): number {
@@ -46,18 +56,23 @@ function priorityOf(company: RawCompany): number {
   return leadership + remote + either + plJobs + open
 }
 
-/** All verified boards from the source pack. Flagged and wrong-company slugs are excluded. */
-export function loadSeedBoards(): SeedBoard[] {
-  const companies = (catalog as {companies?: RawCompany[]}).companies ?? []
+function boardIdOf(company: RawCompany): string {
+  if (company.ats === "lever_eu") return `eu:${company.slug}`
+  return company.slug
+}
+
+function fromCatalog(companies: RawCompany[]): SeedBoard[] {
   const boards: SeedBoard[] = []
   for (const company of companies) {
+    if (company.ats === "workday") continue
     const provider = PROVIDERS[company.ats]
     if (!provider || !company.slug || !company.name) continue
     if (company.verified === false) continue
-    if (isBlockedSlug(provider, company.slug)) continue
+    const boardId = boardIdOf(company)
+    if (isBlockedSlug(provider, company.ats === "lever_eu" ? company.slug : boardId)) continue
     boards.push({
       provider,
-      boardId: company.slug,
+      boardId,
       companyName: company.name,
       careersUrl: company.board_url,
       apiUrl: company.api_url,
@@ -67,17 +82,55 @@ export function loadSeedBoards(): SeedBoard[] {
       priority: priorityOf(company),
     })
   }
-  return boards.sort((a, b) => b.priority - a.priority || a.companyName.localeCompare(b.companyName))
+  return boards
+}
+
+/** Verified boards from the main catalog plus the Polish add-on. Workday is link-out only. */
+export function loadSeedBoards(): SeedBoard[] {
+  const main = (catalog as { companies?: RawCompany[] }).companies ?? []
+  const polish = (polishCatalog as { companies?: RawCompany[] }).companies ?? []
+  const seen = new Set<string>()
+  const boards: SeedBoard[] = []
+  for (const board of [...fromCatalog(main), ...fromCatalog(polish)]) {
+    const key = `${board.provider}:${board.boardId.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    boards.push(board)
+  }
+  return boards.sort(
+    (a, b) => b.priority - a.priority || a.companyName.localeCompare(b.companyName)
+  )
 }
 
 export const seedBoards: SeedBoard[] = loadSeedBoards()
+
+/**
+ * Employer Workday boards from the Polish pack. Terms ban automated collection,
+ * so these are never added to the fetch list.
+ */
+export function workdayOutboundLinks(): WorkdayBoardLink[] {
+  const polish = (polishCatalog as { companies?: RawCompany[] }).companies ?? []
+  const fromCatalog = polish
+    .filter(
+      (company) => company.ats === "workday" && company.verified !== false && company.board_url
+    )
+    .map((company) => ({
+      name: company.name,
+      href: company.board_url,
+      note: "Opens the employer board. Not downloaded.",
+    }))
+  return fromCatalog.length ? fromCatalog : WORKDAY_BOARDS
+}
 
 /**
  * Boards fetched on one scan. The catalog stays the full verified list.
  * SCAN_SEED_LIMIT=0 reads every board; the default keeps a run inside public rate limits
  * and prefers Poland / EU-remote engineering-leadership boards.
  */
-export function selectSeedBoards(boards: SeedBoard[] = seedBoards, limit = seedScanLimit()): SeedBoard[] {
+export function selectSeedBoards(
+  boards: SeedBoard[] = seedBoards,
+  limit = seedScanLimit()
+): SeedBoard[] {
   if (limit <= 0 || limit >= boards.length) return boards
   return boards.slice(0, limit)
 }

@@ -71,6 +71,13 @@ enum SourceType {
   ASHBY
   WORKABLE
   SMARTRECRUITERS
+  TRAFFIT
+  RECRUITEE
+  TEAMTAILOR
+  PERSONIO
+  PINPOINT
+  BREEZY
+  BAMBOOHR
   GENERIC_HTML
   WEB_SEARCH
 }
@@ -125,16 +132,16 @@ enum TaskStatus {
 }
 
 model Company {
-  id                   String   @id @default(cuid())
-  name                 String
-  normalizedName       String
-  canonicalDomain      String?  @unique
-  description          String?
-  industry             String?
-  headquartersCountry  String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  lastEnrichedAt       DateTime?
+  id                  String    @id @default(cuid())
+  name                String
+  normalizedName      String
+  canonicalDomain     String?   @unique
+  description         String?
+  industry            String?
+  headquartersCountry String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastEnrichedAt      DateTime?
 
   aliases     CompanyAlias[]
   careerPages CareerPage[]
@@ -172,21 +179,21 @@ model DiscoverySource {
 }
 
 model DiscoveryRun {
-  id                  String    @id @default(cuid())
+  id                  String           @id @default(cuid())
   sourceId            String?
   source              DiscoverySource? @relation(fields: [sourceId], references: [id])
   searchRunId         String?
-  searchRun           SearchRun? @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  searchRun           SearchRun?       @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
   query               String?
-  startedAt           DateTime  @default(now())
+  startedAt           DateTime         @default(now())
   finishedAt          DateTime?
   status              String
-  resultsCount        Int       @default(0)
-  newCompaniesCount   Int       @default(0)
-  newCareerPagesCount Int       @default(0)
+  resultsCount        Int              @default(0)
+  newCompaniesCount   Int              @default(0)
+  newCareerPagesCount Int              @default(0)
   errorCode           String?
   errorSummary        String?
-  estimatedCost       Float     @default(0)
+  estimatedCost       Float            @default(0)
 }
 
 model CareerPage {

@@ -1,10 +1,10 @@
-import {z} from "zod"
-import type {HttpClient} from "src/server/security/safe-fetch"
-import type {ListedJob} from "src/shared/schemas"
-import {isBlockedSlug, isGenericWorkableName, namesAgree} from "./blocked"
-import {asDate, buildListedJob, itemsFrom, readJson} from "./parse"
-import {parseJsonLdJobs} from "./jsonld"
-import type {BoardList} from "./types"
+import { z } from "zod"
+import type { HttpClient } from "src/server/security/safe-fetch"
+import type { ListedJob } from "src/shared/schemas"
+import { isBlockedSlug, isGenericWorkableName, namesAgree } from "./blocked"
+import { asDate, buildListedJob, itemsFrom, readJson } from "./parse"
+import { parseJsonLdJobs } from "./jsonld"
+import type { BoardList } from "./types"
 
 const jobSchema = z
   .object({
@@ -28,13 +28,16 @@ const jobSchema = z
             country: z.string().optional(),
             countryCode: z.string().optional(),
           })
-          .passthrough(),
+          .passthrough()
       )
       .optional(),
   })
   .passthrough()
 
-export function parseWorkableJobs(payload: unknown, boardId: string): {companyName?: string; jobs: ListedJob[]} {
+export function parseWorkableJobs(
+  payload: unknown,
+  boardId: string
+): { companyName?: string; jobs: ListedJob[] } {
   const root = z
     .object({
       name: z.string().optional(),
@@ -42,12 +45,13 @@ export function parseWorkableJobs(payload: unknown, boardId: string): {companyNa
     })
     .passthrough()
     .safeParse(payload)
-  if (!root.success) return {jobs: []}
+  if (!root.success) return { jobs: [] }
   const jobs = itemsFrom(root.data.jobs ?? [], jobSchema).flatMap((job) => {
     const fromLocations = (job.locations ?? [])
       .map((item) => [item.city, item.country].filter(Boolean).join(", "))
       .filter(Boolean)
-    const location = fromLocations.join(" | ") || [job.city, job.state, job.country].filter(Boolean).join(", ")
+    const location =
+      fromLocations.join(" | ") || [job.city, job.state, job.country].filter(Boolean).join(", ")
     const listed = buildListedJob({
       externalId: job.shortcode,
       title: job.title,
@@ -64,19 +68,33 @@ export function parseWorkableJobs(payload: unknown, boardId: string): {companyNa
     })
     return listed ? [listed] : []
   })
-  return {companyName: root.data.name, jobs}
+  return { companyName: root.data.name, jobs }
 }
 
 export function workableListUrl(boardId: string): string {
-  return `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(boardId)}?details=true`
+  return `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(
+    boardId
+  )}?details=true`
 }
 
-export async function listWorkable(boardId: string, http: HttpClient, expectedName?: string): Promise<BoardList> {
+export async function listWorkable(
+  boardId: string,
+  http: HttpClient,
+  expectedName?: string
+): Promise<BoardList> {
   if (isBlockedSlug("WORKABLE", boardId)) {
-    return {jobs: [], proven: false, note: `Workable slug ${boardId} is a known wrong-company account`}
+    return {
+      jobs: [],
+      proven: false,
+      note: `Workable slug ${boardId} is a known wrong-company account`,
+    }
   }
-  const response = await http.get(workableListUrl(boardId), {maxBytes: 8_000_000, accept: "application/json"})
-  if (response.status === 404) return {jobs: [], proven: false, note: `Workable ${boardId} was not found`}
+  const response = await http.get(workableListUrl(boardId), {
+    maxBytes: 8_000_000,
+    accept: "application/json",
+  })
+  if (response.status === 404)
+    return { jobs: [], proven: false, note: `Workable ${boardId} was not found` }
   if (response.status >= 400) throw new Error(`Workable ${boardId} returned ${response.status}`)
   const parsed = parseWorkableJobs(readJson(response.body), boardId)
   if (isGenericWorkableName(parsed.companyName) || parsed.jobs.length === 0) {
@@ -95,15 +113,15 @@ export async function listWorkable(boardId: string, http: HttpClient, expectedNa
       note: `Workable ${boardId} is ${parsed.companyName}, not ${expectedName}`,
     }
   }
-  return {jobs: parsed.jobs, proven: true, companyName: parsed.companyName}
+  return { jobs: parsed.jobs, proven: true, companyName: parsed.companyName }
 }
 
 export async function hydrateWorkable(job: ListedJob, http: HttpClient): Promise<ListedJob> {
   if (job.descriptionText) return job
-  const response = await http.get(job.originalUrl, {maxBytes: 1_500_000, accept: "text/html"})
-  if (response.status >= 400) return {...job, needsHydration: false}
+  const response = await http.get(job.originalUrl, { maxBytes: 1_500_000, accept: "text/html" })
+  if (response.status >= 400) return { ...job, needsHydration: false }
   const fromLd = parseJsonLdJobs(response.body, job.originalUrl)[0]
-  if (!fromLd) return {...job, needsHydration: false}
+  if (!fromLd) return { ...job, needsHydration: false }
   return {
     ...job,
     descriptionText: fromLd.descriptionText || job.descriptionText,

@@ -1,4 +1,4 @@
-import {z} from "zod"
+import { z } from "zod"
 
 export const workplaceTypeSchema = z.enum(["REMOTE", "HYBRID", "ONSITE", "UNKNOWN"])
 export type WorkplaceType = z.infer<typeof workplaceTypeSchema>
@@ -9,6 +9,13 @@ export const sourceTypeSchema = z.enum([
   "ASHBY",
   "WORKABLE",
   "SMARTRECRUITERS",
+  "TRAFFIT",
+  "RECRUITEE",
+  "TEAMTAILOR",
+  "PERSONIO",
+  "PINPOINT",
+  "BREEZY",
+  "BAMBOOHR",
   "GENERIC_HTML",
   "WEB_SEARCH",
 ])

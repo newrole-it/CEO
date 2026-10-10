@@ -1,9 +1,9 @@
-import {z} from "zod"
-import type {HttpClient} from "src/server/security/safe-fetch"
-import type {ListedJob} from "src/shared/schemas"
-import {isBlockedSlug} from "./blocked"
-import {asDate, buildListedJob, itemsFrom, mapWorkplace, readJson} from "./parse"
-import type {BoardList} from "./types"
+import { z } from "zod"
+import type { HttpClient } from "src/server/security/safe-fetch"
+import type { ListedJob } from "src/shared/schemas"
+import { isBlockedSlug } from "./blocked"
+import { asDate, buildListedJob, itemsFrom, mapWorkplace, readJson } from "./parse"
+import type { BoardList } from "./types"
 
 const postingSchema = z
   .object({
@@ -35,7 +35,11 @@ const postingSchema = z
   })
   .passthrough()
 
-export function parseLeverPostings(payload: unknown, boardId: string, companyName?: string): ListedJob[] {
+export function parseLeverPostings(
+  payload: unknown,
+  boardId: string,
+  companyName?: string
+): ListedJob[] {
   const list = Array.isArray(payload) ? payload : []
   return itemsFrom(list, postingSchema).flatMap((job) => {
     const url = job.hostedUrl || job.applyUrl
@@ -60,25 +64,62 @@ export function parseLeverPostings(payload: unknown, boardId: string, companyNam
 }
 
 function leverSalaryText(
-  range: {min?: number; max?: number; currency?: string; interval?: string} | null | undefined,
+  range: { min?: number; max?: number; currency?: string; interval?: string } | null | undefined
 ): string | undefined {
   if (!range || (range.min == null && range.max == null)) return undefined
-  const span = range.min != null && range.max != null ? `${range.min}-${range.max}` : `${range.min ?? range.max}`
+  const span =
+    range.min != null && range.max != null
+      ? `${range.min}-${range.max}`
+      : `${range.min ?? range.max}`
   return [span, range.currency, range.interval].filter(Boolean).join(" ")
 }
 
-export function leverListUrl(boardId: string): string {
-  return `https://api.lever.co/v0/postings/${encodeURIComponent(boardId)}?mode=json`
+export function leverSlug(boardId: string): string {
+  return boardId.toLowerCase().startsWith("eu:") ? boardId.slice(3) : boardId
 }
 
-export async function listLever(boardId: string, http: HttpClient, companyName?: string): Promise<BoardList> {
-  if (isBlockedSlug("LEVER", boardId)) {
-    return {jobs: [], proven: false, note: `Lever slug ${boardId} is a known wrong-company board`}
+/** EU-marked boards try api.eu.lever.co first. Others try the global host, then the EU host only on 404. */
+export function leverPostingUrls(boardId: string): string[] {
+  const slug = encodeURIComponent(leverSlug(boardId))
+  const global = `https://api.lever.co/v0/postings/${slug}?mode=json`
+  const eu = `https://api.eu.lever.co/v0/postings/${slug}?mode=json`
+  return boardId.toLowerCase().startsWith("eu:") ? [eu, global] : [global, eu]
+}
+
+export function leverListUrl(boardId: string): string {
+  return leverPostingUrls(boardId)[0]
+}
+
+export async function listLever(
+  boardId: string,
+  http: HttpClient,
+  companyName?: string
+): Promise<BoardList> {
+  const slug = leverSlug(boardId)
+  if (isBlockedSlug("LEVER", slug)) {
+    return { jobs: [], proven: false, note: `Lever slug ${slug} is a known wrong-company board` }
   }
-  const response = await http.get(leverListUrl(boardId), {maxBytes: 8_000_000, accept: "application/json"})
-  if (response.status === 404) return {jobs: [], proven: false, note: `Lever ${boardId} was not found`}
-  if (response.status >= 400) throw new Error(`Lever ${boardId} returned ${response.status}`)
-  const jobs = parseLeverPostings(readJson(response.body), boardId, companyName)
-  if (jobs.length === 0) return {jobs: [], proven: false, companyName, note: `Lever ${boardId} has no open jobs`}
-  return {jobs, proven: true, companyName, note: companyName ? undefined : "Lever payload has no company name; identity is the slug"}
+  let sawMissing = false
+  for (const url of leverPostingUrls(boardId)) {
+    const response = await http.get(url, { maxBytes: 8_000_000, accept: "application/json" })
+    if (response.status === 404) {
+      sawMissing = true
+      continue
+    }
+    if (response.status >= 400) throw new Error(`Lever ${slug} returned ${response.status}`)
+    const jobs = parseLeverPostings(readJson(response.body), boardId, companyName)
+    if (jobs.length === 0)
+      return { jobs: [], proven: false, companyName, note: `Lever ${slug} has no open jobs` }
+    return {
+      jobs,
+      proven: true,
+      companyName,
+      note: companyName ? undefined : "Lever payload has no company name; identity is the slug",
+    }
+  }
+  return {
+    jobs: [],
+    proven: false,
+    note: sawMissing ? `Lever ${slug} was not found` : `Lever ${slug} was not found`,
+  }
 }
