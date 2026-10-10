@@ -28,7 +28,7 @@ npm run setup
 npm run dev:all
 ```
 
-`dev:all` starts the site on 127.0.0.1:43123 and the Postgres-backed worker. A scan does nothing until the worker is running. `npm start` serves the production build on the same port.
+`dev:all` starts the site on 127.0.0.1:43123 and the Postgres-backed worker. A scan does nothing until the worker is running. The same worker indexes the full allowed catalog between searches: one request per 5 seconds per host, at most 200 detail pages per host per day, and a daily refresh. Large career sites backfill over several days. `npm start` serves the production build on the same port.
 
 The app works with no API keys. Query expansion falls back to checked examples (or a minimal expander), and scans read the verified seed boards.
 
@@ -56,6 +56,8 @@ Copy `.env.example`. The values the owner actually has to provide:
 `LLM_INPUT_USD_PER_MILLION` and `LLM_OUTPUT_USD_PER_MILLION` only affect the cost estimate. Token counts are stored either way.
 
 ## What a scan does
+
+The worker keeps a local index of every job on allowed and allowed-with-limits boards. A search scores that index first, so matches show up without waiting for a crawl, then tops up boards that have never been indexed. Offers at or above the relevance floor (40) are all listed, with filters and pages. A job missing from a complete crawl becomes possibly closed, then closed on the next miss.
 
 1. Expand the phrase into related titles, seniority, synonyms, and exclusions. `site:` queries are built in code from those titles. The model never writes them.
 2. Optionally ask Brave (then Serper) for ATS pages. Hits are used only to recover a board slug or a job URL, then the original ATS API is fetched. Raw search results are not written to the database.

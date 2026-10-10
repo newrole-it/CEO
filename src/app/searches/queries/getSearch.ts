@@ -3,10 +3,23 @@ import { NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
 
+const input = z.object({
+  id: z.string().min(1),
+  page: z.number().int().min(1).optional().default(1),
+  location: z.string().trim().max(80).optional(),
+  company: z.string().trim().max(80).optional(),
+  remote: z.boolean().optional(),
+  salary: z.boolean().optional(),
+  contract: z.string().trim().max(40).optional(),
+  includeDismissed: z.boolean().optional(),
+})
+
+const PAGE_SIZE = 20
+
 export default resolver.pipe(
   resolver.authorize(),
-  resolver.zod(z.object({ id: z.string().min(1) })),
-  async ({ id }, ctx) => {
+  resolver.zod(input),
+  async ({ id, page, location, company, remote, salary, contract, includeDismissed }, ctx) => {
     const search = await db.savedSearch.findFirst({
       where: { id, userId: ctx.session.userId! },
       include: { runs: { orderBy: { startedAt: "desc" }, take: 12 } },
@@ -22,10 +35,29 @@ export default resolver.pipe(
           take: 80,
         })
       : []
-    const matches = resultRun
+    const matchRun =
+      active && (active.matchedJobs > 0 || active.status === "SUCCEEDED") ? active : resultRun
+    const jobWhere = {
+      ...(location ? { locationText: { contains: location, mode: "insensitive" as const } } : {}),
+      ...(company
+        ? { company: { name: { contains: company, mode: "insensitive" as const } } }
+        : {}),
+      ...(remote ? { workplaceType: "REMOTE" as const } : {}),
+      ...(contract ? { employmentType: { contains: contract, mode: "insensitive" as const } } : {}),
+      ...(salary ? { OR: [{ salaryMin: { not: null } }, { salaryMax: { not: null } }] } : {}),
+    }
+    const where = {
+      searchRunId: matchRun?.id ?? "__none__",
+      ...(includeDismissed ? {} : { dismissedAt: null }),
+      ...(Object.keys(jobWhere).length ? { job: jobWhere } : {}),
+    }
+    const total = matchRun ? await db.jobMatch.count({ where }) : 0
+    const matches = matchRun
       ? await db.jobMatch.findMany({
-          where: { searchRunId: resultRun.id },
+          where,
           orderBy: { score: "desc" },
+          skip: (page - 1) * PAGE_SIZE,
+          take: PAGE_SIZE,
           include: { job: { include: { company: true } } },
         })
       : []
@@ -46,11 +78,17 @@ export default resolver.pipe(
         message: entry.message,
         createdAt: entry.createdAt,
       })),
+      page,
+      pageSize: PAGE_SIZE,
+      total,
+      pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
       results: matches.map((match) => ({
         id: match.id,
         score: match.score,
         reason: match.reason,
         isNew: match.isNew,
+        seenAt: match.seenAt,
+        dismissedAt: match.dismissedAt,
         breakdown: match.scoreBreakdown,
         job: {
           id: match.job.id,

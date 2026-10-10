@@ -4,13 +4,14 @@ import type { HttpClient } from "src/server/security/safe-fetch"
 import { noteHostInterval } from "src/server/security/safe-fetch"
 import { UnsafeUrlError } from "src/server/security/url-safety"
 import type { ListedJob, SourceType } from "src/shared/schemas"
-import { takeDetailSlot } from "src/server/crawler/budget"
+import { detailFetchesRemaining, takeDetailSlot } from "src/server/crawler/budget"
 import { excerpt } from "src/server/crawler/hygiene"
 import { feedUrlFromLlms, parseJobFeed } from "src/server/crawler/job-feed"
 import { extractListingLinks, htmlJobTitle } from "src/server/crawler/listing"
 import { emptyRobots, parseRobots, robotsAllows, type RobotsRules } from "src/server/crawler/robots"
-import { parseSitemap, type SitemapEntry } from "src/server/crawler/sitemap"
+import { orderSitemapChildren, parseSitemap, type SitemapEntry } from "src/server/crawler/sitemap"
 import { pairContractVariants } from "src/server/crawler/variants"
+import { canonicalUrl } from "src/server/jobs/dedupe"
 import { htmlToText } from "src/server/jobs/text"
 import { parseJsonLdJobs } from "./jsonld"
 import { buildListedJob } from "./parse"
@@ -359,7 +360,7 @@ async function collectSitemaps(
   if (response.status >= 400) return []
   const parsed = parseSitemap(response.body)
   const urls = [...parsed.urls]
-  for (const child of parsed.children.slice(0, 8)) {
+  for (const child of orderSitemapChildren(parsed.children).slice(0, 24)) {
     urls.push(...(await collectSitemaps(child, http, rules, depth + 1)))
   }
   return urls
@@ -713,10 +714,26 @@ async function loadCached(target: CareerTarget, boardId: string): Promise<Listed
   }
 }
 
+export type CareerListOptions = {
+  /** Detail pages to fetch this call. Defaults to CAREER_DETAIL_LIMIT. */
+  detailBudget?: number
+  /** Canonical URLs already stored. They count as covered and are not fetched again. */
+  knownUrls?: ReadonlySet<string>
+}
+
+function safeCanonical(raw: string): string {
+  try {
+    return canonicalUrl(raw)
+  } catch {
+    return raw
+  }
+}
+
 export async function listCareerSite(
   boardId: string,
   http: HttpClient,
-  companyName?: string
+  companyName?: string,
+  options?: CareerListOptions
 ): Promise<BoardList> {
   if (boardId.toLowerCase() === "jobs.allegro.eu") {
     return {
@@ -801,15 +818,34 @@ export async function listCareerSite(
     return listing
   }
   const poland = urls.filter((entry) => entry.loc.toLowerCase().includes("/poland/")).length
-  const limit = detailLimit()
+  const limit = options?.detailBudget ?? detailLimit()
+  const known = options?.knownUrls
   const parsed: ListedJob[] = []
+  const covered = new Set<string>()
+  let fetched = 0
   let blockedStreak = 0
-  for (const entry of urls.slice(0, limit)) {
+  let budgetExhausted = false
+  for (const entry of urls) {
+    const key = safeCanonical(entry.loc)
+    if (known?.has(key) || known?.has(entry.loc)) {
+      covered.add(key)
+      continue
+    }
+    if (fetched >= limit) break
+    if ((await detailFetchesRemaining(target.host)) <= 0) {
+      budgetExhausted = true
+      notes.push("Daily detail cap reached. The rest of this site waits until tomorrow.")
+      break
+    }
     try {
       const job = await fetchJobPage(entry, http, target, robots.rules)
+      fetched += 1
       if (job) {
         parsed.push(job)
+        covered.add(safeCanonical(job.originalUrl))
         blockedStreak = 0
+      } else {
+        covered.add(key)
       }
     } catch (error) {
       if (error instanceof UnsafeUrlError) {
@@ -823,6 +859,7 @@ export async function listCareerSite(
       }
     }
   }
+  const complete = !budgetExhausted && covered.size >= urls.length && blockedStreak < 3
 
   let cxsNote = ""
   if (target.platform === "workday" && urls.length >= 100) {
@@ -846,6 +883,10 @@ export async function listCareerSite(
     proven: true,
     companyName: target.companyName,
     note: notes.join(" ").slice(0, 500),
+    listedCount: urls.length,
+    complete,
+    budgetExhausted,
+    coveredUrls: complete ? [...covered] : undefined,
   }
 }
 

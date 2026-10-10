@@ -483,6 +483,28 @@ details.description summary {
   gap: 12px;
 }
 
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coverage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 18px;
+}
+
+.coverage-summary strong {
+  display: block;
+  font-size: 28px;
+}
+
+.policy.incomplete {
+  color: var(--danger);
+}
+
 .coverage-wrap {
   overflow-x: auto;
 }
@@ -535,7 +557,8 @@ details.description summary {
   .extras,
   .result-card,
   .breakdown,
-  .search-link {
+  .search-link,
+  .filter-grid {
     grid-template-columns: 1fr;
   }
 

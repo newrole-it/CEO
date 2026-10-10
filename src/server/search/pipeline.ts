@@ -24,6 +24,10 @@ import {
   resolveExpansion,
   titleIsRelevant,
 } from "src/server/matching/live"
+import { publishIndexedMatches } from "src/server/index/query"
+import { boardsAwaitingIndex } from "src/server/index/run"
+import { nextCrawlAt } from "src/server/index/schedule"
+import { storeBoardInventory } from "src/server/index/store"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob, SourceType, WorkplaceType } from "src/shared/schemas"
 import { runMatching } from "../../../matching/pipeline"
@@ -45,9 +49,10 @@ export type SearchDeps = {
   includeSeedBoards?: boolean
   search?: (query: string) => Promise<{ provider: string; hits: WebHit[] }>
   now?: Date
+  /** Production searches score the local index. Tests that pass `boards` skip it. */
+  useIndex?: boolean
 }
 
-const MAX_RESULTS = 25
 const MAX_HYDRATIONS = 18
 const MAX_DISCOVERED = 12
 const SCORE_FLOOR = 40
@@ -194,10 +199,35 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       }.`
     )
 
+    if (!deps.boards && deps.useIndex !== false) {
+      const indexed = await publishIndexedMatches({
+        searchRunId,
+        savedSearchId: run.savedSearchId,
+        expansion,
+        now,
+        llm,
+      })
+      await touch(searchRunId, {
+        phase: "topup",
+        progress: 48,
+        matchedJobs: indexed,
+        message: indexed
+          ? `${indexed} matching offers from the index. Checking boards that are not indexed yet.`
+          : "No index matches yet. Checking boards that are not indexed yet.",
+      })
+      await log(
+        searchRunId,
+        indexed
+          ? `Index has ${indexed} offers at ${SCORE_FLOOR} or above.`
+          : "Index has no offers at the relevance floor yet."
+      )
+    }
+
     const disabled = await disabledProviders()
     const boards = new Map<string, BoardTarget>()
     if (deps.includeSeedBoards !== false) {
-      for (const board of selectSeedBoards(deps.boards)) {
+      const seed = deps.boards ? selectSeedBoards(deps.boards) : await boardsAwaitingIndex(8)
+      for (const board of seed) {
         if (disabled.has(providerName(board.provider))) continue
         boards.set(boardKey(board.provider, board.boardId), { ...board, origin: "seed" })
       }
@@ -242,6 +272,20 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
         const jobs = stampCompany(listed, board.companyName)
         scanned += jobs.length
         collected.push(...jobs)
+        if (listed.proven || listed.jobs.length > 0) {
+          try {
+            const complete = listed.complete ?? listed.proven
+            await storeBoardInventory({
+              board,
+              listed: { ...listed, jobs, complete, listedCount: listed.listedCount ?? jobs.length },
+              now,
+              nextCheckAt: nextCrawlAt(now, complete, listed.budgetExhausted === true),
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Could not store listings"
+            await log(searchRunId, message, "warn")
+          }
+        }
         boardStats.push({
           provider: board.provider,
           boardId: board.boardId,
@@ -323,9 +367,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
     const profile = liveProfile(expansion)
     const matched = runMatching(raws, profile, now, liveMatchingConfig())
     const byId = new Map(matched.postings.map((posting) => [posting.id, posting]))
-    const ranked = matched.ranked
-      .filter((score) => score.score >= SCORE_FLOOR)
-      .slice(0, MAX_RESULTS)
+    const ranked = matched.ranked.filter((score) => score.score >= SCORE_FLOOR)
 
     const prior = await db.jobMatch.findMany({
       where: {
@@ -374,16 +416,17 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       })
     }
 
+    const matchedJobs = await db.jobMatch.count({ where: { searchRunId } })
     await touch(searchRunId, {
       status: "SUCCEEDED",
       phase: "done",
       progress: 100,
-      message: ranked.length
-        ? `${ranked.length} matching offers`
-        : "No matching offers in the sources checked",
+      message: matchedJobs
+        ? `${matchedJobs} matching offers`
+        : "No matching offers in the index or the boards checked",
       finishedAt: new Date(),
       fetchedJobs: scanned,
-      matchedJobs: ranked.length,
+      matchedJobs,
       newJobs,
       tokenInput,
       tokenOutput,
@@ -400,11 +443,11 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
     })
     await log(
       searchRunId,
-      ranked.length
-        ? `Ranked ${ranked.length} offers from ${scanned} listings.${
+      matchedJobs
+        ? `${matchedJobs} matching offers. This pass read ${scanned} listings.${
             hadPrior ? ` ${newJobs} are new since the last run.` : ""
           }`
-        : "Finished with no offers at 40 or above."
+        : `Finished with no offers at ${SCORE_FLOOR} or above.`
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : "Search failed"

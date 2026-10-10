@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
+import { indexNextDue } from "src/server/index/run"
 import { executeSearch } from "src/server/search/pipeline"
 import { enqueueSearch } from "src/server/queue/enqueue"
 
@@ -189,7 +190,10 @@ export async function workerLoop(signal?: { stopped: boolean }) {
       }
       const did = await workOnce(signal)
       backoff = 1000
-      if (!did && !signal?.stopped) await sleep(1000)
+      if (!did && !signal?.stopped) {
+        const indexed = await indexNextDue()
+        if (!indexed) await sleep(5000)
+      }
     } catch (error) {
       console.error("Worker loop error", error)
       await sleep(backoff)

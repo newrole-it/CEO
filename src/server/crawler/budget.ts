@@ -20,6 +20,19 @@ function takeMemory(host: string): boolean {
   return true
 }
 
+export async function detailFetchesRemaining(host: string): Promise<number> {
+  const day = today()
+  try {
+    const existing = await db.crawlBudget.findUnique({ where: { host } })
+    if (!existing || existing.day !== day) return DETAIL_DAILY_CAP
+    return Math.max(0, DETAIL_DAILY_CAP - existing.detailFetches)
+  } catch {
+    const current = memory.get(host)
+    if (!current || current.day !== day) return DETAIL_DAILY_CAP
+    return Math.max(0, DETAIL_DAILY_CAP - current.count)
+  }
+}
+
 /** Counts job-detail fetches. Robots and sitemap requests do not use this cap. */
 export async function takeDetailSlot(host: string): Promise<boolean> {
   const day = today()

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { decideFetch } from "config/source-policies"
 import { pairContractVariants } from "./variants"
 import { parseRobots, robotsAllows } from "./robots"
-import { parseSitemap } from "./sitemap"
+import { orderSitemapChildren, parseSitemap } from "./sitemap"
 import { aiOptOut, excerpt, stripPersonalData } from "./hygiene"
 import { parseSuccessFactorsJob } from "src/server/adapters/successfactors"
 import { buildListedJob } from "src/server/adapters/parse"
@@ -123,6 +123,14 @@ describe("robots and sitemaps", () => {
       loc: "https://jobs.gft.com/Poland/job/Role/1/",
       lastmod: "2026-10-03",
     })
+    const sii = parseSitemap(
+      `<sitemapindex><sitemap><loc><![CDATA[https://sii.pl/post-sitemap.xml]]></loc></sitemap><sitemap><loc><![CDATA[https://sii.pl/job-offer-sitemap.xml]]></loc><lastmod><![CDATA[2026-10-10T18:43:04+00:00]]></lastmod></sitemap></sitemapindex>`
+    )
+    expect(sii.children).toEqual([
+      "https://sii.pl/post-sitemap.xml",
+      "https://sii.pl/job-offer-sitemap.xml",
+    ])
+    expect(orderSitemapChildren(sii.children)[0]).toBe("https://sii.pl/job-offer-sitemap.xml")
   })
 
   it("obeys crawl-delay on the specific agent", () => {

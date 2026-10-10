@@ -5,6 +5,14 @@ export type BoardList = {
   proven: boolean
   companyName?: string
   note?: string
+  /** URLs or postings the source reported, including ones already stored. */
+  listedCount?: number
+  /** True when this response is the full current inventory, not a daily-cap slice. */
+  complete?: boolean
+  /** True when the per-host detail cap stopped the crawl before the inventory ended. */
+  budgetExhausted?: boolean
+  /** Canonical URLs still on the source. Set when `complete` is true. */
+  coveredUrls?: string[]
 }
 
 /**

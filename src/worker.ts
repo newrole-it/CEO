@@ -11,7 +11,7 @@ function stop(kind: NodeJS.Signals) {
 process.on("SIGINT", () => stop("SIGINT"))
 process.on("SIGTERM", () => stop("SIGTERM"))
 
-console.log("Jobscanner worker listening for search tasks")
+console.log("Jobscanner worker listening for searches and index crawls")
 workerLoop(signal)
   .then(() => {
     console.log("Jobscanner worker stopped")

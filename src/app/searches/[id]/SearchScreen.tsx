@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery } from "@blitzjs/rpc"
 import getSearch from "src/app/searches/queries/getSearch"
 import rerunSearch from "src/app/searches/mutations/rerunSearch"
+import markMatch from "src/app/searches/mutations/markMatch"
 import { Button } from "src/app/components/ui/button"
+import { Input } from "src/app/components/ui/input"
 import { polishBoardLinks } from "src/shared/polish-boards"
 import { WORKDAY_BOARDS } from "src/shared/workday-boards"
 
@@ -91,24 +93,41 @@ function variantLines(value: unknown) {
 
 export function SearchScreen({ id }: { id: string }) {
   const [mounted, setMounted] = useState(false)
+  const [showScores, setShowScores] = useState(false)
+  const [page, setPage] = useState(1)
+  const [location, setLocation] = useState("")
+  const [company, setCompany] = useState("")
+  const [contract, setContract] = useState("")
+  const [remoteOnly, setRemoteOnly] = useState(false)
+  const [salaryOnly, setSalaryOnly] = useState(false)
+  const [showDismissed, setShowDismissed] = useState(false)
   useEffect(() => {
     setMounted(true)
   }, [])
-  const [data, { isLoading, error, refetch }] = useQuery(
-    getSearch,
-    { id },
-    { suspense: false, enabled: mounted }
-  )
+  const queryInput = {
+    id,
+    page,
+    location: location.trim() || undefined,
+    company: company.trim() || undefined,
+    contract: contract.trim() || undefined,
+    remote: remoteOnly || undefined,
+    salary: salaryOnly || undefined,
+    includeDismissed: showDismissed || undefined,
+  }
+  const [data, { isLoading, error, refetch }] = useQuery(getSearch, queryInput, {
+    suspense: false,
+    enabled: mounted,
+  })
   const [rerun, { isPending: rerunning }] = useMutation(rerunSearch)
-  const [showScores, setShowScores] = useState(false)
+  const [mark] = useMutation(markMatch)
   const activeStatus = data?.active?.status
   const polling =
     activeStatus === "QUEUED" || activeStatus === "RUNNING" || activeStatus === "RETRYING"
-  useQuery(
-    getSearch,
-    { id },
-    { suspense: false, refetchInterval: polling ? 1500 : false, enabled: mounted && Boolean(data) }
-  )
+  useQuery(getSearch, queryInput, {
+    suspense: false,
+    refetchInterval: polling ? 1500 : false,
+    enabled: mounted && Boolean(data),
+  })
 
   const expansion = useMemo(() => {
     const raw = data?.active?.expansion
@@ -255,23 +274,89 @@ export function SearchScreen({ id }: { id: string }) {
         </div>
       </section>
 
-      {failed ? null : data.results.length === 0 ? (
+      <section className="panel filters" style={{ marginTop: 16 }}>
+        <h2 style={{ fontSize: 22, marginBottom: 8 }}>Filter the index</h2>
+        <div className="filter-grid">
+          <Input
+            aria-label="Location"
+            placeholder="Location"
+            value={location}
+            onChange={(event) => {
+              setPage(1)
+              setLocation(event.target.value)
+            }}
+          />
+          <Input
+            aria-label="Company"
+            placeholder="Company"
+            value={company}
+            onChange={(event) => {
+              setPage(1)
+              setCompany(event.target.value)
+            }}
+          />
+          <Input
+            aria-label="Contract"
+            placeholder="Contract, such as B2B"
+            value={contract}
+            onChange={(event) => {
+              setPage(1)
+              setContract(event.target.value)
+            }}
+          />
+        </div>
+        <div className="chips" style={{ marginTop: 12 }}>
+          <label className="chip">
+            <input
+              type="checkbox"
+              checked={remoteOnly}
+              onChange={(event) => {
+                setPage(1)
+                setRemoteOnly(event.target.checked)
+              }}
+            />{" "}
+            Remote
+          </label>
+          <label className="chip">
+            <input
+              type="checkbox"
+              checked={salaryOnly}
+              onChange={(event) => {
+                setPage(1)
+                setSalaryOnly(event.target.checked)
+              }}
+            />{" "}
+            Salary listed
+          </label>
+          <label className="chip">
+            <input
+              type="checkbox"
+              checked={showDismissed}
+              onChange={(event) => {
+                setPage(1)
+                setShowDismissed(event.target.checked)
+              }}
+            />{" "}
+            Show dismissed
+          </label>
+        </div>
+      </section>
+
+      {failed ? null : data.total === 0 ? (
         <div className="empty-card">
           <h2>{running ? "Offers will land here" : "No matching offers this time"}</h2>
           <p className="lede">
             {running
-              ? "Boards are public and rate-limited, so a scan often takes half a minute."
-              : "The sources that responded did not have a title close enough to this phrase. Try a broader one, or run again after adding a search API key."}
+              ? "The local index is scored first. Boards that have not been indexed yet are checked after that."
+              : "Nothing in the index is close enough to this phrase with these filters. Clear a filter, or wait for the indexer to finish a board."}
           </p>
         </div>
       ) : (
         <>
           <div className="section-head">
             <h2>
-              {data.results.length} offer{data.results.length === 1 ? "" : "s"}
-              {data.resultRun && data.active && data.resultRun.id !== data.active.id
-                ? " from the last finished scan"
-                : ""}
+              {data.total} offer{data.total === 1 ? "" : "s"}
+              {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ""}
             </h2>
             <button className="chip" type="button" onClick={() => setShowScores((value) => !value)}>
               {showScores ? "Hide score parts" : "Show score parts"}
@@ -307,6 +392,11 @@ export function SearchScreen({ id }: { id: string }) {
                       </div>
                       <div className="badges">
                         {result.isNew ? <span className="badge new">New</span> : null}
+                        {result.seenAt ? <span className="badge">Seen</span> : null}
+                        {result.dismissedAt ? <span className="badge">Dismissed</span> : null}
+                        {result.job.status === "POSSIBLY_CLOSED" ? (
+                          <span className="badge">Possibly closed</span>
+                        ) : null}
                         <span className="badge mode">{result.job.workplaceType}</span>
                         {result.job.employmentType ? (
                           <span className="badge">{result.job.employmentType}</span>
@@ -370,12 +460,51 @@ export function SearchScreen({ id }: { id: string }) {
                           </a>
                         </Button>
                       ) : null}
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          await mark({ id: result.id, action: "seen" })
+                          await refetch()
+                        }}
+                      >
+                        Mark seen
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          await mark({
+                            id: result.id,
+                            action: result.dismissedAt ? "restore" : "dismiss",
+                          })
+                          await refetch()
+                        }}
+                      >
+                        {result.dismissedAt ? "Restore" : "Dismiss"}
+                      </Button>
                     </div>
                   </div>
                 </article>
               )
             })}
           </div>
+          {data.pageCount > 1 ? (
+            <div className="chips" style={{ marginTop: 16 }}>
+              <Button
+                variant="outline"
+                disabled={data.page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                disabled={data.page >= data.pageCount}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
     </div>
