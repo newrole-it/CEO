@@ -46,6 +46,6 @@ export async function sendMagicLinkEmail(
     })
     return "smtp"
   }
-  console.log(`Magic link for ${email}: ${url}`)
+  console.log(`Magic link (local console delivery): ${url}`)
   return "console"
 }

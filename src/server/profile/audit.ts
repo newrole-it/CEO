@@ -580,6 +580,7 @@ export async function buildProfileAudit(input: {
   facts: DemandFact[]
   llm: LlmClient | null
   previousScore: number | null
+  userId?: number
 }): Promise<BuiltAudit> {
   const fallback = heuristicNotes(input.document, input.facts)
   let fromModel: AuditAnnotation[] = []
@@ -605,6 +606,7 @@ export async function buildProfileAudit(input: {
         user: `Trusted demand facts:\n${facts}\n\nProfile sections:\n${sections}`,
         schema: llmNoteSchema,
         maxTokens: 1800,
+        userId: input.userId,
       })
       if (result) {
         modelSummary = result.data.summary

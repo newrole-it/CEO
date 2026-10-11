@@ -2,7 +2,7 @@
 
 Personal job-offer scanner. Type a role in Polish or English. Jobscanner expands it into related titles, reads public ATS boards, and ranks what is open. Every result links to the original posting. Search works without an account. Sign in to keep a profile, and the same page ranks offers against your salary and industry.
 
-The interface is Polish by default, with an English switch. The landing count is the number of active indexed jobs, rounded down to the thousand. Privacy and terms are drafts pending legal review.
+The interface is Polish by default, with an English switch. The landing count is the number of active indexed jobs, rounded down to the thousand. Privacy and terms are drafts pending legal review. Settings can export your data as JSON, delete the CV and profile, or delete the account. Deletion removes the profile, searches, decisions, audits, sessions, sign-in links, and the LinkedIn connection. Audit-log rows keep the action name only.
 
 There is no billing and no email alerts. The first email you enter creates an account and signs you in on that device. Later sign-ins use a one-time link. LinkedIn sign-in uses OpenID Connect and only receives your name, email, and picture. The seeded owner stays the admin.
 
@@ -64,7 +64,7 @@ Copy `.env.example`. The values the owner actually has to provide:
 
 ## Accounts and profile
 
-Search does not require an account. The first time an email is entered, Jobscanner creates the user and signs that browser in. A later sign-in emails a link that works once and expires after 15 minutes. The token is stored as a hash. Requests are limited to 5 per email and 20 per IP each hour. With `EMAIL_PROVIDER=console`, the link is printed in the web server log.
+Search does not require an account. The first time an email is entered, Jobscanner creates the user and signs that browser in. A later sign-in emails a link that works once and expires after 15 minutes. The token is stored as a hash. Requests are limited to 5 per email and 20 per IP each hour. With `EMAIL_PROVIDER=console`, the sign-in URL is printed in the web server log without the email address. That log line is the local delivery path, not a production mailbox.
 
 LinkedIn uses the official OpenID Connect flow, scopes `openid`, `profile`, and `email`.
 
@@ -73,7 +73,7 @@ LinkedIn uses the official OpenID Connect flow, scopes `openid`, `profile`, and 
 3. Set the authorized redirect URL to `http://127.0.0.1:43123/api/auth/linkedin/callback` (or `${APP_ORIGIN}/api/auth/linkedin/callback`).
 4. Put the client id and secret in `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`.
 
-LinkedIn does not share a CV. After a search, import a profile by uploading the PDF from LinkedIn (More → Save to PDF), any CV PDF, or pasted text. The file is deleted after text extraction. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so Profile audit can show a copy. Settings deletes that copy along with the rest of the account data. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source.
+LinkedIn does not share a CV. After a search, import a profile by uploading the PDF from LinkedIn (More → Save to PDF), any CV PDF, or pasted text. The PDF is written to a temporary file, read, and deleted before the request continues. It is not stored. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so Profile audit can show a copy. Settings can delete that copy on its own, or delete the whole account. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source. Model replies from the CV are cached under the user and removed with the profile.
 
 Profile audit is for a signed-in user who imported that text. It marks exact phrases, with a copy-paste rewrite next to each mark. Categories are missing keywords, vague wording, seniority or scope, gaps, and formatting. Keyword notes use the latest successful search for each saved role. A phrase becomes a mark only when at least five matched offers contain it, that share is at least 15%, and the profile never says it. The percentage is the counted share. The model cannot supply a score or a percentage of its own. Run the audit again after a new PDF to see the score move.
 

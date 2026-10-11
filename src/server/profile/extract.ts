@@ -112,7 +112,8 @@ function preferSeniority(
 
 export async function extractProfileFromText(
   raw: string,
-  llm: LlmClient | null
+  llm: LlmClient | null,
+  userId?: number
 ): Promise<ProfileDraft> {
   const source = visibleText(raw).slice(0, 12000)
   const rules = ruleDraft(source)
@@ -124,6 +125,7 @@ export async function extractProfileFromText(
       user: wrapUntrusted("cv", source.slice(0, 4000)),
       schema: llmProfileSchema,
       maxTokens: 700,
+      userId,
     })
     if (!result?.data) return rules
     const data = result.data

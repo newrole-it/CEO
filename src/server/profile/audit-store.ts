@@ -54,6 +54,7 @@ export async function runProfileAuditForUser(userId: number): Promise<BuiltAudit
     facts: await demandForUser(userId, profileText(document)),
     llm: createLlmClient(),
     previousScore: previous?.score ?? null,
+    userId,
   })
   await db.profileAuditRun.create({
     data: {

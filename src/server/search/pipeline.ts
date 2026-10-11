@@ -165,7 +165,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
   try {
     const phrase = run.savedSearch.phrase
     const locationHint = run.savedSearch.locationHint ?? undefined
-    const resolved = await resolveExpansion({ phrase, locationHint }, llm)
+    const resolved = await resolveExpansion({ phrase, locationHint }, llm, run.savedSearch.userId)
     tokenInput += resolved.tokenInput
     tokenOutput += resolved.tokenOutput
     const expansion = resolved.expansion
@@ -389,7 +389,15 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       const posting = byId.get(score.postingId)
       if (!posting) continue
       const listed = listedByKey.get(posting.id)
-      const explained = await explain(llm, posting, score, profile, index, listed?.llmOptOut)
+      const explained = await explain(
+        llm,
+        posting,
+        score,
+        profile,
+        index,
+        listed?.llmOptOut,
+        run.savedSearch.userId
+      )
       tokenInput += explained.tokenInput
       tokenOutput += explained.tokenOutput
       const reason = explained.reason
@@ -725,7 +733,8 @@ async function explain(
   score: ScoreResult,
   profile: ReturnType<typeof liveProfile>,
   index: number,
-  llmOptOut?: boolean
+  llmOptOut?: boolean,
+  userId?: number
 ): Promise<{ reason: string; tokenInput: number; tokenOutput: number }> {
   if (!llm || index >= 6 || llmOptOut)
     return {
@@ -743,6 +752,7 @@ async function explain(
       system,
       user,
       maxTokens: 900,
+      userId,
     })
   } catch {
     result = null

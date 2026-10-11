@@ -23,8 +23,11 @@ export async function claimGuest(guestId: number, userId: number) {
   const targetProfile = await db.candidateProfile.findUnique({ where: { userId } })
   if (!targetProfile) {
     await db.candidateProfile.updateMany({ where: { userId: guestId }, data: { userId } })
+    await db.profileAuditRun.updateMany({ where: { userId: guestId }, data: { userId } })
+    await db.llmCache.updateMany({ where: { userId: guestId }, data: { userId } })
   }
   await db.savedSearch.updateMany({ where: { userId: guestId }, data: { userId } })
+  await db.auditEvent.updateMany({ where: { userId: guestId }, data: { userId } })
   await db.user.delete({ where: { id: guestId } })
 }
 

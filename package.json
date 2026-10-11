@@ -12,7 +12,7 @@
     "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
     "test": "vitest run && npm test --prefix matching && npm run test:flow",
     "test:watch": "vitest",
-    "test:flow": "DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner_test SESSION_SECRET_KEY=jobscanner-dev-session-secret-key-32b tsx --test test/search-flow.test.ts test/indexer.test.ts test/auth.test.ts",
+    "test:flow": "DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner_test SESSION_SECRET_KEY=jobscanner-dev-session-secret-key-32b tsx --test test/search-flow.test.ts test/indexer.test.ts test/auth.test.ts test/privacy.test.ts",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",

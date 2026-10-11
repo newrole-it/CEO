@@ -99,7 +99,8 @@ async function explain(
   score: ScoreResult,
   profile: ReturnType<typeof liveProfile>,
   index: number,
-  llmOptOut: boolean
+  llmOptOut: boolean,
+  userId?: number
 ) {
   if (!llm || index >= 6 || llmOptOut) return fallbackExplanation(score).summary.slice(0, 500)
   const messages = buildMatchExplanationMessages({ posting, score, profile, language: "en" })
@@ -111,6 +112,7 @@ async function explain(
       system,
       user,
       maxTokens: 900,
+      userId,
     })
     if (!result?.data) return fallbackExplanation(score).summary.slice(0, 500)
     return finalizeExplanation(result.data, score).explanation.summary.slice(0, 500)
@@ -145,6 +147,7 @@ export async function publishIndexedMatches(args: {
   const saved = await db.savedSearch.findUnique({
     where: { id: args.savedSearchId },
     select: {
+      userId: true,
       user: {
         select: {
           locale: true,
@@ -202,7 +205,7 @@ export async function publishIndexedMatches(args: {
     }
     const reason = fit
       ? fit.why
-      : await explain(llm, posting, score, profile, index, job?.llmOptOut ?? false)
+      : await explain(llm, posting, score, profile, index, job?.llmOptOut ?? false, saved?.userId)
     index += 1
     const isNew = hadPrior && !seen.has(score.postingId)
     const data = {

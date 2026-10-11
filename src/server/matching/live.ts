@@ -162,6 +162,7 @@ function unique(values: string[]): string[] {
 export async function resolveExpansion(
   input: QueryExpansionInput,
   llm: LlmClient | null,
+  userId?: number,
 ): Promise<{expansion: QueryExpansion; source: "llm" | "example" | "minimal"; tokenInput: number; tokenOutput: number}> {
   if (llm) {
     const messages = buildQueryExpansionMessages(input)
@@ -169,7 +170,7 @@ export async function resolveExpansion(
     const user = messages.find((message) => message.role === "user")?.content ?? ""
     let result: Awaited<ReturnType<typeof llm.completeText>> = null
     try {
-      result = await llm.completeText({purpose: "query-expansion", system, user, maxTokens: 1400})
+      result = await llm.completeText({purpose: "query-expansion", system, user, maxTokens: 1400, userId})
     } catch {
       result = null
     }

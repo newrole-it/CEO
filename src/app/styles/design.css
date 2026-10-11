@@ -3692,6 +3692,27 @@ html:not([data-auth="1"]) [data-authed] {
   font-weight: var(--weight-display);
   line-height: 1.05;
 }
+.page-head h2,
+.page-head h3 {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-display);
+  line-height: 1.15;
+}
+.page-head h2 {
+  font-size: var(--text-2xl);
+  margin-top: var(--space-5);
+}
+.page-head h3 {
+  font-size: var(--text-lg);
+  margin-top: var(--space-4);
+}
+.page-head ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.page-head li + li {
+  margin-top: var(--space-2);
+}
 .page-main .hero {
   position: static;
   overflow: visible;

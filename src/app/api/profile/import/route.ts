@@ -1,7 +1,3 @@
-import { randomBytes } from "crypto"
-import { unlink, writeFile } from "fs/promises"
-import { tmpdir } from "os"
-import { join } from "path"
 import db from "db"
 import { getBlitzContext } from "src/app/blitz-server"
 import { createLlmClient } from "src/server/llm/client"
@@ -28,28 +24,31 @@ export async function POST(request: Request) {
       return Response.json({ error: "Upload a PDF, or paste the text instead." }, { status: 400 })
     }
     const bytes = Buffer.from(await file.arrayBuffer())
-    const tmp = join(tmpdir(), `jobscanner-upload-${randomBytes(8).toString("hex")}.pdf`)
-    await writeFile(tmp, new Uint8Array(bytes))
     try {
-      text = `${text}\n${await extractPdfText(bytes)}`
+      text = `${text}\n${await extractPdfText(bytes)}`.trim()
     } catch {
       return Response.json(
         { error: "Could not read that PDF. Paste the text instead." },
         { status: 400 }
       )
-    } finally {
-      await unlink(tmp).catch(() => undefined)
     }
   }
   if (text.trim().length < 20) {
     return Response.json({ error: "Add a PDF or paste more of the CV." }, { status: 400 })
   }
-  const draft = await extractProfileFromText(text, createLlmClient())
+
+  let userId: number | undefined
+  try {
+    const ctx = await getBlitzContext()
+    userId = ctx.session.userId ?? undefined
+  } catch (error) {
+    console.error("profile import session failed", error instanceof Error ? error.message : error)
+  }
+
+  const draft = await extractProfileFromText(text, createLlmClient(), userId)
   const document = parseLinkedInProfile(text)
   let audited = false
   try {
-    const ctx = await getBlitzContext()
-    const userId = ctx.session.userId
     if (userId && document) {
       await db.candidateProfile.upsert({
         where: { userId },

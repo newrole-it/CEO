@@ -143,6 +143,31 @@ const pl = {
     "Tekst zaimportowany z pliku PDF z LinkedIn. Kolor zakreślenia oznacza rodzaj uwagi, a numer prowadzi do notatki. To sugestie: zmieniaj tylko to, co jest prawdą.",
   uploadPdf: "Wgraj nowszy PDF",
   searchWithProfile: "Szukaj ofert z tym profilem",
+  settingsKicker: "Ustawienia",
+  settingsTitle: "Konto",
+  settingsSignedIn: "Zalogowano jako",
+  settingsSignInTitle: "Zaloguj się, aby zarządzać kontem",
+  settingsSignInBody: "Kontynuuj e-mailem albo przez LinkedIn.",
+  settingsExportTitle: "Pobierz moje dane",
+  settingsExportBody:
+    "Plik JSON z kontem, profilem, audytami, zapisanymi wyszukiwaniami i decyzjami. Hasło i tokeny sesji nie wchodzą do pliku.",
+  settingsExport: "Pobierz JSON",
+  settingsProfileTitle: "Usuń CV i profil",
+  settingsProfileBody:
+    "Usuwa zapisany profil, tekst z PDF, audyty profilu i odpowiedzi modelu wyliczone z tego CV. Konto, wyszukiwania i decyzje zostają.",
+  settingsProfileButton: "Usuń moje CV i profil",
+  settingsProfileConfirm:
+    "Profil, audyty i odpowiedzi modelu z tego CV zostaną usunięte. Tego nie da się cofnąć.",
+  settingsProfileDone: "Profil i audyty zostały usunięte.",
+  settingsAccountTitle: "Usuń konto",
+  settingsAccountBody:
+    "Usuwa konto, profil, zapisane wyszukiwania, decyzje, audyty, sesje, linki do logowania i połączenie z LinkedIn. W dzienniku zostaje tylko nazwa czynności, bez frazy wyszukiwania.",
+  settingsAccountButton: "Usuń moje konto",
+  settingsAccountConfirm:
+    "Konto i wszystkie Twoje dane w Jobscannerze zostaną usunięte. Tego nie da się cofnąć.",
+  settingsCancel: "Anuluj",
+  settingsConfirm: "Usuń",
+  settingsDeleting: "Usuwanie…",
 }
 
 const en: typeof pl = {
@@ -288,6 +313,31 @@ const en: typeof pl = {
     "Text imported from your LinkedIn PDF. The highlight colour shows the kind of note, and the number links to it. These are suggestions: only change what's true.",
   uploadPdf: "Upload a newer PDF",
   searchWithProfile: "Search offers with this profile",
+  settingsKicker: "Settings",
+  settingsTitle: "Account",
+  settingsSignedIn: "Signed in as",
+  settingsSignInTitle: "Sign in to manage the account",
+  settingsSignInBody: "Continue with email or LinkedIn.",
+  settingsExportTitle: "Download my data",
+  settingsExportBody:
+    "A JSON file of the account, profile, audits, saved searches, and decisions. The password and session tokens are left out.",
+  settingsExport: "Download JSON",
+  settingsProfileTitle: "Delete my CV and profile",
+  settingsProfileBody:
+    "Removes the saved profile, the text taken from the PDF, profile audits, and model replies derived from that CV. The account, searches, and decisions stay.",
+  settingsProfileButton: "Delete my CV/profile",
+  settingsProfileConfirm:
+    "The profile, audits, and model replies from this CV will be deleted. This cannot be undone.",
+  settingsProfileDone: "The profile and audits were deleted.",
+  settingsAccountTitle: "Delete my account",
+  settingsAccountBody:
+    "Removes the account, profile, saved searches, decisions, audits, sessions, sign-in links, and the LinkedIn connection. The activity log keeps the action name only, without the search phrase.",
+  settingsAccountButton: "Delete my account",
+  settingsAccountConfirm:
+    "The account and all of your Jobscanner data will be deleted. This cannot be undone.",
+  settingsCancel: "Cancel",
+  settingsConfirm: "Delete",
+  settingsDeleting: "Deleting…",
 }
 
 export type CopyKey = keyof typeof pl
