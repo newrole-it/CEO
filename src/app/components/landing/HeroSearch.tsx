@@ -142,7 +142,7 @@ export function HeroSearch({
       {signedIn && searches.length ? (
         <div className="saved-row">
           <span className="muted small">{t("savedLabel")}</span>
-          {searches.slice(0, 4).map((search) => (
+          {searches.slice(0, 5).map((search) => (
             <a key={search.id} className="chip" href={`/searches/${search.id}`}>
               {search.phrase}
               {search.newJobs > 0 ? <span className="chip-count">{search.newJobs}</span> : null}

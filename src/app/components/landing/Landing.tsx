@@ -35,7 +35,7 @@ export function Landing({
   signedIn: boolean
   indexed: number
   searches: { id: string; phrase: string; newJobs: number }[]
-  preview: { title: string; company: string; location: string }[]
+  preview: { id: string; title: string; company: string; location: string }[]
 }) {
   const t = copy(locale)
   const pill = indexCountLabel(indexed, locale)
@@ -61,7 +61,7 @@ export function Landing({
             <figure className="preview" aria-labelledby="preview-cap">
               <div className="preview-list">
                 {preview.map((item) => (
-                  <div className="result" key={`${item.company}-${item.title}`}>
+                  <div className="result" key={item.id}>
                     <div>
                       <p className="result-company">{item.company}</p>
                       <h3 className="h3 result-title">{item.title}</h3>

@@ -119,19 +119,15 @@ ol {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
-html.js .display em {
-  background-size: 0% 82%;
-  animation: markIn 900ms var(--ease-out) 650ms forwards;
-}
 @keyframes markIn {
   to {
     background-size: 100% 82%;
   }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: no-preference) {
   html.js .display em {
-    animation: none;
-    background-size: 100% 82%;
+    background-size: 0% 82%;
+    animation: markIn 900ms var(--ease-out) 650ms forwards;
   }
 }
 .h2 em {
