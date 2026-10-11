@@ -195,7 +195,7 @@ export default resolver.pipe(
             })
           : null
         if (fit) linesById.set(row.id, fit.lines)
-        const base = storedQuery != null && fit ? fit.score : row.score
+        const base = fit ? fit.score : row.score
         const delta = penalty + affinity + (base - row.score)
         return { id: row.id, score: row.score, delta, rank: row.score + delta }
       })

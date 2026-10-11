@@ -200,6 +200,7 @@ export async function publishIndexedMatches(args: {
         location: job?.locationText ?? "",
         workplace: job?.workplaceType ?? "",
         salary,
+        seniority: job?.seniorityLevel,
         jobIndustry,
       })
     }
