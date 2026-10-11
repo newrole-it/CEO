@@ -1,12 +1,13 @@
 import "./styles/tokens.css"
 import "./styles/globals.css"
 import "./styles/design.css"
+import type { Metadata } from "next"
 import { BlitzProvider } from "./blitz-client"
 import { LocaleProvider } from "./i18n/Locale"
 import { getLocale } from "./i18n/server"
-import { copy } from "./i18n/copy"
 import { Geist_Mono, Onest } from "next/font/google"
 import { invoke } from "./blitz-server"
+import { publicAppUrl } from "src/server/site-url"
 import getCurrentUser from "./users/queries/getCurrentUser"
 
 const sans = Onest({
@@ -21,18 +22,31 @@ const mono = Geist_Mono({
   display: "swap",
 })
 
-export async function generateMetadata() {
+export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
-  const t = copy(locale)
+  const pl = locale === "pl"
+  const title = pl
+    ? "Nowa Rola: oferty pracy w tech prosto od firm"
+    : "Nowa Rola: tech jobs straight from employers"
+  const description = pl
+    ? "Wpisz, co Cię interesuje. Połącz LinkedIn, a Nowa Rola znajdzie oferty dopasowane do Ciebie."
+    : "Type what interests you. Connect LinkedIn, and Nowa Rola finds the offers that fit you."
   return {
-    title: {
-      default:
-        locale === "pl"
-          ? "Jobscanner: oferty pracy prosto ze stron kariery firm"
-          : "Jobscanner: job offers straight from company career pages",
-      template: "%s · Jobscanner",
+    metadataBase: new URL(publicAppUrl()),
+    applicationName: "Nowa Rola",
+    title: { default: title, template: "%s · Nowa Rola" },
+    description,
+    openGraph: {
+      type: "website",
+      siteName: "Nowa Rola",
+      locale: pl ? "pl_PL" : "en_US",
+      alternateLocale: pl ? ["en_US"] : ["pl_PL"],
+      url: "/",
+      title,
+      description,
     },
-    description: t.heroLede,
+    twitter: { card: "summary", title, description },
+    alternates: { canonical: "/" },
   }
 }
 

@@ -220,6 +220,7 @@ model Company {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   lastEnrichedAt      DateTime?
+  isTech              Boolean?
 
   aliases     CompanyAlias[]
   careerPages CareerPage[]
@@ -336,6 +337,9 @@ model Job {
   fingerprint        String
   variants           Json?
   llmOptOut          Boolean       @default(false)
+  seniorityLevel     String?
+  isTechRole         Boolean?
+  classifiedAt       DateTime?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -343,6 +347,7 @@ model Job {
   matches      JobMatch[]
 
   @@index([fingerprint])
+  @@index([status, classifiedAt])
   @@index([canonicalUrl])
   @@index([companyId])
   @@index([careerPageId, status])

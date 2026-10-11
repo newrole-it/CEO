@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation"
 import createSearch from "src/app/searches/mutations/createSearch"
 import { useCopy } from "src/app/i18n/Locale"
 
-const EXAMPLES = ["Product Designer", "Data Engineer", "Kierownik projektu"]
-
 export function HeroSearch({
   signedIn,
   searches,
+  examples,
 }: {
   signedIn: boolean
   searches: { id: string; phrase: string; newJobs: number }[]
+  examples: string[]
 }) {
   const { t } = useCopy()
   const router = useRouter()
@@ -132,7 +132,7 @@ export function HeroSearch({
         </fieldset>
         <div className="try">
           <span>{t("tryLabel")}</span>
-          {EXAMPLES.map((example) => (
+          {examples.map((example) => (
             <button key={example} className="chip" type="button" onClick={() => setPhrase(example)}>
               {example}
             </button>

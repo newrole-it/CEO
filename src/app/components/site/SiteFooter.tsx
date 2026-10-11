@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { LogoMark } from "./Brand"
+import { LogoLockup } from "./Brand"
 import { copy, type Locale } from "src/app/i18n/copy"
 
 export function SiteFooter({ locale }: { locale: Locale }) {
@@ -9,11 +9,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
       <div className="container">
         <div className="footer-grid">
           <div>
-            <Link className="brand" href="/">
-              <LogoMark />
-              <span className="brand-word">
-                Job<span>scanner</span>
-              </span>
+            <Link className="brand" href="/" aria-label={t.brandHome}>
+              <LogoLockup />
             </Link>
             <p className="tagline">{t.footerTag}</p>
           </div>
@@ -23,7 +20,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <Link href="/sources">{t.sourcesList}</Link>
           </nav>
         </div>
-        <p className="footer-base">© 2026 Jobscanner · {t.footerBase}</p>
+        <p className="footer-base">© 2026 Nowa Rola · {t.footerBase}</p>
       </div>
     </footer>
   )

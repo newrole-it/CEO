@@ -15,7 +15,7 @@ export async function GET() {
   return new Response(JSON.stringify(data, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="jobscanner-export.json"',
+      "Content-Disposition": 'attachment; filename="nowarola-export.json"',
       "Cache-Control": "no-store",
     },
   })

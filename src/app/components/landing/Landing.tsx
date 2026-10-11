@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { indexBigNumber, indexCountLabel } from "src/shared/index-count"
+import { indexCountLabel } from "src/shared/index-count"
 import { copy, type Locale } from "src/app/i18n/copy"
 import { LinkedInMark } from "../site/Brand"
 import { HeroSearch } from "./HeroSearch"
@@ -28,18 +28,19 @@ export function Landing({
   locale,
   signedIn,
   indexed,
+  examples,
   searches,
   preview,
 }: {
   locale: Locale
   signedIn: boolean
-  indexed: number
+  indexed: number | null
+  examples: string[]
   searches: { id: string; phrase: string; newJobs: number }[]
   preview: { id: string; title: string; company: string; location: string }[]
 }) {
   const t = copy(locale)
-  const pill = indexCountLabel(indexed, locale)
-  const big = indexBigNumber(indexed, locale)
+  const counted = indexed != null ? indexCountLabel(indexed, locale) : null
   return (
     <main id="main">
       <section className="hero" aria-labelledby="hero-title">
@@ -47,14 +48,15 @@ export function Landing({
           <p className="index-pill">
             <span className="live-dot" aria-hidden="true" />
             <span>
-              <strong>{pill.strong}</strong> {pill.rest}
+              <strong>{t.heroPillStrong}</strong> {t.heroPillRest}
+              <span className="pill-long"> {t.heroPillLong}</span>
             </span>
           </p>
           <h1 className="display" id="hero-title">
             {t.heroTitleBefore} <em>{t.heroTitleEm}</em>
           </h1>
           <p className="lede">{t.heroLede}</p>
-          <HeroSearch signedIn={signedIn} searches={searches} />
+          <HeroSearch signedIn={signedIn} searches={searches} examples={examples} />
         </div>
         {preview.length ? (
           <div className="container preview-wrap">
@@ -106,11 +108,11 @@ export function Landing({
                 <div className="flow">
                   <div className="flow-row">
                     <span className="tag">{t.flowCareer}</span>
-                    <span className="tag">Jobscanner</span>
+                    <span className="tag">Nowa Rola</span>
                   </div>
                   <div className="flow-row">
                     <span className="tag">{t.flowAts}</span>
-                    <span className="tag">Jobscanner</span>
+                    <span className="tag">Nowa Rola</span>
                   </div>
                   <div className="flow-row">
                     <span className="tag off">{t.flowPortal}</span>
@@ -134,8 +136,19 @@ export function Landing({
         <div className="container sources">
           <div>
             <p className="eyebrow">{t.sourcesEyebrow}</p>
-            <p className="bignum">{big}</p>
-            <p className="bignum-label">{t.bignumLabel}</p>
+            {counted ? (
+              <>
+                <p className="bignum">{counted.strong}</p>
+                <p className="bignum-label">{counted.rest}</p>
+              </>
+            ) : (
+              <>
+                <p className="bignum">
+                  <span>1</span> {t.clickWord}
+                </p>
+                <p className="bignum-label">{t.bignumLabel}</p>
+              </>
+            )}
             <h2 className="h2" id="sources-title">
               {t.sourcesTitleBefore} <em>{t.sourcesTitleEm}</em>
             </h2>

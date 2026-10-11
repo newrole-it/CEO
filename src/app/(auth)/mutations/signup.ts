@@ -1,5 +1,5 @@
-import {AuthenticationError} from "blitz"
+import { AuthenticationError } from "blitz"
 
 export default async function signup() {
-  throw new AuthenticationError("Jobscanner has a single owner account. Sign in instead.")
+  throw new AuthenticationError("Nowa Rola has a single owner account. Sign in instead.")
 }

@@ -33,7 +33,7 @@ export function parseRobots(text: string): RobotsRules {
     if (key === "user-agent") {
       const agent = value.toLowerCase()
       if (agent === "*") current = "star"
-      else if (agent.includes("jobscanner")) {
+      else if (agent.includes("jobscanner") || agent.includes("nowarola")) {
         current = "specific"
         specificMatched = true
       } else current = "other"

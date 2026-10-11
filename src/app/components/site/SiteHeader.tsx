@@ -7,7 +7,7 @@ import { useMutation } from "@blitzjs/rpc"
 import logout from "src/app/(auth)/mutations/logout"
 import { useCopy } from "src/app/i18n/Locale"
 import type { ShellUser } from "../Shell"
-import { LinkedInMark, LogoMark } from "./Brand"
+import { LinkedInMark, LogoLockup } from "./Brand"
 
 const ACCOUNT = [
   { href: "/interested", key: "navInterested" as const, count: true },
@@ -99,11 +99,8 @@ export function SiteHeader({ user, interested }: { user?: ShellUser; interested:
       <header className={`site-header${scrolled ? " is-scrolled" : ""}`}>
         <div className="container">
           <div className="header-inner">
-            <Link className="brand" href="/" aria-label="Jobscanner">
-              <LogoMark />
-              <span className="brand-word">
-                Job<span>scanner</span>
-              </span>
+            <Link className="brand" href="/" aria-label={t("brandHome")}>
+              <LogoLockup />
             </Link>
             {signedIn ? (
               <nav className="nav nav-auth" aria-label={t("navAccount")}>
@@ -233,9 +230,9 @@ export function SiteHeader({ user, interested }: { user?: ShellUser; interested:
         ref={drawerRef}
       >
         <div className="drawer-head">
-          <span className="brand-word">
-            Job<span>scanner</span>
-          </span>
+          <Link className="brand" href="/" aria-label={t("brandHome")}>
+            <LogoLockup />
+          </Link>
           <button
             className="btn btn-ghost btn-icon"
             type="button"

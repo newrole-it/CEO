@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery } from "@blitzjs/rpc"
 import getSearch from "src/app/searches/queries/getSearch"
 import rerunSearch from "src/app/searches/mutations/rerunSearch"
+import { LinkedInMark } from "src/app/components/site/Brand"
 import { Button } from "src/app/components/ui/button"
 import { Input } from "src/app/components/ui/input"
+import { useCopy } from "src/app/i18n/Locale"
 import { polishBoardLinks } from "src/shared/polish-boards"
 import { statusFromStamps } from "src/shared/triage"
 import { WORKDAY_BOARDS } from "src/shared/workday-boards"
@@ -110,9 +112,12 @@ function variantLines(value: unknown) {
 }
 
 export function SearchScreen({ id }: { id: string }) {
+  const { t } = useCopy()
   const [mounted, setMounted] = useState(false)
   const [showScores, setShowScores] = useState(false)
   const [page, setPage] = useState(1)
+  const [fullList, setFullList] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
   const [location, setLocation] = useState("")
   const [company, setCompany] = useState("")
   const [contract, setContract] = useState("")
@@ -124,6 +129,7 @@ export function SearchScreen({ id }: { id: string }) {
   const narrow = useNarrow()
   const [industry, setIndustry] = useState("")
   const [minSalary, setMinSalary] = useState("")
+  const [seniority, setSeniority] = useState("")
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -138,6 +144,8 @@ export function SearchScreen({ id }: { id: string }) {
     includeDecided: showDecided || undefined,
     industry: industry.trim() || undefined,
     minSalary: Number(minSalary) > 0 ? Number(minSalary) : undefined,
+    seniority: seniority || undefined,
+    full: fullList || undefined,
   }
   const [data, { isLoading, error, refetch }] = useQuery(getSearch, queryInput, {
     suspense: false,
@@ -218,6 +226,7 @@ export function SearchScreen({ id }: { id: string }) {
     data.active?.status === "RUNNING" ||
     data.active?.status === "RETRYING"
   const failed = data.active?.status === "FAILED" && !data.resultRun
+  const showScan = scanOpen || running || failed
 
   return (
     <div>
@@ -243,24 +252,74 @@ export function SearchScreen({ id }: { id: string }) {
               await refetch()
             }}
           >
-            {running ? "Scanning…" : "Run again"}
+            {running ? "Scanning…" : t("runAgain")}
           </Button>
         </div>
       </div>
 
-      <section className="progress-panel panel">
-        <div className="progress-top">
-          <strong>{data.active?.message || "Waiting"}</strong>
-          <span className="meta">
-            {data.active?.progress ?? 0}%
-            {data.active?.tokenInput || data.active?.tokenOutput
-              ? ` · ${data.active.tokenInput + data.active.tokenOutput} tokens`
-              : ""}
-            {data.active && data.active.estimatedCost > 0
-              ? ` · ~$${data.active.estimatedCost.toFixed(4)}`
-              : ""}
-          </span>
-        </div>
+      {!failed && !data.hasProfile && (data.resultRun || !running) ? (
+        <section className="cta-panel match-cta" aria-labelledby="connect-title">
+          <p className="eyebrow">{t("connectEyebrow")}</p>
+          <h2 className="h2" id="connect-title">
+            {t("connectTitle")}
+          </h2>
+          <p>{t("connectBody")}</p>
+          <div className="cta-row">
+            {data.signedIn ? (
+              <Link className="btn btn-light btn-lg" href="/profile">
+                {t("connectImport")}
+              </Link>
+            ) : (
+              <Link className="btn btn-light btn-lg btn-linkedin" href="/api/auth/linkedin/start">
+                <LinkedInMark />
+                {t("signinLinkedIn")}
+              </Link>
+            )}
+            {data.signedIn ? (
+              <Link className="btn btn-line btn-lg btn-linkedin" href="/api/auth/linkedin/start">
+                <LinkedInMark />
+                {t("signinLinkedIn")}
+              </Link>
+            ) : (
+              <Link className="btn btn-line btn-lg" href="/profile">
+                {t("connectImport")}
+              </Link>
+            )}
+          </div>
+        </section>
+      ) : null}
+      {!failed && data.hasProfile && !data.personalized && data.resultRun && !running ? (
+        <section className="cta-panel match-cta" aria-labelledby="rerun-title">
+          <h2 className="h2" id="rerun-title">
+            {t("rerunProfile")}
+          </h2>
+          <div className="cta-row">
+            <button
+              className="btn btn-light btn-lg"
+              type="button"
+              disabled={rerunning}
+              onClick={async () => {
+                await rerun({ id })
+                await refetch()
+              }}
+            >
+              {t("runAgain")}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <details
+        className="progress-panel panel"
+        open={showScan}
+        onToggle={(event) => setScanOpen(event.currentTarget.open)}
+      >
+        <summary className="progress-top">
+          <strong>
+            {running || failed ? data.active?.message || t("scanDetails") : t("scanDetails")}
+          </strong>
+          <span className="meta">{data.active?.progress ?? 0}%</span>
+        </summary>
         <div className="bar" aria-hidden>
           <span style={{ width: `${data.active?.progress ?? 0}%` }} />
         </div>
@@ -290,53 +349,10 @@ export function SearchScreen({ id }: { id: string }) {
         {data.active?.errorSummary && data.active.status === "FAILED" ? (
           <p className="form-error">{data.active.errorSummary}</p>
         ) : null}
-      </section>
-
-      <section className="panel" style={{ marginTop: 16 }}>
-        <h2 style={{ fontSize: 22, marginBottom: 8 }}>Polish boards, as links</h2>
-        <p className="hint">
-          justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, and bulldogjob have no public API,
-          and their terms forbid automated downloading. These open their own search. Jobscanner does
-          not fetch them.
-        </p>
-        <div className="chips" style={{ marginTop: 12 }}>
-          {polishBoardLinks(data.search.phrase).map((link) => (
-            <a
-              key={link.name}
-              className="chip"
-              href={link.href}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              {link.name}
-            </a>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel" style={{ marginTop: 16 }}>
-        <h2 style={{ fontSize: 22, marginBottom: 8 }}>Workday career sites, as links</h2>
-        <p className="hint">
-          Workday&apos;s site terms ban data mining and robots. These open the employer board.
-          Jobscanner does not fetch them.
-        </p>
-        <div className="chips" style={{ marginTop: 12 }}>
-          {WORKDAY_BOARDS.map((link) => (
-            <a
-              key={link.href}
-              className="chip"
-              href={link.href}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              {link.name}
-            </a>
-          ))}
-        </div>
-      </section>
+      </details>
 
       <section className="panel filters" style={{ marginTop: 16 }}>
-        <h2 style={{ fontSize: 22, marginBottom: 8 }}>Filter the index</h2>
+        <h2 style={{ fontSize: 22, marginBottom: 8 }}>{t("narrowMatches")}</h2>
         <div className="filter-grid">
           <Input
             aria-label="Location"
@@ -374,6 +390,29 @@ export function SearchScreen({ id }: { id: string }) {
               setIndustry(event.target.value)
             }}
           />
+          <select
+            className="plain"
+            aria-label="Seniority"
+            value={seniority}
+            onChange={(event) => {
+              setPage(1)
+              setSeniority(event.target.value)
+            }}
+          >
+            <option value="">Any seniority</option>
+            <option value="intern">Intern</option>
+            <option value="junior">Junior</option>
+            <option value="mid">Mid</option>
+            <option value="senior">Senior</option>
+            <option value="lead">Lead</option>
+            <option value="principal">Principal</option>
+            <option value="manager">Manager</option>
+            <option value="senior_manager">Senior manager</option>
+            <option value="head">Head</option>
+            <option value="director">Director</option>
+            <option value="vp">VP</option>
+            <option value="c_level">C-level</option>
+          </select>
           <Input
             aria-label="Minimum monthly salary in PLN"
             placeholder="Minimum monthly PLN"
@@ -430,34 +469,64 @@ export function SearchScreen({ id }: { id: string }) {
         <div className="empty-card">
           <h2>
             {running
-              ? "Offers will land here"
+              ? t("emptyRunning")
               : data.hiddenDecided > 0 && !showDecided
-              ? "Decided offers are hidden"
-              : "No matching offers this time"}
+              ? t("emptyDecided")
+              : t("emptyNone")}
           </h2>
           <p className="lede">
-            {running
-              ? "The local index is scored first. Boards that have not been indexed yet are checked after that."
-              : data.hiddenDecided > 0 && !showDecided
-              ? `${data.hiddenDecided} offer${
-                  data.hiddenDecided === 1 ? " is" : "s are"
-                } interested or rejected. Show decided offers to see them.`
-              : "Nothing in the index is close enough to this phrase with these filters. Clear a filter, or wait for the indexer to finish a board."}
+            {data.hiddenDecided > 0 && !showDecided && !running
+              ? t("emptyDecidedHint")
+              : running
+              ? t("emptyRunning")
+              : t("emptyNone")}
           </p>
         </div>
       ) : (
         <>
           <div className="results-head">
             <div>
-              <p className="eyebrow">Wyniki wyszukiwania</p>
-              <h2>{data.search.phrase}</h2>
+              {data.personalized ? <p className="eyebrow">{t("shortlistEyebrow")}</p> : null}
+              <h2>{t("resultsEyebrow")}</h2>
               <p className="results-sub">
-                <strong>{data.total}</strong> · od najlepiej dopasowanych
+                {data.shortlisted ? (
+                  <>
+                    <strong>{data.total}</strong> / {data.matchTotal} · {t("shortlistSub")}
+                  </>
+                ) : (
+                  <>
+                    <strong>{data.total}</strong> ·{" "}
+                    {data.personalized ? t("matchesSubPersonal") : t("matchesSub")}
+                  </>
+                )}
               </p>
             </div>
             <div className="results-tools">
+              {data.shortlisted ? (
+                <button
+                  className="btn btn-outline btn-sm"
+                  type="button"
+                  onClick={() => {
+                    setPage(1)
+                    setFullList(true)
+                  }}
+                >
+                  {t("showRest")}
+                </button>
+              ) : data.hasProfile && fullList ? (
+                <button
+                  className="btn btn-outline btn-sm"
+                  type="button"
+                  onClick={() => {
+                    setPage(1)
+                    setFullList(false)
+                  }}
+                >
+                  {t("showShortlist")}
+                </button>
+              ) : null}
               <Link className="btn btn-ink btn-sm" href={`/searches/${id}/triage`}>
-                Przeglądaj po kolei
+                {t("triageCta")}
               </Link>
             </div>
           </div>
@@ -586,7 +655,7 @@ export function SearchScreen({ id }: { id: string }) {
                       <span>First seen {formatWhen(result.job.firstSeenAt)}</span>
                       <span>{result.job.sourceType.toLowerCase().replace(/_/g, " ")}</span>
                     </div>
-                    {pack.profile ? <p className="why-label">Why it matches you</p> : null}
+                    {pack.profile ? <p className="why-label">{t("whyFitsYou")}</p> : null}
                     <p className="reason">{result.reason}</p>
                     {result.job.summary ? <p className="summary">{result.job.summary}</p> : null}
                     {showScores && parts.length ? (
@@ -713,24 +782,33 @@ export function SearchScreen({ id }: { id: string }) {
           ) : null}
         </>
       )}
-      {!failed && !data.hasProfile ? (
-        <section className="panel" style={{ marginTop: 16 }}>
-          <h2 style={{ fontSize: 22, marginBottom: 8 }}>Import your LinkedIn profile</h2>
-          <p className="hint">
-            Sign in with LinkedIn or email, then upload the PDF from LinkedIn: More, then Save to
-            PDF. A CV PDF or pasted text works too. Jobscanner does not read LinkedIn profile URLs.
-            Salary and industry then explain why an offer matches you.
-          </p>
-          <div className="actions">
-            <Button asChild>
-              <Link href="/profile">Import profile</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
-          </div>
-        </section>
-      ) : null}
+      <details className="panel other-links">
+        <summary>{t("otherPlaces")}</summary>
+        <div className="chips">
+          {polishBoardLinks(data.search.phrase).map((link) => (
+            <a
+              key={link.name}
+              className="chip"
+              href={link.href}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {link.name}
+            </a>
+          ))}
+          {WORKDAY_BOARDS.map((link) => (
+            <a
+              key={link.href}
+              className="chip"
+              href={link.href}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {link.name}
+            </a>
+          ))}
+        </div>
+      </details>
     </div>
   )
 }

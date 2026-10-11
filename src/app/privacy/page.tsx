@@ -19,18 +19,18 @@ const en = {
   ],
   whoTitle: "Who else receives data",
   hostTitle: "Hosting and database",
-  host: "The server that runs Jobscanner and its PostgreSQL database. That is where the account, profile, searches, decisions, and audits are stored. This draft does not name a separate hosting company, because the database runs on the machine you deploy.",
+  host: "The server that runs Nowa Rola and its PostgreSQL database. That is where the account, profile, searches, decisions, and audits are stored. This draft does not name a separate hosting company, because the database runs on the machine you deploy.",
   emailTitle: "Email",
   email:
     "Resend (api.resend.com) when the deployment uses it, otherwise the SMTP server configured for this deployment. They receive your email address and a one-time sign-in link. They do not receive your CV or searches. With the local console setting, the link is printed in the server log instead of being sent to an email company.",
   llmTitle: "Language model",
-  llm: "An OpenAI-compatible API. The default is OpenAI at api.openai.com (gpt-4o-mini). A deployment can point the same calls at another provider. Nothing is sent unless an API key is set. The CV text is sent to extract a profile. Profile sections and counted phrases from matched offers are sent for the audit. The search phrase is sent to expand the query. A short summary of the role (titles, seniority, places, salary floor) and the public job text are sent for a match explanation. Classifying a job's industry sends the public job text only. Replies derived from the CV are stored under your user id and deleted with the profile or the account.",
+  llm: "An OpenAI-compatible API. The default is OpenAI at api.openai.com (gpt-4o-mini). A deployment can point the same calls at another provider. Nothing is sent unless an API key is set. The CV text is sent to extract a profile. Profile sections and counted phrases from matched offers are sent for the audit. The search phrase is sent to expand the query. A short summary of the role (titles, seniority, places, salary floor) and the public job text are sent for a match explanation. Classifying a job's industry, or whether the role is in tech when the title is unclear, sends the public job text only. Replies derived from the CV are stored under your user id and deleted with the profile or the account.",
   searchTitle: "Search APIs",
   search:
     "Brave Search, then Serper if Brave is unset or the call fails. They receive web queries built from the role you typed, such as a site: query plus that phrase. They do not receive your CV. The query is stored with the search and deleted with it. Pages returned by the search API are not stored.",
   linkedinTitle: "LinkedIn sign-in",
   linkedin:
-    "Optional. LinkedIn's OpenID Connect flow returns your name, email, and picture. Jobscanner does not send your CV to LinkedIn.",
+    "Optional. LinkedIn's OpenID Connect flow returns your name, email, and picture. Nowa Rola does not send your CV to LinkedIn.",
   controlTitle: "Export and deletion",
   control:
     "Settings lets you download a JSON file of your own data, delete the CV and profile, or delete the account. Deleting the profile removes the CV text, audits, and model replies from that CV. Deleting the account also removes saved searches, decisions, sessions, magic-link tokens, the LinkedIn connection, and queued work for those searches. Audit-log rows then keep the action name only.",
@@ -49,18 +49,18 @@ const pl = {
   ],
   whoTitle: "Kto jeszcze dostaje dane",
   hostTitle: "Hosting i baza",
-  host: "Serwer, na którym działa Jobscanner, i jego baza PostgreSQL. Tam leżą konto, profil, wyszukiwania, decyzje i audyty. Ten szkic nie wymienia osobnej firmy hostingowej, bo baza działa na maszynie, na której wdrażasz aplikację.",
+  host: "Serwer, na którym działa Nowa Rola, i jego baza PostgreSQL. Tam leżą konto, profil, wyszukiwania, decyzje i audyty. Ten szkic nie wymienia osobnej firmy hostingowej, bo baza działa na maszynie, na której wdrażasz aplikację.",
   emailTitle: "Poczta",
   email:
     "Resend (api.resend.com), gdy wdrożenie go używa, a w przeciwnym razie serwer SMTP ustawiony dla tego wdrożenia. Dostają adres e-mail i jednorazowy link do logowania. Nie dostają CV ani wyszukiwań. Przy lokalnym ustawieniu konsoli link trafia do logu serwera, a nie do firmy pocztowej.",
   llmTitle: "Model językowy",
-  llm: "API zgodne z OpenAI. Domyślnie jest to OpenAI pod api.openai.com (gpt-4o-mini). Wdrożenie może skierować te same wywołania do innego dostawcy. Nic nie jest wysyłane, dopóki nie ma klucza API. Tekst CV idzie do odczytu profilu. Sekcje profilu i policzone frazy z dopasowanych ofert idą do audytu. Fraza wyszukiwania idzie do rozszerzenia zapytania. Krótkie podsumowanie roli (tytuły, poziom, miejsca, próg wynagrodzenia) i publiczny tekst oferty idą do wyjaśnienia dopasowania. Rozpoznanie branży oferty wysyła tylko publiczny tekst ogłoszenia. Odpowiedzi wyliczone z CV są zapisane przy Twoim koncie i usuwane razem z profilem albo kontem.",
+  llm: "API zgodne z OpenAI. Domyślnie jest to OpenAI pod api.openai.com (gpt-4o-mini). Wdrożenie może skierować te same wywołania do innego dostawcy. Nic nie jest wysyłane, dopóki nie ma klucza API. Tekst CV idzie do odczytu profilu. Sekcje profilu i policzone frazy z dopasowanych ofert idą do audytu. Fraza wyszukiwania idzie do rozszerzenia zapytania. Krótkie podsumowanie roli (tytuły, poziom, miejsca, próg wynagrodzenia) i publiczny tekst oferty idą do wyjaśnienia dopasowania. Rozpoznanie branży oferty oraz, gdy tytuł jest niejednoznaczny, tego, czy rola jest w tech, wysyła tylko publiczny tekst ogłoszenia. Odpowiedzi wyliczone z CV są zapisane przy Twoim koncie i usuwane razem z profilem albo kontem.",
   searchTitle: "Wyszukiwarki",
   search:
     "Brave Search, a gdy Brave nie jest ustawiony albo wywołanie się nie uda, Serper. Dostają zapytania WWW zbudowane z wpisanej roli, na przykład zapytanie site: i tę frazę. Nie dostają CV. Zapytanie jest zapisane przy wyszukiwaniu i usuwane razem z nim. Stron zwróconych przez API wyszukiwania nie zapisujemy.",
   linkedinTitle: "Logowanie LinkedIn",
   linkedin:
-    "Opcjonalne. OpenID Connect LinkedIn zwraca imię, e-mail i zdjęcie. Jobscanner nie wysyła CV do LinkedIn.",
+    "Opcjonalne. OpenID Connect LinkedIn zwraca imię, e-mail i zdjęcie. Nowa Rola nie wysyła CV do LinkedIn.",
   controlTitle: "Eksport i usuwanie",
   control:
     "W ustawieniach pobierzesz JSON ze swoimi danymi, usuniesz CV i profil albo usuniesz konto. Usunięcie profilu kasuje tekst CV, audyty i odpowiedzi modelu z tego CV. Usunięcie konta kasuje także zapisane wyszukiwania, decyzje, sesje, tokeny linków do logowania, połączenie z LinkedIn i kolejkową pracę dla tych wyszukiwań. W dzienniku zostaje wtedy tylko nazwa czynności.",

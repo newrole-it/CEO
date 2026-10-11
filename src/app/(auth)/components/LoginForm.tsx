@@ -67,7 +67,7 @@ export const LoginForm = () => {
       <p className="kicker">Account</p>
       <h1>Sign in</h1>
       <p className="lede">
-        The first time you enter an email, Jobscanner creates the account and signs you in on this
+        The first time you enter an email, Nowa Rola creates the account and signs you in on this
         device. Later visits use a magic link. LinkedIn uses official sign-in and only shares your
         name, email, and picture.
       </p>

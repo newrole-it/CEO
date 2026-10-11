@@ -45,7 +45,7 @@ export default async function ProfileAuditPage() {
             <p className="kicker">Profile audit</p>
             <h1>Import a LinkedIn PDF first</h1>
             <p className="lede">
-              On LinkedIn, open your profile, choose More, then Save to PDF. Jobscanner reads the
+              On LinkedIn, open your profile, choose More, then Save to PDF. Nowa Rola reads the
               text, deletes the file, and keeps the sections so this page can mark them.
             </p>
           </section>

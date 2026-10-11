@@ -7,6 +7,7 @@ import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/norma
 import type { ListedJob, SourceType } from "src/shared/schemas"
 import { extractAtsKey } from "../../../matching/dedupe"
 import type { Source } from "../../../matching/types"
+import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
 import { nextStatus } from "./schedule"
 
 const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
@@ -113,6 +114,8 @@ async function writeJob(job: ListedJob, careerPageId: string, companyId: string,
   const canonical = safeCanonical(job.originalUrl)
   const identityKey = identityFor(job)
   const description = excerpt(job.descriptionText || "")
+  await rememberCompanyTech(companyId, { sourceType: job.sourceType })
+  const classified = await classificationFields(job.title, description)
   const data = {
     title: job.title,
     normalizedTitle: normalizeWhitespace(job.title),
@@ -139,6 +142,7 @@ async function writeJob(job: ListedJob, careerPageId: string, companyId: string,
     careerPageId,
     companyId,
     llmOptOut: job.llmOptOut ?? false,
+    ...classified,
     ...(job.variants ? { variants: job.variants as unknown as Prisma.InputJsonValue } : {}),
   }
   const existing = await db.job.findUnique({ where: { identityKey } })

@@ -1,5 +1,6 @@
-import db from "db"
-import { dedupeSavedSearches, normalizeSearchText } from "src/shared/saved-searches"
+import { dedupeSavedSearches } from "src/shared/saved-searches"
+import { examplePhrases } from "src/server/classify/role"
+import { coveredSpecialisms, landingPreview } from "src/server/classify/scope"
 import { invoke } from "./blitz-server"
 import { Landing } from "./components/landing/Landing"
 import { SiteFrame } from "./components/site/SiteFrame"
@@ -12,32 +13,8 @@ export default async function Home() {
   const currentUser = await invoke(getCurrentUser, null)
   const signedIn = Boolean(currentUser && currentUser.role !== "GUEST")
   const searches = signedIn ? await invoke(listSearches, null) : []
-  const indexed = await db.job.count({ where: { status: "ACTIVE" } })
-  const previewRows = await db.job.findMany({
-    where: { status: "ACTIVE" },
-    orderBy: { firstSeenAt: "desc" },
-    take: 24,
-    select: {
-      id: true,
-      title: true,
-      locationText: true,
-      company: { select: { name: true } },
-    },
-  })
-  const seenPreview = new Set<string>()
-  const preview: { id: string; title: string; company: string; location: string }[] = []
-  for (const job of previewRows) {
-    const label = `${normalizeSearchText(job.company.name)}\u0000${normalizeSearchText(job.title)}`
-    if (seenPreview.has(label)) continue
-    seenPreview.add(label)
-    preview.push({
-      id: job.id,
-      title: job.title,
-      company: job.company.name,
-      location: job.locationText || "",
-    })
-    if (preview.length === 3) break
-  }
+  const [areas, preview] = await Promise.all([coveredSpecialisms(), landingPreview()])
+  const examples = examplePhrases(areas)
   const saved = dedupeSavedSearches(
     searches.map((search) => ({
       id: search.id,
@@ -52,7 +29,8 @@ export default async function Home() {
       <Landing
         locale={locale}
         signedIn={signedIn}
-        indexed={indexed}
+        indexed={null}
+        examples={examples.length ? examples : ["Junior Frontend", "Senior Data Engineer"]}
         searches={saved}
         preview={preview}
       />

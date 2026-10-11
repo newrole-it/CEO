@@ -12,9 +12,9 @@ export async function sendMagicLinkEmail(
   url: string
 ): Promise<"console" | "resend" | "smtp"> {
   const provider = (process.env.EMAIL_PROVIDER || "console").trim().toLowerCase()
-  const from = process.env.EMAIL_FROM || "Jobscanner <login@jobscanner.local>"
-  const subject = "Your Jobscanner sign-in link"
-  const text = `Sign in to Jobscanner. This link works once and expires in 15 minutes.\n\n${url}\n`
+  const from = process.env.EMAIL_FROM || "Nowa Rola <login@jobscanner.local>"
+  const subject = "Your Nowa Rola sign-in link"
+  const text = `Sign in to Nowa Rola. This link works once and expires in 15 minutes.\n\n${url}\n`
   if (provider === "resend" && process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",

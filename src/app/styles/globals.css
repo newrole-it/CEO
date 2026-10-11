@@ -393,6 +393,12 @@ select.plain {
   margin-bottom: 16px;
 }
 
+.progress-panel summary {
+  cursor: pointer;
+}
+.progress-panel summary::-webkit-details-marker {
+  display: none;
+}
 .progress-top {
   display: flex;
   justify-content: space-between;

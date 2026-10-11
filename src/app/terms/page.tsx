@@ -18,8 +18,8 @@ export default async function TermsPage() {
         <h1>{t.terms}</h1>
         <p className="lede">
           {locale === "pl"
-            ? "Wyniki prowadzą do ogłoszeń pracodawców. Jobscanner nie jest stroną aplikacji i nie gwarantuje, że oferta jest nadal otwarta. Indeks czyta publiczne strony kariery z limitem co najmniej 5 sekund między zapytaniami do jednego hosta. To szkic regulaminu."
-            : "Results link to employers' postings. Jobscanner is not a party to an application and does not guarantee an offer is still open. The index reads public career pages and waits at least 5 seconds between requests to one host. This is a draft of the terms."}
+            ? "Wyniki prowadzą do ogłoszeń pracodawców. Nowa Rola nie jest stroną aplikacji i nie gwarantuje, że oferta jest nadal otwarta. Indeks czyta publiczne strony kariery z limitem co najmniej 5 sekund między zapytaniami do jednego hosta. To szkic regulaminu."
+            : "Results link to employers' postings. Nowa Rola is not a party to an application and does not guarantee an offer is still open. The index reads public career pages and waits at least 5 seconds between requests to one host. This is a draft of the terms."}
         </p>
       </article>
     </SiteFrame>

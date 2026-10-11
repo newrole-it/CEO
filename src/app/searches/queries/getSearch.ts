@@ -2,7 +2,11 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
+import { seniorityAffinity } from "src/server/classify/role"
+import { techScopeWhere } from "src/server/classify/scope"
+import { seniorityValues } from "src/server/profile/schema"
 import { rejectionPenalty } from "src/server/search/feedback"
+import { profileReady, takeShortlist } from "src/shared/shortlist"
 
 const input = z.object({
   id: z.string().min(1),
@@ -16,6 +20,8 @@ const input = z.object({
   includeDecided: z.boolean().optional(),
   industry: z.string().trim().max(40).optional(),
   minSalary: z.number().positive().max(1_000_000).optional(),
+  seniority: z.enum(seniorityValues).optional(),
+  full: z.boolean().optional(),
 })
 
 const PAGE_SIZE = 20
@@ -36,6 +42,8 @@ export default resolver.pipe(
       includeDecided,
       industry,
       minSalary,
+      seniority,
+      full,
     },
     ctx
   ) => {
@@ -64,6 +72,7 @@ export default resolver.pipe(
       ...(remote ? { workplaceType: "REMOTE" as const } : {}),
       ...(contract ? { employmentType: { contains: contract, mode: "insensitive" as const } } : {}),
       ...(salary ? { OR: [{ salaryMin: { not: null } }, { salaryMax: { not: null } }] } : {}),
+      ...(seniority ? { seniorityLevel: seniority } : {}),
     }
     const showDecided = Boolean(includeDecided || includeDismissed)
     const where = {
@@ -71,12 +80,23 @@ export default resolver.pipe(
       ...(showDecided ? {} : { dismissedAt: null, interestedAt: null }),
       ...(industry ? { fitIndustry: { contains: industry, mode: "insensitive" as const } } : {}),
       ...(minSalary != null ? { fitSalaryMonthly: { gte: minSalary } } : {}),
-      ...(Object.keys(jobWhere).length ? { job: jobWhere } : {}),
+      job: { AND: [techScopeWhere(), jobWhere] },
     }
+    const viewer = await db.user.findUnique({
+      where: { id: ctx.session.userId! },
+      select: { role: true },
+    })
     const profile = await db.candidateProfile.findUnique({
       where: { userId: ctx.session.userId! },
-      select: { id: true },
+      select: {
+        id: true,
+        seniority: true,
+        headline: true,
+        currentTitle: true,
+        linkedinImportedAt: true,
+      },
     })
+    const ready = profileReady(profile)
     const rejected = await db.jobMatch.findMany({
       where: { dismissedAt: { not: null }, savedSearch: { userId: ctx.session.userId! } },
       orderBy: { dismissedAt: "desc" },
@@ -98,21 +118,31 @@ export default resolver.pipe(
             id: true,
             score: true,
             jobId: true,
-            job: { select: { title: true, company: { select: { name: true } } } },
+            job: {
+              select: {
+                title: true,
+                seniorityLevel: true,
+                company: { select: { name: true } },
+              },
+            },
           },
         })
       : []
     const ordered = light
       .map((row) => {
-        const delta = rejectionPenalty(
+        const penalty = rejectionPenalty(
           { title: row.job.title, company: row.job.company.name },
           rejectedOffers.filter((item) => item.jobId !== row.jobId)
         )
+        const affinity = seniorityAffinity(profile?.seniority, row.job.seniorityLevel)
+        const delta = penalty + affinity
         return { id: row.id, score: row.score, delta, rank: row.score + delta }
       })
       .sort((a, b) => b.rank - a.rank || b.score - a.score || a.id.localeCompare(b.id))
-    const total = ordered.length
-    const pageIds = ordered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    const listed = takeShortlist(ordered, ready, Boolean(full))
+    const viewPage = listed.shortlisted ? 1 : page
+    const total = listed.rows.length
+    const pageIds = listed.rows.slice((viewPage - 1) * PAGE_SIZE, viewPage * PAGE_SIZE)
     const deltaById = new Map(pageIds.map((row) => [row.id, row.delta]))
     const loaded = pageIds.length
       ? await db.jobMatch.findMany({
@@ -133,6 +163,19 @@ export default resolver.pipe(
           },
         })
       : 0
+    const sample = matchRun
+      ? await db.jobMatch.findFirst({
+          where: { searchRunId: matchRun.id },
+          select: { scoreBreakdown: true },
+        })
+      : null
+    const breakdown = sample?.scoreBreakdown
+    const personalized = Boolean(
+      breakdown &&
+        typeof breakdown === "object" &&
+        !Array.isArray(breakdown) &&
+        "profile" in breakdown
+    )
 
     return {
       search: {
@@ -150,11 +193,15 @@ export default resolver.pipe(
         message: entry.message,
         createdAt: entry.createdAt,
       })),
-      page,
+      page: viewPage,
       pageSize: PAGE_SIZE,
       total,
+      matchTotal: ordered.length,
       pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-      hasProfile: Boolean(profile),
+      shortlisted: listed.shortlisted,
+      hasProfile: ready,
+      personalized,
+      signedIn: Boolean(viewer && viewer.role !== "GUEST"),
       hiddenDecided,
       results: matches.map((match) => ({
         id: match.id,

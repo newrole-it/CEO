@@ -2,7 +2,7 @@ import type { LookupAddress, LookupOptions } from "dns"
 import { lookup } from "dns/promises"
 import { isIP } from "net"
 import { Agent } from "undici"
-import { FETCH_USER_AGENT } from "src/server/crawler/hygiene"
+import { fetchUserAgent } from "src/server/crawler/hygiene"
 import { assertSourcePolicy } from "./source-policy"
 import { assertPublicAddresses, assertSafeUrl, UnsafeUrlError } from "./url-safety"
 
@@ -184,7 +184,7 @@ export async function safeFetch(
           body: options?.body,
           headers: {
             Accept: options?.accept ?? "application/json, text/html;q=0.8, */*;q=0.1",
-            "User-Agent": FETCH_USER_AGENT,
+            "User-Agent": fetchUserAgent(),
             ...options?.headers,
           },
           signal: AbortSignal.timeout(timeoutMs),

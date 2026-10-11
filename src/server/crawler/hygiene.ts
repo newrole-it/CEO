@@ -1,7 +1,10 @@
+import { publicAppUrl } from "src/server/site-url"
+
 export const EXCERPT_CHARS = 300
 
-export const FETCH_USER_AGENT =
-  "JobscannerBot/0.1 (+https://jobscanner.local/bot; contact: rafal@jobscanner.local; personal non-commercial job search)"
+export function fetchUserAgent(): string {
+  return `NowaRolaBot/0.1 (+${publicAppUrl()}/bot; contact: rafal@jobscanner.local; personal non-commercial job search)`
+}
 
 /** Drop emails, phone numbers, and labeled recruiter names before anything is stored. */
 export function stripPersonalData(text: string): string {

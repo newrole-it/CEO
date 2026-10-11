@@ -136,6 +136,9 @@ describe("robots and sitemaps", () => {
   it("obeys crawl-delay on the specific agent", () => {
     const rules = parseRobots("User-agent: JobscannerBot\nCrawl-delay: 5\nDisallow:\n")
     expect(rules.crawlDelaySec).toBe(5)
+    const renamed = parseRobots("User-agent: NowaRolaBot\nCrawl-delay: 7\nDisallow: /private\n")
+    expect(renamed.crawlDelaySec).toBe(7)
+    expect(renamed.disallow).toEqual(["/private"])
   })
 })
 

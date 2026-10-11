@@ -19,6 +19,7 @@
   --color-line: #e4e4eb;
   --color-line-strong: #c9c9d6;
   --color-accent: #5b3df5; /* "scan violet" — 5.7:1 on bg; white on it 6.1:1 */
+  --color-brand-tld: #5b3df5; /* ".it" in the wordmark, on light */
   --color-accent-hover: #4a2be0; /* white on it 7.7:1 */
   --color-accent-soft: #ece8ff;
   --color-accent-strong: #3d22b8; /* on accent-soft 8.3:1 */
@@ -150,6 +151,7 @@
     --color-line: #22222e;
     --color-line-strong: #36364a;
     --color-accent: #9d8cff;
+    --color-brand-tld: #d4ff4a;
     --color-accent-hover: #b3a6ff;
     --color-accent-soft: #221c45;
     --color-accent-strong: #c4baff;
@@ -197,6 +199,7 @@
   --color-line: #22222e;
   --color-line-strong: #36364a;
   --color-accent: #9d8cff;
+  --color-brand-tld: #d4ff4a;
   --color-accent-hover: #b3a6ff;
   --color-accent-soft: #221c45;
   --color-accent-strong: #c4baff;

@@ -15,6 +15,7 @@ import {
   normalizeWhitespace,
 } from "src/server/jobs/normalize"
 import { summarize } from "src/server/jobs/text"
+import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
 import { excerpt } from "src/server/crawler/hygiene"
 import { createLlmClient, estimateCost, type LlmClient } from "src/server/llm/client"
 import {
@@ -853,6 +854,8 @@ async function upsertJob(args: {
   }
 
   const description = excerpt(cleanDescription(posting.raw.description || ""))
+  await rememberCompanyTech(company.id, { industry: company.industry, sourceType })
+  const classified = await classificationFields(posting.raw.title, description)
   const range = posting.salary?.ranges[0]
   const salaryCurrency = range
     ? range.period === "month"
@@ -888,6 +891,7 @@ async function upsertJob(args: {
     externalId: posting.raw.atsJobId,
     careerPageId,
     llmOptOut: listed?.llmOptOut ?? false,
+    ...classified,
     ...(listed?.variants ? { variants: listed.variants as unknown as Prisma.InputJsonValue } : {}),
   }
   let record = await db.job.findUnique({ where: { identityKey } })
