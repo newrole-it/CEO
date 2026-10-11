@@ -1,7 +1,21 @@
 import type { MatchingConfig } from "../../../matching/config"
 import { detectSeniority } from "../../../matching/normalization"
 import { fold } from "../../../matching/text"
-import { explainIndustry, explainSalary, whyItMatches } from "./explain"
+import { SENIORITY_RANK, type Seniority } from "../../../matching/types"
+import {
+  explainCity,
+  explainIndustry,
+  explainIndustryLine,
+  explainSalary,
+  explainSalaryLine,
+  explainSeniority,
+  explainSeniorityGap,
+  explainSkills,
+  explainWorkplace,
+  pickFitLines,
+  whyItMatches,
+  type FitLine,
+} from "./explain"
 import {
   industryDelta,
   industryRelation,
@@ -10,6 +24,7 @@ import {
 } from "./industry"
 import { profileMonthlyPln, scoreSalary, type MonthlyRange, type ProfilePay } from "./salary"
 import { asStringList, type IndustryMode } from "./schema"
+import { skillOverlap } from "./skills"
 
 const LEADERSHIP = new Set(["head", "director", "vp", "c_level", "senior_manager"])
 
@@ -41,6 +56,7 @@ export type ProfileFit = {
   relation: string
   why: string
   queryScore: number
+  lines: FitLine[]
 }
 
 export function toSignals(
@@ -81,30 +97,50 @@ export function toSignals(
   }
 }
 
-function skillDelta(skills: string[], title: string, description: string): number {
-  const haystack = fold(`${title}\n${description}`)
-  const hits = skills.filter((skill) => {
-    const needle = fold(skill)
-    return needle.length > 1 && haystack.includes(needle)
-  })
-  return Math.min(6, hits.length * 2)
+function jobSeniority(title: string, known: string | null): Seniority | null {
+  if (known && known in SENIORITY_RANK) return known as Seniority
+  return detectSeniority(fold(title))
 }
 
-function seniorityDelta(profileSeniority: string | null, title: string): number {
-  if (!profileSeniority) return 0
-  const job = detectSeniority(fold(title))
-  if (!job) return 0
-  if (job === profileSeniority) return 4
-  if (LEADERSHIP.has(job) && LEADERSHIP.has(profileSeniority)) return 3
-  return 0
+function seniorityDelta(
+  profileSeniority: string | null,
+  job: Seniority | null
+): { delta: number; direction: "same" | "lower" | "higher" | "near" | null } {
+  if (!profileSeniority || !job || !(profileSeniority in SENIORITY_RANK))
+    return { delta: 0, direction: null }
+  if (job === profileSeniority) return { delta: 4, direction: "same" }
+  if (LEADERSHIP.has(job) && LEADERSHIP.has(profileSeniority))
+    return { delta: 3, direction: "near" }
+  const distance = SENIORITY_RANK[job] - SENIORITY_RANK[profileSeniority as Seniority]
+  if (distance < 0) return { delta: 0, direction: "lower" }
+  if (distance > 0) return { delta: 0, direction: "higher" }
+  return { delta: 0, direction: null }
 }
 
-function locationDelta(signals: ProfileSignals, location: string, workplace: string): number {
+function workplaceKind(workplace: string): "remote" | "hybrid" | "onsite" | null {
+  const value = fold(workplace)
+  if (/\bremote\b/.test(value)) return "remote"
+  if (value.includes("hybrid")) return "hybrid"
+  if (value.includes("onsite") || value.includes("on-site") || value.includes("office"))
+    return "onsite"
+  return null
+}
+
+function locationDelta(
+  signals: ProfileSignals,
+  location: string,
+  workplace: string
+): { delta: number; city: string | null; workplace: "remote" | "hybrid" | "onsite" | null } {
   let delta = 0
   const place = fold(`${location} ${workplace}`)
-  if (signals.remotePreference === "remote" && /\bremote\b/.test(place)) delta += 3
-  if (signals.homeCity && place.includes(fold(signals.homeCity))) delta += 3
-  return Math.min(4, delta)
+  const mode = workplaceKind(workplace)
+  if (signals.remotePreference === "remote" && mode === "remote") delta += 3
+  const cities = [signals.homeCity, ...signals.locations].filter((city): city is string =>
+    Boolean(city?.trim())
+  )
+  const city = cities.find((item) => place.includes(fold(item))) ?? null
+  if (city) delta += 3
+  return { delta: Math.min(4, delta), city, workplace: mode }
 }
 
 export function clampScore(value: number): number {
@@ -129,6 +165,7 @@ export function rankAgainstProfile(args: {
   workplace: string
   salary: MonthlyRange | null
   jobIndustry: JobIndustry
+  seniority?: string | null
 }): ProfileFit {
   const monthly = profileMonthlyPln(args.signals, args.config)
   const salary = scoreSalary({
@@ -142,8 +179,9 @@ export function rankAgainstProfile(args: {
     args.jobIndustry.domainExperience,
     args.signals.industryMode
   )
-  const skills = skillDelta(args.signals.skills, args.title, args.description)
-  const seniority = seniorityDelta(args.signals.seniority, args.title)
+  const skills = skillOverlap(args.signals.skills, args.title, args.description)
+  const jobLevel = jobSeniority(args.title, args.seniority ?? null)
+  const seniority = seniorityDelta(args.signals.seniority, jobLevel)
   const location = locationDelta(args.signals, args.location, args.workplace)
   const industryLine = explainIndustry({
     locale: args.signals.locale,
@@ -169,13 +207,15 @@ export function rankAgainstProfile(args: {
         )
       : null
   return {
-    score: clampScore(args.queryScore + salary.delta + industry + skills + seniority + location),
+    score: clampScore(
+      args.queryScore + salary.delta + industry + skills.delta + seniority.delta + location.delta
+    ),
     include: true,
     salaryDelta: salary.delta,
     industryDelta: industry,
-    skillDelta: skills,
-    seniorityDelta: seniority,
-    locationDelta: location,
+    skillDelta: skills.delta,
+    seniorityDelta: seniority.delta,
+    locationDelta: location.delta,
     disclosed: salary.disclosed,
     monthlyMin: salary.monthlyMin,
     monthlyMax: salary.monthlyMax,
@@ -185,5 +225,32 @@ export function rankAgainstProfile(args: {
     relation,
     why: whyItMatches(industryLine, salaryLine),
     queryScore: args.queryScore,
+    lines: pickFitLines([
+      ...explainSkills(args.signals.locale, skills.hits, skills.missingRequired),
+      ...[
+        explainIndustryLine({
+          locale: args.signals.locale,
+          industry: args.jobIndustry.industry,
+          relation,
+          userIndustries: args.signals.industries,
+        }),
+      ].flatMap((line) => (line ? [line] : [])),
+      ...[
+        explainSalaryLine({
+          locale: args.signals.locale,
+          kind: salary.kind,
+          floor: monthly.floor,
+        }),
+      ].flatMap((line) => (line ? [line] : [])),
+      ...[
+        seniority.direction === "lower" || seniority.direction === "higher"
+          ? explainSeniorityGap(args.signals.locale, seniority.direction, jobLevel ?? "")
+          : explainSeniority(args.signals.locale, args.signals.seniority, jobLevel),
+      ].flatMap((line) => (line ? [line] : [])),
+      ...[
+        explainWorkplace(args.signals.locale, args.signals.remotePreference, location.workplace),
+      ].flatMap((line) => (line ? [line] : [])),
+      ...(location.city ? [explainCity(args.signals.locale, location.city)] : []),
+    ]),
   }
 }

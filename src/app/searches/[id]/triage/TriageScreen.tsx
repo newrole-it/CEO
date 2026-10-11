@@ -6,18 +6,19 @@ import { useQuery } from "@blitzjs/rpc"
 import getSearch from "src/app/searches/queries/getSearch"
 import { UndoToast } from "src/app/searches/UndoToast"
 import { useOfferDecisions } from "src/app/searches/useOfferDecisions"
+import { MatchWhy } from "src/app/components/match/MatchWhy"
 import { useCopy } from "src/app/i18n/Locale"
 import { statusFromStamps, swipeDecision } from "src/shared/triage"
 
 export function TriageScreen({ id, guest }: { id: string; guest: boolean }) {
-  const { t } = useCopy()
+  const { t, locale } = useCopy()
   const [mounted, setMounted] = useState(false)
   const [drag, setDrag] = useState(0)
   const [exit, setExit] = useState<-1 | 0 | 1>(0)
   useEffect(() => setMounted(true), [])
   const [data, { refetch }] = useQuery(
     getSearch,
-    { id, page: 1 },
+    { id, page: 1, locale },
     { suspense: false, enabled: mounted }
   )
   const { decide, undo, toast, canUndo } = useOfferDecisions(async () => {
@@ -176,7 +177,11 @@ export function TriageScreen({ id, guest }: { id: string; guest: boolean }) {
                   <span>{top.job.locationText || "—"}</span>
                   <span>{top.job.workplaceType}</span>
                 </p>
-                <p className="reason">{top.reason}</p>
+                <MatchWhy
+                  mode={data?.hasProfile && top.fitLines.length ? "you" : "phrase"}
+                  lines={top.fitLines}
+                  reason={top.reason}
+                />
                 <div className="tcard-foot">
                   <span className="source">
                     {top.job.sourceType.toLowerCase().replace(/_/g, " ")}

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import { useRouter } from "next/navigation"
@@ -45,6 +46,13 @@ export function SettingsScreen({ email }: { email: string }) {
         <p className="lede">
           {t("settingsSignedIn")} {email}.
         </p>
+      </section>
+      <section className="panel stack">
+        <h2>{t("prefsTitle")}</h2>
+        <p className="hint">{t("prefsBody")}</p>
+        <Link className="btn btn-line" href="/profile#preferences">
+          {t("editProfile")}
+        </Link>
       </section>
       <section className="panel stack">
         <h2>{t("settingsExportTitle")}</h2>

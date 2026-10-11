@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type PointerEvent } from "react"
+import { MatchWhy, type FitLine } from "src/app/components/match/MatchWhy"
 import { swipeDecision } from "src/shared/triage"
 import { TriageButtons } from "../TriageButtons"
 
@@ -10,6 +11,8 @@ export type SwipeOffer = {
   company: string
   location: string
   reason: string
+  fitLines?: FitLine[]
+  hasProfile?: boolean
   score: number
 }
 
@@ -127,7 +130,11 @@ export function SwipeStack({
           <p className="company">{top.company}</p>
           <h3>{top.title}</h3>
           <p className="meta">{top.location}</p>
-          <p className="reason">{top.reason}</p>
+          <MatchWhy
+            mode={top.hasProfile && top.fitLines?.length ? "you" : "phrase"}
+            lines={top.fitLines}
+            reason={top.reason}
+          />
           <p className="score-inline">{top.score}</p>
           <button type="button" className="text-button" onClick={() => onOpen(top)}>
             Details

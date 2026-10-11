@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery } from "@blitzjs/rpc"
 import getSearch from "src/app/searches/queries/getSearch"
 import rerunSearch from "src/app/searches/mutations/rerunSearch"
-import { LinkedInMark } from "src/app/components/site/Brand"
+import { ConnectProfileCard } from "src/app/components/match/ConnectProfileCard"
+import { MatchWhy } from "src/app/components/match/MatchWhy"
+import { ProfileBanner } from "src/app/components/match/ProfileBanner"
 import { Button } from "src/app/components/ui/button"
 import { Input } from "src/app/components/ui/input"
 import { useCopy } from "src/app/i18n/Locale"
@@ -55,6 +57,19 @@ function money(min?: number | null, max?: number | null, currency?: string | nul
     new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(value)
   if (min != null && max != null && min !== max) return `${code}${fmt(min)}–${fmt(max)}`
   return `${code}${fmt((min ?? max) as number)}`
+}
+
+function matchCount(count: number, locale: "pl" | "en") {
+  if (locale === "en") return `${count} ${count === 1 ? "match" : "matches"}`
+  const mod10 = count % 10
+  const mod100 = count % 100
+  const noun =
+    count === 1
+      ? "dopasowanie"
+      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+      ? "dopasowania"
+      : "dopasowań"
+  return `${count} ${noun}`
 }
 
 function safeHref(value: string | null | undefined): string | null {
@@ -112,7 +127,7 @@ function variantLines(value: unknown) {
 }
 
 export function SearchScreen({ id }: { id: string }) {
-  const { t } = useCopy()
+  const { t, locale } = useCopy()
   const [mounted, setMounted] = useState(false)
   const [showScores, setShowScores] = useState(false)
   const [page, setPage] = useState(1)
@@ -146,6 +161,7 @@ export function SearchScreen({ id }: { id: string }) {
     minSalary: Number(minSalary) > 0 ? Number(minSalary) : undefined,
     seniority: seniority || undefined,
     full: fullList || undefined,
+    locale,
   }
   const [data, { isLoading, error, refetch }] = useQuery(getSearch, queryInput, {
     suspense: false,
@@ -256,58 +272,6 @@ export function SearchScreen({ id }: { id: string }) {
           </Button>
         </div>
       </div>
-
-      {!failed && !data.hasProfile && (data.resultRun || !running) ? (
-        <section className="cta-panel match-cta" aria-labelledby="connect-title">
-          <p className="eyebrow">{t("connectEyebrow")}</p>
-          <h2 className="h2" id="connect-title">
-            {t("connectTitle")}
-          </h2>
-          <p>{t("connectBody")}</p>
-          <div className="cta-row">
-            {data.signedIn ? (
-              <Link className="btn btn-light btn-lg" href="/profile">
-                {t("connectImport")}
-              </Link>
-            ) : (
-              <Link className="btn btn-light btn-lg btn-linkedin" href="/api/auth/linkedin/start">
-                <LinkedInMark />
-                {t("signinLinkedIn")}
-              </Link>
-            )}
-            {data.signedIn ? (
-              <Link className="btn btn-line btn-lg btn-linkedin" href="/api/auth/linkedin/start">
-                <LinkedInMark />
-                {t("signinLinkedIn")}
-              </Link>
-            ) : (
-              <Link className="btn btn-line btn-lg" href="/profile">
-                {t("connectImport")}
-              </Link>
-            )}
-          </div>
-        </section>
-      ) : null}
-      {!failed && data.hasProfile && !data.personalized && data.resultRun && !running ? (
-        <section className="cta-panel match-cta" aria-labelledby="rerun-title">
-          <h2 className="h2" id="rerun-title">
-            {t("rerunProfile")}
-          </h2>
-          <div className="cta-row">
-            <button
-              className="btn btn-light btn-lg"
-              type="button"
-              disabled={rerunning}
-              onClick={async () => {
-                await rerun({ id })
-                await refetch()
-              }}
-            >
-              {t("runAgain")}
-            </button>
-          </div>
-        </section>
-      ) : null}
 
       <details
         className="progress-panel panel"
@@ -491,11 +455,12 @@ export function SearchScreen({ id }: { id: string }) {
               <p className="results-sub">
                 {data.shortlisted ? (
                   <>
-                    <strong>{data.total}</strong> / {data.matchTotal} · {t("shortlistSub")}
+                    <strong>{matchCount(data.total, locale)}</strong> / {data.matchTotal} ·{" "}
+                    {t("shortlistSub")}
                   </>
                 ) : (
                   <>
-                    <strong>{data.total}</strong> ·{" "}
+                    <strong>{matchCount(data.total, locale)}</strong> ·{" "}
                     {data.personalized ? t("matchesSubPersonal") : t("matchesSub")}
                   </>
                 )}
@@ -530,13 +495,28 @@ export function SearchScreen({ id }: { id: string }) {
               </Link>
             </div>
           </div>
+          {!data.hasProfile ? (
+            <ConnectProfileCard signedIn={data.signedIn} returnTo={`/searches/${id}`} />
+          ) : data.profileCard ? (
+            <ProfileBanner
+              fromPdf={data.profileCard.fromPdf}
+              salaryFloor={data.profileCard.salaryFloor}
+              salaryCurrency={data.profileCard.salaryCurrency}
+              industries={data.profileCard.industries}
+            />
+          ) : null}
           <div className="section-head">
             <h2 className="sr-only">
               {data.total} offer{data.total === 1 ? "" : "s"}
               {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ""}
             </h2>
-            <button className="chip" type="button" onClick={() => setShowScores((value) => !value)}>
-              {showScores ? "Hide score parts" : "Show score parts"}
+            <button
+              className="chip"
+              type="button"
+              aria-pressed={showScores}
+              onClick={() => setShowScores((value) => !value)}
+            >
+              {showScores ? t("hidePoints") : t("scorePoints")}
             </button>
           </div>
           <p className="hint triage-hint">
@@ -551,6 +531,8 @@ export function SearchScreen({ id }: { id: string }) {
                 company: result.job.company,
                 location: result.job.locationText || "Location not stated",
                 reason: result.reason,
+                fitLines: result.fitLines,
+                hasProfile: data.hasProfile,
                 score: Math.round(result.score + (result.feedbackDelta || 0)),
               }))}
               onOpen={(offer) => setDetailId(offer.id)}
@@ -655,8 +637,11 @@ export function SearchScreen({ id }: { id: string }) {
                       <span>First seen {formatWhen(result.job.firstSeenAt)}</span>
                       <span>{result.job.sourceType.toLowerCase().replace(/_/g, " ")}</span>
                     </div>
-                    {pack.profile ? <p className="why-label">{t("whyFitsYou")}</p> : null}
-                    <p className="reason">{result.reason}</p>
+                    <MatchWhy
+                      mode={data.hasProfile && result.fitLines.length ? "you" : "phrase"}
+                      lines={result.fitLines}
+                      reason={result.reason}
+                    />
                     {result.job.summary ? <p className="summary">{result.job.summary}</p> : null}
                     {showScores && parts.length ? (
                       <div className="breakdown">
@@ -733,6 +718,8 @@ export function SearchScreen({ id }: { id: string }) {
                 company: result.job.company,
                 location: result.job.locationText || "Location not stated",
                 reason: result.reason,
+                fitLines: result.fitLines,
+                hasProfile: data.hasProfile,
                 excerpt: result.job.descriptionText.slice(0, 1200),
                 href: safeHref(result.job.originalUrl),
               }

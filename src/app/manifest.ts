@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Nowa Rola",
     short_name: "Nowa Rola",
-    description: "Oferty pracy w tech, prosto ze stron kariery firm.",
+    description: "Nowa rola w tech, dopasowana do Ciebie.",
     lang: "pl",
     start_url: "/",
     display: "standalone",

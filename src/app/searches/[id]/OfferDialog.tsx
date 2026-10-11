@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { MatchWhy, type FitLine } from "src/app/components/match/MatchWhy"
 import { Button } from "src/app/components/ui/button"
 import { TriageButtons } from "../TriageButtons"
 
@@ -15,6 +16,8 @@ export function OfferDialog({
     company: string
     location: string
     reason: string
+    fitLines?: FitLine[]
+    hasProfile?: boolean
     excerpt: string
     href: string | null
   } | null
@@ -42,7 +45,11 @@ export function OfferDialog({
           <p className="company">{offer.company}</p>
           <h2>{offer.title}</h2>
           <p className="meta">{offer.location}</p>
-          <p className="reason">{offer.reason}</p>
+          <MatchWhy
+            mode={offer.hasProfile && offer.fitLines?.length ? "you" : "phrase"}
+            lines={offer.fitLines}
+            reason={offer.reason}
+          />
           {offer.excerpt ? <p className="prose">{offer.excerpt}</p> : null}
           <TriageButtons onReject={onReject} onInterested={onInterested} />
           <div className="actions">

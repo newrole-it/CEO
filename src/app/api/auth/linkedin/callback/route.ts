@@ -5,6 +5,7 @@ import { upsertLinkedInUser } from "src/server/auth/accounts"
 import { appOrigin } from "src/server/auth/email"
 import { exchangeLinkedInCode } from "src/server/auth/linkedin"
 import { hashLoginToken, MAGIC_LINK_TTL_MS, newLoginToken } from "src/server/auth/magic-link"
+import { safeReturnTo } from "src/shared/return-to"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -12,7 +13,9 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state")
   const jar = await cookies()
   const expected = jar.get("linkedin_oauth_state")?.value
+  const next = safeReturnTo(jar.get("linkedin_oauth_return")?.value)
   jar.delete("linkedin_oauth_state")
+  jar.delete("linkedin_oauth_return")
   if (!code || !state || !expected || state !== expected) redirect("/login?error=linkedin")
 
   const clientId = process.env.LINKEDIN_CLIENT_ID?.trim()
@@ -35,5 +38,6 @@ export async function GET(request: Request) {
       expiresAt: new Date(Date.now() + MAGIC_LINK_TTL_MS),
     },
   })
-  redirect(`/login/verify?token=${encodeURIComponent(token)}`)
+  const nextQuery = next ? `&next=${encodeURIComponent(next)}` : ""
+  redirect(`/login/verify?token=${encodeURIComponent(token)}${nextQuery}`)
 }

@@ -8,15 +8,15 @@ import { VerifyToken } from "./VerifyToken"
 export default async function VerifyLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>
+  searchParams: Promise<{ token?: string; next?: string }>
 }) {
-  const { token } = await searchParams
+  const { token, next } = await searchParams
   if (!token) redirect("/login?error=expired")
   const locale = await getLocale()
   const user = await invoke(getCurrentUser, null)
   return (
     <SiteFrame user={user} locale={locale}>
-      <VerifyToken token={token} />
+      <VerifyToken token={token} next={next ?? null} />
     </SiteFrame>
   )
 }

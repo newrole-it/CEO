@@ -9,6 +9,7 @@ import login from "../mutations/login"
 import requestMagicLink from "../mutations/requestMagicLink"
 import { Button } from "src/app/components/ui/button"
 import { Input } from "src/app/components/ui/input"
+import { safeReturnTo } from "src/shared/return-to"
 
 const ERRORS: Record<string, string> = {
   expired: "That sign-in link is invalid or already used. Request a new one.",
@@ -25,6 +26,10 @@ export const LoginForm = () => {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(ERRORS[params.get("error") || ""] ?? null)
   const [notice, setNotice] = useState<string | null>(null)
+  const destination = safeReturnTo(params.get("returnTo")) ?? "/"
+  const linkedInHref = safeReturnTo(params.get("returnTo"))
+    ? `/api/auth/linkedin/start?returnTo=${encodeURIComponent(destination)}`
+    : "/api/auth/linkedin/start"
 
   async function onEmail(event: FormEvent) {
     event.preventDefault()
@@ -34,7 +39,7 @@ export const LoginForm = () => {
       const result = await requestLink({ email })
       if (result.status === "signed-in") {
         router.refresh()
-        router.push("/")
+        router.push(destination)
         return
       }
       if (result.status === "limited") {
@@ -55,7 +60,7 @@ export const LoginForm = () => {
     try {
       await loginMutation({ email, password })
       router.refresh()
-      router.push("/")
+      router.push(destination)
     } catch (err) {
       if (err instanceof AuthenticationError) setError("Those credentials were not recognized.")
       else setError(err instanceof Error ? err.message : "Login failed")
@@ -89,7 +94,7 @@ export const LoginForm = () => {
         </Button>
       </form>
       <Button variant="outline" asChild>
-        <Link href="/api/auth/linkedin/start">Continue with LinkedIn</Link>
+        <Link href={linkedInHref}>Continue with LinkedIn</Link>
       </Button>
       <details>
         <summary>Owner password</summary>

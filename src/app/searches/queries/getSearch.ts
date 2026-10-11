@@ -2,8 +2,13 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
+import { DEFAULT_CONFIG } from "matching/config"
 import { seniorityAffinity } from "src/server/classify/role"
 import { techScopeWhere } from "src/server/classify/scope"
+import type { FitLine } from "src/server/profile/explain"
+import { industryFromRules } from "src/server/profile/industry"
+import { rankAgainstProfile, toSignals } from "src/server/profile/rank"
+import { jobMonthlyPln } from "src/server/profile/salary"
 import { seniorityValues } from "src/server/profile/schema"
 import { rejectionPenalty } from "src/server/search/feedback"
 import { profileReady, takeShortlist } from "src/shared/shortlist"
@@ -22,6 +27,7 @@ const input = z.object({
   minSalary: z.number().positive().max(1_000_000).optional(),
   seniority: z.enum(seniorityValues).optional(),
   full: z.boolean().optional(),
+  locale: z.enum(["pl", "en"]).optional(),
 })
 
 const PAGE_SIZE = 20
@@ -44,6 +50,7 @@ export default resolver.pipe(
       minSalary,
       seniority,
       full,
+      locale,
     },
     ctx
   ) => {
@@ -84,7 +91,7 @@ export default resolver.pipe(
     }
     const viewer = await db.user.findUnique({
       where: { id: ctx.session.userId! },
-      select: { role: true },
+      select: { role: true, locale: true },
     })
     const profile = await db.candidateProfile.findUnique({
       where: { userId: ctx.session.userId! },
@@ -94,9 +101,22 @@ export default resolver.pipe(
         headline: true,
         currentTitle: true,
         linkedinImportedAt: true,
+        skills: true,
+        industries: true,
+        locations: true,
+        remotePreference: true,
+        homeCity: true,
+        salaryFloor: true,
+        salaryTarget: true,
+        salaryCurrency: true,
+        salaryPeriod: true,
+        salaryContract: true,
+        industryMode: true,
       },
     })
     const ready = profileReady(profile)
+    const fitLocale = locale ?? (viewer?.locale === "pl" ? "pl" : "en")
+    const signals = ready && profile ? toSignals(profile, fitLocale) : null
     const rejected = await db.jobMatch.findMany({
       where: { dismissedAt: { not: null }, savedSearch: { userId: ctx.session.userId! } },
       orderBy: { dismissedAt: "desc" },
@@ -118,16 +138,24 @@ export default resolver.pipe(
             id: true,
             score: true,
             jobId: true,
+            scoreBreakdown: true,
             job: {
               select: {
                 title: true,
                 seniorityLevel: true,
+                descriptionText: true,
+                locationText: true,
+                workplaceType: true,
+                salaryMin: true,
+                salaryMax: true,
+                salaryCurrency: true,
                 company: { select: { name: true } },
               },
             },
           },
         })
       : []
+    const linesById = new Map<string, FitLine[]>()
     const ordered = light
       .map((row) => {
         const penalty = rejectionPenalty(
@@ -135,7 +163,40 @@ export default resolver.pipe(
           rejectedOffers.filter((item) => item.jobId !== row.jobId)
         )
         const affinity = seniorityAffinity(profile?.seniority, row.job.seniorityLevel)
-        const delta = penalty + affinity
+        const breakdown = row.scoreBreakdown
+        const storedQuery =
+          breakdown &&
+          typeof breakdown === "object" &&
+          !Array.isArray(breakdown) &&
+          typeof (breakdown as { queryScore?: unknown }).queryScore === "number"
+            ? (breakdown as { queryScore: number }).queryScore
+            : null
+        const monthlyRecord =
+          breakdown &&
+          typeof breakdown === "object" &&
+          !Array.isArray(breakdown) &&
+          (breakdown as { monthlyPln?: { min?: number | null; max?: number | null } }).monthlyPln
+        const salary =
+          monthlyRecord && (monthlyRecord.min != null || monthlyRecord.max != null)
+            ? { min: monthlyRecord.min ?? null, max: monthlyRecord.max ?? null }
+            : jobMonthlyPln(row.job, DEFAULT_CONFIG)
+        const fit = signals
+          ? rankAgainstProfile({
+              queryScore: storedQuery ?? row.score,
+              signals,
+              config: DEFAULT_CONFIG,
+              title: row.job.title,
+              description: row.job.descriptionText.slice(0, 8000),
+              location: row.job.locationText ?? "",
+              workplace: row.job.workplaceType,
+              salary,
+              seniority: row.job.seniorityLevel,
+              jobIndustry: industryFromRules(row.job.title, row.job.descriptionText.slice(0, 8000)),
+            })
+          : null
+        if (fit) linesById.set(row.id, fit.lines)
+        const base = storedQuery != null && fit ? fit.score : row.score
+        const delta = penalty + affinity + (base - row.score)
         return { id: row.id, score: row.score, delta, rank: row.score + delta }
       })
       .sort((a, b) => b.rank - a.rank || b.score - a.score || a.id.localeCompare(b.id))
@@ -163,19 +224,7 @@ export default resolver.pipe(
           },
         })
       : 0
-    const sample = matchRun
-      ? await db.jobMatch.findFirst({
-          where: { searchRunId: matchRun.id },
-          select: { scoreBreakdown: true },
-        })
-      : null
-    const breakdown = sample?.scoreBreakdown
-    const personalized = Boolean(
-      breakdown &&
-        typeof breakdown === "object" &&
-        !Array.isArray(breakdown) &&
-        "profile" in breakdown
-    )
+    const personalized = ready
 
     return {
       search: {
@@ -202,12 +251,23 @@ export default resolver.pipe(
       hasProfile: ready,
       personalized,
       signedIn: Boolean(viewer && viewer.role !== "GUEST"),
+      profileCard: ready
+        ? {
+            fromPdf: Boolean(profile?.linkedinImportedAt),
+            salaryFloor: profile?.salaryFloor ?? null,
+            salaryCurrency: profile?.salaryCurrency ?? "PLN",
+            industries: Array.isArray(profile?.industries)
+              ? profile.industries.filter((item): item is string => typeof item === "string")
+              : [],
+          }
+        : null,
       hiddenDecided,
       results: matches.map((match) => ({
         id: match.id,
         score: match.score,
         feedbackDelta: deltaById.get(match.id) ?? 0,
         reason: match.reason,
+        fitLines: linesById.get(match.id) ?? [],
         isNew: match.isNew,
         seenAt: match.seenAt,
         dismissedAt: match.dismissedAt,

@@ -116,8 +116,8 @@ export function SiteHeader({ user, interested }: { user?: ShellUser; interested:
             ) : (
               <nav className="nav nav-guest" aria-label={t("navMain")}>
                 <a href="/#jak-to-dziala">{t("navHow")}</a>
-                <a href="/#zrodla">{t("navSources")}</a>
                 <a href="/#dopasowanie">{t("navMatch")}</a>
+                <a href="/#zrodla">{t("navSources")}</a>
               </nav>
             )}
             <div className="header-actions">
@@ -264,8 +264,8 @@ export function SiteHeader({ user, interested }: { user?: ShellUser; interested:
                 ))
               : [
                   ["/#jak-to-dziala", t("navHow")],
-                  ["/#zrodla", t("navSources")],
                   ["/#dopasowanie", t("navMatch")],
+                  ["/#zrodla", t("navSources")],
                 ].map(([href, label]) => (
                   <li key={href}>
                     <a href={href} onClick={() => setOpen(false)}>

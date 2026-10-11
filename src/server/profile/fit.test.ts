@@ -152,4 +152,40 @@ describe("job industry extraction", () => {
     expect(rules.source).toBe("rules")
     expect(rules.industry).toBe("adtech")
   })
+
+  it("scores Kubernetes when the posting says k8s, and only cites real overlap", () => {
+    const posting = "Requirements: k8s and AWS"
+    const base = {
+      queryScore: 70,
+      config: DEFAULT_CONFIG,
+      title: "Platform Engineer",
+      description: posting,
+      location: "",
+      workplace: "",
+      salary: null,
+      jobIndustry: industryFromRules("Platform Engineer", posting),
+    }
+    const quiet = signals({
+      skills: ["SQL"],
+      seniority: null,
+      industries: [],
+      locations: [],
+      homeCity: null,
+      remotePreference: null,
+    })
+    const skilled = signals({
+      ...quiet,
+      skills: ["Kubernetes", "Rust"],
+    })
+    const without = rankAgainstProfile({ ...base, signals: quiet })
+    const withSkill = rankAgainstProfile({ ...base, signals: skilled })
+    expect(withSkill.skillDelta).toBeGreaterThan(without.skillDelta)
+    expect(withSkill.score).toBeGreaterThan(without.score)
+    const text = withSkill.lines.map((line) => line.text).join(" ")
+    expect(
+      withSkill.lines.some((line) => line.kind === "ok" && line.text.includes("Kubernetes"))
+    ).toBe(true)
+    expect(text).not.toMatch(/Rust/i)
+    expect(text).not.toMatch(/\bSQL\b/)
+  })
 })

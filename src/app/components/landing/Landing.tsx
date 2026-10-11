@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { indexCountLabel } from "src/shared/index-count"
 import { copy, type Locale } from "src/app/i18n/copy"
+import { MatchWhy } from "../match/MatchWhy"
 import { LinkedInMark } from "../site/Brand"
 import { HeroSearch } from "./HeroSearch"
 
@@ -97,6 +98,12 @@ export function Landing({
               </span>
               <h3 className="h3">{t.step1Title}</h3>
               <p>{t.step1Body}</p>
+              <div className="step-visual" aria-hidden="true">
+                <span className="q">Software Engineer</span>
+                <span className="chip chip-sm is-static">Backend Engineer</span>
+                <span className="chip chip-sm is-static">Frontend Developer</span>
+                <span className="chip chip-sm is-static">{t.step1Chip}</span>
+              </div>
             </li>
             <li className="step">
               <span className="step-num" aria-hidden="true">
@@ -107,16 +114,13 @@ export function Landing({
               <div className="step-visual" aria-hidden="true">
                 <div className="flow">
                   <div className="flow-row">
-                    <span className="tag">{t.flowCareer}</span>
-                    <span className="tag">Nowa Rola</span>
+                    <span className="tag">LinkedIn</span>
+                    <span className="tag">{t.flowPdf}</span>
                   </div>
                   <div className="flow-row">
-                    <span className="tag">{t.flowAts}</span>
-                    <span className="tag">Nowa Rola</span>
-                  </div>
-                  <div className="flow-row">
-                    <span className="tag off">{t.flowPortal}</span>
-                    <span className="small muted">{t.flowLinkOnly}</span>
+                    <span className="tag">{t.flowExp}</span>
+                    <span className="tag">{t.flowInd}</span>
+                    <span className="tag">{t.flowMin}</span>
                   </div>
                 </div>
               </div>
@@ -127,8 +131,95 @@ export function Landing({
               </span>
               <h3 className="h3">{t.step3Title}</h3>
               <p>{t.step3Body}</p>
+              <div className="step-visual" aria-hidden="true">
+                <div className="mini-why">
+                  <div className="score" data-band="strong">
+                    91
+                  </div>
+                  <ul className="why-list">
+                    <li className="why-ok">
+                      <span>{t.miniWhy1}</span>
+                    </li>
+                    <li className="why-ok">
+                      <span>{t.miniWhy2}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </li>
           </ol>
+        </div>
+      </section>
+      <hr className="section-rule" />
+      <section className="section" id="dopasowanie" aria-labelledby="match-title">
+        <div className="container match">
+          <div>
+            <p className="eyebrow">{t.matchEyebrow}</p>
+            <h2 className="h2" id="match-title">
+              {t.matchTitleBefore} <em>{t.matchTitleEm}</em>
+            </h2>
+            <p className="lede">{t.matchLede}</p>
+            <ul className="checks">
+              <li>{t.matchCheck1}</li>
+              <li>{t.matchCheck2}</li>
+              <li>{t.matchCheck3}</li>
+            </ul>
+            <div className="cta-row">
+              {signedIn ? (
+                <>
+                  <Link className="btn btn-primary btn-lg" href="/profile/audit">
+                    {t.authAuditCta}
+                  </Link>
+                  <Link className="text-link" href="/profile">
+                    {t.authReimport}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    className="btn btn-primary btn-lg btn-linkedin"
+                    href="/api/auth/linkedin/start"
+                  >
+                    <LinkedInMark />
+                    {t.connectBtn}
+                  </Link>
+                  <Link className="text-link" href="/login">
+                    {t.magicLink}
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+          <figure className="score-card" aria-labelledby="sc-title">
+            <header>
+              <div className="t">
+                <h3 className="h3" id="sc-title">
+                  {t.exampleCard}
+                </h3>
+              </div>
+            </header>
+            <MatchWhy
+              mode="you"
+              lines={[
+                { kind: "ok", text: t.miniWhy1 },
+                { kind: "ok", text: t.miniWhy2 },
+              ]}
+            />
+            <div className="bars" role="list">
+              {WEIGHTS.map(([key, weight]) => (
+                <div className="bar-row" role="listitem" key={key}>
+                  <span>{t[key]}</span>
+                  <span className="track" aria-hidden="true">
+                    <i style={{ ["--w" as string]: "100%" }} />
+                  </span>
+                  <span className="v">
+                    <b>{weight}</b>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <figcaption className="sc-foot">{t.weightsFoot}</figcaption>
+          </figure>
         </div>
       </section>
       <hr className="section-rule" />
@@ -194,71 +285,6 @@ export function Landing({
           </ul>
         </div>
       </section>
-      <hr className="section-rule" />
-      <section className="section" id="dopasowanie" aria-labelledby="match-title">
-        <div className="container match">
-          <div>
-            <p className="eyebrow">{t.matchEyebrow}</p>
-            <h2 className="h2" id="match-title">
-              {t.matchTitleBefore} <em>{t.matchTitleEm}</em>
-            </h2>
-            <p className="lede">{t.matchLede}</p>
-            <ul className="checks">
-              <li>{t.matchCheck1}</li>
-              <li>{t.matchCheck2}</li>
-              <li>{t.matchCheck3}</li>
-            </ul>
-            <div className="cta-row">
-              {signedIn ? (
-                <>
-                  <Link className="btn btn-primary btn-lg" href="/profile/audit">
-                    {t.authAuditCta}
-                  </Link>
-                  <Link className="text-link" href="/profile">
-                    {t.authReimport}
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    className="btn btn-primary btn-lg btn-linkedin"
-                    href="/api/auth/linkedin/start"
-                  >
-                    <LinkedInMark />
-                    {t.signinLinkedIn}
-                  </Link>
-                  <Link className="text-link" href="/login">
-                    {t.magicLink}
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          <figure className="score-card" aria-labelledby="sc-title">
-            <header>
-              <div className="t">
-                <h3 className="h3" id="sc-title">
-                  {t.weightsTitle}
-                </h3>
-              </div>
-            </header>
-            <div className="bars" role="list">
-              {WEIGHTS.map(([key, weight]) => (
-                <div className="bar-row" role="listitem" key={key}>
-                  <span>{t[key]}</span>
-                  <span className="track" aria-hidden="true">
-                    <i style={{ ["--w" as string]: "100%" }} />
-                  </span>
-                  <span className="v">
-                    <b>{weight}</b>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <figcaption className="sc-foot">{t.weightsFoot}</figcaption>
-          </figure>
-        </div>
-      </section>
       <section className="cta-band" aria-labelledby="cta-title">
         <div className="container">
           <div className="cta-panel">
@@ -275,8 +301,9 @@ export function Landing({
                   {t.ctaTriage}
                 </Link>
               ) : (
-                <Link className="btn btn-line btn-lg" href="/api/auth/linkedin/start">
-                  {t.signinLinkedIn}
+                <Link className="btn btn-line btn-lg btn-linkedin" href="/api/auth/linkedin/start">
+                  <LinkedInMark />
+                  {t.connectBtn}
                 </Link>
               )}
             </div>

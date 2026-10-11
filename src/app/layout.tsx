@@ -26,11 +26,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
   const pl = locale === "pl"
   const title = pl
-    ? "Nowa Rola: oferty pracy w tech prosto od firm"
-    : "Nowa Rola: tech jobs straight from employers"
+    ? "Nowa Rola: nowa rola w tech, dopasowana do Ciebie"
+    : "Nowa Rola: a new role in tech, matched to you"
   const description = pl
-    ? "Wpisz, co Cię interesuje. Połącz LinkedIn, a Nowa Rola znajdzie oferty dopasowane do Ciebie."
-    : "Type what interests you. Connect LinkedIn, and Nowa Rola finds the offers that fit you."
+    ? "Wpisz, jakiej pracy szukasz, i połącz profil z LinkedIn. Nowa Rola pokaże oferty, które pasują do Ciebie najbardziej, z wyjaśnieniem dlaczego."
+    : "Type the job you want and connect your LinkedIn profile. Nowa Rola shows the offers that fit you best, with the reasons why."
+  const ogAlt = pl
+    ? "Nowa rola w tech, dopasowana do Ciebie. Logo nowarola.it i przykładowa karta dopasowania z wyjaśnieniem, dlaczego pasuje."
+    : "A new role in tech, matched to you. nowarola.it logo and an example match card explaining why it fits."
+  const ogImage = pl ? "/og-image-pl.png" : "/og-image-en.png"
   return {
     metadataBase: new URL(publicAppUrl()),
     applicationName: "Nowa Rola",
@@ -44,8 +48,9 @@ export async function generateMetadata(): Promise<Metadata> {
       url: "/",
       title,
       description,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogAlt, type: "image/png" }],
     },
-    twitter: { card: "summary", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage] },
     alternates: { canonical: "/" },
   }
 }

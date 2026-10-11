@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import { useRouter } from "next/navigation"
+import { safeReturnTo } from "src/shared/return-to"
 import consumeLoginToken from "../mutations/consumeLoginToken"
 
-export function VerifyToken({ token }: { token: string }) {
+export function VerifyToken({ token, next }: { token: string; next?: string | null }) {
   const [consume] = useMutation(consumeLoginToken)
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const started = useRef(false)
+  const destination = safeReturnTo(next) ?? "/"
 
   useEffect(() => {
     if (started.current) return
@@ -17,12 +19,12 @@ export function VerifyToken({ token }: { token: string }) {
     consume({ token })
       .then(() => {
         router.refresh()
-        router.replace("/")
+        router.replace(destination)
       })
       .catch(() => {
         setError("That sign-in link is invalid or already used.")
       })
-  }, [consume, router, token])
+  }, [consume, destination, router, token])
 
   if (error) {
     return (

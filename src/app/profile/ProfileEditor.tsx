@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import saveProfile from "./mutations/saveProfile"
 import { Button } from "src/app/components/ui/button"
 import { Input } from "src/app/components/ui/input"
+import { useCopy } from "src/app/i18n/Locale"
 import { emptyProfileDraft, type IndustryMode, type ProfileDraft } from "src/server/profile/schema"
 
 function list(value: string): string[] {
@@ -25,10 +26,13 @@ function numberOrNull(value: string): number | null {
 export function ProfileEditor({
   initial,
   signedIn,
+  returnTo,
 }: {
   initial: ProfileDraft | null
   signedIn: boolean
+  returnTo?: string | null
 }) {
+  const { t } = useCopy()
   const router = useRouter()
   const [save, { isPending }] = useMutation(saveProfile)
   const [draft, setDraft] = useState<ProfileDraft>(initial ?? emptyProfileDraft())
@@ -93,8 +97,9 @@ export function ProfileEditor({
         locations: list(locations),
         languages: list(languages),
       })
-      setMessage("Profile saved. Run a search again to rank offers against it.")
+      setMessage(t("profileSavedMsg"))
       router.refresh()
+      if (returnTo) router.push(returnTo)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the profile")
     }
@@ -117,13 +122,8 @@ export function ProfileEditor({
         </p>
       ) : null}
       <form className="panel stack" onSubmit={onImport}>
-        <h2>Import your LinkedIn profile</h2>
-        <p className="hint">
-          LinkedIn does not allow reading a profile URL. Export a PDF from LinkedIn with More, then
-          Save to PDF. A CV PDF or pasted text works the same way. Parsed sections stay on the
-          account for the <Link href="/profile/audit">profile audit</Link>. The PDF file itself is
-          not stored.
-        </p>
+        <h2>{t("importPdfTitle")}</h2>
+        <p className="hint">{t("importPdfBody")}</p>
         <label className="field">
           PDF
           <Input name="file" type="file" accept="application/pdf,.pdf" />
@@ -141,8 +141,9 @@ export function ProfileEditor({
           {importing ? "Reading…" : "Read profile"}
         </Button>
       </form>
-      <form className="panel stack" onSubmit={onSave}>
-        <h2>Review</h2>
+      <form className="panel stack" id="preferences" onSubmit={onSave}>
+        <h2>{t("prefsTitle")}</h2>
+        <p className="hint">{t("prefsBody")}</p>
         {error ? <p className="form-error">{error}</p> : null}
         {message ? <p className="hint">{message}</p> : null}
         <label className="field">
@@ -239,7 +240,7 @@ export function ProfileEditor({
         </fieldset>
         <div className="extras">
           <label className="field">
-            Salary floor
+            {t("salaryFloorLabel")}
             <Input
               type="number"
               min={0}
@@ -248,7 +249,7 @@ export function ProfileEditor({
             />
           </label>
           <label className="field">
-            Salary target
+            {t("salaryTargetLabel")}
             <Input
               type="number"
               min={0}

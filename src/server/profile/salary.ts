@@ -42,6 +42,28 @@ export function amountToMonthlyPln(
   return converted.min
 }
 
+export function jobMonthlyPln(
+  job: { salaryMin: number | null; salaryMax: number | null; salaryCurrency: string | null },
+  config: MatchingConfig
+): MonthlyRange | null {
+  if (job.salaryMin == null && job.salaryMax == null) return null
+  const currency = (
+    job.salaryCurrency && CURRENCIES.has(job.salaryCurrency) ? job.salaryCurrency : "PLN"
+  ) as Currency
+  const converted = toMonthlyPlnB2b(
+    {
+      min: job.salaryMin,
+      max: job.salaryMax,
+      currency,
+      period: "month",
+      contract: "b2b",
+      basis: "net_of_vat",
+    },
+    config
+  )
+  return { min: converted.min, max: converted.max }
+}
+
 export function profileMonthlyPln(
   pay: ProfilePay,
   config: MatchingConfig

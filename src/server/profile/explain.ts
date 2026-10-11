@@ -1,5 +1,8 @@
 import type { DomainRequirement, IndustryRelation } from "./industry"
 import type { SalaryKind } from "./salary"
+import type { SkillHit } from "./skills"
+
+export type FitLine = { kind: "ok" | "warn"; text: string }
 
 const TERM_PL: Record<string, string> = {
   adtech: "adtech",
@@ -142,4 +145,292 @@ export function explainSalary(args: {
 
 export function whyItMatches(industryLine: string, salaryLine: string): string {
   return `${industryLine}. ${salaryLine}`
+}
+
+function joinLabels(labels: string[], locale: "en" | "pl"): string {
+  const unique = [...new Set(labels)].slice(0, 3)
+  if (unique.length <= 1) return unique[0] ?? ""
+  const conjunction = locale === "pl" ? "i" : "and"
+  if (unique.length === 2) return `${unique[0]} ${conjunction} ${unique[1]}`
+  return `${unique.slice(0, -1).join(", ")} ${conjunction} ${unique[unique.length - 1]}`
+}
+
+export function explainSkills(
+  locale: "en" | "pl",
+  hits: SkillHit[],
+  missing: SkillHit[]
+): FitLine[] {
+  const lines: FitLine[] = []
+  const required = hits.filter((hit) => hit.zone === "required")
+  const nice = hits.filter((hit) => hit.zone === "nice")
+  const mentioned = hits.filter((hit) => hit.zone === "mentioned")
+  if (required.length) {
+    const names = joinLabels(
+      required.map((hit) => hit.label),
+      locale
+    )
+    lines.push({
+      kind: "ok",
+      text:
+        locale === "pl"
+          ? `${names} ${required.length > 1 ? "są" : "jest"} w Twoim profilu i w wymaganiach`
+          : `${names} ${
+              required.length > 1 ? "are" : "is"
+            } in your profile and in the requirements`,
+    })
+  }
+  if (nice.length) {
+    const names = joinLabels(
+      nice.map((hit) => hit.label),
+      locale
+    )
+    lines.push({
+      kind: "ok",
+      text:
+        locale === "pl"
+          ? `${names} jest mile widziane i masz to w profilu`
+          : `${names} ${nice.length > 1 ? "are" : "is"} a plus, and in your profile`,
+    })
+  }
+  if (mentioned.length && !required.length) {
+    const names = joinLabels(
+      mentioned.map((hit) => hit.label),
+      locale
+    )
+    lines.push({
+      kind: "ok",
+      text:
+        locale === "pl"
+          ? `${names} występuje w ogłoszeniu i w Twoim profilu`
+          : `${names} appears in the posting and in your profile`,
+    })
+  }
+  const gap = missing[0]
+  if (gap) {
+    lines.push({
+      kind: "warn",
+      text:
+        locale === "pl"
+          ? `W wymaganiach jest ${gap.label}, a nie ma tego w Twoim profilu`
+          : `${gap.label} is required, and it isn't in your profile`,
+    })
+  }
+  return lines
+}
+
+const SENIORITY_PL: Record<string, string> = {
+  intern: "staż",
+  junior: "junior",
+  mid: "mid",
+  senior: "senior",
+  lead: "lead",
+  principal: "principal",
+  manager: "manager",
+  senior_manager: "senior manager",
+  head: "head",
+  director: "director",
+  vp: "VP",
+  c_level: "C-level",
+}
+
+export function explainSeniority(
+  locale: "en" | "pl",
+  profileSeniority: string | null,
+  jobSeniority: string | null
+): FitLine | null {
+  if (!profileSeniority || !jobSeniority) return null
+  const label = locale === "pl" ? SENIORITY_PL[jobSeniority] ?? jobSeniority : jobSeniority
+  if (jobSeniority === profileSeniority) {
+    return {
+      kind: "ok",
+      text:
+        locale === "pl"
+          ? `${label}, zgodnie z Twoim doświadczeniem`
+          : `${label}, in line with your experience`,
+    }
+  }
+  return null
+}
+
+export function explainSeniorityGap(
+  locale: "en" | "pl",
+  direction: "lower" | "higher",
+  jobSeniority: string
+): FitLine {
+  const label = locale === "pl" ? SENIORITY_PL[jobSeniority] ?? jobSeniority : jobSeniority
+  if (locale === "pl") {
+    return {
+      kind: "warn",
+      text:
+        direction === "lower"
+          ? `Poziom ${label}, niżej niż Twoje doświadczenie`
+          : `Poziom ${label}, wyżej niż w Twoim profilu`,
+    }
+  }
+  return {
+    kind: "warn",
+    text:
+      direction === "lower"
+        ? `${label} level, below your experience`
+        : `${label} level, above your profile`,
+  }
+}
+
+export function explainWorkplace(
+  locale: "en" | "pl",
+  preference: string | null,
+  workplace: "remote" | "hybrid" | "onsite" | null
+): FitLine | null {
+  if (!preference || preference === "any" || !workplace) return null
+  if (preference === workplace) {
+    const ok =
+      locale === "pl"
+        ? workplace === "remote"
+          ? "Zdalnie, tak jak wolisz"
+          : workplace === "hybrid"
+          ? "Hybrydowo, tak jak wolisz"
+          : "Stacjonarnie, tak jak wolisz"
+        : workplace === "remote"
+        ? "Remote, as you prefer"
+        : workplace === "hybrid"
+        ? "Hybrid, as you prefer"
+        : "On-site, as you prefer"
+    return { kind: "ok", text: ok }
+  }
+  const job =
+    locale === "pl"
+      ? workplace === "remote"
+        ? "Zdalnie"
+        : workplace === "hybrid"
+        ? "Hybrydowo"
+        : "Stacjonarnie"
+      : workplace === "remote"
+      ? "Remote"
+      : workplace === "hybrid"
+      ? "Hybrid"
+      : "On-site"
+  const want =
+    locale === "pl"
+      ? preference === "remote"
+        ? "pracę zdalną"
+        : preference === "hybrid"
+        ? "pracę hybrydową"
+        : "pracę stacjonarną"
+      : preference === "remote"
+      ? "remote"
+      : preference === "hybrid"
+      ? "hybrid"
+      : "on-site"
+  return {
+    kind: "warn",
+    text: locale === "pl" ? `${job}, a wolisz ${want}` : `${job}, while you prefer ${want}`,
+  }
+}
+
+export function explainCity(locale: "en" | "pl", city: string): FitLine {
+  return {
+    kind: "ok",
+    text: locale === "pl" ? `${city} jest na Twojej liście` : `${city} is on your list`,
+  }
+}
+
+export function explainSalaryLine(args: {
+  locale: "en" | "pl"
+  kind: SalaryKind
+  floor: number | null
+}): FitLine | null {
+  if (args.floor == null && args.kind !== "target") {
+    if (args.kind === "undisclosed" || args.kind === "neutral") return null
+  }
+  const floor =
+    args.floor != null
+      ? new Intl.NumberFormat(args.locale === "pl" ? "pl-PL" : "en-GB", {
+          maximumFractionDigits: 0,
+        }).format(args.floor)
+      : null
+  if (args.kind === "undisclosed") {
+    if (args.floor == null) return null
+    return {
+      kind: "warn",
+      text:
+        args.locale === "pl"
+          ? "Brak widełek, więc nie porównamy ich z Twoim minimum"
+          : "No salary range, so it can't be compared with your minimum",
+    }
+  }
+  if (args.kind === "meets" || args.kind === "target") {
+    return {
+      kind: "ok",
+      text:
+        args.locale === "pl"
+          ? `Widełki powyżej Twojego minimum${floor ? ` (${floor} zł)` : ""}`
+          : `Salary above your minimum${floor ? ` (${floor} PLN)` : ""}`,
+    }
+  }
+  if (args.kind === "below" || args.kind === "far_below") {
+    return {
+      kind: "warn",
+      text:
+        args.locale === "pl"
+          ? `Widełki poniżej Twojego minimum${floor ? ` (${floor} zł)` : ""}`
+          : `Salary below your minimum${floor ? ` (${floor} PLN)` : ""}`,
+    }
+  }
+  if (args.kind === "straddle") {
+    return {
+      kind: "warn",
+      text:
+        args.locale === "pl"
+          ? `Widełki zachodzą na Twoje minimum${floor ? ` (${floor} zł)` : ""}`
+          : `The range crosses your minimum${floor ? ` (${floor} PLN)` : ""}`,
+    }
+  }
+  return null
+}
+
+export function explainIndustryLine(args: {
+  locale: "en" | "pl"
+  industry: string | null
+  relation: IndustryRelation
+  userIndustries: string[]
+}): FitLine | null {
+  if (!args.userIndustries.length || !args.industry) return null
+  const label = termLabel(args.industry, args.locale)
+  if (args.relation === "same") {
+    return {
+      kind: "ok",
+      text:
+        args.locale === "pl"
+          ? `${label}, jak w Twoim doświadczeniu`
+          : `${label}, like your experience`,
+    }
+  }
+  if (args.relation === "adjacent") {
+    return {
+      kind: "warn",
+      text:
+        args.locale === "pl"
+          ? `${label}: branża sąsiednia do Twojej`
+          : `${label}: an industry next to yours`,
+    }
+  }
+  if (args.relation === "different") {
+    return {
+      kind: "warn",
+      text:
+        args.locale === "pl"
+          ? `${label}, inna niż Twoje doświadczenie`
+          : `${label}, different from your experience`,
+    }
+  }
+  return null
+}
+
+/** Up to three lines, with a trade-off included when one was computed. */
+export function pickFitLines(lines: FitLine[], max = 3): FitLine[] {
+  const ok = lines.filter((line) => line.kind === "ok")
+  const warn = lines.filter((line) => line.kind === "warn")
+  if (!warn.length) return ok.slice(0, max)
+  if (!ok.length) return warn.slice(0, max)
+  return [...ok.slice(0, max - 1), warn[0]].slice(0, max)
 }
