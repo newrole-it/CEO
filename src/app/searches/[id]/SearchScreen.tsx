@@ -447,8 +447,22 @@ export function SearchScreen({ id }: { id: string }) {
         </div>
       ) : (
         <>
+          <div className="results-head">
+            <div>
+              <p className="eyebrow">Wyniki wyszukiwania</p>
+              <h2>{data.search.phrase}</h2>
+              <p className="results-sub">
+                <strong>{data.total}</strong> · od najlepiej dopasowanych
+              </p>
+            </div>
+            <div className="results-tools">
+              <Link className="btn btn-ink btn-sm" href={`/searches/${id}/triage`}>
+                Przeglądaj po kolei
+              </Link>
+            </div>
+          </div>
           <div className="section-head">
-            <h2>
+            <h2 className="sr-only">
               {data.total} offer{data.total === 1 ? "" : "s"}
               {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ""}
             </h2>
@@ -509,7 +523,7 @@ export function SearchScreen({ id }: { id: string }) {
                 })
               return (
                 <article
-                  className="result-card"
+                  className="result"
                   id={`offer-${result.id}`}
                   key={result.id}
                   tabIndex={0}
@@ -518,6 +532,15 @@ export function SearchScreen({ id }: { id: string }) {
                 >
                   <div
                     className="score"
+                    data-band={
+                      pack.band === "strong" || pack.band === "good" || pack.band === "weak"
+                        ? pack.band
+                        : shown >= 80
+                        ? "strong"
+                        : shown >= 60
+                        ? "good"
+                        : "weak"
+                    }
                     title={pack.band ? `${pack.band} match, out of 100` : "Match score out of 100"}
                   >
                     {shown}

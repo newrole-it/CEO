@@ -1,6 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import db from "db"
 import { createGuestUser } from "src/server/auth/accounts"
+import { assertSearchRateLimit } from "src/server/auth/magic-link"
 import { enqueueSearch } from "src/server/queue/enqueue"
 import { createSearchInputSchema } from "src/shared/schemas"
 
@@ -11,6 +12,7 @@ export default resolver.pipe(resolver.zod(createSearchInputSchema), async (input
     await ctx.session.$create({ userId: guest.id, role: "GUEST" })
     userId = guest.id
   }
+  await assertSearchRateLimit(userId)
   return db.$transaction(async (tx) => {
     const search = await tx.savedSearch.create({
       data: {

@@ -2,6 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
+import { assertSearchRateLimit } from "src/server/auth/magic-link"
 import { enqueueSearch } from "src/server/queue/enqueue"
 
 const ACTIVE = ["QUEUED", "RUNNING", "RETRYING"] as const
@@ -12,6 +13,7 @@ export default resolver.pipe(
   async ({ id }, ctx) => {
     const search = await db.savedSearch.findFirst({ where: { id, userId: ctx.session.userId! } })
     if (!search) throw new NotFoundError("Search not found")
+    await assertSearchRateLimit(ctx.session.userId!)
     return db.$transaction(async (tx) => {
       const active = await tx.searchRun.findFirst({
         where: { savedSearchId: id, status: { in: [...ACTIVE] } },

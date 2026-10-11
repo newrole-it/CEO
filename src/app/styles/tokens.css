@@ -1,0 +1,241 @@
+/* Jobscanner design tokens — v2 "scan" direction (2026-10-11)
+ * Ink + scan violet + scanner lime on cool neutrals. Onest (UI/display) + Geist Mono (data).
+ * Light theme is the default. Dark applies via prefers-color-scheme
+ * unless the user picked a theme ([data-theme] on <html> wins).
+ * Contrast pairs checked with the WCAG formula; see design-tokens.md. */
+
+:root {
+  /* ---------- Colour: light ---------- */
+  --color-bg: #f7f7fa; /* cool off-white */
+  --color-bg-raised: #ffffff; /* cards, inputs */
+  --color-bg-sunken: #eeeef3; /* wells, skeletons, tracks */
+  --color-bg-inverse: #0e0e16; /* score tile "strong" */
+  --color-fg-inverse: #c8f13b; /* lime on ink — 14.7:1 */
+  --color-cta-bg: #0e0e16; /* closing CTA panel */
+  --color-cta-fg: #f7f7fa;
+  --color-fg: #0e0e16; /* ink — 18.0:1 on bg */
+  --color-fg-muted: #555566; /* 6.8:1 on bg */
+  --color-fg-subtle: #646475; /* 5.4:1 on bg, 5.0:1 on sunken */
+  --color-line: #e4e4eb;
+  --color-line-strong: #c9c9d6;
+  --color-accent: #5b3df5; /* "scan violet" — 5.7:1 on bg; white on it 6.1:1 */
+  --color-accent-hover: #4a2be0; /* white on it 7.7:1 */
+  --color-accent-soft: #ece8ff;
+  --color-accent-strong: #3d22b8; /* on accent-soft 8.3:1 */
+  --color-on-accent: #ffffff;
+  --color-mark: #c8f13b; /* "scanner lime": highlight fills only, never text on light */
+  --color-on-mark: #0e0e16; /* 14.7:1 */
+  --color-signal: #3f5a00; /* "new" badge text — 7.2:1 on signal-soft */
+  --color-signal-soft: #ecfcc0;
+  --color-danger: #c0123c;
+  --color-danger-soft: #fff0f3;
+  --color-focus: #5b3df5;
+  --color-linkedin: #0a66c2; /* only for the LinkedIn mark, never as a UI accent */
+  /* audit marks: solid = label/underline colour, -hl = highlighter fill (text stays --color-fg) */
+  --color-critical: #b42318;
+  --color-critical-hl: #fbd3cf;
+  --color-improve: #8a5300;
+  --color-improve-hl: #fbe7a1;
+  --color-suggest: #5b3df5;
+  --color-suggest-hl: #e4ddff;
+  --color-strength: #3f6b00;
+  --color-strength-hl: #e2f7b5;
+  /* triage */
+  --color-reject: #b42318;
+  --color-backdrop: rgba(14, 14, 22, 0.5);
+  --color-scan: rgba(91, 61, 245, 0.6); /* scanner sweep line */
+  --color-glow: rgba(91, 61, 245, 0.09);
+  --color-glow-2: rgba(200, 241, 59, 0.22);
+  --color-grid: rgba(14, 14, 22, 0.05);
+
+  /* ---------- Type ---------- */
+  --font-display: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Arial, sans-serif;
+  --font-text: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
+    sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* fluid scale (min @390px → max @1440px) */
+  --text-xs: 0.75rem; /* 12 caption, badges */
+  --text-sm: 0.875rem; /* 14 meta */
+  --text-base: 1rem; /* 16 body */
+  --text-lg: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem); /* 17→19 lede */
+  --text-xl: clamp(1.25rem, 1.15rem + 0.4vw, 1.5rem); /* 20→24 card titles */
+  --text-2xl: clamp(1.625rem, 1.4rem + 0.9vw, 2.25rem); /* 26→36 h3/score */
+  --text-3xl: clamp(2.125rem, 1.6rem + 2.2vw, 3.5rem); /* 34→56 section h2 */
+  --text-display: clamp(2.75rem, 1.6rem + 5vw, 6rem); /* 44→96 hero h1 */
+
+  --leading-tight: 1.02;
+  --leading-snug: 1.15;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.62;
+  --tracking-display: -0.025em;
+  --tracking-tight: -0.02em;
+  --tracking-caps: 0.12em;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-display: 700; /* hero h1, page titles */
+  --weight-heading: 650; /* h2, card titles */
+
+  /* ---------- Space (4px base, non-linear) ---------- */
+  --space-0: 0;
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-5: 1.5rem; /* 24 */
+  --space-6: 2rem; /* 32 */
+  --space-7: 3rem; /* 48 */
+  --space-8: 4rem; /* 64 */
+  --space-9: 6rem; /* 96 */
+  --space-10: 8rem; /* 128 */
+  --section-y: clamp(4rem, 2.5rem + 6vw, 8rem);
+  --gutter: clamp(1.25rem, 0.8rem + 2vw, 2.5rem);
+  --container: 72rem; /* 1152 */
+  --container-narrow: 46rem;
+  --measure: 62ch;
+
+  /* ---------- Radii ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* ---------- Elevation ---------- */
+  --shadow-xs: 0 1px 2px rgba(14, 14, 30, 0.06);
+  --shadow-sm: 0 1px 2px rgba(14, 14, 30, 0.05), 0 4px 12px rgba(14, 14, 30, 0.05);
+  --shadow-md: 0 2px 4px rgba(14, 14, 30, 0.04), 0 12px 32px rgba(14, 14, 30, 0.08);
+  --shadow-lg: 0 4px 8px rgba(14, 14, 30, 0.04), 0 24px 64px rgba(14, 14, 30, 0.12);
+  --shadow-focus: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-focus);
+
+  /* ---------- Motion ---------- */
+  --duration-instant: 80ms; /* press feedback */
+  --duration-fast: 160ms; /* hover, colour */
+  --duration-base: 240ms; /* small layout, toggles */
+  --duration-slow: 480ms; /* reveal on scroll */
+  --duration-slower: 800ms; /* hero entrance */
+  --duration-scan: 2400ms; /* scanner sweep loop */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* "expo out" — entrances */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --stagger: 70ms;
+
+  /* ---------- Breakpoints (reference; CSS vars can't be used in @media) ----------
+   * sm 480px · md 768px · lg 1024px · xl 1280px */
+
+  /* ---------- Z ---------- */
+  --z-header: 50;
+  --z-overlay: 100;
+
+  color-scheme: light;
+}
+
+/* ---------- Colour: dark ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #0a0a10;
+    --color-bg-raised: #13131c;
+    --color-bg-sunken: #07070b;
+    --color-bg-inverse: #d4ff4a;
+    --color-fg-inverse: #0a0a10;
+    --color-cta-bg: #17142e;
+    --color-cta-fg: #ededf3;
+    --color-fg: #ededf3;
+    --color-fg-muted: #a0a0b2;
+    --color-fg-subtle: #8c8ca0;
+    --color-line: #22222e;
+    --color-line-strong: #36364a;
+    --color-accent: #9d8cff;
+    --color-accent-hover: #b3a6ff;
+    --color-accent-soft: #221c45;
+    --color-accent-strong: #c4baff;
+    --color-on-accent: #0a0a10;
+    --color-mark: #d4ff4a;
+    --color-on-mark: #0a0a10;
+    --color-signal: #d4ff4a;
+    --color-signal-soft: #232b0c;
+    --color-danger: #ff7a95;
+    --color-danger-soft: #3a121c;
+    --color-focus: #b3a6ff;
+    --color-linkedin: #ffffff;
+    --color-critical: #ff9b8f;
+    --color-critical-hl: #4a1f1c;
+    --color-improve: #f0c45c;
+    --color-improve-hl: #4a3a10;
+    --color-suggest: #b3a6ff;
+    --color-suggest-hl: #2a2350;
+    --color-strength: #c6f24a;
+    --color-strength-hl: #26300c;
+    --color-reject: #ff9b8f;
+    --color-backdrop: rgba(0, 0, 0, 0.6);
+    --color-scan: rgba(212, 255, 74, 0.75);
+    --color-glow: rgba(157, 140, 255, 0.14);
+    --color-glow-2: rgba(212, 255, 74, 0.07);
+    --color-grid: rgba(237, 237, 243, 0.045);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg: #0a0a10;
+  --color-bg-raised: #13131c;
+  --color-bg-sunken: #07070b;
+  --color-bg-inverse: #d4ff4a;
+  --color-fg-inverse: #0a0a10;
+  --color-cta-bg: #17142e;
+  --color-cta-fg: #ededf3;
+  --color-fg: #ededf3;
+  --color-fg-muted: #a0a0b2;
+  --color-fg-subtle: #8c8ca0;
+  --color-line: #22222e;
+  --color-line-strong: #36364a;
+  --color-accent: #9d8cff;
+  --color-accent-hover: #b3a6ff;
+  --color-accent-soft: #221c45;
+  --color-accent-strong: #c4baff;
+  --color-on-accent: #0a0a10;
+  --color-mark: #d4ff4a;
+  --color-on-mark: #0a0a10;
+  --color-signal: #d4ff4a;
+  --color-signal-soft: #232b0c;
+  --color-danger: #ff7a95;
+  --color-danger-soft: #3a121c;
+  --color-focus: #b3a6ff;
+  --color-linkedin: #ffffff;
+  --color-critical: #ff9b8f;
+  --color-critical-hl: #4a1f1c;
+  --color-improve: #f0c45c;
+  --color-improve-hl: #4a3a10;
+  --color-suggest: #b3a6ff;
+  --color-suggest-hl: #2a2350;
+  --color-strength: #c6f24a;
+  --color-strength-hl: #26300c;
+  --color-reject: #ff9b8f;
+  --color-backdrop: rgba(0, 0, 0, 0.6);
+  --color-scan: rgba(212, 255, 74, 0.75);
+  --color-glow: rgba(157, 140, 255, 0.14);
+  --color-glow-2: rgba(212, 255, 74, 0.07);
+  --color-grid: rgba(237, 237, 243, 0.045);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+    --stagger: 0ms;
+  }
+}

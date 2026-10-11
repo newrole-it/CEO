@@ -40,6 +40,11 @@ async function takeSlot(key: string, limit: number, now: Date): Promise<boolean>
   return true
 }
 
+export async function assertSearchRateLimit(userId: number, now = new Date()) {
+  const ok = await takeSlot(`search:${userId}`, 20, now)
+  if (!ok) throw new Error("Too many searches. Wait an hour and try again.")
+}
+
 export async function assertMagicLinkRateLimit(email: string, ip: string, now = new Date()) {
   const emailOk = await takeSlot(`email:${email}`, MAGIC_LINK_EMAIL_LIMIT, now)
   if (!emailOk) throw new AuthRateLimitError("email")

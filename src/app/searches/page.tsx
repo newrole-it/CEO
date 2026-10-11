@@ -1,16 +1,18 @@
 import Link from "next/link"
 import { invoke } from "src/app/blitz-server"
-import { Shell } from "src/app/components/Shell"
+import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import listSearches from "./queries/listSearches"
 
 export const metadata = { title: "Saved searches" }
 
 export default async function SearchesPage() {
+  const locale = await getLocale()
   const user = await invoke(getCurrentUser, null)
   const searches = user ? await invoke(listSearches, null) : []
   return (
-    <Shell user={user}>
+    <SiteFrame user={user} locale={locale}>
       <div className="hero">
         <p className="kicker">Library</p>
         <h1>Saved searches</h1>
@@ -59,6 +61,6 @@ export default async function SearchesPage() {
           ))}
         </div>
       )}
-    </Shell>
+    </SiteFrame>
   )
 }

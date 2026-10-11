@@ -97,12 +97,14 @@ export function AuditProfile({
   const progress = audit ? progressCopy(audit.score, audit.previousScore) : null
   return (
     <div className="audit-view stack">
-      <section className="hero">
-        <p className="kicker">Profile audit</p>
-        <h1>A marked copy of your profile</h1>
+      <section className="page-head">
+        <p className="eyebrow">Audyt profilu</p>
+        <h1 className="h2">
+          Twój profil, <em>z uwagami na marginesie.</em>
+        </h1>
         <p className="lede">
-          Highlights sit on the exact words from the profile you imported. Each note has a rewrite
-          you can copy into LinkedIn. Jobscanner cannot edit LinkedIn for you.
+          Tekst zaimportowany z pliku PDF. Kolor zakreślenia oznacza rodzaj uwagi. To sugestie:
+          zmieniaj tylko to, co jest prawdą.
         </p>
       </section>
       {audit ? (

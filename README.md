@@ -2,6 +2,8 @@
 
 Personal job-offer scanner. Type a role in Polish or English. Jobscanner expands it into related titles, reads public ATS boards, and ranks what is open. Every result links to the original posting. Search works without an account. Sign in to keep a profile, and the same page ranks offers against your salary and industry.
 
+The interface is Polish by default, with an English switch. The landing count is the number of active indexed jobs, rounded down to the thousand. Privacy and terms are drafts pending legal review.
+
 There is no billing and no email alerts. The first email you enter creates an account and signs you in on that device. Later sign-ins use a one-time link. LinkedIn sign-in uses OpenID Connect and only receives your name, email, and picture. The seeded owner stays the admin.
 
 ## Run it

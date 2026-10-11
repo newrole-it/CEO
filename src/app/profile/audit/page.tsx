@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { invoke } from "src/app/blitz-server"
-import { Shell } from "src/app/components/Shell"
+import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import getProfileAudit from "../queries/getProfileAudit"
 import { AuditProfile } from "./AuditProfile"
@@ -8,10 +9,11 @@ import { AuditProfile } from "./AuditProfile"
 export const metadata = { title: "Profile audit" }
 
 export default async function ProfileAuditPage() {
+  const locale = await getLocale()
   const user = await invoke(getCurrentUser, null)
   if (!user) {
     return (
-      <Shell user={null}>
+      <SiteFrame user={null} locale={locale}>
         <section className="hero">
           <p className="kicker">Profile audit</p>
           <h1>Sign in to audit your profile</h1>
@@ -25,12 +27,12 @@ export default async function ProfileAuditPage() {
           <p className="lede">Sign in, then import the PDF from LinkedIn.</p>
           <Link href="/login">Sign in</Link>
         </div>
-      </Shell>
+      </SiteFrame>
     )
   }
   const loaded = await invoke(getProfileAudit, null)
   return (
-    <Shell user={user}>
+    <SiteFrame user={user} locale={locale}>
       {loaded.document ? (
         <AuditProfile
           document={loaded.document}
@@ -54,6 +56,6 @@ export default async function ProfileAuditPage() {
           </div>
         </>
       )}
-    </Shell>
+    </SiteFrame>
   )
 }

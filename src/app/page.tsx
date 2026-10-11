@@ -1,43 +1,44 @@
-import Link from "next/link"
+import db from "db"
 import { invoke } from "./blitz-server"
-import { SearchForm } from "./components/SearchForm"
-import { Shell } from "./components/Shell"
-import getCurrentUser from "./users/queries/getCurrentUser"
+import { Landing } from "./components/landing/Landing"
+import { SiteFrame } from "./components/site/SiteFrame"
+import { getLocale } from "./i18n/server"
 import listSearches from "./searches/queries/listSearches"
+import getCurrentUser from "./users/queries/getCurrentUser"
 
 export default async function Home() {
+  const locale = await getLocale()
   const currentUser = await invoke(getCurrentUser, null)
-  const searches =
-    currentUser && currentUser.role !== "GUEST" ? await invoke(listSearches, null) : []
+  const signedIn = Boolean(currentUser && currentUser.role !== "GUEST")
+  const searches = signedIn ? await invoke(listSearches, null) : []
+  const indexed = await db.job.count({ where: { status: "ACTIVE" } })
+  const previewRows = await db.job.findMany({
+    where: { status: "ACTIVE" },
+    orderBy: { firstSeenAt: "desc" },
+    take: 3,
+    select: {
+      title: true,
+      locationText: true,
+      company: { select: { name: true } },
+    },
+  })
   return (
-    <Shell user={currentUser}>
-      <section className="hero">
-        <p className="kicker">Public listings</p>
-        <h1>Find the offer, not the portal.</h1>
-        <p className="lede">
-          Type a role. Jobscanner ranks what is open on public company boards. Every result links
-          back to the original listing. Sign in when you want the ranking to use your profile.
-        </p>
-      </section>
-      <SearchForm />
-      {searches.length ? (
-        <>
-          <div className="section-head">
-            <h2>Saved searches</h2>
-            <Link href="/searches">All</Link>
-          </div>
-          <div className="search-list">
-            {searches.slice(0, 5).map((search) => (
-              <Link key={search.id} href={`/searches/${search.id}`} className="search-link">
-                <strong>{search.phrase}</strong>
-                <span>
-                  {search.latest ? search.latest.message || search.latest.status : "Queued"}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </>
-      ) : null}
-    </Shell>
+    <SiteFrame user={currentUser} locale={locale} bare>
+      <Landing
+        locale={locale}
+        signedIn={signedIn}
+        indexed={indexed}
+        searches={searches.map((search) => ({
+          id: search.id,
+          phrase: search.phrase,
+          newJobs: search.latest?.newJobs ?? 0,
+        }))}
+        preview={previewRows.map((job) => ({
+          title: job.title,
+          company: job.company.name,
+          location: job.locationText || "",
+        }))}
+      />
+    </SiteFrame>
   )
 }

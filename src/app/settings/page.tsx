@@ -1,15 +1,17 @@
 import Link from "next/link"
 import { invoke } from "src/app/blitz-server"
-import { Shell } from "src/app/components/Shell"
+import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { SettingsScreen } from "./SettingsScreen"
 
 export const metadata = { title: "Settings" }
 
 export default async function SettingsPage() {
+  const locale = await getLocale()
   const user = await invoke(getCurrentUser, null)
   return (
-    <Shell user={user}>
+    <SiteFrame user={user} locale={locale}>
       {user && user.role !== "GUEST" ? (
         <SettingsScreen email={user.email} admin={user.role === "ADMIN"} />
       ) : (
@@ -21,6 +23,6 @@ export default async function SettingsPage() {
           </p>
         </section>
       )}
-    </Shell>
+    </SiteFrame>
   )
 }
