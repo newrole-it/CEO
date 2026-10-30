@@ -1,4 +1,7 @@
-import { workerLoop } from "src/server/queue/worker"
+import { currentTaskId, requeueInFlight, workerLoop } from "src/server/queue/worker"
+
+/** Ctrl+C has to feel immediate. An index crawl can run for minutes and resumes on the next start. */
+const STOP_GRACE_MS = 5000
 
 const signal = { stopped: false }
 
@@ -6,6 +9,14 @@ function stop(kind: NodeJS.Signals) {
   if (signal.stopped) return
   signal.stopped = true
   console.log(`Nowa Rola worker received ${kind}`)
+  setTimeout(() => {
+    void requeueInFlight(currentTaskId())
+      .catch((error) => console.error("Could not requeue in-flight work", error))
+      .finally(() => {
+        console.log("Nowa Rola worker stopped")
+        process.exit(0)
+      })
+  }, STOP_GRACE_MS).unref()
 }
 
 process.on("SIGINT", () => stop("SIGINT"))

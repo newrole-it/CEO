@@ -1,12 +1,18 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import { indexNextDue } from "src/server/index/run"
+import { maybeSyncOfferSearch } from "src/server/discovery/offer-sync"
+import { maybeExpandSimilar, maybeHuntHiddenOffers } from "src/server/discovery/hidden-offers"
 import { executeSearch } from "src/server/search/pipeline"
-import { enqueueSearch } from "src/server/queue/enqueue"
+import { enqueueSearch, INDEX_WATCHED, SHEET_SYNC } from "src/server/queue/enqueue"
+import { syncSheet } from "src/server/applications/sheet"
+import { beat } from "src/server/setup/heartbeat"
+import { indexNextWatched, indexWatchedPage } from "src/server/watchlist/index-watched"
 
 const WORKER_ID = `worker-${process.pid}`
 const STALE_MS = 20 * 60 * 1000
 const HEARTBEAT_MS = 30_000
+const SERVICE_BEAT_MS = 30_000
 
 export { enqueueSearch }
 
@@ -19,6 +25,12 @@ export function currentTaskId(): string | null {
 function readSearchRunId(payload: Prisma.JsonValue): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null
   const value = (payload as { searchRunId?: unknown }).searchRunId
+  return typeof value === "string" ? value : null
+}
+
+function readCareerPageId(payload: Prisma.JsonValue): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null
+  const value = (payload as { careerPageId?: unknown }).careerPageId
   return typeof value === "string" ? value : null
 }
 
@@ -151,6 +163,16 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
       const searchRunId = readSearchRunId(task.payload)
       if (!searchRunId) throw new Error("Task is missing searchRunId")
       await executeSearch(searchRunId)
+    } else if (task.type === INDEX_WATCHED) {
+      const careerPageId = readCareerPageId(task.payload)
+      if (!careerPageId) throw new Error("Task is missing careerPageId")
+      await indexWatchedPage(careerPageId)
+    } else if (task.type === SHEET_SYNC) {
+      const payload = task.payload as { userId?: unknown } | null
+      const userId = typeof payload?.userId === "number" ? payload.userId : null
+      if (!userId) throw new Error("Task is missing userId")
+      const result = await syncSheet(userId)
+      if (result.status === "failed") throw new Error(result.message)
     } else {
       throw new Error(`Unknown task type ${task.type}`)
     }
@@ -182,6 +204,9 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
 export async function workerLoop(signal?: { stopped: boolean }) {
   let backoff = 1000
   let lastRecover = 0
+  // On its own timer: a long crawl must not look like a stopped worker on /setup.
+  void beat("worker")
+  setInterval(() => void beat("worker"), SERVICE_BEAT_MS).unref()
   while (!signal?.stopped) {
     try {
       if (Date.now() - lastRecover > 60_000) {
@@ -191,9 +216,13 @@ export async function workerLoop(signal?: { stopped: boolean }) {
       const did = await workOnce(signal)
       backoff = 1000
       if (!did && !signal?.stopped) {
-        const indexed = await indexNextDue()
+        // Watched companies first, then the seed catalog.
+        const indexed = (await indexNextWatched()) || (await indexNextDue())
         if (!indexed) await sleep(5000)
       }
+      if (!signal?.stopped) await maybeSyncOfferSearch()
+      if (!signal?.stopped) await maybeHuntHiddenOffers()
+      if (!signal?.stopped) await maybeExpandSimilar()
     } catch (error) {
       console.error("Worker loop error", error)
       await sleep(backoff)

@@ -1,26 +1,32 @@
-import Link from "next/link"
+import { redirect } from "next/navigation"
 import { invoke } from "src/app/blitz-server"
-import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { getLocale } from "src/app/i18n/server"
+import { jobsPathForSavedSearch } from "src/server/jobs/browse"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { SearchScreen } from "./SearchScreen"
 
-export default async function SearchPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const locale = await getLocale()
-  const user = await invoke(getCurrentUser, null)
-  return (
-    <SiteFrame user={user} locale={locale}>
-      {user ? (
-        <SearchScreen id={id} />
-      ) : (
-        <section className="hero">
-          <h1>This scan belongs to a browser session</h1>
-          <p className="lede">
-            Start a search from the home page, or <Link href="/login">sign in</Link>.
-          </p>
-        </section>
-      )}
-    </SiteFrame>
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export default async function SearchPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const [{ id }, query, user] = await Promise.all([
+    params,
+    searchParams,
+    invoke(getCurrentUser, null),
+  ])
+  redirect(
+    await jobsPathForSavedSearch(id, user?.id ?? null, {
+      phrase: first(query.q) ?? first(query.phrase),
+      location: first(query.location) ?? first(query.loc),
+      mode: first(query.mode),
+      where: first(query.where),
+      city: first(query.city),
+      pay: first(query.pay) ?? first(query.salary) ?? first(query.minSalary),
+    })
   )
 }

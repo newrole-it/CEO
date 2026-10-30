@@ -1,0 +1,205 @@
+/* First-run checklist on /setup. Uses the tokens from app.css. */
+
+.setup-progress {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.setup-progress__bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+}
+.setup-progress__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width var(--t-slow) var(--ease-in);
+}
+.setup-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+}
+.setup-group__head {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.setup-group__head h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+.setup-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.setup-step {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.setup-step[data-next="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.setup-step__row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.setup-step__row:hover {
+  background: var(--surface-2);
+}
+.setup-step__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-subtle);
+}
+.setup-step__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.setup-step[data-state="done"] .setup-step__icon {
+  color: var(--success);
+}
+.setup-step[data-state="error"] .setup-step__icon {
+  color: var(--danger);
+}
+.setup-step[data-state="wait"] .setup-step__icon {
+  color: var(--primary);
+}
+.setup-step__icon .spin {
+  animation: setup-spin 1.2s linear infinite;
+}
+@keyframes setup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-step__icon .spin {
+    animation: none;
+  }
+}
+.setup-step__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.setup-step__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-weight: 600;
+}
+.setup-step__note {
+  font-size: 14px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.setup-step[data-state="error"] .setup-step__note {
+  color: var(--danger);
+}
+.setup-step__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 1px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.setup-step[data-state="done"] .setup-step__state {
+  color: var(--success);
+}
+.setup-step[data-state="error"] .setup-step__state {
+  color: var(--danger);
+}
+.setup-step[data-state="wait"] .setup-step__state {
+  color: var(--primary);
+}
+/* Finished steps stay visible but small, so the next step is on the first screen. */
+.setup-step[data-state="done"] .setup-step__row {
+  align-items: center;
+  padding: 9px 16px;
+}
+.setup-step[data-state="done"] .setup-step__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+}
+.setup-step__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 16px 16px 50px;
+}
+.setup-step__why {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.setup-step__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.setup-install {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: setup-install;
+}
+.setup-install > li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 14px;
+  counter-increment: setup-install;
+}
+.setup-install > li::before {
+  content: counter(setup-install) ".";
+  font-weight: 650;
+  color: var(--primary);
+}
+.setup-install__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+.setup-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+@media (max-width: 599px) {
+  .setup-step__body {
+    padding-left: 16px;
+  }
+}

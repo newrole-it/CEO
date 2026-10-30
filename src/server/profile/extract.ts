@@ -72,8 +72,11 @@ function ruleDraft(source: string): ProfileDraft {
   )
   draft.currentTitle = titleLine ? titleLine.slice(0, 120) : lines[0]?.slice(0, 120) ?? null
   draft.headline = draft.currentTitle
+  // A long line that mentions "Engineer" is a sentence about the work, not a title.
   draft.pastTitles = lines
-    .filter((line) => TITLE_HINT.test(line) && line !== draft.currentTitle)
+    .filter(
+      (line) => line.length <= 80 && TITLE_HINT.test(line) && line !== draft.currentTitle
+    )
     .slice(0, 8)
   draft.skills = SKILL_LEXICON.filter((skill) => fold(source).includes(fold(skill)))
   const industries = new Set<string>()

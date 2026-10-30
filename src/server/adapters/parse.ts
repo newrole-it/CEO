@@ -98,12 +98,23 @@ export function readJson(body: string): unknown {
   return JSON.parse(body)
 }
 
-export function itemsFrom<T>(value: unknown, schema: z.ZodType<T>): T[] {
+export function itemsFrom<S extends z.ZodTypeAny>(value: unknown, schema: S): z.output<S>[] {
   if (!Array.isArray(value)) return []
-  const items: T[] = []
+  const items: z.output<S>[] = []
+  const rejected = new Map<string, number>()
   for (const item of value) {
     const parsed = schema.safeParse(item)
     if (parsed.success) items.push(parsed.data)
+    else {
+      const issue = parsed.error.issues[0]
+      const key = `${issue?.path.join(".") || "item"}: ${issue?.message ?? "invalid"}`
+      rejected.set(key, (rejected.get(key) ?? 0) + 1)
+    }
+  }
+  // A dropped posting is a missed offer. Say so instead of shrinking the list quietly.
+  if (rejected.size) {
+    const detail = [...rejected].map(([key, count]) => `${count}× ${key}`).join("; ")
+    console.warn(`[adapters] dropped ${value.length - items.length}/${value.length}: ${detail}`)
   }
   return items
 }

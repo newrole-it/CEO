@@ -1,0 +1,193 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { FormField } from "./fields"
+
+// vitest 0.25 has no vi.hoisted: each mocked module owns its own spies.
+vi.mock("src/server/answers/service", () => ({ draftAnswers: vi.fn() }))
+vi.mock("src/server/applications/service", () => ({
+  findApplicationByUrl: vi.fn(),
+  findJobByUrl: vi.fn(),
+}))
+vi.mock("src/server/cv/service", () => ({ defaultCv: vi.fn() }))
+vi.mock("src/server/profile/applicant", () => ({ getApplicant: vi.fn() }))
+vi.mock("src/server/llm/client", () => ({ createLlmClient: vi.fn(() => null) }))
+
+import { draftAnswers } from "src/server/answers/service"
+import { findApplicationByUrl, findJobByUrl } from "src/server/applications/service"
+import { defaultCv } from "src/server/cv/service"
+import { getApplicant } from "src/server/profile/applicant"
+import { fillForm, planFill } from "./fill"
+
+const mocked = (fn: unknown) => fn as ReturnType<typeof vi.fn>
+
+const applicant = {
+  firstName: "Rafał",
+  lastName: "Testowy",
+  email: "rafal@example.com",
+  country: "Polska",
+  workAuthorization: "Obywatelstwo PL/UE, bez sponsorowania wizy",
+}
+
+const f = (key: string, label: string, extra: Partial<FormField> = {}): FormField => ({
+  key,
+  label,
+  type: "text",
+  ...extra,
+})
+
+const page = {
+  url: "https://jobs.lever.co/acme/uuid/apply",
+  title: "Acme - Staff Engineer",
+  text: "We build robots.",
+}
+
+beforeEach(() => {
+  mocked(draftAnswers).mockReset().mockResolvedValue({})
+  mocked(findApplicationByUrl).mockReset().mockResolvedValue(null)
+  mocked(findJobByUrl).mockReset().mockResolvedValue(null)
+  mocked(defaultCv).mockReset().mockResolvedValue({ id: "cv1", title: "CV PL" })
+  mocked(getApplicant).mockReset().mockResolvedValue({ saved: {}, effective: applicant })
+})
+
+describe("planFill", () => {
+  it("fills what the profile knows and leaves the questions for drafting", () => {
+    const plan = planFill(
+      [
+        f("a", "Full name"),
+        f("b", "Email", { type: "email" }),
+        f("c", "Country", { type: "select", options: ["Select", "Poland", "Germany"] }),
+        f("d", "Will you require visa sponsorship?", { type: "radio", options: ["Yes", "No"] }),
+        f("e", "Resume/CV", { type: "file" }),
+        f("f", "Why do you want to join?", { type: "textarea", maxLength: 500 }),
+        f("g", "Salary expectations"),
+        f("h", "Cover Letter", { type: "file" }),
+      ],
+      applicant,
+      { id: "cv1", title: "CV PL" }
+    )
+    const value = (key: string) => plan.values.get(key)
+    expect(value("a")).toMatchObject({
+      value: "Rafał Testowy",
+      kind: "fullName",
+      source: "profile",
+    })
+    expect(value("b")).toMatchObject({ value: "rafal@example.com", source: "profile" })
+    expect(value("c")).toMatchObject({ value: "Poland", source: "profile" })
+    expect(value("d")).toMatchObject({ value: "No", kind: "workAuthorization", source: "profile" })
+    expect(value("e")).toMatchObject({ kind: "resume", source: "cv" })
+    expect(value("h")).toMatchObject({ kind: "coverLetter", source: "skip" })
+    expect(plan.questions.map((question) => question.key)).toEqual(["f", "g"])
+    expect(plan.questions[0]).toMatchObject({ question: "Why do you want to join?", maxChars: 500 })
+  })
+
+  it("skips never-fill fields, and a CV field when there is no CV", () => {
+    const plan = planFill(
+      [
+        f("a", "Gender", { type: "select", options: ["Male", "Female"] }),
+        f("b", "I agree to the Privacy Policy", { type: "checkbox" }),
+        f("c", "PESEL"),
+        f("d", "Address"),
+        f("e", "Resume", { type: "file" }),
+        f("f", "Nickname"),
+      ],
+      applicant,
+      null
+    )
+    expect(plan.questions).toEqual([])
+    for (const key of ["a", "b", "c", "d", "e", "f"]) {
+      expect(plan.values.get(key)).toMatchObject({ value: "", source: "skip" })
+    }
+  })
+})
+
+describe("fillForm", () => {
+  it("answers §5.3 with values in field order, one draft batch, job and applied", async () => {
+    mocked(draftAnswers).mockResolvedValue({
+      q1: { text: "Bo robicie roboty.", basedOn: ["ans1"], reader: "reuse" },
+      q2: { text: "Szkic o migracji.", basedOn: ["ans2"], reader: "llm" },
+      q3: { text: "", basedOn: [], reader: "none" },
+      q4: { text: "Yes, 5 years", basedOn: [], reader: "llm" },
+    })
+    const appliedAt = new Date("2026-10-12T10:00:00Z")
+    mocked(findApplicationByUrl).mockResolvedValue({
+      id: "app1",
+      status: "SCREENING",
+      appliedAt,
+      notes: "private",
+    })
+
+    const result = await fillForm({
+      userId: 2,
+      page,
+      fields: [
+        f("name", "Full name"),
+        f("q1", "Why us?", { type: "textarea" }),
+        f("q2", "Describe a migration", { type: "textarea" }),
+        f("q3", "What else should we know?", { type: "textarea" }),
+        f("q4", "Used Kubernetes?", { type: "select", options: ["Yes", "No"] }),
+        f("cv", "Resume/CV", { type: "file" }),
+        f("eeo", "Gender", { type: "select", options: ["Male"] }),
+      ],
+    })
+
+    expect(draftAnswers).toHaveBeenCalledTimes(1)
+    const call = mocked(draftAnswers).mock.calls[0][0]
+    expect(call.userId).toBe(2)
+    expect(call.questions.map((question: { key: string }) => question.key)).toEqual([
+      "q1",
+      "q2",
+      "q3",
+      "q4",
+    ])
+    expect(call.questions[3].options).toEqual(["Yes", "No"])
+    expect(call.context).toMatchObject({
+      company: "Acme",
+      jobTitle: "Staff Engineer",
+      jobText: "We build robots.",
+      url: "https://jobs.lever.co/acme/uuid",
+    })
+    expect(JSON.stringify(call)).not.toContain("Gender")
+
+    expect(result.values).toEqual([
+      { key: "name", value: "Rafał Testowy", kind: "fullName", source: "profile" },
+      {
+        key: "q1",
+        value: "Bo robicie roboty.",
+        kind: "openQuestion",
+        source: "answers",
+        answerId: "ans1",
+      },
+      { key: "q2", value: "Szkic o migracji.", kind: "openQuestion", source: "ai" },
+      { key: "q3", value: "", kind: "openQuestion", source: "skip" },
+      { key: "q4", value: "Yes", kind: "choiceQuestion", source: "ai" },
+      { key: "cv", value: "CV PL", kind: "resume", source: "cv" },
+      { key: "eeo", value: "", kind: "eeo", source: "skip" },
+    ])
+    expect(result.job).toEqual({ company: "Acme", title: "Staff Engineer" })
+    expect(result.applied).toEqual({ id: "app1", status: "SCREENING", appliedAt })
+  })
+
+  it("does not call the model when no field needs it", async () => {
+    const result = await fillForm({ userId: 2, page, fields: [f("a", "Email", { type: "email" })] })
+    expect(draftAnswers).not.toHaveBeenCalled()
+    expect(result.applied).toBeNull()
+  })
+
+  it("prefers the indexed offer, and survives failing drafts and a missing CV service", async () => {
+    mocked(findJobByUrl).mockResolvedValue({
+      company: { name: "Acme Robotics S.A." },
+      title: "Staff Platform Engineer",
+      locationText: "Warszawa",
+    })
+    mocked(draftAnswers).mockRejectedValue(new Error("model down"))
+    mocked(defaultCv).mockRejectedValue(new Error("no table"))
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const result = await fillForm({
+      userId: 2,
+      page,
+      fields: [f("q", "Why us?", { type: "textarea" }), f("cv", "Resume", { type: "file" })],
+    })
+    error.mockRestore()
+    expect(result.job).toEqual({ company: "Acme Robotics S.A.", title: "Staff Platform Engineer" })
+    expect(result.values.map((value) => value.source)).toEqual(["skip", "skip"])
+  })
+})

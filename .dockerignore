@@ -1,5 +1,8 @@
 node_modules
 matching/node_modules
+extension/node_modules
+extension/.output
+extension/.wxt
 .next
 uploads
 agent-tools

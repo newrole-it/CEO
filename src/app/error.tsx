@@ -1,23 +1,28 @@
-"use client" // Error components must be Client components
-import React, {useEffect} from "react"
+"use client"
 
-export default function Error({error, reset}: {error: Error; reset: () => void}) {
+import { useEffect } from "react"
+import { CloudOff } from "lucide-react"
+import { useCopy } from "src/app/i18n/Locale"
+
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  const { t } = useCopy()
   useEffect(() => {
-    // Log the error to an error reporting service
     console.error(error)
   }, [error])
-
   return (
-    <div>
-      <h2>Something went wrong!</h2>
-      <button
-        onClick={
-          // Attempt to recover by trying to re-render the segment
-          () => reset()
-        }
-      >
-        Try again
-      </button>
-    </div>
+    <main id="main" className="container container--focus page">
+      <div className="empty">
+        <span className="empty__icon">
+          <CloudOff aria-hidden />
+        </span>
+        <h1 className="t-h3">{t("error.title")}</h1>
+        <p>{t("error.body")}</p>
+        <div className="empty__actions">
+          <button type="button" className="btn btn--primary" onClick={() => reset()}>
+            {t("common.retry")}
+          </button>
+        </div>
+      </div>
+    </main>
   )
 }

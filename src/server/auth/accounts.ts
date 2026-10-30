@@ -28,6 +28,37 @@ export async function claimGuest(guestId: number, userId: number) {
   }
   await db.savedSearch.updateMany({ where: { userId: guestId }, data: { userId } })
   await db.auditEvent.updateMany({ where: { userId: guestId }, data: { userId } })
+  // The account's own verdict wins. Guest rows for the same offer or company go with the guest.
+  const [judged, watched] = await Promise.all([
+    db.offerFeedback.findMany({ where: { userId }, select: { jobId: true } }),
+    db.watchedCompany.findMany({ where: { userId }, select: { companyId: true } }),
+  ])
+  await db.offerFeedback.updateMany({
+    where: { userId: guestId, jobId: { notIn: judged.map((row) => row.jobId) } },
+    data: { userId },
+  })
+  await db.watchedCompany.updateMany({
+    where: { userId: guestId, companyId: { notIn: watched.map((row) => row.companyId) } },
+    data: { userId },
+  })
+  // Applications for an offer the account already tracks stay with the guest; the rest move.
+  const tracked = await db.application.findMany({
+    where: { userId, jobId: { not: null } },
+    select: { jobId: true },
+  })
+  await db.application.updateMany({
+    where: {
+      userId: guestId,
+      OR: [{ jobId: null }, { jobId: { notIn: tracked.map((row) => row.jobId!) } }],
+    },
+    data: { userId },
+  })
+  const hasDefaultCv = await db.cvDocument.count({ where: { userId, isDefault: true } })
+  if (hasDefaultCv) {
+    await db.cvDocument.updateMany({ where: { userId: guestId }, data: { isDefault: false } })
+  }
+  await db.cvDocument.updateMany({ where: { userId: guestId }, data: { userId } })
+  await db.answer.updateMany({ where: { userId: guestId }, data: { userId } })
   await db.user.delete({ where: { id: guestId } })
 }
 

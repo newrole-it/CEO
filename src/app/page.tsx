@@ -1,38 +1,46 @@
-import { dedupeSavedSearches } from "src/shared/saved-searches"
-import { examplePhrases } from "src/server/classify/role"
-import { coveredSpecialisms, landingPreview } from "src/server/classify/scope"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import db from "db"
+import { linkedInCredentials } from "src/server/auth/linkedin"
+import { isLocalInstall } from "src/server/local-install"
+import { setupReady } from "src/server/setup/status"
 import { invoke } from "./blitz-server"
 import { Landing } from "./components/landing/Landing"
+import { indexStats, roundDown } from "./components/landing/stats"
+import { SETUP_SKIP_COOKIE } from "./components/site/links"
 import { SiteFrame } from "./components/site/SiteFrame"
 import { getLocale } from "./i18n/server"
-import listSearches from "./searches/queries/listSearches"
 import getCurrentUser from "./users/queries/getCurrentUser"
 
 export default async function Home() {
-  const locale = await getLocale()
-  const currentUser = await invoke(getCurrentUser, null)
-  const signedIn = Boolean(currentUser && currentUser.role !== "GUEST")
-  const searches = signedIn ? await invoke(listSearches, null) : []
-  const [areas, preview] = await Promise.all([coveredSpecialisms(), landingPreview()])
-  const examples = examplePhrases(areas)
-  const saved = dedupeSavedSearches(
-    searches.map((search) => ({
-      id: search.id,
-      phrase: search.phrase,
-      locationHint: search.locationHint,
-      createdAt: search.createdAt,
-      newJobs: search.latest?.newJobs ?? 0,
-    }))
-  ).map(({ id, phrase, newJobs }) => ({ id, phrase, newJobs: newJobs ?? 0 }))
+  const local = isLocalInstall()
+  const [locale, user] = await Promise.all([
+    getLocale(),
+    // On a local install a dead database is a step on /setup, not an error page.
+    invoke(getCurrentUser, null).catch((error) => {
+      if (local) return null
+      throw error
+    }),
+  ])
+  if (local) {
+    const jar = await cookies()
+    if (!jar.get(SETUP_SKIP_COOKIE) && !(await setupReady(user?.id ?? null))) redirect("/setup")
+  }
+  if (user) {
+    const profile = await db.candidateProfile.findUnique({ where: { userId: user.id }, select: { id: true } })
+    if (profile) redirect("/jobs")
+  }
+  const stats = await indexStats().catch(() => ({ offers: 0, companies: null, careerPages: null }))
   return (
-    <SiteFrame user={currentUser} locale={locale} bare>
+    <SiteFrame user={user} locale={locale} variant="bare">
       <Landing
-        locale={locale}
-        signedIn={signedIn}
-        indexed={null}
-        examples={examples.length ? examples : ["Junior Frontend", "Senior Data Engineer"]}
-        searches={saved}
-        preview={preview}
+        linkedIn={Boolean(linkedInCredentials())}
+        finish={Boolean(user)}
+        stats={{
+          offers: roundDown(stats.offers),
+          companies: stats.companies ? roundDown(stats.companies) : null,
+          careerPages: stats.careerPages ? roundDown(stats.careerPages) : null,
+        }}
       />
     </SiteFrame>
   )

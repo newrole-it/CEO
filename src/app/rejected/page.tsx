@@ -1,17 +1,5 @@
-import { invoke } from "src/app/blitz-server"
-import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { getLocale } from "src/app/i18n/server"
-import { LibraryScreen } from "src/app/searches/LibraryScreen"
-import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { permanentRedirect } from "next/navigation"
 
-export const metadata = { title: "Rejected" }
-
-export default async function RejectedPage() {
-  const locale = await getLocale()
-  const user = await invoke(getCurrentUser, null)
-  return (
-    <SiteFrame user={user} locale={locale}>
-      <LibraryScreen kind="rejected" />
-    </SiteFrame>
-  )
+export default function RejectedPage() {
+  permanentRedirect("/jobs/saved?v=passed")
 }

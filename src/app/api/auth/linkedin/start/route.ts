@@ -1,7 +1,11 @@
 import { randomBytes } from "crypto"
 import { NextResponse } from "next/server"
 import { appOrigin } from "src/server/auth/email"
-import { linkedInAuthorizeUrl } from "src/server/auth/linkedin"
+import {
+  linkedInAuthorizeUrl,
+  linkedInCredentials,
+  linkedInRedirectUri,
+} from "src/server/auth/linkedin"
 import { safeReturnTo } from "src/shared/return-to"
 
 const cookie = {
@@ -12,17 +16,23 @@ const cookie = {
 }
 
 export async function GET(request: Request) {
-  const clientId = process.env.LINKEDIN_CLIENT_ID?.trim()
-  const returnTo = safeReturnTo(new URL(request.url).searchParams.get("returnTo"))
-  if (!clientId) {
-    const login = new URL("/login?error=linkedin-config", appOrigin())
+  const requested = new URL(request.url)
+  const origin = appOrigin()
+  // The state cookie must live on the host LinkedIn returns to. Opening the app on
+  // localhost while APP_ORIGIN says 127.0.0.1 would otherwise always fail the state check.
+  if (requested.host !== new URL(origin).host) {
+    return NextResponse.redirect(new URL(requested.pathname + requested.search, origin))
+  }
+  const credentials = linkedInCredentials()
+  const returnTo = safeReturnTo(requested.searchParams.get("returnTo"))
+  if (!credentials) {
+    const login = new URL("/login?error=linkedin-config", origin)
     if (returnTo) login.searchParams.set("returnTo", returnTo)
     return NextResponse.redirect(login)
   }
   const state = randomBytes(16).toString("hex")
-  const redirectUri =
-    process.env.LINKEDIN_REDIRECT_URI?.trim() || `${appOrigin()}/api/auth/linkedin/callback`
-  const destination = linkedInAuthorizeUrl({ clientId, redirectUri, state })
+  const redirectUri = linkedInRedirectUri(origin)
+  const destination = linkedInAuthorizeUrl({ clientId: credentials.clientId, redirectUri, state })
   const response = NextResponse.redirect(destination)
   response.cookies.set("linkedin_oauth_state", state, cookie)
   if (returnTo) response.cookies.set("linkedin_oauth_return", returnTo, cookie)

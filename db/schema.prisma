@@ -28,6 +28,8 @@ model User {
   timezone        String    @default("Europe/Warsaw")
   locale          String    @default("en")
   deletedAt       DateTime?
+  /// Contact and form details the Chrome extension fills (src/shared/applicant.ts)
+  applicant       Json      @default("{}")
 
   tokens           Token[]
   sessions         Session[]
@@ -36,6 +38,13 @@ model User {
   candidateProfile CandidateProfile?
   profileAudits    ProfileAuditRun[]
   llmCaches        LlmCache[]
+  offerFeedback    OfferFeedback[]
+  watchedCompanies WatchedCompany[]
+  applications     Application[]
+  cvDocuments      CvDocument[]
+  answers          Answer[]
+  apiTokens        ApiToken[]
+  sheetLink        SheetLink?
 }
 
 model Session {
@@ -225,6 +234,7 @@ model Company {
   aliases     CompanyAlias[]
   careerPages CareerPage[]
   jobs        Job[]
+  watchers    WatchedCompany[]
 }
 
 model CompanyAlias {
@@ -324,6 +334,8 @@ model Job {
   salaryMin          Float?
   salaryMax          Float?
   salaryCurrency     String?
+  salarySourceUrl    String?
+  salarySourceRaw    String?
   originalUrl        String
   canonicalUrl       String
   publishedAt        DateTime?
@@ -345,6 +357,8 @@ model Job {
 
   observations JobObservation[]
   matches      JobMatch[]
+  feedback     OfferFeedback[]
+  applications Application[]
 
   @@index([fingerprint])
   @@index([status, classifiedAt])
@@ -507,4 +521,197 @@ model AuditEvent {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+/// One person's verdict on one offer, across every search. "What I liked" lives in aspects.
+model OfferFeedback {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// LIKE | DISLIKE | APPLIED
+  verdict   String
+  /// Aspect keys from src/shared/feedback-aspects.ts, e.g. ["stack", "remote", "salary"]
+  aspects   Json     @default("[]")
+  /// Concrete phrases the person picked, e.g. skills or the company name
+  tags      Json     @default("[]")
+  note      String?  @db.Text
+  /// web | mcp
+  channel   String   @default("web")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId, verdict])
+}
+
+/// Companies a person wants watched even when they never post on aggregators.
+model WatchedCompany {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// user | similar | mcp
+  source    String   @default("user")
+  /// Why it was suggested, e.g. "similar to Allegro (liked)"
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+}
+
+// --------------------------------------
+// Applications, CVs, the answer bank and the Chrome extension (docs/product/plan-aplikacje.md)
+
+/// One job application the person sent, and where it stands.
+model Application {
+  id              String      @id @default(cuid())
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId           String?
+  job             Job?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  company         String
+  title           String
+  url             String?
+  /// Lowercased host + path without query or hash, for matching the same posting again
+  urlKey          String?
+  location        String?
+  salaryText      String?
+  /// src/shared/applications.ts: APPLIED | SCREENING | INTERVIEW | TASK | FINAL | OFFER | ACCEPTED | REJECTED | WITHDRAWN | GHOSTED
+  status          String      @default("APPLIED")
+  /// Free label for the step, e.g. "2. rozmowa techniczna"
+  stageNote       String?
+  /// The stage reached before REJECTED or WITHDRAWN
+  closedAtStage   String?
+  appliedAt       DateTime    @default(now())
+  statusChangedAt DateTime    @default(now())
+  nextStep        String?
+  nextStepAt      DateTime?
+  contact         String?
+  notes           String?     @db.Text
+  /// nowarola | extension | manual | mcp
+  source          String      @default("manual")
+  cvDocumentId    String?
+  cvDocument      CvDocument? @relation(fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  events  ApplicationEvent[]
+  answers Answer[]
+
+  @@index([userId, status])
+  @@index([userId, urlKey])
+  @@index([userId, jobId])
+}
+
+model ApplicationEvent {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  /// created | status | note | next-step | answers | edit
+  type          String
+  fromStatus    String?
+  toStatus      String?
+  note          String?     @db.Text
+  /// web | mcp | extension
+  channel       String      @default("web")
+  at            DateTime    @default(now())
+
+  @@index([applicationId, at])
+}
+
+/// A CV the person keeps here: an editable document (content) or an uploaded PDF.
+model CvDocument {
+  id           String    @id @default(cuid())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  /// pl | en
+  language     String    @default("pl")
+  /// EDITABLE | UPLOADED
+  kind         String    @default("EDITABLE")
+  /// Structured CV (src/shared/cv/schema.ts). Null for an uploaded PDF without an editable copy.
+  content      Json?
+  /// The uploaded PDF, or the last one rendered from content
+  pdf          Bytes?
+  pdfName      String?
+  pdfUpdatedAt DateTime?
+  isDefault    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  applications Application[]
+
+  @@index([userId, updatedAt])
+}
+
+/// One reusable answer to an application question. The same question can have variants.
+model Answer {
+  id            String       @id @default(cuid())
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question      String       @db.Text
+  /// Folded question without punctuation, for grouping variants
+  questionKey   String
+  answer        String       @db.Text
+  tags          Json         @default("[]")
+  /// pl | en
+  language      String?
+  company       String?
+  jobTitle      String?
+  sourceUrl     String?
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  /// manual | extension | mcp | draft
+  origin        String       @default("manual")
+  useCount      Int          @default(1)
+  lastUsedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId, questionKey])
+  @@index([userId, updatedAt])
+}
+
+/// Bearer tokens for the Chrome extension. Only the sha256 is stored; the token is shown once.
+model ApiToken {
+  id          String    @id @default(cuid())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  hashedToken String    @unique
+  /// The first characters, shown in settings
+  prefix      String
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Last sign of life from a process the web app cannot see directly: "worker", "mcp". Read by /setup.
+model ServiceHeartbeat {
+  service    String   @id
+  lastSeenAt DateTime @default(now())
+}
+
+/// Where the applications table is mirrored: a Google Apps Script web app bound to the person's sheet.
+model SheetLink {
+  id             String    @id @default(cuid())
+  userId         Int       @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// https://script.google.com/macros/s/.../exec
+  webhookUrl     String?
+  /// Sent in the request body; the script compares it
+  secret         String
+  spreadsheetUrl String?
+  autoSync       Boolean   @default(true)
+  includeNotes   Boolean   @default(true)
+  lastSyncedAt   DateTime?
+  lastError      String?
+  lastRowCount   Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

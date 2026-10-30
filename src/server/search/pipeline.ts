@@ -16,6 +16,7 @@ import {
 } from "src/server/jobs/normalize"
 import { summarize } from "src/server/jobs/text"
 import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
+import { keepExternalPay } from "src/server/discovery/offer-search"
 import { excerpt } from "src/server/crawler/hygiene"
 import { createLlmClient, estimateCost, type LlmClient } from "src/server/llm/client"
 import {
@@ -28,7 +29,7 @@ import {
 import { publishIndexedMatches } from "src/server/index/query"
 import { boardsAwaitingIndex } from "src/server/index/run"
 import { nextCrawlAt } from "src/server/index/schedule"
-import { storeBoardInventory } from "src/server/index/store"
+import { noteIndexStart, storeBoardInventory } from "src/server/index/store"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob, SourceType, WorkplaceType } from "src/shared/schemas"
 import { runMatching } from "../../../matching/pipeline"
@@ -265,6 +266,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
     let finishedBoards = 0
     await mapPool(targets, 3, async (board) => {
       try {
+        await noteIndexStart(board, now)
         const listed = await adapterFor(board.provider as LiveAts).list(
           board.boardId,
           http,
@@ -280,7 +282,12 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
               board,
               listed: { ...listed, jobs, complete, listedCount: listed.listedCount ?? jobs.length },
               now,
-              nextCheckAt: nextCrawlAt(now, complete, listed.budgetExhausted === true),
+              nextCheckAt: nextCrawlAt(
+                now,
+                complete,
+                listed.budgetExhausted === true,
+                listed.jobs.length > 0
+              ),
             })
           } catch (error) {
             const message = error instanceof Error ? error.message : "Could not store listings"
@@ -900,6 +907,7 @@ async function upsertJob(args: {
       where: { fingerprint: posting.fingerprint, companyId: company.id },
     })
   }
+  const written = keepExternalPay(record, data)
   if (record) {
     const taken =
       record.identityKey === identityKey
@@ -907,16 +915,17 @@ async function upsertJob(args: {
         : await db.job.findUnique({ where: { identityKey } })
     record = await db.job.update({
       where: { id: record.id },
-      data: taken && taken.id !== record.id ? data : { ...data, identityKey },
+      data: taken && taken.id !== record.id ? written : { ...written, identityKey },
     })
   } else {
     try {
       record = await db.job.create({
-        data: { ...data, companyId: company.id, identityKey, firstSeenAt: now },
+        data: { ...written, companyId: company.id, identityKey, firstSeenAt: now },
       })
     } catch (error) {
       if (!isUnique(error)) throw error
-      record = await db.job.update({ where: { identityKey }, data })
+      const again = await db.job.findUnique({ where: { identityKey } })
+      record = await db.job.update({ where: { identityKey }, data: keepExternalPay(again, data) })
     }
   }
   await db.jobObservation.create({

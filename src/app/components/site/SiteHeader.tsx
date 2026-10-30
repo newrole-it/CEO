@@ -2,300 +2,440 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
+import {
+  Building2,
+  ChevronDown,
+  ClipboardList,
+  FileSearch,
+  FileText,
+  MessageSquareText,
+  Heart,
+  ListChecks,
+  LogOut,
+  Menu,
+  Moon,
+  Rows3,
+  Settings,
+  SquareTerminal,
+  Sun,
+  UserRound,
+  Bookmark,
+  Gauge,
+  LogIn,
+  X,
+} from "lucide-react"
 import logout from "src/app/(auth)/mutations/logout"
 import { useCopy } from "src/app/i18n/Locale"
-import type { ShellUser } from "../Shell"
-import { LinkedInMark, LogoLockup } from "./Brand"
+import { Button, ButtonLink } from "src/app/components/ds/Button"
+import { Modal } from "src/app/components/ds/interactive"
+import { LogoLockup } from "./Brand"
+import type { ShellUser } from "./links"
 
-const ACCOUNT = [
-  { href: "/interested", key: "navInterested" as const, count: true },
-  { href: "/rejected", key: "navRejected" as const },
-  { href: "/profile", key: "navProfile" as const },
-  { href: "/profile/audit", key: "navAudit" as const },
-  { href: "/searches", key: "navSaved" as const },
-  { href: "/settings", key: "navSettings" as const },
-]
+function count(n: number): string {
+  return n > 99 ? "99+" : String(n)
+}
 
-export function SiteHeader({ user, interested }: { user?: ShellUser; interested: number }) {
-  const signedIn = Boolean(user && user.role !== "GUEST")
-  const { t, locale } = useCopy()
+export function useThemeToggle() {
+  const [dark, setDark] = useState(false)
+  useEffect(() => {
+    const read = () => {
+      const theme = document.documentElement.dataset.theme
+      setDark(
+        theme === "dark" ||
+          (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      )
+    }
+    read()
+    window.addEventListener("nr-theme", read)
+    return () => window.removeEventListener("nr-theme", read)
+  }, [])
+  function setTheme(next: "dark" | "light" | "system") {
+    try {
+      if (next === "system") {
+        delete document.documentElement.dataset.theme
+        localStorage.removeItem("js-theme")
+      } else {
+        document.documentElement.dataset.theme = next
+        localStorage.setItem("js-theme", next)
+      }
+    } catch {}
+    window.dispatchEvent(new Event("nr-theme"))
+  }
+  return { dark, toggle: () => setTheme(dark ? "light" : "dark"), setTheme }
+}
+
+export function useLocaleToggle() {
+  const { locale } = useCopy()
+  const router = useRouter()
+  return (next?: "pl" | "en") => {
+    const target = next ?? (locale === "pl" ? "en" : "pl")
+    document.cookie = `js-lang=${target}; path=/; max-age=31536000; samesite=lax`
+    document.documentElement.lang = target
+    router.refresh()
+  }
+}
+
+export function SiteHeader({
+  user,
+  liked,
+  newAtWatched,
+  app,
+  setup,
+}: {
+  user: ShellUser
+  liked: number
+  newAtWatched: number
+  app: boolean
+  /** A local install: the /setup checklist exists */
+  setup: boolean
+}) {
+  const { t } = useCopy()
   const pathname = usePathname()
   const router = useRouter()
   const [logoutMutation] = useMutation(logout)
-  const [open, setOpen] = useState(false)
+  const theme = useThemeToggle()
+  const switchLocale = useLocaleToggle()
+  const [drawer, setDrawer] = useState(false)
   const [menu, setMenu] = useState(false)
-  const [dark, setDark] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const menuButton = useRef<HTMLButtonElement>(null)
-  const drawerRef = useRef<HTMLDivElement>(null)
-  const avatarButton = useRef<HTMLButtonElement>(null)
-  const menuId = useId()
-  const drawerId = useId()
-  const initials = (user?.name || user?.email || "?").slice(0, 1).toUpperCase()
+  const menuRef = useRef<HTMLDivElement>(null)
+  const signedIn = Boolean(user && user.role !== "GUEST")
+  const guest = Boolean(user && user.role === "GUEST")
+  const initials = (user?.name || user?.email || "?").trim().slice(0, 1).toUpperCase()
 
   useEffect(() => {
-    setDark(document.documentElement.dataset.theme === "dark")
-    const onScroll = () => setScrolled(window.scrollY > 8)
-    onScroll()
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+    setDrawer(false)
+    setMenu(false)
+  }, [pathname])
 
   useEffect(() => {
-    if (!open) return
-    const node = drawerRef.current
-    const focusable = node?.querySelectorAll<HTMLElement>("a, button")
-    focusable?.[0]?.focus()
+    if (!menu) return
+    const node = menuRef.current
+    node?.querySelector<HTMLElement>("a, button")?.focus()
+    function onDown(event: MouseEvent) {
+      if (!menuRef.current?.parentElement?.contains(event.target as Node)) setMenu(false)
+    }
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false)
-        menuButton.current?.focus()
-      }
-      if (event.key !== "Tab" || !focusable?.length) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.key === "Escape") setMenu(false)
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
+        const items = [...(node?.querySelectorAll<HTMLElement>("a, button") ?? [])]
+        const at = items.indexOf(document.activeElement as HTMLElement)
+        const next = items[(at + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]
+        next?.focus()
       }
     }
+    document.addEventListener("mousedown", onDown)
     document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [open])
-
-  function toggleTheme() {
-    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark"
-    document.documentElement.dataset.theme = next
-    localStorage.setItem("js-theme", next)
-    setDark(next === "dark")
-  }
-
-  function toggleLocale() {
-    const next = locale === "pl" ? "en" : "pl"
-    document.cookie = `js-lang=${next}; path=/; max-age=31536000`
-    router.refresh()
-  }
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [menu])
 
   async function signOut() {
     await logoutMutation()
     setMenu(false)
-    setOpen(false)
     router.refresh()
     router.push("/")
   }
 
-  const current = (href: string) => (pathname === href ? "page" : undefined)
+  const cur = (href: string, exact = false) =>
+    (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`))
+      ? ("page" as const)
+      : undefined
+  const forYouCurrent = pathname === "/jobs" || (pathname.startsWith("/jobs/") && !pathname.startsWith("/jobs/saved"))
+
+  const themeButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      className="is-desktop"
+      aria-label={theme.dark ? t("theme.light") : t("theme.dark")}
+      onClick={theme.toggle}
+      icon={theme.dark ? <Sun /> : <Moon />}
+    />
+  )
+  const langButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="is-desktop"
+      aria-label={t("lang.switch")}
+      onClick={() => switchLocale()}
+    >
+      {t("lang.code")}
+    </Button>
+  )
 
   return (
     <>
-      <a className="skip-link" href="#main">
-        {t("skip")}
-      </a>
-      <header className={`site-header${scrolled ? " is-scrolled" : ""}`}>
-        <div className="container">
-          <div className="header-inner">
-            <Link className="brand" href="/" aria-label={t("brandHome")}>
-              <LogoLockup />
-            </Link>
-            {signedIn ? (
-              <nav className="nav nav-auth" aria-label={t("navAccount")}>
-                {ACCOUNT.map((item) => (
-                  <Link key={item.href} href={item.href} aria-current={current(item.href)}>
-                    <span>{t(item.key)}</span>
-                    {item.count && interested > 0 ? (
-                      <span className="nav-count">{interested}</span>
-                    ) : null}
-                  </Link>
-                ))}
-              </nav>
-            ) : (
-              <nav className="nav nav-guest" aria-label={t("navMain")}>
-                <a href="/#jak-to-dziala">{t("navHow")}</a>
-                <a href="/#dopasowanie">{t("navMatch")}</a>
-                <a href="/#zrodla">{t("navSources")}</a>
-              </nav>
-            )}
-            <div className="header-actions">
-              <button
-                className="btn btn-ghost btn-sm lang-toggle"
-                type="button"
-                onClick={toggleLocale}
-                lang={locale === "pl" ? "en" : "pl"}
-                aria-label={t("langSwitch")}
-              >
-                {t("langCode")}
-              </button>
-              <button
-                className="btn btn-ghost btn-icon theme-toggle"
-                type="button"
-                onClick={toggleTheme}
-                aria-label={dark ? t("themeToLight") : t("themeToDark")}
-              >
-                {dark ? "☀" : "☾"}
-              </button>
-              {signedIn ? (
-                <div className="avatar-wrap">
-                  <button
-                    ref={avatarButton}
-                    className="avatar-btn"
-                    type="button"
-                    aria-expanded={menu}
-                    aria-controls={menuId}
-                    aria-label={`${locale === "pl" ? "Konto" : "Account"}: ${
-                      user?.name || user?.email
-                    }`}
-                    onClick={() => setMenu((value) => !value)}
-                  >
-                    <span className="avatar" aria-hidden="true">
-                      {initials}
-                    </span>
-                  </button>
-                  {menu ? (
-                    <div className="avatar-menu" id={menuId}>
-                      <div className="avatar-menu-head">
-                        <span className="avatar avatar-lg" aria-hidden="true">
-                          {initials}
-                        </span>
-                        <span>
-                          <strong>{user?.name || user?.email}</strong>
-                          <span className="muted small">{user?.email}</span>
-                        </span>
-                      </div>
-                      <ul>
-                        <li>
-                          <Link href="/profile" onClick={() => setMenu(false)}>
-                            {t("navProfile")}
-                          </Link>
-                        </li>
-                        <li>
-                          <Link href="/profile/audit" onClick={() => setMenu(false)}>
-                            {t("navAudit")}
-                          </Link>
-                        </li>
-                        <li>
-                          <Link href="/settings" onClick={() => setMenu(false)}>
-                            {t("navSettings")}
-                          </Link>
-                        </li>
-                        <li>
-                          <button type="button" onClick={() => void signOut()}>
-                            {t("signout")}
-                          </button>
-                        </li>
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <Link
-                  className="btn btn-outline btn-sm btn-linkedin signin-full"
-                  href="/api/auth/linkedin/start"
-                >
-                  <LinkedInMark />
-                  <span>{t("signinLinkedIn")}</span>
+      <header className="site-header">
+        <div className="container site-header__inner">
+          <Link className="brand" href={app ? "/jobs" : "/"} aria-label={t("brandHome")}>
+            <LogoLockup />
+          </Link>
+          {app ? (
+            <nav className="nav" aria-label={t("nav.main")}>
+              <Link href="/jobs" aria-current={forYouCurrent ? "page" : undefined}>
+                {t("nav.forYou")}
+              </Link>
+              <Link href="/jobs/saved" aria-current={cur("/jobs/saved")}>
+                {t("nav.saved")}
+                {liked > 0 ? <span className="badge badge--count">{count(liked)}</span> : null}
+              </Link>
+              <Link href="/applications" aria-current={cur("/applications")}>
+                {t("nav.applications")}
+              </Link>
+              <Link href="/companies" aria-current={cur("/companies")}>
+                {t("nav.companies")}
+                {newAtWatched > 0 ? (
+                  <span className="badge badge--count">{count(newAtWatched)}</span>
+                ) : null}
+              </Link>
+            </nav>
+          ) : (
+            <nav className="nav" aria-label={t("nav.main")}>
+              <Link href="/jobs?tab=all" aria-current={cur("/jobs")}>
+                {t("nav.offers")}
+              </Link>
+              <Link href="/companies" aria-current={cur("/companies")}>
+                {t("nav.companies")}
+              </Link>
+              <Link href="/connect" aria-current={cur("/connect")}>
+                {t("nav.claude")}
+              </Link>
+              {setup ? (
+                <Link href="/setup" aria-current={cur("/setup")}>
+                  {t("nav.setup")}
                 </Link>
-              )}
-              <button
-                ref={menuButton}
-                className="btn btn-ghost btn-icon menu-toggle"
-                type="button"
-                aria-expanded={open}
-                aria-controls={drawerId}
-                aria-label={t("menu")}
-                onClick={() => setOpen(true)}
-              >
-                ☰
-              </button>
-            </div>
+              ) : null}
+            </nav>
+          )}
+
+          <div className="header-actions">
+            {app ? (
+              <>
+                <ButtonLink
+                  href="/connect"
+                  variant="outline"
+                  size="sm"
+                  pill
+                  className="claude-pill is-desktop"
+                  icon={<SquareTerminal />}
+                >
+                  {t("nav.claude")}
+                </ButtonLink>
+                <ButtonLink
+                  href="/connect"
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  className="is-mobile"
+                  aria-label={t("nav.claude")}
+                  icon={<SquareTerminal />}
+                />
+                {langButton}
+                {themeButton}
+                {guest ? (
+                  <div className="rel">
+                    <Button
+                      variant="soft"
+                      size="sm"
+                      pill
+                      aria-haspopup="menu"
+                      aria-expanded={menu}
+                      onClick={() => setMenu((open) => !open)}
+                      iconRight={<ChevronDown />}
+                    >
+                      {t("nav.saveAccount")}
+                    </Button>
+                    {menu ? (
+                      <div className="menu" role="menu" ref={menuRef}>
+                        <Link className="menu__item" role="menuitem" href="/profile">
+                          <UserRound aria-hidden /> {t("nav.profile")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/applications">
+                          <ClipboardList aria-hidden /> {t("nav.applications")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/cv">
+                          <FileText aria-hidden /> {t("nav.cv")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/answers">
+                          <MessageSquareText aria-hidden /> {t("nav.answers")}
+                        </Link>
+                        {setup ? (
+                          <Link className="menu__item" role="menuitem" href="/setup">
+                            <ListChecks aria-hidden /> {t("nav.setup")}
+                          </Link>
+                        ) : null}
+                        <Link className="menu__item" role="menuitem" href="/login?returnTo=/jobs">
+                          <LogIn aria-hidden /> {t("nav.signin")}
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="rel">
+                    <button
+                      type="button"
+                      className="avatar-btn"
+                      aria-label={t("nav.accountMenu")}
+                      aria-haspopup="menu"
+                      aria-expanded={menu}
+                      onClick={() => setMenu((open) => !open)}
+                    >
+                      <span className="avatar">
+                        {user?.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={user.imageUrl} alt="" referrerPolicy="no-referrer" />
+                        ) : (
+                          initials
+                        )}
+                      </span>
+                      <ChevronDown aria-hidden className="is-desktop" />
+                    </button>
+                    {menu ? (
+                      <div className="menu" role="menu" ref={menuRef}>
+                        <p className="menu__label">{user?.email}</p>
+                        <Link className="menu__item" role="menuitem" href="/profile">
+                          <UserRound aria-hidden /> {t("nav.profile")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/cv">
+                          <FileText aria-hidden /> {t("nav.cv")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/answers">
+                          <MessageSquareText aria-hidden /> {t("nav.answers")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/profile/audit">
+                          <FileSearch aria-hidden /> {t("nav.audit")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/searches">
+                          <Bookmark aria-hidden /> {t("nav.searches")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/settings">
+                          <Settings aria-hidden /> {t("nav.settings")}
+                        </Link>
+                        {setup ? (
+                          <Link className="menu__item" role="menuitem" href="/setup">
+                            <ListChecks aria-hidden /> {t("nav.setup")}
+                          </Link>
+                        ) : null}
+                        {user?.role === "ADMIN" ? (
+                          <Link className="menu__item" role="menuitem" href="/coverage">
+                            <Gauge aria-hidden /> {t("nav.coverage")}
+                          </Link>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="menu__item is-mobile-only"
+                          role="menuitem"
+                          onClick={theme.toggle}
+                        >
+                          {theme.dark ? <Sun aria-hidden /> : <Moon aria-hidden />}
+                          {theme.dark ? t("theme.light") : t("theme.dark")}
+                        </button>
+                        <button
+                          type="button"
+                          className="menu__item is-mobile-only"
+                          role="menuitem"
+                          onClick={() => switchLocale()}
+                        >
+                          <span aria-hidden className="kbd">
+                            {t("lang.code")}
+                          </span>
+                          {t("lang.switch")}
+                        </button>
+                        <div className="menu__sep" role="separator" />
+                        {signedIn ? (
+                          <button
+                            type="button"
+                            className="menu__item"
+                            role="menuitem"
+                            onClick={() => void signOut()}
+                          >
+                            <LogOut aria-hidden /> {t("nav.signout")}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {langButton}
+                {themeButton}
+                <ButtonLink href="/login" variant="ghost" size="sm" className="is-desktop">
+                  {t("nav.signin")}
+                </ButtonLink>
+                <ButtonLink href="/start" variant="primary" size="sm" className="header-cta">
+                  {t("nav.start")}
+                </ButtonLink>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  className="is-mobile"
+                  aria-label={t("nav.menu")}
+                  aria-expanded={drawer}
+                  onClick={() => setDrawer(true)}
+                  icon={<Menu />}
+                />
+              </>
+            )}
           </div>
         </div>
       </header>
-      <div
-        className={`drawer-backdrop${open ? " is-open" : ""}`}
-        hidden={!open}
-        onClick={() => setOpen(false)}
-      />
-      <div
-        className={`drawer${open ? " is-open" : ""}`}
-        id={drawerId}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("menu")}
-        hidden={!open}
-        ref={drawerRef}
-      >
-        <div className="drawer-head">
-          <Link className="brand" href="/" aria-label={t("brandHome")}>
-            <LogoLockup />
+
+      <Modal open={drawer} onClose={() => setDrawer(false)} kind="drawer" label={t("nav.menu")} className="nav-drawer">
+        <div className="nav-drawer__head">
+          <LogoLockup />
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            aria-label={t("nav.closeMenu")}
+            onClick={() => setDrawer(false)}
+            icon={<X />}
+          />
+        </div>
+        <Link className="nav-drawer__link" href="/jobs?tab=all">
+          <Rows3 aria-hidden /> {t("nav.offers")}
+        </Link>
+        <Link className="nav-drawer__link" href="/companies">
+          <Building2 aria-hidden /> {t("nav.companies")}
+        </Link>
+        <Link className="nav-drawer__link" href="/connect">
+          <SquareTerminal aria-hidden /> {t("nav.claude")}
+        </Link>
+        {setup ? (
+          <Link className="nav-drawer__link" href="/setup">
+            <ListChecks aria-hidden /> {t("nav.setup")}
           </Link>
-          <button
-            className="btn btn-ghost btn-icon"
-            type="button"
-            aria-label={t("closeMenu")}
-            onClick={() => {
-              setOpen(false)
-              menuButton.current?.focus()
-            }}
+        ) : null}
+        <Link className="nav-drawer__link" href="/login">
+          <LogIn aria-hidden /> {t("nav.signin")}
+        </Link>
+        <Link className="nav-drawer__link" href="/jobs/saved">
+          <Heart aria-hidden /> {t("nav.saved")}
+        </Link>
+        <div className="nav-drawer__foot">
+          <Button variant="outline" size="sm" onClick={() => switchLocale()} aria-label={t("lang.switch")}>
+            {t("lang.code")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={theme.toggle}
+            icon={theme.dark ? <Sun /> : <Moon />}
           >
-            ×
-          </button>
+            {theme.dark ? t("theme.light") : t("theme.dark")}
+          </Button>
         </div>
-        <nav className="drawer-nav" aria-label={t("menu")}>
-          <ul>
-            {signedIn
-              ? ACCOUNT.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      aria-current={current(item.href)}
-                    >
-                      {t(item.key)}
-                      {item.count && interested > 0 ? (
-                        <span className="nav-count">{interested}</span>
-                      ) : null}
-                    </Link>
-                  </li>
-                ))
-              : [
-                  ["/#jak-to-dziala", t("navHow")],
-                  ["/#dopasowanie", t("navMatch")],
-                  ["/#zrodla", t("navSources")],
-                ].map(([href, label]) => (
-                  <li key={href}>
-                    <a href={href} onClick={() => setOpen(false)}>
-                      {label}
-                    </a>
-                  </li>
-                ))}
-          </ul>
-        </nav>
-        <div className="drawer-foot">
-          {signedIn ? (
-            <button className="btn btn-outline" type="button" onClick={() => void signOut()}>
-              {t("signout")}
-            </button>
-          ) : (
-            <Link className="btn btn-primary btn-linkedin" href="/api/auth/linkedin/start">
-              <LinkedInMark />
-              {t("signinLinkedIn")}
-            </Link>
-          )}
-          <button
-            className="btn btn-ghost btn-sm"
-            type="button"
-            onClick={toggleLocale}
-            lang={locale === "pl" ? "en" : "pl"}
-          >
-            {locale === "pl" ? "English" : "Polski"}
-          </button>
-        </div>
-      </div>
+      </Modal>
     </>
   )
 }

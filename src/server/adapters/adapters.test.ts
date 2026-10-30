@@ -58,6 +58,30 @@ describe("ATS adapters", () => {
     expect(jobs[0].salaryText).toContain("PLN")
   })
 
+  it("keeps an Ashby job whose isRemote and workplaceType are null", () => {
+    const jobs = parseAshbyJobs(
+      {
+        jobs: [
+          {
+            id: "22222222-2222-2222-2222-222222222222",
+            title: "Engineering Director (100% Remote within Poland)",
+            location: "Warsaw",
+            isRemote: null,
+            workplaceType: null,
+            employmentType: null,
+            jobUrl: "https://jobs.ashbyhq.com/acme/22222222-2222-2222-2222-222222222222",
+            compensation: null,
+          },
+        ],
+      },
+      "acme",
+      "Acme"
+    )
+    expect(jobs).toHaveLength(1)
+    expect(jobs[0].locationText).toBe("Warsaw")
+    expect(jobs[0].workplaceType).toBe("REMOTE")
+  })
+
   it("treats an empty Workable account as having no jobs", () => {
     expect(parseWorkableJobs({ name: "Workable", jobs: [] }, "madeup").jobs).toEqual([])
   })
@@ -127,6 +151,27 @@ describe("ATS adapters", () => {
     expect(jobs[0].workplaceType).toBe("HYBRID")
     expect(jobs[0].publishedAt?.toISOString()).toBe("2026-09-17T10:54:28.000Z")
     expect(jobs[0].salaryText).toContain("PLN")
+  })
+
+  it("keeps a Recruitee offer whose salary comes as text, or cannot be read", () => {
+    const offer = {
+      id: 10,
+      title: "Drupal Developer",
+      city: "Wrocław",
+      careers_url: "https://droptica.recruitee.com/o/drupal-developer",
+    }
+    const jobs = parseRecruiteeOffers(
+      {
+        offers: [
+          { ...offer, salary: { min: "12000", max: "16000", currency: "PLN", period: "month" } },
+          { ...offer, id: 11, salary: { min: "do uzgodnienia", currency: "PLN" } },
+        ],
+      },
+      "droptica"
+    )
+    expect(jobs).toHaveLength(2)
+    expect(jobs[0].salaryText).toBe("12000-16000 PLN month")
+    expect(jobs[1].salaryText).toBeUndefined()
   })
 
   it("does not throw when Recruitee is closed or returns 401", async () => {

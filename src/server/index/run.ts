@@ -8,9 +8,9 @@ import { createHttpClient } from "src/server/security/safe-fetch"
 import { conditionalHttp, NotModifiedError } from "./conditional"
 import { nextCrawlAt } from "./schedule"
 import {
-  ensureCareerPage,
   knownCanonicals,
   noteIndexFailure,
+  noteIndexStart,
   noteUnchanged,
   storeBoardInventory,
 } from "./store"
@@ -57,9 +57,11 @@ export async function nextDueBoard(now = new Date()): Promise<SeedBoard | null> 
   due.sort((a, b) => {
     const left = byKey.get(`${a.provider}:${a.boardId}`)
     const right = byKey.get(`${b.provider}:${b.boardId}`)
+    // A due daily refresh is one or two API calls. A backfill is a 30-page batch, so it
+    // goes after the refreshes; otherwise one large career site delays the whole catalog.
     const rank = (page: (typeof pages)[number] | undefined) => {
       if (!page?.lastSuccessfulFetchAt) return 0
-      if (!page.indexComplete) return 1
+      if (page.indexComplete) return 1
       return 2
     }
     const delta = rank(left) - rank(right)
@@ -77,7 +79,7 @@ export async function indexBoard(
   now = new Date()
 ): Promise<"indexed" | "unchanged" | "skipped" | "failed"> {
   if (!boardIsIndexable(board)) return "skipped"
-  const page = await ensureCareerPage(board, board.companyName, now)
+  const page = await noteIndexStart(board, now)
   const wrapped = conditionalHttp(http, page)
   try {
     const listed = CAREER.has(board.provider)
@@ -125,7 +127,12 @@ export async function indexBoard(
       now,
       etag: wrapped.state.etag,
       lastModified: wrapped.state.lastModified,
-      nextCheckAt: nextCrawlAt(now, complete, listed.budgetExhausted === true),
+      nextCheckAt: nextCrawlAt(
+        now,
+        complete,
+        listed.budgetExhausted === true,
+        listed.jobs.length > 0
+      ),
     })
     console.log(
       `Indexed ${board.companyName}: stored ${listed.jobs.length}, listed ${

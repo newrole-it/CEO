@@ -26,15 +26,18 @@ const offerSchema = z
     company_name: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     requirements: z.string().nullable().optional(),
+    // Some boards send "12000" instead of 12000. A salary we can't read is undisclosed,
+    // never a reason to drop the posting.
     salary: z
       .object({
-        min: z.number().nullable().optional(),
-        max: z.number().nullable().optional(),
+        min: z.coerce.number().nullable().optional(),
+        max: z.coerce.number().nullable().optional(),
         currency: z.string().nullable().optional(),
         period: z.string().nullable().optional(),
       })
       .nullable()
-      .optional(),
+      .optional()
+      .catch(null),
   })
   .passthrough()
 

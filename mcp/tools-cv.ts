@@ -1,0 +1,281 @@
+import { mkdir, writeFile } from "fs/promises"
+import { homedir } from "os"
+import { dirname, isAbsolute, join } from "path"
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { z } from "zod"
+import { findChrome } from "src/server/cv/render"
+import {
+  cvPdf,
+  cvPdfFileName,
+  cvText,
+  duplicateCv,
+  getCv,
+  listCvs,
+  updateCv,
+  type CvView,
+} from "src/server/cv/service"
+import { applyCvPatch } from "src/shared/cv/patch"
+import { cvContentError, parseCvContent } from "src/shared/cv/schema"
+import { failure, guard, reply } from "./tools"
+import { currentUser } from "./user"
+
+/** CV tools (stream B): cv_list, cv_get, cv_update, cv_export_pdf. */
+
+const CONTENT_RULES =
+  "Body text (text, summary, bullets, tech, skill text, card body) may use <strong>, <em>, <a href> and <br>; everything else is stripped. Header fields and titles are plain text. Never invent experience: change only what the CV and the person support."
+
+function viewData(cv: CvView) {
+  return {
+    id: cv.id,
+    title: cv.title,
+    language: cv.language,
+    kind: cv.kind,
+    isDefault: cv.isDefault,
+    hasContent: cv.hasContent,
+    updatedAt: cv.updatedAt.toISOString(),
+  }
+}
+
+function viewLine(cv: CvView): string {
+  const kind = cv.kind === "UPLOADED" ? "PDF" : "edytowalne"
+  return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${cv.language}, ${kind}, zmiana ${cv.updatedAt
+    .toISOString()
+    .slice(0, 10)}) id ${cv.id}`
+}
+
+/** Where cv_export_pdf writes: an absolute path, or ~/Downloads/<name>_CV.pdf. */
+export function exportPath(
+  requested: string | undefined,
+  fileName: string,
+  home = homedir()
+): string | { error: string } {
+  const value = requested?.trim()
+  if (!value) return join(home, "Downloads", fileName)
+  const expanded = value === "~" || value.startsWith("~/") ? join(home, value.slice(1)) : value
+  if (!isAbsolute(expanded)) return { error: `path must be absolute, got "${value}".` }
+  return /\.pdf$/i.test(expanded) ? expanded : join(expanded, fileName)
+}
+
+export function registerCvTools(server: McpServer) {
+  server.registerTool(
+    "cv_list",
+    {
+      title: "Moje CV",
+      description:
+        "List the person's CVs: editable documents and uploaded PDFs, with language and which one is the default (★). Use cv_get to read one.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    guard(async () => {
+      const user = await currentUser()
+      const cvs = await listCvs(user.id)
+      if (!cvs.length) {
+        return reply(
+          "Brak CV. Utwórz je na http://127.0.0.1:43123/cv (z profilu, puste, import HTML albo PDF).",
+          { cvs: [] }
+        )
+      }
+      return reply(cvs.map(viewLine).join("\n"), { cvs: cvs.map(viewData) })
+    })
+  )
+
+  server.registerTool(
+    "cv_get",
+    {
+      title: "Pokaż CV",
+      description:
+        "Read one CV: its structured content as JSON (with section and item ids for cv_update) and as plain text. Without an id it reads the default CV. An uploaded PDF has no content until the person creates an editable copy at /cv.",
+      inputSchema: {
+        id: z.string().max(64).optional().describe("CV id from cv_list; omit for the default CV"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    guard(async ({ id }: { id?: string }) => {
+      const user = await currentUser()
+      let cvId = id
+      if (!cvId) {
+        const cvs = await listCvs(user.id)
+        cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
+        if (!cvId) return failure("Brak CV. Utwórz je na http://127.0.0.1:43123/cv.")
+      }
+      const cv = await getCv(user.id, cvId)
+      if (!cv) return failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`)
+      if (!cv.content) {
+        return reply(`${cv.title}: wgrany PDF bez wersji edytowalnej. Utwórz ją na /cv/${cv.id}.`, {
+          cv: viewData(cv),
+          content: null,
+          text: null,
+        })
+      }
+      // the photo is a large data URL and useless in a chat; cv_update restores it from the marker
+      const content = {
+        ...cv.content,
+        header: { ...cv.content.header, photo: cv.content.header.photo ? "(photo)" : null },
+      }
+      const text = cvText(cv.content)
+      return reply(
+        `${cv.title} (${cv.language}, id ${cv.id})\n\n${text}\n\nJSON:\n${JSON.stringify(content)}`,
+        {
+          cv: viewData(cv),
+          content,
+          text,
+        }
+      )
+    })
+  )
+
+  server.registerTool(
+    "cv_update",
+    {
+      title: "Popraw CV",
+      description: [
+        "Change a CV: its title or language, one section or item by id (merge), or the whole content. Everything is validated before saving; a rejected change saves nothing.",
+        "Read the ids with cv_get first. `section` merges into the section with that id (or adds one if you also pass its `type`). `item` merges into one skill, job, card or education entry (or adds it under a new id). `remove` deletes a section or an item.",
+        "`copyAs` applies the change to a new copy with that title and leaves the original alone: use it to tailor a CV to one company.",
+        CONTENT_RULES,
+      ].join("\n"),
+      inputSchema: {
+        id: z.string().max(64).describe("CV id from cv_list"),
+        title: z.string().max(160).optional(),
+        language: z.enum(["pl", "en"]).optional(),
+        copyAs: z.string().max(160).optional().describe("Save as a new copy with this title"),
+        content: z
+          .record(z.unknown())
+          .optional()
+          .describe("The whole CV content, same shape as cv_get"),
+        section: z
+          .object({ id: z.string().max(40) })
+          .passthrough()
+          .optional()
+          .describe('e.g. {"id":"s1","title":"Profil","body":"…"}'),
+        item: z
+          .object({ sectionId: z.string().max(40), id: z.string().max(40) })
+          .passthrough()
+          .optional()
+          .describe('e.g. {"sectionId":"s2","id":"i3","bullets":["…"]}'),
+        remove: z
+          .object({ sectionId: z.string().max(40), itemId: z.string().max(40).optional() })
+          .optional()
+          .describe("Delete a section, or one item in it"),
+      },
+    },
+    guard(
+      async (args: {
+        id: string
+        title?: string
+        language?: "pl" | "en"
+        copyAs?: string
+        content?: Record<string, unknown>
+        section?: { id: string } & Record<string, unknown>
+        item?: { sectionId: string; id: string } & Record<string, unknown>
+        remove?: { sectionId: string; itemId?: string }
+      }) => {
+        const user = await currentUser()
+        const cv = await getCv(user.id, args.id)
+        if (!cv) return failure(`Nie ma CV o id ${args.id}. Sprawdź cv_list.`)
+        const editsContent = Boolean(args.content || args.section || args.item || args.remove)
+        if (editsContent && cv.kind === "UPLOADED") {
+          return failure(
+            `„${cv.title}” to wgrany PDF. Utwórz wersję edytowalną na /cv/${cv.id}, potem popraw ją tutaj.`
+          )
+        }
+        if (editsContent && !cv.content && !args.content)
+          return failure("To CV nie ma treści do poprawienia.")
+        if (
+          !editsContent &&
+          args.title === undefined &&
+          args.language === undefined &&
+          !args.copyAs
+        ) {
+          return failure(
+            "Nie ma czego zmienić: podaj title, language, content, section, item, remove albo copyAs."
+          )
+        }
+
+        let next: unknown = undefined
+        if (editsContent) {
+          try {
+            const base = args.content ?? cv.content
+            // cv_get replaces the photo with a marker; never let it overwrite the real one
+            const merged = applyCvPatch(base as never, {
+              section: args.section,
+              item: args.item,
+              remove: args.remove,
+            })
+            next = withKeptPhoto(merged, cv.content)
+          } catch (error) {
+            return failure(error instanceof Error ? error.message : String(error))
+          }
+          const problem = cvContentError(next)
+          if (problem) return failure(`Nie zapisano. ${problem}`)
+        }
+
+        const target = args.copyAs ? await duplicateCv(user.id, cv.id) : cv
+        const saved = await updateCv(user.id, target.id, {
+          title: args.copyAs ?? args.title,
+          language: args.language,
+          content: next === undefined ? undefined : parseCvContent(next) ?? undefined,
+        })
+        const where = args.copyAs ? `Utworzono kopię „${saved.title}”` : `Zapisano „${saved.title}”`
+        return reply(
+          `${where} (id ${saved.id}). PDF: cv_export_pdf, edycja: http://127.0.0.1:43123/cv/${saved.id}`,
+          {
+            cv: viewData(saved),
+          }
+        )
+      }
+    )
+  )
+
+  server.registerTool(
+    "cv_export_pdf",
+    {
+      title: "Wygeneruj PDF",
+      description:
+        "Write a CV as a PDF file and return its path, by default ~/Downloads/<Name>_CV.pdf. Without an id it exports the default CV. Editable CVs are rendered with the local Chrome in the same layout as the editor; uploaded PDFs are written as they were uploaded. Fails clearly when Chrome is missing (set CHROME_PATH).",
+      inputSchema: {
+        id: z.string().max(64).optional().describe("CV id from cv_list; omit for the default CV"),
+        path: z.string().max(1000).optional().describe("Absolute file or folder path"),
+      },
+    },
+    guard(async ({ id, path }: { id?: string; path?: string }) => {
+      const user = await currentUser()
+      let cvId = id
+      if (!cvId) {
+        const cvs = await listCvs(user.id)
+        cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
+        if (!cvId) return failure("Brak CV. Utwórz je na http://127.0.0.1:43123/cv.")
+      }
+      const cv = await getCv(user.id, cvId)
+      if (!cv) return failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`)
+      const pdf = await cvPdf(user.id, cv.id)
+      if (!pdf) {
+        if (cv.kind === "EDITABLE" && !findChrome()) {
+          return failure(
+            `Nie znaleziono Chrome, więc nie mogę wygenerować PDF. Ustaw CHROME_PATH albo otwórz http://127.0.0.1:43123/cv/${cv.id}/print i wydrukuj do PDF.`
+          )
+        }
+        return failure(
+          `Nie udało się wygenerować PDF dla „${cv.title}”. Spróbuj z http://127.0.0.1:43123/cv/${cv.id}/print.`
+        )
+      }
+      const target = exportPath(
+        path,
+        cv.kind === "UPLOADED" ? pdf.name : cvPdfFileName(cv.content?.header.name)
+      )
+      if (typeof target !== "string") return failure(target.error)
+      await mkdir(dirname(target), { recursive: true })
+      await writeFile(target, new Uint8Array(pdf.bytes))
+      return reply(`Zapisano PDF: ${target}`, { path: target, bytes: pdf.bytes.length, id: cv.id })
+    })
+  )
+}
+
+/** Restores the stored photo when the incoming content carries cv_get's "(photo)" marker. */
+export function withKeptPhoto<T extends { header?: { photo?: unknown } }>(
+  content: T,
+  stored: { header: { photo: string | null } } | null
+): T {
+  if (content.header?.photo !== "(photo)") return content
+  return { ...content, header: { ...content.header, photo: stored?.header.photo ?? null } }
+}

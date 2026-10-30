@@ -8,6 +8,7 @@ import type { ListedJob, SourceType } from "src/shared/schemas"
 import { extractAtsKey } from "../../../matching/dedupe"
 import type { Source } from "../../../matching/types"
 import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
+import { keepExternalPay } from "src/server/discovery/offer-search"
 import { nextStatus } from "./schedule"
 
 const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
@@ -75,6 +76,18 @@ async function companyFor(name: string) {
     if (!again) throw error
     return again
   }
+}
+
+/** Written while a board is being read, then replaced by the fetch note. */
+export const INDEXING_NOTE = "Indexing"
+
+export async function noteIndexStart(board: IndexBoard, now: Date) {
+  const page = await ensureCareerPage(board, board.companyName, now)
+  await db.careerPage.update({
+    where: { id: page.id },
+    data: { lastCheckedAt: now, fetchNote: INDEXING_NOTE },
+  })
+  return page
 }
 
 export async function ensureCareerPage(board: IndexBoard, companyName: string, now: Date) {
@@ -146,15 +159,36 @@ async function writeJob(job: ListedJob, careerPageId: string, companyId: string,
     ...(job.variants ? { variants: job.variants as unknown as Prisma.InputJsonValue } : {}),
   }
   const existing = await db.job.findUnique({ where: { identityKey } })
+  const written = keepExternalPay(existing, data)
   if (existing) {
-    return db.job.update({ where: { id: existing.id }, data })
+    return db.job.update({ where: { id: existing.id }, data: written })
   }
   try {
-    return await db.job.create({ data: { ...data, identityKey, firstSeenAt: now } })
+    return await db.job.create({ data: { ...written, identityKey, firstSeenAt: now } })
   } catch (error) {
     if (!isUnique(error)) throw error
-    return db.job.update({ where: { identityKey }, data })
+    const again = await db.job.findUnique({ where: { identityKey } })
+    return db.job.update({ where: { identityKey }, data: keepExternalPay(again, data) })
   }
+}
+
+/** One discovered offer. Does not close the rest of a board. */
+export async function saveDiscoveredJob(job: ListedJob, now: Date) {
+  const companyName = job.companyName || "Unknown company"
+  const boardId = (
+    job.sourceBoardId || `search:${normalizeCompanyName(companyName) || "company"}`
+  ).slice(0, 180)
+  const page = await ensureCareerPage(
+    {
+      provider: job.sourceType,
+      boardId,
+      companyName,
+      careersUrl: job.originalUrl,
+    },
+    companyName,
+    now
+  )
+  return writeJob({ ...job, sourceBoardId: boardId, companyName }, page.id, page.companyId, now)
 }
 
 export async function storeBoardInventory(args: {
@@ -257,6 +291,7 @@ export async function noteUnchanged(args: {
       etag: args.etag ?? page.etag,
       lastModified: args.lastModified ?? page.lastModified,
       lastErrorCode: null,
+      fetchNote: page.fetchNote === INDEXING_NOTE ? null : page.fetchNote,
     },
   })
 }

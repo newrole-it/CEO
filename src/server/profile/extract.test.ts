@@ -18,6 +18,15 @@ describe("profile extraction", () => {
     expect(draft.seniority).not.toBe("intern")
   })
 
+  it("reads a CV whose lines about the work are longer than a title", async () => {
+    const long = `Head of Engineering
+As the tech lead I built a payments platform with a team of eight, migrated the monolith to services, and cut the release cycle from weeks to days.
+Engineering Manager at Allegro`
+    const draft = await extractProfileFromText(long, null)
+    expect(draft.currentTitle).toBe("Head of Engineering")
+    expect(draft.pastTitles).toEqual(["Engineering Manager at Allegro"])
+  })
+
   it("does not accept injected fields from a model", async () => {
     const llm = {
       model: "test",

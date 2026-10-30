@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import { useRouter } from "next/navigation"
-import { Button } from "src/app/components/ui/button"
+import { Button } from "src/app/components/ds/Button"
 import rerunProfileAudit from "../mutations/rerunProfileAudit"
 
 export function RerunAudit({ label }: { label: string }) {
@@ -22,7 +22,7 @@ export function RerunAudit({ label }: { label: string }) {
         )
       }}
     >
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" variant="primary" loading={isPending}>
         {isPending ? "Reading the profile…" : label}
       </Button>
       {error ? <p className="form-error">{error}</p> : null}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <title>Nowa Rola</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="popup">
+    <header class="head">
+      <img src="/icon32.png" width="20" height="20" alt="" />
+      <strong>Nowa Rola</strong>
+    </header>
+
+    <p id="state" class="muted" role="status">Sprawdzam połączenie…</p>
+    <button id="connect" class="btn hidden" type="button">Połącz z Nowa Rola</button>
+
+    <section id="actions" class="stack hidden">
+      <p id="applied" class="applied hidden"></p>
+      <button id="fill" class="btn" type="button">Wypełnij formularz na tej stronie</button>
+      <button id="save" class="btn alt" type="button">Zapisz tę stronę jako aplikację</button>
+      <p id="message" class="muted hidden" role="status"></p>
+      <label class="toggle">
+        <input id="autoTrack" type="checkbox" />
+        <span>Automatyczne śledzenie wysłanych aplikacji</span>
+      </label>
+      <label class="toggle">
+        <input id="allSites" type="checkbox" />
+        <span>Działaj na wszystkich stronach</span>
+      </label>
+      <nav class="links">
+        <a id="tracker" href="#" target="_blank" rel="noreferrer noopener">Tracker</a>
+        <a id="answers" href="#" target="_blank" rel="noreferrer noopener">Baza odpowiedzi</a>
+        <a id="options" href="options.html" target="_blank">Opcje</a>
+      </nav>
+    </section>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

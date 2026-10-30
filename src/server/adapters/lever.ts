@@ -31,7 +31,9 @@ const postingSchema = z
         interval: z.string().optional(),
       })
       .nullable()
-      .optional(),
+      .optional()
+      // An unreadable range is undisclosed pay, not a reason to drop the posting.
+      .catch(null),
   })
   .passthrough()
 

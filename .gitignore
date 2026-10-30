@@ -13,6 +13,10 @@ node_modules
 /.next/
 /out/
 
+# chrome extension build (wxt)
+/extension/.output/
+/extension/.wxt/
+
 # production
 /build
 

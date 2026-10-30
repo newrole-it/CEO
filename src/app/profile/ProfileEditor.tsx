@@ -1,356 +1,214 @@
 "use client"
 
 import Link from "next/link"
-import { FormEvent, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
 import { useRouter } from "next/navigation"
-import saveProfile from "./mutations/saveProfile"
-import { Button } from "src/app/components/ui/button"
-import { Input } from "src/app/components/ui/input"
+import { useState } from "react"
+import { invoke, useMutation } from "@blitzjs/rpc"
+import { ArrowRight, CircleAlert, FileUp, Info, Trash2 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { emptyProfileDraft, type IndustryMode, type ProfileDraft } from "src/server/profile/schema"
-
-function list(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function numberOrNull(value: string): number | null {
-  if (!value.trim()) return null
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
+import type { CopyKey } from "src/app/i18n/copy"
+import { Button, ButtonLink } from "src/app/components/ds/Button"
+import { Dropzone, Modal, ModalHead, isPdf, useToast } from "src/app/components/ds/interactive"
+import { Banner, EmptyState } from "src/app/components/ds/primitives"
+import clearFeedback from "src/app/feedback/mutations/clearFeedback"
+import listMyFeedback from "src/app/feedback/queries/listMyFeedback"
+import { TasteChip } from "src/app/jobs/components/Taste"
+import type { PreferenceSummary } from "src/server/preferences/model"
+import { FEEDBACK_ASPECTS } from "src/shared/feedback-aspects"
+import { emptyProfileDraft, type ProfileDraft } from "src/server/profile/schema"
+import saveProfile from "./mutations/saveProfile"
+import { ProfileReview, cleanDraft, fieldsFrom, salaryError, type DraftField } from "./ProfileReview"
 
 export function ProfileEditor({
   initial,
-  signedIn,
-  returnTo,
+  guest,
+  summary,
 }: {
   initial: ProfileDraft | null
-  signedIn: boolean
-  returnTo?: string | null
+  guest: boolean
+  summary: PreferenceSummary | null
 }) {
   const { t } = useCopy()
   const router = useRouter()
+  const toast = useToast()
   const [save, { isPending }] = useMutation(saveProfile)
   const [draft, setDraft] = useState<ProfileDraft>(initial ?? emptyProfileDraft())
-  const [skills, setSkills] = useState((initial?.skills ?? []).join(", "))
-  const [industries, setIndustries] = useState((initial?.industries ?? []).join(", "))
-  const [pastTitles, setPastTitles] = useState((initial?.pastTitles ?? []).join(", "))
-  const [locations, setLocations] = useState((initial?.locations ?? []).join(", "))
-  const [languages, setLanguages] = useState((initial?.languages ?? []).join(", "))
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [fromCv, setFromCv] = useState<Set<DraftField>>(new Set())
+  const [key, setKey] = useState(0)
   const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [dirty, setDirty] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
-  function patch(partial: Partial<ProfileDraft>) {
-    setDraft((current) => ({ ...current, ...partial }))
-  }
-
-  async function onImport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-    setMessage(null)
+  async function reimport(file: File) {
+    if (!isPdf(file)) return setImportError(t("err.notPdf"))
+    if (file.size > 8_000_000) return setImportError(t("err.pdfSize"))
     setImporting(true)
+    setImportError(null)
     try {
-      const body = new FormData(event.currentTarget)
+      const body = new FormData()
+      body.set("file", file)
       const response = await fetch("/api/profile/import", { method: "POST", body })
-      const payload = (await response.json()) as {
-        draft?: ProfileDraft
-        error?: string
-        audited?: boolean
-      }
+      const payload = (await response.json()) as { draft?: ProfileDraft; error?: string }
       if (!response.ok || !payload.draft) {
-        setError(payload.error || "Could not read that profile")
+        setImportError(t("err.read"))
         return
       }
       setDraft({ ...payload.draft, industryMode: draft.industryMode })
-      setSkills(payload.draft.skills.join(", "))
-      setIndustries(payload.draft.industries.join(", "))
-      setPastTitles(payload.draft.pastTitles.join(", "))
-      setLocations(payload.draft.locations.join(", "))
-      setLanguages(payload.draft.languages.join(", "))
-      setMessage(
-        payload.audited
-          ? "Draft ready, and the profile audit has been updated. Review the fields, then save. The PDF file is deleted after reading and is not stored."
-          : "Draft ready. Review it, then save. The PDF file is deleted after reading and is not stored."
-      )
+      setFromCv(fieldsFrom(payload.draft))
+      setKey((value) => value + 1)
+      setDirty(true)
     } catch {
-      setError("Could not read that profile")
+      setImportError(t("err.read"))
     } finally {
       setImporting(false)
     }
   }
 
-  async function onSave(event: FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setMessage(null)
+  async function onSave() {
+    if (salaryError(draft)) return
     try {
-      await save({
-        ...draft,
-        skills: list(skills),
-        industries: list(industries),
-        pastTitles: list(pastTitles),
-        locations: list(locations),
-        languages: list(languages),
-      })
-      setMessage(t("profileSavedMsg"))
+      await save(cleanDraft(draft))
+      setDirty(false)
+      toast.show({ message: t("pr.saved") })
       router.refresh()
-      if (returnTo) router.push(returnTo)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the profile")
+    } catch {
+      toast.show({ message: t("err.saveProfile"), tone: "danger" })
     }
   }
 
+  async function clearAll() {
+    setClearing(true)
+    try {
+      const rows = await invoke(listMyFeedback, { limit: 500 })
+      for (const row of rows) await invoke(clearFeedback, { jobId: row.jobId })
+      setConfirmClear(false)
+      router.refresh()
+    } catch {
+      toast.show({ message: t("err.save"), tone: "danger" })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  const items = summary ? [...summary.likes, ...summary.dislikes].filter((item) => !summary.muted.includes(item.key)) : []
+
   return (
-    <div className="stack">
-      <section className="hero">
-        <p className="kicker">Profile</p>
-        <h1>What should match you</h1>
-        <p className="lede">
-          Salary and industry are strong signals. Industry is never a hard filter: offers outside
-          your domain stay visible, and they drop more only when the posting requires that domain.
-        </p>
-      </section>
-      {!signedIn ? (
-        <p className="hint">
-          <Link href="/login">Sign in</Link> with LinkedIn or email to keep this profile. You can
-          still import and save it in this browser first.
-        </p>
+    <div className="stack-lg has-sticky-foot">
+      {guest ? (
+        <Banner tone="info" icon={<Info aria-hidden />}>
+          <p>{t("pr.guest")}</p>
+          <div>
+            <ButtonLink href="/login?returnTo=/profile" variant="secondary" size="sm">
+              {t("pr.guestCta")}
+            </ButtonLink>
+          </div>
+        </Banner>
       ) : null}
-      <form className="panel stack" onSubmit={onImport}>
-        <h2>{t("importPdfTitle")}</h2>
-        <p className="hint">{t("importPdfBody")}</p>
-        <label className="field">
-          PDF
-          <Input name="file" type="file" accept="application/pdf,.pdf" />
-        </label>
-        <label className="field">
-          Or paste the text
-          <textarea
-            name="text"
-            className="plain-text"
-            rows={6}
-            placeholder="Headline, roles, skills, industries"
-          />
-        </label>
-        <Button type="submit" variant="outline" disabled={importing}>
-          {importing ? "Reading…" : "Read profile"}
-        </Button>
-      </form>
-      <form className="panel stack" id="preferences" onSubmit={onSave}>
-        <h2>{t("prefsTitle")}</h2>
-        <p className="hint">{t("prefsBody")}</p>
-        {error ? <p className="form-error">{error}</p> : null}
-        {message ? <p className="hint">{message}</p> : null}
-        <label className="field">
-          Headline
-          <Input
-            value={draft.headline ?? ""}
-            onChange={(event) => patch({ headline: event.target.value || null })}
-          />
-        </label>
-        <label className="field">
-          Current title
-          <Input
-            value={draft.currentTitle ?? ""}
-            onChange={(event) => patch({ currentTitle: event.target.value || null })}
-          />
-        </label>
-        <label className="field">
-          Past titles, comma separated
-          <Input value={pastTitles} onChange={(event) => setPastTitles(event.target.value)} />
-        </label>
-        <div className="extras">
-          <label className="field">
-            Seniority
-            <select
-              className="plain"
-              value={draft.seniority ?? ""}
-              onChange={(event) =>
-                patch({ seniority: (event.target.value || null) as ProfileDraft["seniority"] })
-              }
-            >
-              <option value="">Not set</option>
-              {[
-                "intern",
-                "junior",
-                "mid",
-                "senior",
-                "lead",
-                "principal",
-                "manager",
-                "senior_manager",
-                "head",
-                "director",
-                "vp",
-                "c_level",
-              ].map((level) => (
-                <option key={level} value={level}>
-                  {level.replace("_", " ")}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Years of experience
-            <Input
-              type="number"
-              min={0}
-              max={60}
-              value={draft.yearsExperience ?? ""}
-              onChange={(event) => patch({ yearsExperience: numberOrNull(event.target.value) })}
+
+      {!initial && !dirty ? (
+        <EmptyState icon={<FileUp />} title={t("pr.empty")} body={t("empty.noProfile.b")}>
+          <ButtonLink href="/start" variant="primary" iconRight={<ArrowRight />}>
+            {t("empty.noProfile.cta")}
+          </ButtonLink>
+        </EmptyState>
+      ) : (
+        <section aria-label={t("pr.title")} className="stack">
+          <Dropzone onFile={(file) => void reimport(file)} className="card card--pad row row--between" overClassName="tile--primary">
+            {(open) => (
+              <>
+                <span className="row muted t-sm">
+                  <FileUp width={18} height={18} aria-hidden /> {t("hero.drop")}
+                </span>
+                <Button variant="outline" size="sm" icon={<FileUp />} loading={importing} onClick={open}>
+                  {t("pr.reimport")}
+                </Button>
+              </>
+            )}
+          </Dropzone>
+          {importError ? (
+            <Banner tone="danger" role="alert" icon={<CircleAlert aria-hidden />}>
+              <p>{importError}</p>
+            </Banner>
+          ) : null}
+          <div className="card review-card">
+            <ProfileReview
+              key={key}
+              draft={draft}
+              onChange={(next) => {
+                setDraft(next)
+                setDirty(true)
+              }}
+              fromCv={fromCv}
             />
-          </label>
+            <div className="review-foot review-foot--sticky">
+              <p />
+              <Button variant="primary" loading={isPending} disabled={salaryError(draft) || !dirty} onClick={() => void onSave()}>
+                {t("pr.save")}
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section id="taste" className="stack" aria-labelledby="taste-full">
+        <div className="row row--between">
+          <h2 id="taste-full" className="t-h2">
+            {t("pr.taste")}
+          </h2>
+          {summary && (summary.liked || summary.disliked) ? (
+            <span className="t-sm muted">{t("taste.basis", { likes: summary.liked, passes: summary.disliked })}</span>
+          ) : null}
         </div>
-        <label className="field">
-          Skills
-          <Input value={skills} onChange={(event) => setSkills(event.target.value)} />
-        </label>
-        <label className="field">
-          Industries, for example adtech
-          <Input value={industries} onChange={(event) => setIndustries(event.target.value)} />
-        </label>
-        <fieldset className="mode-fieldset">
-          <legend>Industry preference</legend>
-          {(
-            [
-              ["stick", "Stick to my industries"],
-              ["prefer", "Prefer my industries"],
-              ["any", "Any industry"],
-            ] as Array<[IndustryMode, string]>
-          ).map(([value, label]) => (
-            <label key={value} className="check-row">
-              <input
-                type="radio"
-                name="industryMode"
-                checked={draft.industryMode === value}
-                onChange={() => patch({ industryMode: value })}
-              />
-              {label}
-            </label>
-          ))}
-          <p className="hint">
-            Prefer my industries is the default. Stick lowers other industries further. It still
-            does not hide them.
-          </p>
-        </fieldset>
-        <div className="extras">
-          <label className="field">
-            {t("salaryFloorLabel")}
-            <Input
-              type="number"
-              min={0}
-              value={draft.salaryFloor ?? ""}
-              onChange={(event) => patch({ salaryFloor: numberOrNull(event.target.value) })}
-            />
-          </label>
-          <label className="field">
-            {t("salaryTargetLabel")}
-            <Input
-              type="number"
-              min={0}
-              value={draft.salaryTarget ?? ""}
-              onChange={(event) => patch({ salaryTarget: numberOrNull(event.target.value) })}
-            />
-          </label>
-        </div>
-        <div className="filter-grid">
-          <label className="field">
-            Currency
-            <select
-              className="plain"
-              value={draft.salaryCurrency ?? "PLN"}
-              onChange={(event) =>
-                patch({ salaryCurrency: event.target.value as ProfileDraft["salaryCurrency"] })
-              }
-            >
-              {["PLN", "EUR", "USD", "GBP", "CHF"].map((code) => (
-                <option key={code}>{code}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Period
-            <select
-              className="plain"
-              value={draft.salaryPeriod ?? "month"}
-              onChange={(event) =>
-                patch({ salaryPeriod: event.target.value as ProfileDraft["salaryPeriod"] })
-              }
-            >
-              <option value="month">Monthly</option>
-              <option value="year">Yearly</option>
-            </select>
-          </label>
-          <label className="field">
-            Contract
-            <select
-              className="plain"
-              value={draft.salaryContract ?? "b2b"}
-              onChange={(event) =>
-                patch({ salaryContract: event.target.value as ProfileDraft["salaryContract"] })
-              }
-            >
-              <option value="b2b">B2B, net of VAT</option>
-              <option value="uop">UoP gross</option>
-            </select>
-          </label>
-        </div>
-        <p className="hint">
-          Amounts are compared as monthly PLN. UoP gross is scaled by 1.25 toward a B2B net-of-VAT
-          equivalent. B2B net of VAT is used as entered, after currency conversion.
-        </p>
-        <div className="extras">
-          <label className="field">
-            Locations
-            <Input value={locations} onChange={(event) => setLocations(event.target.value)} />
-          </label>
-          <label className="field">
-            Home city
-            <Input
-              value={draft.homeCity ?? ""}
-              onChange={(event) => patch({ homeCity: event.target.value || null })}
-            />
-          </label>
-        </div>
-        <label className="field">
-          Languages
-          <Input value={languages} onChange={(event) => setLanguages(event.target.value)} />
-        </label>
-        <label className="field">
-          Remote preference
-          <select
-            className="plain"
-            value={draft.remotePreference ?? ""}
-            onChange={(event) =>
-              patch({
-                remotePreference: (event.target.value || null) as ProfileDraft["remotePreference"],
-              })
-            }
-          >
-            <option value="">No preference</option>
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">On-site</option>
-            <option value="any">Any</option>
-          </select>
-        </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={Boolean(draft.relocation)}
-            onChange={(event) => patch({ relocation: event.target.checked })}
-          />
-          Open to relocation
-        </label>
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving…" : "Save profile"}
-        </Button>
-      </form>
+        {!items.length ? (
+          <p className="muted">{t("taste.empty")}</p>
+        ) : (
+          <div className="card card--pad taste-groups">
+            {FEEDBACK_ASPECTS.map((aspect) => {
+              const group = items.filter((item) => item.aspect === aspect)
+              if (!group.length) return null
+              return (
+                <div key={aspect} className="taste-group">
+                  <h3>{t(`aspect.${aspect}` as CopyKey)}</h3>
+                  <div className="chips chips--sm">
+                    {group.map((item) => (
+                      <TasteChip key={item.key} item={item} onRemoved={() => router.refresh()} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        <p className="t-sm muted">{t("taste.howBody")}</p>
+        {summary && (summary.liked || summary.disliked) ? (
+          <div>
+            <Button variant="danger-ghost" size="sm" icon={<Trash2 />} onClick={() => setConfirmClear(true)}>
+              {t("taste.clearAll")}
+            </Button>
+          </div>
+        ) : null}
+        <Modal open={confirmClear} onClose={() => setConfirmClear(false)} labelledBy="clear-title">
+          <ModalHead title={t("taste.clearAll")} id="clear-title" onClose={() => setConfirmClear(false)} />
+          <div className="modal__body">
+            <p className="muted">{t("taste.clearConfirm")}</p>
+          </div>
+          <div className="modal__foot">
+            <Button variant="ghost" onClick={() => setConfirmClear(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="danger" loading={clearing} onClick={() => void clearAll()}>
+              {t("taste.clearAll")}
+            </Button>
+          </div>
+        </Modal>
+      </section>
+      <p className="t-sm">
+        <Link className="link" href="/jobs">
+          {t("od.back")}
+        </Link>
+      </p>
     </div>
   )
 }

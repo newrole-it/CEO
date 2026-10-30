@@ -4,6 +4,7 @@ import db from "db"
 import { Login } from "../validations"
 import { SecurePassword } from "@blitzjs/auth/secure-password"
 import { Role } from "types"
+import { claimGuest } from "src/server/auth/accounts"
 
 export const authenticateUser = async (rawEmail: string, rawPassword: string) => {
   const { email, password } = Login.parse({ email: rawEmail, password: rawPassword })
@@ -24,6 +25,8 @@ export const authenticateUser = async (rawEmail: string, rawPassword: string) =>
 
 export default resolver.pipe(resolver.zod(Login), async ({ email, password }, ctx) => {
   const user = await authenticateUser(email, password)
+  const previous = ctx.session.userId ?? null
+  if (previous && previous !== user.id) await claimGuest(previous, user.id)
   await ctx.session.$create({ userId: user.id, role: user.role as Role })
   return user
 })

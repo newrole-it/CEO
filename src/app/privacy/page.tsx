@@ -15,7 +15,9 @@ const en = {
     "The account: email, name, and, if you use it, the LinkedIn sign-in id and picture URL.",
     "The profile built from a CV or LinkedIn PDF, the parsed sections, and each profile audit.",
     "Saved searches, the offers you mark interested or rejected, and the activity-log action (the search phrase is removed when you delete the account).",
-    "The uploaded PDF is read in a temporary file and deleted as soon as the text is extracted. The file is not stored.",
+    "A PDF uploaded to build the profile is read in a temporary file and deleted as soon as the text is extracted. That file is not stored.",
+    "What you save yourself: CV documents under My CV (the content, the photo, and the uploaded or generated PDF), applications with their stages and notes, the answer bank, form details (phone, links, notice period), extension tokens (only as a hash), and the Google Sheet web-app address.",
+    "The Chrome extension talks only to this app. It sends the form's field labels, the page address and title, and up to 12,000 characters of the page's text. After you submit, it also sends your answers to the questions, but not your contact details. On known job-application sites it sends the address of the open tab to check whether you already applied, and on every https page if you allow all sites. It never sends passwords, consents or equal-opportunity answers.",
   ],
   whoTitle: "Who else receives data",
   hostTitle: "Hosting and database",
@@ -33,7 +35,7 @@ const en = {
     "Optional. LinkedIn's OpenID Connect flow returns your name, email, and picture. Nowa Rola does not send your CV to LinkedIn.",
   controlTitle: "Export and deletion",
   control:
-    "Settings lets you download a JSON file of your own data, delete the CV and profile, or delete the account. Deleting the profile removes the CV text, audits, and model replies from that CV. Deleting the account also removes saved searches, decisions, sessions, magic-link tokens, the LinkedIn connection, and queued work for those searches. Audit-log rows then keep the action name only.",
+    "Settings lets you download a JSON file of your own data, delete the CV and profile, or delete the account. Deleting the profile removes the CV text, audits, and model replies from that CV. Documents under My CV are deleted separately on that page. Deleting the account also removes saved searches, decisions, applications, CV documents, the answer bank, extension tokens, the sheet connection, sessions, magic-link tokens, the LinkedIn connection, and queued work for those searches. Audit-log rows then keep the action name only.",
   settings: "Open settings",
 }
 
@@ -45,7 +47,9 @@ const pl = {
     "Konto: e-mail, imię oraz, jeśli z tego korzystasz, identyfikator logowania LinkedIn i adres zdjęcia.",
     "Profil zbudowany z CV albo PDF-a z LinkedIn, rozłożone na części sekcje i każdy audyt profilu.",
     "Zapisane wyszukiwania, oferty oznaczone jako interesujące albo odrzucone oraz nazwa czynności w dzienniku (fraza wyszukiwania znika po usunięciu konta).",
-    "Wgrany PDF jest czytany z pliku tymczasowego i usuwany zaraz po wyjęciu tekstu. Plik nie jest przechowywany.",
+    "PDF wgrany do odczytu profilu jest czytany z pliku tymczasowego i usuwany zaraz po wyjęciu tekstu. Ten plik nie jest przechowywany.",
+    "To, co zapisujesz sam: dokumenty w Moje CV (treść, zdjęcie oraz wgrany lub wygenerowany PDF), aplikacje z etapami i notatkami, bazę odpowiedzi, dane do formularzy (telefon, linki, okres wypowiedzenia), tokeny rozszerzenia (tylko jako skrót) i adres aplikacji Apps Script Twojego arkusza.",
+    "Rozszerzenie Chrome łączy się tylko z tą aplikacją. Wysyła etykiety pól formularza, adres i tytuł strony oraz do 12 000 znaków jej tekstu. Po wysłaniu formularza wysyła też Twoje odpowiedzi na pytania, ale nie dane kontaktowe. Na znanych stronach rekrutacyjnych wysyła adres otwartej karty, żeby sprawdzić, czy już aplikowano, a na każdej stronie https, jeśli pozwolisz na wszystkie strony. Nigdy nie wysyła haseł, zgód ani odpowiedzi na pytania o równe szanse (EEO).",
   ],
   whoTitle: "Kto jeszcze dostaje dane",
   hostTitle: "Hosting i baza",
@@ -63,7 +67,7 @@ const pl = {
     "Opcjonalne. OpenID Connect LinkedIn zwraca imię, e-mail i zdjęcie. Nowa Rola nie wysyła CV do LinkedIn.",
   controlTitle: "Eksport i usuwanie",
   control:
-    "W ustawieniach pobierzesz JSON ze swoimi danymi, usuniesz CV i profil albo usuniesz konto. Usunięcie profilu kasuje tekst CV, audyty i odpowiedzi modelu z tego CV. Usunięcie konta kasuje także zapisane wyszukiwania, decyzje, sesje, tokeny linków do logowania, połączenie z LinkedIn i kolejkową pracę dla tych wyszukiwań. W dzienniku zostaje wtedy tylko nazwa czynności.",
+    "W ustawieniach pobierzesz JSON ze swoimi danymi, usuniesz CV i profil albo usuniesz konto. Usunięcie profilu kasuje tekst CV, audyty i odpowiedzi modelu z tego CV. Dokumenty z Moje CV usuwasz osobno na tej stronie. Usunięcie konta kasuje także zapisane wyszukiwania, decyzje, aplikacje, dokumenty CV, bazę odpowiedzi, tokeny rozszerzenia, połączenie z arkuszem, sesje, tokeny linków do logowania, połączenie z LinkedIn i kolejkową pracę dla tych wyszukiwań. W dzienniku zostaje wtedy tylko nazwa czynności.",
   settings: "Otwórz ustawienia",
 }
 
@@ -77,8 +81,8 @@ export default async function PrivacyPage() {
   const t = copy(locale)
   const page = body(locale)
   return (
-    <SiteFrame user={user} locale={locale}>
-      <article className="page-head">
+    <SiteFrame user={user} locale={locale} width="narrow">
+      <article className="prose">
         <p className="draft-banner">{t.draft}</p>
         <p className="eyebrow">{t.privacy}</p>
         <h1>{t.privacy}</h1>

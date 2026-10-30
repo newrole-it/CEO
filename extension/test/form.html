@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:site_name" content="Acme Robotics" />
+    <title>Job Application for Staff Platform Engineer at Acme Robotics</title>
+    <style>
+      body {
+        max-width: 640px;
+        margin: 32px auto;
+        padding: 0 16px;
+        font: 15px/1.5 system-ui, sans-serif;
+      }
+      .field {
+        display: grid;
+        gap: 4px;
+        margin-bottom: 16px;
+      }
+      input:not([type="checkbox"]):not([type="radio"]),
+      select,
+      textarea {
+        padding: 8px;
+        font: inherit;
+      }
+      fieldset {
+        margin-bottom: 16px;
+      }
+      #result {
+        white-space: pre-wrap;
+        background: #f0f0f5;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Staff Platform Engineer</h1>
+    <p>
+      Acme Robotics · Warsaw, Poland (hybrid). Local test page for the Nowa Rola extension; it
+      mimics a Greenhouse form and sends nothing anywhere.
+    </p>
+
+    <form id="application_form" action="#" method="post">
+      <h2>Apply for this job</h2>
+      <div class="field">
+        <label for="first_name">First Name <span class="asterisk">*</span></label>
+        <input id="first_name" name="first_name" type="text" required />
+      </div>
+      <div class="field">
+        <label for="last_name">Last Name <span class="asterisk">*</span></label>
+        <input id="last_name" name="last_name" type="text" required />
+      </div>
+      <div class="field">
+        <label for="email">Email <span class="asterisk">*</span></label>
+        <input id="email" name="email" type="email" required />
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel" />
+      </div>
+      <div class="field">
+        <label for="location">Location (City)</label>
+        <input id="location" name="job_application[location]" type="text" />
+      </div>
+      <div class="field">
+        <label for="resume">Resume/CV <span class="asterisk">*</span></label>
+        <input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx" />
+      </div>
+      <div class="field">
+        <label for="linkedin">LinkedIn Profile</label>
+        <input
+          id="linkedin"
+          name="job_application[answers_attributes][0][text_value]"
+          type="text"
+        />
+      </div>
+      <div class="field">
+        <label for="q1">Why do you want to join Acme Robotics?</label>
+        <textarea
+          id="q1"
+          name="job_application[answers_attributes][1][text_value]"
+          rows="4"
+        ></textarea>
+      </div>
+      <div class="field">
+        <label for="q2"
+          >Describe a platform migration you led and how you measured its success.</label
+        >
+        <textarea
+          id="q2"
+          name="job_application[answers_attributes][2][text_value]"
+          rows="4"
+        ></textarea>
+      </div>
+      <div class="field">
+        <label for="q3">What are your salary expectations?</label>
+        <input id="q3" name="job_application[answers_attributes][3][text_value]" type="text" />
+      </div>
+      <div class="field">
+        <label for="q4">Will you now or in the future require visa sponsorship?</label>
+        <select id="q4" name="job_application[answers_attributes][4][boolean_value]">
+          <option value="">Please select</option>
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+      </div>
+
+      <h2>Voluntary Self-Identification</h2>
+      <p>Answering these questions is optional. The extension must leave them empty.</p>
+      <div class="field">
+        <label for="gender">Gender</label>
+        <select id="gender" name="job_application[gender]">
+          <option value="">Please select</option>
+          <option value="1">Male</option>
+          <option value="2">Female</option>
+          <option value="3">Decline To Self Identify</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="veteran">Veteran Status</label>
+        <select id="veteran" name="job_application[veteran_status]">
+          <option value="">Please select</option>
+          <option value="1">I am not a protected veteran</option>
+          <option value="2">I identify as a veteran</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="disability">Disability Status</label>
+        <select id="disability" name="job_application[disability_status]">
+          <option value="">Please select</option>
+          <option value="1">Yes, I have a disability</option>
+          <option value="2">No, I do not have a disability</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>
+          <input id="consent" name="consent" type="checkbox" />
+          I agree to the processing of my personal data as described in the Privacy Policy.
+        </label>
+      </div>
+
+      <button type="submit">Submit Application</button>
+    </form>
+
+    <h2>What the site received</h2>
+    <p id="result">Nothing yet. Submit the form to see the values; the page stays here.</p>
+
+    <script>
+      document.getElementById("application_form").addEventListener("submit", (event) => {
+        event.preventDefault()
+        const rows = []
+        for (const [name, value] of new FormData(event.target)) {
+          rows.push(`${name}: ${value instanceof File ? value.name : value}`)
+        }
+        document.getElementById("result").textContent = rows.join("\n")
+      })
+    </script>
+  </body>
+</html>

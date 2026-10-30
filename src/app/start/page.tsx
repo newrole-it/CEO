@@ -1,0 +1,53 @@
+import { linkedInCredentials } from "src/server/auth/linkedin"
+import { linkedInBrowserAvailable } from "src/server/profile/linkedin-browser"
+import { invoke } from "src/app/blitz-server"
+import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { indexStats, roundDown } from "src/app/components/landing/stats"
+import { translator } from "src/app/i18n/copy"
+import { getLocale } from "src/app/i18n/server"
+import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { Onboarding, type Step } from "./Onboarding"
+
+export async function generateMetadata() {
+  const t = translator(await getLocale())
+  return { title: t("onb.source.title") }
+}
+
+function stepOf(params: { step?: string; via?: string }): Step {
+  if (params.step === "linkedin-next" || (params.step === "profile" && params.via === "linkedin")) {
+    return "linkedin-next"
+  }
+  if (params.step === "linkedin") return "linkedin"
+  if (params.step === "reading") return "reading"
+  return "source"
+}
+
+export default async function StartPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ step?: string; via?: string }>
+}) {
+  const [locale, params, user] = await Promise.all([
+    getLocale(),
+    searchParams,
+    invoke(getCurrentUser, null),
+  ])
+  const stats = await indexStats().catch(() => ({ offers: 0, companies: null, careerPages: null }))
+  const firstName = user?.name?.trim().split(/\s+/)[0] ?? null
+  return (
+    <SiteFrame user={user} locale={locale} variant="focus">
+      <Onboarding
+        initialStep={stepOf(params)}
+        linkedIn={Boolean(linkedInCredentials())}
+        browserImport={linkedInBrowserAvailable()}
+        firstName={user && user.role !== "GUEST" ? firstName : null}
+        photo={user?.imageUrl ?? null}
+        stats={{
+          offers: roundDown(stats.offers),
+          companies: stats.companies ? roundDown(stats.companies) : null,
+          careerPages: stats.careerPages ? roundDown(stats.careerPages) : null,
+        }}
+      />
+    </SiteFrame>
+  )
+}

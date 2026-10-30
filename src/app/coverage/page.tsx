@@ -4,9 +4,12 @@ import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { IndexProgress } from "./IndexProgress"
+import { OpsPanel } from "./OpsPanel"
 import getCoverage from "./queries/getCoverage"
+import getOps from "./queries/getOps"
 
-export const metadata = { title: "Coverage" }
+export const metadata = { title: "Pobieranie" }
 
 function formatWhen(value: Date | null, overdueLabel?: string): string {
   if (!value) return "Not yet"
@@ -30,29 +33,28 @@ export default async function CoveragePage() {
   const locale = await getLocale()
   const user = await invoke(getCurrentUser, null)
   if (!user || user.role !== "ADMIN") redirect("/")
-  const coverage = await invoke(getCoverage, null)
+  const [coverage, ops] = await Promise.all([invoke(getCoverage, null), invoke(getOps, null)])
   const rows = coverage.rows
+  const pl = locale === "pl"
   return (
     <SiteFrame user={user} locale={locale}>
-      <div className="hero">
-        <p className="kicker">Sources</p>
-        <h1>Coverage</h1>
+      <OpsPanel ops={ops} locale={locale} />
+      <IndexProgress />
+      <div className="crawl-policy">
+        <h2>{pl ? "Zasady źródeł" : "Source rules"}</h2>
         <p className="lede">
-          The worker indexes every allowed board and career site, then refreshes it daily. Link-only
-          rows stay as outbound links. Large career sites backfill across days because each host is
-          limited to 200 detail pages a day.
+          {pl
+            ? "Ta tabela to ręcznie sprawdzone wyjątki: serwisy link-only i duże strony kariery. Katalog tablic API jest w postępie powyżej."
+            : "This table is the hand-checked exceptions: link-only sites and large career pages. The API catalog is the progress above."}
         </p>
-        <div className="coverage-summary">
-          <div>
-            <strong>{coverage.totalJobs.toLocaleString("en-GB")}</strong>
-            <span className="meta">jobs indexed</span>
-          </div>
-          <div>
-            <strong>{coverage.incompleteEmployers}</strong>
-            <span className="meta">employers still incomplete</span>
-          </div>
-        </div>
-        <Link href="/">New scan</Link>
+        <p className="crawl-note">
+          {pl ? "Ofert w indeksie" : "Offers in the index"}:{" "}
+          <strong>{coverage.totalJobs.toLocaleString(pl ? "pl-PL" : "en-GB")}</strong>
+          {" · "}
+          {pl ? "niekompletnych w tej tabeli" : "incomplete in this table"}:{" "}
+          <strong>{coverage.incompleteEmployers}</strong>
+        </p>
+        <Link href="/">{pl ? "Nowe wyszukiwanie" : "New search"}</Link>
       </div>
       {rows.length === 0 ? (
         <div className="empty-card">No employers are configured.</div>

@@ -1,65 +1,67 @@
 import Link from "next/link"
+import { Bookmark } from "lucide-react"
 import { invoke } from "src/app/blitz-server"
+import { ButtonLink } from "src/app/components/ds/Button"
+import { EmptyState } from "src/app/components/ds/primitives"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import listSearches from "./queries/listSearches"
 
-export const metadata = { title: "Saved searches" }
+export async function generateMetadata() {
+  const t = translator(await getLocale())
+  return { title: t("srch.title") }
+}
 
 export default async function SearchesPage() {
-  const locale = await getLocale()
-  const user = await invoke(getCurrentUser, null)
+  const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
+  const t = translator(locale)
   const searches = user ? await invoke(listSearches, null) : []
+  const date = new Intl.DateTimeFormat(locale === "pl" ? "pl-PL" : "en-GB", { day: "numeric", month: "short" })
   return (
-    <SiteFrame user={user} locale={locale}>
-      <div className="hero">
-        <p className="kicker">Library</p>
-        <h1>Saved searches</h1>
-        <p className="lede">
-          Each phrase stays on this account. Opening one shows the last results. Running it again
-          marks offers that were not there before.
-        </p>
-      </div>
-      {!user ? (
-        <div className="empty-card">
-          <p>
-            <Link href="/login">Sign in</Link> to see searches saved on an account. A search started
-            in this browser is still available from its own link.
-          </p>
-        </div>
-      ) : searches.length === 0 ? (
-        <div className="empty-card">
-          <h2>No saved searches yet</h2>
-          <p className="lede">
-            <Link href="/">Search for a role</Link> and it will be kept here.
-          </p>
-        </div>
+    <SiteFrame user={user} locale={locale} width="narrow">
+      <header className="page-head">
+        <h1 className="t-h1">{t("srch.title")}</h1>
+        <p>{t("srch.sub")}</p>
+      </header>
+      {searches.length === 0 ? (
+        <EmptyState icon={<Bookmark />} title={t("srch.empty")}>
+          <ButtonLink href="/jobs" variant="primary">
+            {t("saved.goFeed")}
+          </ButtonLink>
+        </EmptyState>
       ) : (
-        <div className="search-list">
-          {searches.map((search) => (
-            <Link key={search.id} href={`/searches/${search.id}`} className="search-link">
-              <strong>{search.phrase}</strong>
-              <span>
-                {search.latest
-                  ? `${search.latest.status.toLowerCase()} · ${search.latest.matchedJobs} offers${
-                      search.latest.newJobs ? ` · ${search.latest.newJobs} new` : ""
-                    }`
-                  : "queued"}
-              </span>
-              <span>
-                {[search.locationHint, search.workMode !== "ANY" ? search.workMode : null]
-                  .filter(Boolean)
-                  .join(" · ") || "Any location"}
-              </span>
-              <span>
-                {new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
-                  search.createdAt
-                )}
-              </span>
-            </Link>
-          ))}
-        </div>
+        <ul className="stack-sm" style={{ listStyle: "none" }}>
+          {searches.map((search) => {
+            const mode = search.workMode !== "ANY" ? search.workMode.toLowerCase() : null
+            return (
+              <li key={search.id} className="card saved-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+                <div className="saved-row__main">
+                  <Link href={`/searches/${search.id}`}>{search.phrase}</Link>
+                  <span>
+                    {[
+                      search.locationHint,
+                      mode ? t(`mode.${mode}` as "mode.remote") : null,
+                      search.latest ? t("srch.matched", { n: search.latest.matchedJobs }) : null,
+                      date.format(search.createdAt),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </div>
+                <div className="row">
+                  {search.latest?.newJobs ? (
+                    <span className="badge badge--new">{t("srch.new", { n: search.latest.newJobs })}</span>
+                  ) : null}
+                  <ButtonLink href={`/searches/${search.id}`} variant="outline" size="sm">
+                    {t("srch.open")}
+                  </ButtonLink>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </SiteFrame>
   )

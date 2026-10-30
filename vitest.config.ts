@@ -5,6 +5,11 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     environment: "node",
-    include: ["src/server/**/*.test.ts", "src/shared/**/*.test.ts", "config/**/*.test.ts"],
+    include: [
+      "src/server/**/*.test.ts",
+      "src/shared/**/*.test.ts",
+      "config/**/*.test.ts",
+      "mcp/**/*.test.ts",
+    ],
   },
 })

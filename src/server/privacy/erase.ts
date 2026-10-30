@@ -44,7 +44,13 @@ export async function eraseAccount(userId: number) {
       }
     }
 
+    await tx.backgroundTask.deleteMany({
+      where: { type: "SHEET_SYNC", payload: { path: ["userId"], equals: userId } },
+    })
+    // Applications, CVs, answers, API tokens and the sheet link cascade with the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
+    await tx.offerFeedback.deleteMany({ where: { userId } })
+    await tx.watchedCompany.deleteMany({ where: { userId } })
     await eraseProfile(userId, tx)
     await tx.llmCache.deleteMany({ where: { userId } })
     await tx.auditEvent.updateMany({

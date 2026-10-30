@@ -31,6 +31,26 @@ export async function exportAccount(userId: number) {
       },
       audits: { orderBy: { createdAt: "desc" } },
       sessions: { select: { id: true, createdAt: true, expiresAt: true } },
+      offerFeedback: {
+        orderBy: { updatedAt: "desc" },
+        include: {
+          job: {
+            select: { id: true, title: true, originalUrl: true, company: { select: { name: true } } },
+          },
+        },
+      },
+      watchedCompanies: {
+        orderBy: { createdAt: "desc" },
+        include: { company: { select: { id: true, name: true, canonicalDomain: true } } },
+      },
+      applications: {
+        orderBy: { appliedAt: "desc" },
+        include: { events: { orderBy: { at: "asc" } } },
+      },
+      cvDocuments: { orderBy: { updatedAt: "desc" } },
+      answers: { orderBy: { updatedAt: "desc" } },
+      apiTokens: { orderBy: { createdAt: "desc" } },
+      sheetLink: true,
     },
   })
   if (!user) return null
@@ -84,6 +104,57 @@ export async function exportAccount(userId: number) {
         })),
       })),
     })),
+    offerFeedback: user.offerFeedback.map((row) => ({
+      id: row.id,
+      verdict: row.verdict,
+      aspects: row.aspects,
+      tags: row.tags,
+      note: row.note,
+      channel: row.channel,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      job: {
+        id: row.job.id,
+        title: row.job.title,
+        company: row.job.company.name,
+        url: row.job.originalUrl,
+      },
+    })),
+    watchedCompanies: user.watchedCompanies.map((row) => ({
+      id: row.id,
+      source: row.source,
+      reason: row.reason,
+      createdAt: row.createdAt,
+      company: {
+        id: row.company.id,
+        name: row.company.name,
+        domain: row.company.canonicalDomain,
+      },
+    })),
+    applicant: user.applicant,
+    applications: user.applications.map(({ userId: _userId, ...row }) => row),
+    cvDocuments: user.cvDocuments.map(({ pdf, userId: _userId, ...row }) => ({
+      ...row,
+      pdfBytes: pdf ? pdf.length : 0,
+    })),
+    answers: user.answers.map(({ userId: _userId, ...row }) => row),
+    apiTokens: user.apiTokens.map((token) => ({
+      id: token.id,
+      name: token.name,
+      prefix: token.prefix,
+      createdAt: token.createdAt,
+      lastUsedAt: token.lastUsedAt,
+      revokedAt: token.revokedAt,
+    })),
+    sheetLink: user.sheetLink
+      ? {
+          webhookUrl: user.sheetLink.webhookUrl,
+          spreadsheetUrl: user.sheetLink.spreadsheetUrl,
+          autoSync: user.sheetLink.autoSync,
+          includeNotes: user.sheetLink.includeNotes,
+          lastSyncedAt: user.sheetLink.lastSyncedAt,
+        }
+      : null,
     auditEvents: user.audits.map((event) => ({
       id: event.id,
       action: event.action,

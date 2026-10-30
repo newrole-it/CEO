@@ -3,9 +3,17 @@ import { redirect } from "next/navigation"
 import db from "db"
 import { upsertLinkedInUser } from "src/server/auth/accounts"
 import { appOrigin } from "src/server/auth/email"
-import { exchangeLinkedInCode } from "src/server/auth/linkedin"
+import {
+  exchangeLinkedInCode,
+  linkedInCallbackError,
+  linkedInCredentials,
+  linkedInRedirectUri,
+} from "src/server/auth/linkedin"
 import { hashLoginToken, MAGIC_LINK_TTL_MS, newLoginToken } from "src/server/auth/magic-link"
 import { safeReturnTo } from "src/shared/return-to"
+
+/** LinkedIn gives name, email, and picture only. A new account goes on to import a CV. */
+const FIRST_RUN = "/start?step=profile&via=linkedin"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -16,20 +24,25 @@ export async function GET(request: Request) {
   const next = safeReturnTo(jar.get("linkedin_oauth_return")?.value)
   jar.delete("linkedin_oauth_state")
   jar.delete("linkedin_oauth_return")
-  if (!code || !state || !expected || state !== expected) redirect("/login?error=linkedin")
+  const declined = linkedInCallbackError(url.searchParams)
+  if (declined) redirect(`/login?error=${declined}`)
+  if (!code || !state || !expected || state !== expected) redirect("/login?error=linkedin-state")
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID?.trim()
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET?.trim()
-  if (!clientId || !clientSecret) redirect("/login?error=linkedin-config")
-  const redirectUri =
-    process.env.LINKEDIN_REDIRECT_URI?.trim() || `${appOrigin()}/api/auth/linkedin/callback`
+  const credentials = linkedInCredentials()
+  if (!credentials) redirect("/login?error=linkedin-config")
   const identity = await exchangeLinkedInCode(
-    { code, clientId, clientSecret, redirectUri },
+    {
+      code,
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
+      redirectUri: linkedInRedirectUri(appOrigin()),
+    },
     (input, init) => fetch(input, init)
   )
-  if (!identity) redirect("/login?error=linkedin")
+  if (!identity) redirect("/login?error=linkedin-exchange")
 
   const user = await upsertLinkedInUser(identity)
+  const hasProfile = await db.candidateProfile.count({ where: { userId: user.id } })
   const token = newLoginToken()
   await db.loginLink.create({
     data: {
@@ -38,6 +51,7 @@ export async function GET(request: Request) {
       expiresAt: new Date(Date.now() + MAGIC_LINK_TTL_MS),
     },
   })
-  const nextQuery = next ? `&next=${encodeURIComponent(next)}` : ""
+  const target = next ?? (hasProfile ? null : FIRST_RUN)
+  const nextQuery = target ? `&next=${encodeURIComponent(target)}` : ""
   redirect(`/login/verify?token=${encodeURIComponent(token)}${nextQuery}`)
 }

@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "go": "node scripts/go.mjs",
+    "setup": "node scripts/go.mjs --prepare",
     "dev": "blitz dev -p 43123 -H 127.0.0.1",
     "worker": "tsx src/worker.ts",
+    "mcp": "tsx mcp/server.ts",
     "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
     "build": "blitz build",
     "start": "blitz start -H 127.0.0.1 -p 43123",
@@ -16,7 +19,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",
-    "setup": "prisma migrate deploy && prisma db seed"
+    "ext:build": "npm run build --prefix extension",
+    "ext:dev": "npm run dev --prefix extension"
   },
   "prisma": {
     "schema": "db/schema.prisma",
@@ -37,6 +41,7 @@
     "@blitzjs/rpc": "3.0.2",
     "@hookform/error-message": "2.0.1",
     "@hookform/resolvers": "2.9.11",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@prisma/client": "5.4.2",
     "@radix-ui/react-slot": "1.4.0",
     "blitz": "3.0.2",
@@ -55,7 +60,7 @@
     "tsx": "4.23.15",
     "undici": "7.16.0",
     "unpdf": "1.4.0",
-    "zod": "3.23.8"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@next/env": "15.5.27",

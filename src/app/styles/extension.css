@@ -1,0 +1,74 @@
+/* Extension settings and the /connect/extension pairing page (stream D). Use tokens from app.css. */
+
+.ext-what {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+.ext-what li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  font-size: 14px;
+}
+.ext-what svg {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+  flex: none;
+  margin-top: 1px;
+}
+
+.ext-steps {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+.ext-steps .step-row__body {
+  min-width: 0;
+  font-size: 14px;
+}
+
+.ext-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ext-tokens {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+.ext-token {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.ext-token.is-revoked {
+  opacity: 0.65;
+}
+.ext-token__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+.ext-token__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ext-token__meta {
+  font-size: 13px;
+  color: var(--text-muted);
+}

@@ -34,6 +34,8 @@ describe("index schedule", () => {
     expect(nextCrawlAt(now, true, false).toISOString()).toBe("2026-10-11T18:00:00.000Z")
     expect(nextCrawlAt(now, false, false).toISOString()).toBe("1970-01-01T00:00:00.000Z")
     expect(nextCrawlAt(now, false, true).toISOString()).toBe("2026-10-11T00:15:00.000Z")
+    // An unfinished board that read nothing waits instead of holding the front of the queue.
+    expect(nextCrawlAt(now, false, false, false).getTime()).toBe(now.getTime() + 6 * 3600_000)
   })
 
   it("keeps each Sii offer when JSON-LD names the employer as the identifier", () => {

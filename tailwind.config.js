@@ -1,27 +1,31 @@
 /** @type {import('tailwindcss').Config} */
+// Components use src/app/styles/app.css; these utilities map onto the same tokens.
 module.exports = {
   content: ["./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        bg: "var(--color-bg)",
-        raised: "var(--color-bg-raised)",
-        fg: "var(--color-fg)",
-        muted: "var(--color-fg-muted)",
-        accent: {
-          DEFAULT: "var(--color-accent)",
-          hover: "var(--color-accent-hover)",
-        },
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+        "surface-2": "var(--surface-2)",
+        border: "var(--border)",
+        text: "var(--text)",
+        muted: "var(--text-muted)",
+        subtle: "var(--text-subtle)",
+        primary: { DEFAULT: "var(--primary)", hover: "var(--primary-hover)", soft: "var(--primary-soft)" },
+        accent: "var(--accent)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)",
       },
       fontFamily: {
-        display: "var(--font-display)",
-        sans: "var(--font-text)",
+        sans: "var(--font-sans)",
         mono: "var(--font-mono)",
       },
-      borderRadius: { xs: "6px", sm: "8px", md: "12px", lg: "16px", xl: "24px" },
-      screens: { nav: "900px" },
+      borderRadius: { sm: "6px", md: "10px", lg: "14px", xl: "20px" },
     },
   },
+  corePlugins: { preflight: true },
   plugins: [],
 }

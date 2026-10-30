@@ -9,13 +9,15 @@ const jobSchema = z
   .object({
     id: z.string(),
     title: z.string(),
-    location: z.string().optional(),
-    employmentType: z.string().optional(),
-    descriptionPlain: z.string().optional(),
-    descriptionHtml: z.string().optional(),
-    publishedAt: z.string().optional(),
-    isRemote: z.boolean().optional(),
-    workplaceType: z.string().optional(),
+    // Ashby sends null, not a missing key, for unset fields (isRemote and workplaceType on
+    // about a third of Docplanner's posts). optional() alone silently dropped those jobs.
+    location: z.string().nullish(),
+    employmentType: z.string().nullish(),
+    descriptionPlain: z.string().nullish(),
+    descriptionHtml: z.string().nullish(),
+    publishedAt: z.string().nullish(),
+    isRemote: z.boolean().nullish(),
+    workplaceType: z.string().nullish(),
     jobUrl: z.string(),
     compensation: z
       .object({
@@ -25,6 +27,9 @@ const jobSchema = z
       .optional(),
   })
   .passthrough()
+
+/** "Staff Engineer (100% Remote within Poland)" when both workplace fields are unset. */
+const REMOTE_TITLE = /\b(100%\s*)?remote\b|\bzdaln/i
 
 export function parseAshbyJobs(
   payload: unknown,
@@ -37,22 +42,23 @@ export function parseAshbyJobs(
     .safeParse(payload)
   const list = root.success ? root.data.jobs ?? [] : []
   return itemsFrom(list, jobSchema).flatMap((job) => {
+    const location = job.location ?? undefined
     const workplace = job.workplaceType
-      ? mapWorkplace(job.workplaceType, job.location)
-      : job.isRemote
-      ? mapWorkplace("remote", job.location)
-      : mapWorkplace(undefined, job.location)
+      ? mapWorkplace(job.workplaceType, location)
+      : job.isRemote || REMOTE_TITLE.test(job.title)
+      ? mapWorkplace("remote", location)
+      : mapWorkplace(undefined, location)
     const listed = buildListedJob({
       externalId: job.id,
       title: job.title,
       companyName,
-      locationText: job.location,
-      employmentType: job.employmentType,
+      locationText: location,
+      employmentType: job.employmentType ?? undefined,
       workplaceType: workplace,
-      descriptionText: job.descriptionPlain,
-      descriptionHtml: job.descriptionPlain ? undefined : job.descriptionHtml,
+      descriptionText: job.descriptionPlain ?? undefined,
+      descriptionHtml: job.descriptionPlain ? undefined : job.descriptionHtml ?? undefined,
       salaryText: job.compensation?.scrapeableCompensationSalarySummary ?? undefined,
-      publishedAt: asDate(job.publishedAt),
+      publishedAt: asDate(job.publishedAt ?? undefined),
       originalUrl: job.jobUrl,
       sourceType: "ASHBY",
       sourceBoardId: boardId,

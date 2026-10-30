@@ -2,6 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
+import { clearFeedback, getFeedback, recordFeedback } from "src/server/preferences/feedback"
 
 export default resolver.pipe(
   resolver.authorize(),
@@ -12,8 +13,9 @@ export default resolver.pipe(
     })
   ),
   async ({ id, action }, ctx) => {
+    const userId = ctx.session.userId!
     const match = await db.jobMatch.findFirst({
-      where: { id, savedSearch: { userId: ctx.session.userId! } },
+      where: { id, savedSearch: { userId } },
     })
     if (!match) throw new NotFoundError("Match not found")
     const now = new Date()
@@ -35,6 +37,18 @@ export default resolver.pipe(
             : match.interestedAt,
       },
     })
+    // One verdict per person and offer: keeps OfferFeedback (and the same offer in other searches) in step.
+    if (action === "interested") {
+      const existing = await getFeedback(userId, match.jobId)
+      // "Applied" already means interested; do not downgrade it to a like.
+      if (existing?.verdict !== "APPLIED") {
+        await recordFeedback({ userId, jobId: match.jobId, verdict: "LIKE", channel: "web" })
+      }
+    } else if (action === "dismiss") {
+      await recordFeedback({ userId, jobId: match.jobId, verdict: "DISLIKE", channel: "web" })
+    } else if (action === "restore" || action === "undecided") {
+      await clearFeedback(userId, match.jobId)
+    }
     return { id }
   }
 )

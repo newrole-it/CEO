@@ -5,12 +5,15 @@ import { claimGuest, sessionRole } from "src/server/auth/accounts"
 import { magicLinkUrl, sendMagicLinkEmail } from "src/server/auth/email"
 import { AuthRateLimitError, issueMagicLink } from "src/server/auth/magic-link"
 
-function clientIp(session: { _headers?: { get?: (name: string) => string | null } }): string {
-  const headers = session._headers
-  if (!headers?.get) return "local"
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || "local"
-  )
+/**
+ * The caller's IP for the per-IP limit. The session has no headers, so read the request's.
+ * Imported on call: LoginForm imports this file, and a static next/headers import fails the
+ * client-layer build.
+ */
+async function clientIp(): Promise<string> {
+  const { headers } = await import("next/headers")
+  const list = await headers()
+  return list.get("x-forwarded-for")?.split(",")[0]?.trim() || list.get("x-real-ip") || "local"
 }
 
 export default resolver.pipe(
@@ -48,7 +51,7 @@ export default resolver.pipe(
     if (sessionUserId === existing.id) return { status: "signed-in" as const }
 
     try {
-      const token = await issueMagicLink(normalized, clientIp(ctx.session))
+      const token = await issueMagicLink(normalized, await clientIp())
       await sendMagicLinkEmail(normalized, magicLinkUrl(token))
     } catch (error) {
       if (error instanceof AuthRateLimitError) return { status: "limited" as const }

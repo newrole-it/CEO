@@ -1,40 +1,37 @@
 "use client"
 
 import { AuthenticationError } from "blitz"
-import Link from "next/link"
 import { FormEvent, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import { useRouter, useSearchParams } from "next/navigation"
+import { CircleAlert, MailCheck } from "lucide-react"
 import login from "../mutations/login"
 import requestMagicLink from "../mutations/requestMagicLink"
-import { Button } from "src/app/components/ui/button"
-import { Input } from "src/app/components/ui/input"
+import { useCopy } from "src/app/i18n/Locale"
+import { Button, ButtonLink } from "src/app/components/ds/Button"
+import { Banner } from "src/app/components/ds/primitives"
+import { LinkedInMark } from "src/app/components/site/Brand"
+import { useLinkedInSignIn } from "src/app/components/site/LinkedInSignIn"
 import { safeReturnTo } from "src/shared/return-to"
 
-const ERRORS: Record<string, string> = {
-  expired: "That sign-in link is invalid or already used. Request a new one.",
-  linkedin: "LinkedIn did not complete sign-in. Try again, or use email.",
-  "linkedin-config": "LinkedIn sign-in is not configured on this server yet.",
-}
-
 export const LoginForm = () => {
+  const { t } = useCopy()
   const [loginMutation, { isPending: passwordPending }] = useMutation(login)
   const [requestLink, { isPending }] = useMutation(requestMagicLink)
+  const linkedInEnabled = useLinkedInSignIn()
   const router = useRouter()
   const params = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(ERRORS[params.get("error") || ""] ?? null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const destination = safeReturnTo(params.get("returnTo")) ?? "/"
-  const linkedInHref = safeReturnTo(params.get("returnTo"))
-    ? `/api/auth/linkedin/start?returnTo=${encodeURIComponent(destination)}`
-    : "/api/auth/linkedin/start"
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+  const destination = safeReturnTo(params.get("returnTo")) ?? "/jobs"
+  const linkedInHref = `/api/auth/linkedin/start?returnTo=${encodeURIComponent(destination)}`
 
   async function onEmail(event: FormEvent) {
     event.preventDefault()
     setError(null)
-    setNotice(null)
+    setSent(false)
     try {
       const result = await requestLink({ email })
       if (result.status === "signed-in") {
@@ -43,14 +40,12 @@ export const LoginForm = () => {
         return
       }
       if (result.status === "limited") {
-        setError("Too many sign-in links for this email or network. Wait an hour and try again.")
+        setError(t("login.limited"))
         return
       }
-      setNotice(
-        "If this email already has an account, a one-time link is on its way. It expires in 15 minutes. In local development the link is printed in the server log."
-      )
+      setSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not continue")
+      setError(err instanceof Error ? err.message : t("login.failed"))
     }
   }
 
@@ -62,26 +57,32 @@ export const LoginForm = () => {
       router.refresh()
       router.push(destination)
     } catch (err) {
-      if (err instanceof AuthenticationError) setError("Those credentials were not recognized.")
-      else setError(err instanceof Error ? err.message : "Login failed")
+      setError(err instanceof AuthenticationError ? t("login.badCreds") : t("login.failed"))
     }
   }
 
   return (
-    <div className="stack login-panel">
-      <p className="kicker">Account</p>
-      <h1>Sign in</h1>
-      <p className="lede">
-        The first time you enter an email, Nowa Rola creates the account and signs you in on this
-        device. Later visits use a magic link. LinkedIn uses official sign-in and only shares your
-        name, email, and picture.
-      </p>
-      {error ? <div className="form-error">{error}</div> : null}
-      {notice ? <p className="hint">{notice}</p> : null}
+    <div className="card auth-card">
+      <div className="stack-sm">
+        <h1 className="t-h1">{t("login.title")}</h1>
+        <p className="muted">{t("login.sub")}</p>
+      </div>
+      {error ? (
+        <Banner tone="danger" role="alert" icon={<CircleAlert aria-hidden />}>
+          <p>{error}</p>
+        </Banner>
+      ) : null}
+      {sent ? (
+        <Banner tone="success" role="status" icon={<MailCheck aria-hidden />}>
+          <p>{t("login.sent")}</p>
+          <p className="t-caption">{t("login.sent.local")}</p>
+        </Banner>
+      ) : null}
       <form className="stack" onSubmit={onEmail}>
         <label className="field">
-          Email
-          <Input
+          <span className="field__label">{t("login.email")}</span>
+          <input
+            className="input input--lg"
             type="email"
             autoComplete="email"
             value={email}
@@ -89,19 +90,32 @@ export const LoginForm = () => {
             required
           />
         </label>
-        <Button type="submit" size="lg" disabled={isPending}>
-          {isPending ? "Continuing…" : "Continue with email"}
+        <Button type="submit" variant="primary" size="lg" block loading={isPending}>
+          {isPending ? t("login.sending") : t("login.email.cta")}
         </Button>
       </form>
-      <Button variant="outline" asChild>
-        <Link href={linkedInHref}>Continue with LinkedIn</Link>
-      </Button>
-      <details>
-        <summary>Owner password</summary>
+      <p className="or">{t("common.or")}</p>
+      <ButtonLink
+        href={linkedInEnabled ? linkedInHref : "/start/linkedin"}
+        variant="outline"
+        size="lg"
+        block
+        icon={<LinkedInMark size={20} />}
+      >
+        {linkedInEnabled ? t("login.li") : t("login.li.setup")}
+      </ButtonLink>
+      <details className="disclosure">
+        <summary>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+          {t("login.owner")}
+        </summary>
         <form className="stack" onSubmit={onPassword}>
           <label className="field">
-            Password
-            <Input
+            <span className="field__label">{t("login.password")}</span>
+            <input
+              className="input"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -109,8 +123,8 @@ export const LoginForm = () => {
               required
             />
           </label>
-          <Button type="submit" variant="outline" disabled={passwordPending}>
-            {passwordPending ? "Signing in…" : "Sign in with password"}
+          <Button type="submit" variant="outline" loading={passwordPending}>
+            {t("login.password.cta")}
           </Button>
         </form>
       </details>

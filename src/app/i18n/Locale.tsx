@@ -1,7 +1,9 @@
 "use client"
 
-import { createContext, useContext } from "react"
-import { copy, type CopyKey, type Locale } from "./copy"
+import { createContext, useContext, useMemo } from "react"
+import { translator, type Locale, type T } from "./copy"
+
+export type { T }
 
 const LocaleContext = createContext<Locale>("pl")
 
@@ -19,8 +21,7 @@ export function useLocale(): Locale {
   return useContext(LocaleContext)
 }
 
-export function useCopy() {
+export function useCopy(): { locale: Locale; t: T } {
   const locale = useLocale()
-  const dict = copy(locale)
-  return { locale, t: (key: CopyKey) => dict[key] }
+  return useMemo(() => ({ locale, t: translator(locale) }), [locale])
 }

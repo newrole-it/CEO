@@ -1,7 +1,49 @@
 import { describe, expect, it } from "vitest"
-import { exchangeLinkedInCode, linkedInAuthorizeUrl, parseLinkedInUserInfo } from "./linkedin"
+import {
+  exchangeLinkedInCode,
+  linkedInAuthorizeUrl,
+  linkedInCallbackError,
+  linkedInCredentials,
+  linkedInSetup,
+  parseLinkedInUserInfo,
+} from "./linkedin"
 
 describe("LinkedIn OpenID", () => {
+  it("treats sign-in as configured only when both credentials are set", () => {
+    const previousId = process.env.LINKEDIN_CLIENT_ID
+    const previousSecret = process.env.LINKEDIN_CLIENT_SECRET
+    delete process.env.LINKEDIN_CLIENT_ID
+    delete process.env.LINKEDIN_CLIENT_SECRET
+    expect(linkedInCredentials()).toBeNull()
+    process.env.LINKEDIN_CLIENT_ID = "client"
+    expect(linkedInCredentials()).toBeNull()
+    process.env.LINKEDIN_CLIENT_SECRET = " secret "
+    expect(linkedInCredentials()).toEqual({ clientId: "client", clientSecret: "secret" })
+    if (previousId === undefined) delete process.env.LINKEDIN_CLIENT_ID
+    else process.env.LINKEDIN_CLIENT_ID = previousId
+    if (previousSecret === undefined) delete process.env.LINKEDIN_CLIENT_SECRET
+    else process.env.LINKEDIN_CLIENT_SECRET = previousSecret
+  })
+
+  it("tells a cancelled consent apart from other LinkedIn errors", () => {
+    expect(linkedInCallbackError(new URLSearchParams("code=1&state=2"))).toBeNull()
+    expect(linkedInCallbackError(new URLSearchParams("error=user_cancelled_login"))).toBe(
+      "linkedin-cancelled"
+    )
+    expect(linkedInCallbackError(new URLSearchParams("error=unauthorized_scope_error"))).toBe(
+      "linkedin-denied"
+    )
+  })
+
+  it("shows the exact local callback in the setup helper, without the secret", () => {
+    const previous = process.env.LINKEDIN_REDIRECT_URI
+    delete process.env.LINKEDIN_REDIRECT_URI
+    const setup = linkedInSetup("http://127.0.0.1:43123")
+    expect(setup.redirectUri).toBe("http://127.0.0.1:43123/api/auth/linkedin/callback")
+    expect(JSON.stringify(setup)).not.toContain(process.env.LINKEDIN_CLIENT_SECRET || "\u0000")
+    if (previous !== undefined) process.env.LINKEDIN_REDIRECT_URI = previous
+  })
+
   it("builds the authorize URL with the official scopes", () => {
     const url = new URL(
       linkedInAuthorizeUrl({

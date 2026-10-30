@@ -11,8 +11,8 @@ export default async function TermsPage() {
   const user = await invoke(getCurrentUser, null)
   const t = copy(locale)
   return (
-    <SiteFrame user={user} locale={locale}>
-      <article className="page-head">
+    <SiteFrame user={user} locale={locale} width="narrow">
+      <article className="prose">
         <p className="draft-banner">{t.draft}</p>
         <p className="eyebrow">{t.terms}</p>
         <h1>{t.terms}</h1>
