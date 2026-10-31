@@ -62,11 +62,13 @@ function textWithoutControls(node) {
 const SECRET =
   /\b(password|passwort|haslo|cvv|cvc|card number|credit card|debit card|numer karty|karta platnicza|pesel|iban|social security|ssn|national insurance|national id|passport number|numer paszportu|numer dowodu|tax id|nip|bank account|konto bankowe|routing number)\b/
 const EEO =
-  /\b(gender|sex|plec|race|racial|ethnicity|ethnic|hispanic|latino|latinx|veteran|veterans|military status|disability|disabilities|disabled|niepelnosprawn\w*|pronoun|pronouns|zaimki|age|wiek|date of birth|birth date|birthdate|birthday|data urodzenia|urodzon\w*|sexual orientation|orientacja|transgender|religion|wyznanie|marital|stan cywilny|self identify|self identification|eeo|eeoc|equal employment)\b/
+  /\b(gender|sex|plec|race(?! conditions?)|racial|ethnicity|ethnic|hispanic|latino|latinx|veteran|veterans|military status|disability|disabilities|disabled|niepelnosprawn\w*|pronoun|pronouns|zaimki|age|wiek|date of birth|birth date|birthdate|birthday|data urodzenia|urodzon\w*|sexual orientation|orientacj\w* seksualn\w*|transgender|religion|wyznanie|marital|stan cywilny|self identify|self identification|eeo|eeoc|equal employment)\b/
 const CONSENT =
   /\b(privacy (policy|notice|statement)|polityk\w* prywatnosci|rodo|gdpr|data protection|przetwarzani\w*|personal data|danych osobowych|terms (and|of)|regulamin\w*|wyrazam zgode|zgod\w*|consent|i agree|agree to|i acknowledge|i certify|i confirm|oswiadczam|akceptuje|talent (pool|community)|newsletter|marketing|klauzul\w*)\b/
 const CONTACT =
-  /\b(first name|firstname|last name|lastname|surname|family name|given name|full name|imie|nazwisko|name|e ?mail|phone|telefon\w*|mobile|komork\w*|address|adres|ulica|street|postal|zip|kod pocztowy|city|miasto|miejscowosc|location|lokalizacja|country|kraj|linkedin|linked in|github|git hub|website|portfolio|strona www|twitter|salary|wynagrodzeni\w*|oczekiwani\w* finansow\w*|notice period|okres wypowiedzenia|start date|available from|dostepnos\w*)\b/
+  /\b(first name|firstname|last name|lastname|surname|family name|given name|full name|your name|imie|nazwisko|e ?mail|phone|telefon\w*|mobile|komork\w*|address|adres|ulica|street|postal|zip|kod pocztowy|city|miasto|miejscowosc|location|lokalizacja|country|kraj|linkedin|linked in|github|git hub|website|portfolio|strona www|twitter|instagram|facebook)\b/
+const BARE_NAME = /^name$/
+const ASKS_FOR_THEIRS = /\b(your|twoj\w*|swoj\w*)\b/
 
 function descriptor(field) {
   return fold(
@@ -86,7 +88,11 @@ export function neverTouch(field) {
   const text = descriptor(field)
   if (SECRET.test(text)) return true
   const visible = fold([field.label, field.placeholder].filter(Boolean).join(" "))
-  if (EEO.test(visible || text)) return true
+  // A question to write about ("How did you build for disabled users?") is about the work.
+  const prose =
+    (type === "textarea" || type === "contenteditable") &&
+    (visible.length > 40 || /\?\s*$/.test(String(field.label || "")))
+  if (!prose && EEO.test(visible || text)) return true
   if (/\b(self identification|demographic|equal opportunit\w*)\b/.test(fold(field.section)))
     return true
   const single = type === "checkbox" && (!field.options || field.options.length < 2)
@@ -95,13 +101,21 @@ export function neverTouch(field) {
   return false
 }
 
-/** Contact details and profile facts: filled, but their values are not sent after submission. */
+/**
+ * Contact details, profile links and files: filled, but their values are not sent after
+ * submission. A question about the work can use the same words ("Have you built mobile apps?",
+ * "What is the name of the last product you built?"), so it is sent and the server reads it again.
+ */
 export function isContactField(field) {
   const type = String(field.type || "").toLowerCase()
   if (type === "email" || type === "tel" || type === "file") return true
   const visible = fold([field.label, field.placeholder].filter(Boolean).join(" "))
   if (visible.length > 60) return false
-  return CONTACT.test(visible || descriptor(field))
+  const question =
+    /\?\s*$/.test(String(field.label || "")) ||
+    ((type === "textarea" || type === "contenteditable") && visible.length > 40)
+  if (question && !ASKS_FOR_THEIRS.test(visible)) return false
+  return BARE_NAME.test(visible) || CONTACT.test(visible || descriptor(field))
 }
 
 // ------------------------------------------------------------------ labels
@@ -663,6 +677,20 @@ export function submitLikeTarget(target) {
   return button
 }
 
+const NEXT_WORDS = /\b(next|dalej|nastepn\w*|continue|kontynuuj|review|przejrzyj|sprawdz)\b/
+
+/** The control behind a click, when it moves a form in steps on to its next step. */
+export function nextStepTarget(target) {
+  if (!target || !target.closest) return null
+  const button = target.closest(
+    "button, input[type='button'], input[type='submit'], [role='button']"
+  )
+  if (!button) return null
+  const text = buttonText(button)
+  if (!text || text.length > 60 || SUBMIT_WORDS.test(text)) return null
+  return NEXT_WORDS.test(text) ? button : null
+}
+
 /** Required fields still empty: the site will refuse the submission, so nothing was sent yet. */
 export function hasEmptyRequired(collection) {
   for (const entry of collection.entries.values()) {
@@ -672,9 +700,32 @@ export function hasEmptyRequired(collection) {
   return false
 }
 
+/** An earlier step's values, then this step's. A step visited again replaces what it said. */
+export function mergeSteps(earlier, rows) {
+  const labels = new Set(rows.map((row) => row.label))
+  return [...earlier.filter((row) => !labels.has(row.label)), ...rows].slice(0, MAX_FIELDS)
+}
+
+const APPLICATION_WORDS =
+  /\b(jobs?|careers?|kariera|karier\w*|praca|oferta pracy|oferty pracy|ogloszeni\w*|apply|applying|application|aplikuj\w*|aplikacj\w*|rekrut\w*|recruit\w*|vacanc\w*|stanowisk\w*|zatrudni\w*|resume|cv)\b/
+
 /**
- * Final values of the questions for the tracker and the answer bank. Secrets, EEO, consents
- * and contact details stay in the browser: they are not in this list.
+ * Whether a form just sent is a job application, so it may be recorded without being asked. With
+ * all sites allowed the same click can send a message or a contact form, and what was typed in it
+ * would land in the tracker. A whole page on an unknown site is never a form on its own.
+ */
+export function isApplicationForm(scope, doc, href, hostname) {
+  if (knownAts(hostname)) return true
+  if (!scope || scope === doc.body) return false
+  if (scope.querySelector("input[type='file']")) return true
+  const text = fold(`${href} ${doc.title} ${String(scope.textContent).slice(0, 20000)}`)
+  return APPLICATION_WORDS.test(text)
+}
+
+/**
+ * Final values of the answers about the work, for the tracker and the answer bank, salary and
+ * notice period included. Personal data stays in the browser: secrets, EEO, consents, contact
+ * details, links and files are not in this list.
  */
 export function snapshot(collection, kinds) {
   const out = []

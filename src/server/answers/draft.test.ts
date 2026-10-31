@@ -52,6 +52,17 @@ describe("reuse rule", () => {
   const rule = { language: "en" as const }
   const scored = (row: AnswerView, score = 1) => [{ row, score }]
 
+  it("does not send an answer with personal data replaced to an employer as it is", () => {
+    for (const text of [
+      "Pozdrawiam, [imię i nazwisko].",
+      "Write to [e-mail].",
+      "Call [telefon].",
+    ]) {
+      const row = answer({ id: "a", question: "Why us?", answer: text, language: "en" })
+      expect([text, pickReuse(scored(row), rule)]).toEqual([text, null])
+    }
+  })
+
   it("reuses a close answer in the same language", () => {
     const row = answer({ id: "a", question: "Why us?", answer: "Great engineering culture." })
     expect(pickReuse(scored(row), rule)?.row.id).toBe("a")

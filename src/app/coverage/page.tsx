@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { intlLocale } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { IndexProgress } from "./IndexProgress"
@@ -49,7 +50,7 @@ export default async function CoveragePage() {
         </p>
         <p className="crawl-note">
           {pl ? "Ofert w indeksie" : "Offers in the index"}:{" "}
-          <strong>{coverage.totalJobs.toLocaleString(pl ? "pl-PL" : "en-GB")}</strong>
+          <strong>{coverage.totalJobs.toLocaleString(intlLocale(locale))}</strong>
           {" · "}
           {pl ? "niekompletnych w tej tabeli" : "incomplete in this table"}:{" "}
           <strong>{coverage.incompleteEmployers}</strong>

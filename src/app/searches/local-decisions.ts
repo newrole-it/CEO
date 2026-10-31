@@ -1,5 +1,6 @@
-import { latestDecisions, type LocalDecision } from "src/shared/triage"
+import type { LocalDecision } from "src/shared/triage"
 
+/** Decisions the pre-account triage kept in this browser; MergeDecisions moves them to the account. */
 const KEY = "jobscanner.decisions.v1"
 
 export function readDecisions(): LocalDecision[] {
@@ -20,12 +21,6 @@ export function readDecisions(): LocalDecision[] {
   } catch {
     return []
   }
-}
-
-export function rememberDecision(decision: LocalDecision) {
-  if (typeof window === "undefined") return
-  const next = latestDecisions([...readDecisions(), decision]).slice(-200)
-  window.localStorage.setItem(KEY, JSON.stringify(next))
 }
 
 export function clearDecisions() {

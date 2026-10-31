@@ -1,5 +1,6 @@
 import db, { type Answer, type Prisma } from "db"
 import { fold } from "matching/text"
+import { parseFormAnswers } from "src/server/applications/logic"
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import { parseApplicant } from "src/shared/applicant"
@@ -23,6 +24,7 @@ import {
   MAX_ANSWER_LENGTH,
   MAX_QUESTION_LENGTH,
   normalizeAnswer,
+  personalNames,
   personalValues,
   queryMatch,
   queryTerms,
@@ -208,6 +210,32 @@ export async function answersForApplication(
 }
 
 /**
+ * Every application this answer was given in, the newest first. The bank row stays linked to the
+ * first one only, so the forms kept on the applications say where else it went.
+ */
+export async function answerOffers(
+  userId: number,
+  answer: Pick<AnswerView, "question" | "answer" | "applicationId">
+): Promise<{ id: string; company: string; title: string }[]> {
+  const rows = await db.application.findMany({
+    where: { userId },
+    orderBy: { appliedAt: "desc" },
+    select: { id: true, company: true, title: true, formAnswers: true },
+  })
+  const key = questionKey(answer.question)
+  const normal = normalizeAnswer(answer.answer)
+  return rows
+    .filter(
+      (row) =>
+        row.id === answer.applicationId ||
+        parseFormAnswers(row.formAnswers).some(
+          (item) => questionKey(item.question) === key && normalizeAnswer(item.answer) === normal
+        )
+    )
+    .map(({ id, company, title }) => ({ id, company, title }))
+}
+
+/**
  * Create or update an answer. With `id` it updates that row (the origin stays what it was).
  * Without `id`, an existing row with the same questionKey and the same answer (ignoring case,
  * accents, spacing and punctuation) only gets useCount + 1 and lastUsedAt, and created is false;
@@ -292,6 +320,22 @@ export async function saveAnswer(input: {
   return { answer: toAnswerView(row), created: true }
 }
 
+/** The person's own details, to keep them out of stored answers. */
+export async function formPrivacy(
+  userId: number
+): Promise<{ personal: string[]; names: string[] }> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true, applicant: true },
+  })
+  const details = {
+    name: user?.name,
+    email: user?.email,
+    applicant: parseApplicant(user?.applicant),
+  }
+  return { personal: personalValues(details), names: personalNames(details) }
+}
+
 /**
  * Store the open answers from a submitted application form (origin "extension"), linked to the
  * application, company, job title and page URL. Skips empty and one-character answers, contact
@@ -307,16 +351,8 @@ export async function recordFormAnswers(input: {
   sourceUrl?: string | null
   pairs: { question: string; answer: string }[]
 }): Promise<{ saved: number; reused: number }> {
-  const user = await db.user.findUnique({
-    where: { id: input.userId },
-    select: { name: true, email: true, applicant: true },
-  })
-  const personal = personalValues({
-    name: user?.name,
-    email: user?.email,
-    applicant: parseApplicant(user?.applicant),
-  })
-  const { keep } = selectFormPairs(input.pairs.slice(0, MAX_FORM_PAIRS), personal)
+  const { personal, names } = await formPrivacy(input.userId)
+  const { keep } = selectFormPairs(input.pairs.slice(0, MAX_FORM_PAIRS), personal, names)
   let saved = 0
   let reused = 0
   for (const pair of keep) {
@@ -362,7 +398,7 @@ export async function draftAnswers(input: {
     url?: string | null
   }
   language?: "pl" | "en"
-}): Promise<Record<string, { text: string; basedOn: string[]; reader: "reuse" | "llm" | "none" }>> {
+}): Promise<Record<string, DraftResult>> {
   const results: Record<string, DraftResult> = {}
   const questions = input.questions
     .filter((item) => item.key && item.question?.trim())

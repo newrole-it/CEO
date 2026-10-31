@@ -115,7 +115,7 @@ runClaudePrompt(args: { prompt: string; system?: string; model?: string; allowed
   Promise<{ text: string; costUsd?: number } | null>   // also used by discovery for WebSearch
 ```
 
-`LLM_PROVIDER` = `openai` (default when `LLM_API_KEY` is set), `claude-cli` (default when there is no key and the `claude` binary is on PATH), or `none`.
+`LLM_PROVIDER` = `claude-cli` (default when the `claude` binary is on PATH), `openai` (default without the binary when `LLM_API_KEY` is set), or `none`.
 
 ## 8. Główne przepływy (szczegóły w UX spec)
 

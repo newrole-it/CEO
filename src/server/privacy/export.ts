@@ -47,10 +47,15 @@ export async function exportAccount(userId: number) {
         orderBy: { appliedAt: "desc" },
         include: { events: { orderBy: { at: "asc" } } },
       },
-      cvDocuments: { orderBy: { updatedAt: "desc" } },
+      cvDocuments: {
+        orderBy: { updatedAt: "desc" },
+        include: { versions: { orderBy: { number: "asc" } } },
+      },
       answers: { orderBy: { updatedAt: "desc" } },
       apiTokens: { orderBy: { createdAt: "desc" } },
       sheetLink: true,
+      gmailLink: true,
+      mailEvents: { orderBy: { receivedAt: "desc" } },
     },
   })
   if (!user) return null
@@ -155,6 +160,17 @@ export async function exportAccount(userId: number) {
           lastSyncedAt: user.sheetLink.lastSyncedAt,
         }
       : null,
+    // Without the token: it opens a whole mailbox, and a file gets passed around.
+    gmailLink: user.gmailLink
+      ? {
+          email: user.gmailLink.email,
+          autoApply: user.gmailLink.autoApply,
+          useModel: user.gmailLink.useModel,
+          lastSyncedAt: user.gmailLink.lastSyncedAt,
+          createdAt: user.gmailLink.createdAt,
+        }
+      : null,
+    mailEvents: user.mailEvents.map(({ userId: _userId, ...row }) => row),
     auditEvents: user.audits.map((event) => ({
       id: event.id,
       action: event.action,

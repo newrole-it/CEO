@@ -43,7 +43,6 @@ export const answersPl = {
   "ans.list": "Lista pytań",
 
   "ans.panel.title": "Edycja odpowiedzi",
-  "ans.panel.region": "Edycja wybranej odpowiedzi",
   "ans.field.question": "Pytanie",
   "ans.field.answer": "Odpowiedź",
   "ans.field.tags": "Tagi",
@@ -70,7 +69,7 @@ export const answersPl = {
   "ans.meta.uses": "Użyto {n}×",
   "ans.meta.lastUsed": "ostatnio {when}",
   "ans.meta.source": "Strona formularza",
-  "ans.meta.application": "Aplikacja w trackerze",
+  "ans.offers": "Użyta w ofertach",
   "ans.variants": "Warianty tego pytania",
   "ans.variants.current": "wybrany",
   "ans.variants.noCompany": "Bez firmy",
@@ -155,7 +154,6 @@ export const answersEn: Record<keyof typeof answersPl, string> = {
   "ans.list": "List of questions",
 
   "ans.panel.title": "Edit answer",
-  "ans.panel.region": "Edit the selected answer",
   "ans.field.question": "Question",
   "ans.field.answer": "Answer",
   "ans.field.tags": "Tags",
@@ -182,7 +180,7 @@ export const answersEn: Record<keyof typeof answersPl, string> = {
   "ans.meta.uses": "Used {n}×",
   "ans.meta.lastUsed": "last {when}",
   "ans.meta.source": "Form page",
-  "ans.meta.application": "Application in the tracker",
+  "ans.offers": "Used in these offers",
   "ans.variants": "Variants of this question",
   "ans.variants.current": "selected",
   "ans.variants.noCompany": "No company",

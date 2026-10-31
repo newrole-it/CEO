@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState, type ReactNode } from "react"
 import { invoke } from "@blitzjs/rpc"
-import { ChevronDown, CircleCheck, ExternalLink, Heart, Share2, X } from "lucide-react"
+import { ChevronDown, CircleCheck, ExternalLink, FileText, Heart, Share2, X } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
@@ -12,6 +12,7 @@ import { Badge, CompanyInitial, Skeleton } from "src/app/components/ds/primitive
 import { GITHUB_ISSUES } from "src/app/components/site/links"
 import getCompanyForJob, { type CompanyInfo } from "src/app/companies/queries/getCompanyForJob"
 import watchCompany from "src/app/companies/mutations/watchCompany"
+import getJobDocuments from "src/app/cv/queries/getJobDocuments"
 import type { OfferDetail as Detail } from "src/server/preferences/detail"
 import type { RankedOffer } from "src/server/preferences/types"
 import type { Verdict } from "../types"
@@ -65,6 +66,7 @@ export function OfferDetailView({
   const [similar, setSimilar] = useState<RankedOffer[] | null>(null)
   const [watchBusy, setWatchBusy] = useState(false)
   const [similarVerdicts, setSimilarVerdicts] = useState(new Map<string, Verdict>())
+  const [hasTailoredCv, setHasTailoredCv] = useState(false)
 
   const jobId = offer?.id
   useEffect(() => {
@@ -72,7 +74,12 @@ export function OfferDetailView({
     let live = true
     setCompany(null)
     setSimilar(null)
+    setHasTailoredCv(false)
     void invoke(getCompanyForJob, { jobId }).then((info) => live && setCompany(info), () => {})
+    void invoke(getJobDocuments, { jobId }).then(
+      (documents) => live && setHasTailoredCv(Boolean(documents.cvId)),
+      () => {}
+    )
     void feedback.similar(jobId).then((result) => live && setSimilar(result?.offers.slice(0, 4) ?? []))
     return () => {
       live = false
@@ -224,6 +231,9 @@ export function OfferDetailView({
           <span className="lbl-long">{t("act.applied")}</span>
         </Button>
         <span className="spacer" />
+        <ButtonLink href={`/jobs/${offer.id}/cv`} variant="secondary" size="sm" icon={<FileText />}>
+          {t(hasTailoredCv ? "tl.act.open" : "tl.act")}
+        </ButtonLink>
         {offer.url ? (
           <ButtonLink href={offer.url} external variant="primary" size="sm" iconRight={<ExternalLink />}>
             {t("od.openPosting").replace(" ↗", "")}

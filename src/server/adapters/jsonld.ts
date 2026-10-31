@@ -88,7 +88,7 @@ export function parseJsonLdJobs(
   html: string,
   pageUrl: string,
   companyName?: string,
-  opts?: { provider?: string; sourceType?: SourceType; boardId?: string }
+  opts?: { provider?: string; sourceType?: SourceType; boardId?: string; fullText?: boolean }
 ): ListedJob[] {
   const blocks = Array.from(
     html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
@@ -117,8 +117,8 @@ export function parseJsonLdJobs(
         host = ""
       }
       const salary = salaryFrom(job.baseSalary)
-      const description =
-        typeof job.description === "string" ? excerpt(htmlToText(job.description)) : undefined
+      const plain = typeof job.description === "string" ? htmlToText(job.description) : undefined
+      const description = plain && !opts?.fullText ? excerpt(plain) : plain
       const listed = buildListedJob({
         externalId: identifierValue(job.identifier),
         title,

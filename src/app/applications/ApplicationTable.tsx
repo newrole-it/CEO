@@ -15,7 +15,15 @@ import {
 import { dayLabel, daysLabel, daysSince, isOverdue, longDate, sourceKey, type AppRow } from "./rows"
 import { StatusSelect } from "./StatusSelect"
 
-export type SortKey = "company" | "title" | "status" | "inStage" | "applied" | "next" | "source"
+export type SortKey =
+  | "company"
+  | "title"
+  | "status"
+  | "inStage"
+  | "applied"
+  | "stated"
+  | "next"
+  | "source"
 export type Sort = { key: SortKey; dir: "asc" | "desc" }
 
 const rank = (status: string) => (APPLICATION_STATUSES as readonly string[]).indexOf(status)
@@ -38,6 +46,9 @@ export function compareBy(sort: Sort, locale: string, label: (row: AppRow) => st
         return sign * (daysSince(a.statusChangedAt) - daysSince(b.statusChangedAt))
       case "applied":
         return sign * a.appliedAt.localeCompare(b.appliedAt)
+      case "stated":
+        if (!a.statedSalary || !b.statedSalary) return a.statedSalary ? -1 : b.statedSalary ? 1 : 0
+        return sign * a.statedSalary.localeCompare(b.statedSalary, locale, { numeric: true })
       case "next":
         if (!a.nextStepAt || !b.nextStepAt) return a.nextStepAt ? -1 : b.nextStepAt ? 1 : 0
         return sign * a.nextStepAt.localeCompare(b.nextStepAt)
@@ -78,6 +89,11 @@ function NextStep({ row }: { row: AppRow }) {
       ) : null}
     </span>
   )
+}
+
+function OfferMeta({ row }: { row: AppRow }) {
+  const meta = [row.location, row.salaryText].filter(Boolean).join(" · ")
+  return meta ? <span className="apps-sub">{meta}</span> : null
 }
 
 function OfferLink({ row }: { row: AppRow }) {
@@ -149,6 +165,7 @@ export function ApplicationTable({
               {head("status", t("app.col.status"))}
               {head("inStage", t("app.col.inStage"))}
               {head("applied", t("app.col.applied"))}
+              {head("stated", t("app.col.stated"))}
               {head("next", t("app.col.next"))}
               {head("source", t("app.col.source"))}
               <th scope="col">
@@ -182,6 +199,7 @@ export function ApplicationTable({
                 <td className="apps-title">
                   {row.title}
                   {row.stageNote ? <span className="apps-sub">{row.stageNote}</span> : null}
+                  <OfferMeta row={row} />
                 </td>
                 <td>
                   <StatusSelect
@@ -196,6 +214,9 @@ export function ApplicationTable({
                 </td>
                 <td className="num" title={longDate(row.appliedAt, locale)}>
                   {dayLabel(row.appliedAt, locale)}
+                </td>
+                <td className="apps-stated">
+                  {row.statedSalary ?? <span className="subtle">—</span>}
                 </td>
                 <td>
                   <NextStep row={row} />
@@ -226,10 +247,16 @@ export function ApplicationTable({
                 {row.company}
               </button>
               <span>{row.title}</span>
+              <OfferMeta row={row} />
               <span className="apps-card__meta">
                 {t("app.col.applied")} {dayLabel(row.appliedAt, locale)} ·{" "}
                 {t(sourceKey(row.source))}
               </span>
+              {row.statedSalary ? (
+                <span className="apps-card__meta">
+                  {t("app.col.stated")}: {row.statedSalary}
+                </span>
+              ) : null}
             </div>
             <div className="apps-card__row">
               <StatusSelect

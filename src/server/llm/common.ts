@@ -20,6 +20,8 @@ export type LlmClient = {
     schema: z.ZodType<T>
     maxTokens?: number
     userId?: number
+    /** For a long reply; the default suits a short one */
+    timeoutMs?: number
   }) => Promise<LlmResult<T> | null>
   completeText: (args: {
     purpose: string
@@ -37,9 +39,13 @@ export const UNTRUSTED_RULE =
 export const PERSONAL_LLM_PURPOSES = [
   "candidate-profile",
   "profile-audit",
+  "cv-audit",
   "answer-draft",
   "form-fill",
   "cv-structure",
+  "cv-tailor",
+  "cover-letter",
+  "mail-classify",
 ] as const
 
 export function isPersonalLlmPurpose(purpose: string): boolean {
@@ -65,8 +71,13 @@ export function stripFences(text: string): string {
 }
 
 export function wrapUntrusted(label: string, value: string): string {
-  const safe = value.replace(/<\/?untrusted_[a-z0-9_]+>/gi, "").slice(0, 4000)
-  return `<untrusted_${label}>\n${safe}\n</untrusted_${label}>`
+  // In a loop: taking out one tag must not close up into another, as in </untrusted_</untrusted_a>x>.
+  let safe = value
+  for (let previous = ""; previous !== safe; ) {
+    previous = safe
+    safe = safe.replace(/<\/?untrusted_[a-z0-9_]+>/gi, "")
+  }
+  return `<untrusted_${label}>\n${safe.slice(0, 4000)}\n</untrusted_${label}>`
 }
 
 export function shouldStoreLlmCache(purpose: string, userId?: number): boolean {

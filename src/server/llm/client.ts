@@ -36,8 +36,9 @@ export function estimateCost(tokenInput: number, tokenOutput: number): number {
 }
 
 /**
- * LLM_PROVIDER wins when set. Otherwise an API key means openai, a `claude` binary
- * means claude-cli (the person's own Claude subscription), and nothing means none.
+ * LLM_PROVIDER wins when set. Otherwise a `claude` binary means claude-cli (the person's own
+ * Claude subscription), so a key left in the environment cannot send their CV to an API. An API
+ * key counts only without the binary, and nothing means none.
  */
 export function llmProvider(
   env: Env = process.env,
@@ -48,8 +49,8 @@ export function llmProvider(
   if (explicit === "none" || explicit === "off") return "none"
   if (explicit === "openai") return hasKey ? "openai" : "none"
   if (explicit === "claude-cli" || explicit === "claude") return hasClaude() ? "claude-cli" : "none"
-  if (hasKey) return "openai"
-  return hasClaude() ? "claude-cli" : "none"
+  if (hasClaude()) return "claude-cli"
+  return hasKey ? "openai" : "none"
 }
 
 export function createLlmClient(): LlmClient | null {
@@ -77,6 +78,7 @@ export function createOpenAiClient(): LlmClient | null {
       schema: z.ZodType<T>
       maxTokens?: number
       userId?: number
+      timeoutMs?: number
     }): Promise<LlmResult<T> | null> {
       const system = `${args.system}\n${UNTRUSTED_RULE}`
       const cache = cachePlan(args.purpose, model, system, args.user, args.userId)
@@ -104,7 +106,7 @@ export function createOpenAiClient(): LlmClient | null {
           body: JSON.stringify(
             withFormat ? { ...body, response_format: { type: "json_object" } } : body
           ),
-          signal: AbortSignal.timeout(30_000),
+          signal: AbortSignal.timeout(args.timeoutMs ?? 30_000),
         })
         return response
       }

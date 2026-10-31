@@ -11,6 +11,8 @@ export const TOKEN_PREFIX = "nr_"
 export const PREFIX_LENGTH = 10
 /** lastUsedAt is written at most this often */
 export const LAST_USED_EVERY_MS = 60_000
+/** nr_ + 43 base64url characters; a little slack, never anything else. */
+const TOKEN_SHAPE = new RegExp(`^${TOKEN_PREFIX}[A-Za-z0-9_-]{20,100}$`)
 
 export type ApiTokenView = {
   id: string
@@ -38,8 +40,7 @@ export function bearerToken(header: string | null | undefined): string | null {
   const match = /^\s*Bearer\s+(\S+)\s*$/i.exec(header ?? "")
   if (!match) return null
   const token = match[1]
-  // nr_ + 43 base64url characters; allow a little slack, never anything else.
-  return /^nr_[A-Za-z0-9_-]{20,100}$/.test(token) ? token : null
+  return TOKEN_SHAPE.test(token) ? token : null
 }
 
 export function shouldTouch(lastUsedAt: Date | null, now: Date): boolean {

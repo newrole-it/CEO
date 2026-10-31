@@ -1,20 +1,9 @@
 import db from "db"
+import { mapPool } from "src/server/queue/pool"
 import { classifyCompany } from "./role"
 import { classificationFields } from "./persist"
 
 const POOL = 12
-
-async function eachLimited<T>(items: T[], run: (item: T) => Promise<void>) {
-  let index = 0
-  async function worker() {
-    while (index < items.length) {
-      const current = items[index]
-      index += 1
-      await run(current)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(POOL, items.length) }, () => worker()))
-}
 
 export async function backfillClassifications(): Promise<{ jobs: number; companies: number }> {
   const companies = await db.company.findMany({
@@ -47,7 +36,7 @@ export async function backfillClassifications(): Promise<{ jobs: number; compani
   const jobs = await db.job.findMany({
     select: { id: true, title: true, descriptionText: true },
   })
-  await eachLimited(jobs, async (job) => {
+  await mapPool(jobs, POOL, async (job) => {
     const fields = await classificationFields(job.title, job.descriptionText)
     await db.job.update({ where: { id: job.id }, data: fields })
   })

@@ -4,8 +4,6 @@
  * Every key in extensionPl must exist in extensionEn (the type enforces it).
  */
 export const extensionPl = {
-  "nav.extension": "Rozszerzenie Chrome",
-
   "ext.pair.title": "Połącz rozszerzenie Chrome",
   "ext.pair.sub": "Rozszerzenie skraca wysyłanie aplikacji. Wszystko działa na Twoim komputerze.",
   "ext.pair.what1": "Wypełnia formularze z Twoich danych, CV i bazy odpowiedzi.",
@@ -50,8 +48,6 @@ export const extensionPl = {
 }
 
 export const extensionEn: Record<keyof typeof extensionPl, string> = {
-  "nav.extension": "Chrome extension",
-
   "ext.pair.title": "Connect the Chrome extension",
   "ext.pair.sub":
     "The extension makes sending applications faster. Everything runs on your computer.",

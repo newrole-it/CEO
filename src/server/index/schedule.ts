@@ -56,3 +56,8 @@ export function nextCrawlAt(
 }
 
 export const STALLED_RETRY_MS = 6 * 60 * 60 * 1000
+
+/** A career site or watched page that failed or was unproven waits this long, not one loop pass. */
+export const SOURCE_RETRY_MS = 6 * 60 * 60 * 1000
+/** An API board that answered with an error is one cheap call, so it is retried sooner. */
+export const BOARD_RETRY_MS = 15 * 60 * 1000

@@ -42,6 +42,7 @@ export async function GET(request: Request) {
   if (!identity) redirect("/login?error=linkedin-exchange")
 
   const user = await upsertLinkedInUser(identity)
+  if (!user) redirect("/login?error=linkedin-unverified")
   const hasProfile = await db.candidateProfile.count({ where: { userId: user.id } })
   const token = newLoginToken()
   await db.loginLink.create({

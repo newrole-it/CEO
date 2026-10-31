@@ -3,7 +3,9 @@ import { answersEn, answersPl } from "./copy-answers"
 import { applicationsEn, applicationsPl } from "./copy-applications"
 import { cvEn, cvPl } from "./copy-cv"
 import { extensionEn, extensionPl } from "./copy-extension"
+import { gmailEn, gmailPl } from "./copy-gmail"
 import { setupEn, setupPl } from "./copy-setup"
+import { tailorEn, tailorPl } from "./copy-tailor"
 
 export type Locale = "pl" | "en"
 
@@ -19,6 +21,7 @@ const basePl = {
   "nav.offers": "Oferty",
   "nav.saved": "Zapisane",
   "nav.companies": "Firmy",
+  "nav.sources": "Źródła",
   "nav.profile": "Profil",
   "nav.claude": "Claude Code",
   "nav.start": "Zacznij",
@@ -30,7 +33,6 @@ const basePl = {
   "nav.coverage": "Pobieranie",
   "nav.signout": "Wyloguj się",
   "nav.main": "Główna nawigacja",
-  "nav.account": "Konto",
   "nav.menu": "Menu",
   "nav.closeMenu": "Zamknij menu",
   "nav.accountMenu": "Menu konta",
@@ -53,9 +55,7 @@ const basePl = {
   "common.retry": "Spróbuj ponownie",
   "common.newTab": "(otwiera się w nowej karcie)",
   "common.more": "+{n} więcej",
-  "common.less": "Pokaż mniej",
   "common.or": "albo",
-  "common.today": "dziś",
   "common.yesterday": "wczoraj",
   "common.daysAgo": "{n} dni temu",
   "common.hoursAgo": "{n} h temu",
@@ -70,7 +70,6 @@ const basePl = {
     "Wrzuć CV albo połącz LinkedIn. W minutę pokażemy oferty, które pasują — także te, których nie ma na portalach z ogłoszeniami.",
   "hero.drop": "Upuść tutaj swoje CV (PDF)",
   "hero.upload": "Wrzuć CV (PDF)",
-  "hero.linkedin": "Połącz LinkedIn",
   "hero.paste": "Wklej tekst CV",
   "hero.browse": "Przeglądaj bez profilu →",
   "hero.privacy": "Plik czytamy i od razu usuwamy. Zapisujemy tylko podsumowanie profilu.",
@@ -104,7 +103,6 @@ const basePl = {
   "onb.tile.pdf": "Wrzuć CV lub PDF z LinkedIn",
   "onb.tile.pdf.hint": "PDF do 8 MB",
   "onb.tile.li.hint": "Przez Claude w Chrome, eksport ZIP albo PDF",
-  "onb.tile.li.setup": "Przez Claude w Chrome, eksport ZIP albo PDF",
   "onb.tile.paste": "Wklej tekst",
   "onb.tile.paste.hint": "CV albo sekcje profilu LinkedIn",
   "onb.paste.label": "Treść CV",
@@ -167,7 +165,6 @@ const basePl = {
   "f.mode.any": "Obojętnie",
   "f.cities": "Miasta",
   "f.citiesPh": "Dodaj miasto",
-  "f.homeCity": "Ustaw jako miasto domowe",
   "f.homeCityIs": "Miasto domowe",
   "f.relocate": "Rozważę przeprowadzkę",
   "f.industries": "Branże",
@@ -210,14 +207,8 @@ const basePl = {
   "li.hiAnon": "Cześć!",
   "li.honest":
     "LinkedIn przy logowaniu przekazuje nam tylko imię, e-mail i zdjęcie — bez doświadczenia i umiejętności. Żeby dopasować oferty, potrzebujemy Twojego profilu. Wybierz, jak go pobrać:",
-  "li.step1": "Otwórz swój profil na LinkedIn",
   "li.step1.btn": "Otwórz profil ↗",
-  "li.step2": "Kliknij Więcej (pod zdjęciem w tle), potem Zapisz jako PDF.",
-  "li.step3": "Wróć tutaj i upuść pobrany plik poniżej.",
-  "li.drop": "Upuść Profile.pdf tutaj albo wybierz plik",
-  "li.choose": "Wybierz plik",
   "li.paste": "Wolę wkleić tekst",
-  "li.viaClaude": "Pobierz przez Claude w Chrome →",
   "li.setup.title": "Logowanie przez LinkedIn (opcjonalne)",
   "li.setup.sub":
     "Do pobrania profilu nie jest potrzebne — użyj Claude w Chrome, eksportu ZIP albo PDF. Ta konfiguracja dodaje tylko przycisk „Zaloguj przez LinkedIn” i przydaje się głównie w wersji hostowanej.",
@@ -231,7 +222,6 @@ const basePl = {
   "li.setup.3.note": "Dokładnie ten adres — z 127.0.0.1, nie localhost.",
   "li.setup.4": "Skopiuj Client ID i Client Secret do pliku .env w katalogu projektu:",
   "li.setup.5": "Zrestartuj aplikację (npm run dev:all albo docker compose up).",
-  "li.setup.done": "Zrobione",
   "li.setup.check": "Sprawdź połączenie",
   "li.setup.ok": "LinkedIn skonfigurowany ✓",
   "li.setup.go": "Zaloguj przez LinkedIn",
@@ -246,6 +236,8 @@ const basePl = {
   "li.toast.state": "Sesja logowania wygasła. Spróbuj jeszcze raz.",
   "li.toast.exchange":
     "LinkedIn nie przyjął adresu przekierowania. Dodaj dokładnie ten adres w zakładce Auth aplikacji.",
+  "li.toast.unverified":
+    "LinkedIn nie potwierdził tego adresu e-mail, a ma on już konto. Zaloguj się linkiem z e-maila.",
   "li.toast.expired": "Ten link do logowania wygasł albo został już użyty. Poproś o nowy.",
   "lix.title": "Pobierz z LinkedIn",
   "lix.sub": "Wybierz, jak przenieść profil. Nie potrzebujesz aplikacji LinkedIn ani kluczy.",
@@ -332,7 +324,6 @@ const basePl = {
   "card.score": "Dopasowanie {n} na 100",
   "card.scoreCaption": "dopasowanie",
   "card.new": "Nowa",
-  "card.open": "Otwórz szczegóły: {title}",
   "src.company": "Strona firmy",
   "src.company.tip": "Oferta pobrana prosto ze strony kariery firmy.",
   "src.ats.tip": "Z publicznego API {ats} tej firmy — ta sama oferta co na jej stronie kariery.",
@@ -340,7 +331,6 @@ const basePl = {
   "src.link.tip": "Ta strona nie pozwala na automatyczne czytanie. Pokazujemy tytuł i link.",
   "src.claude": "Dodane przez Claude Code",
   "pay.month": "{range} tys. zł / mies.",
-  "pay.gross": "brutto",
   "pay.none": "Widełki nieujawnione",
   "pay.other": "Pensja z innego ogłoszenia tej roli",
   "pay.foreign": "Podane w {cur}, bez przeliczenia na zł",
@@ -384,7 +374,6 @@ const basePl = {
   "feed.end": "To już wszystkie oferty w tym widoku.",
   "account.banner": "Zapisz konto, żeby mieć profil i polubienia na każdym urządzeniu.",
   "account.banner.email": "Zaloguj się e-mailem",
-  "account.banner.li": "Przez LinkedIn",
   "keys.title": "Skróty klawiszowe",
   "keys.link": "Skróty",
   "keys.like": "Polub aktywną ofertę",
@@ -405,7 +394,6 @@ const basePl = {
   "rail.watch.some": "{n} nowych ofert w obserwowanych firmach",
   "rail.watch.total": "Obserwujesz {n} firm",
   "rail.watch.none": "Obserwuj firmy, żeby nie przegapić ofert spoza portali",
-  "rail.watch.title": "Obserwowane firmy",
 
   // feedback
   "like.title": "Co Ci się w niej podoba?",
@@ -421,8 +409,6 @@ const basePl = {
   "pass.title": "Odrzucono. Dlaczego?",
   "pass.thanks": "Dzięki, uwzględnimy to.",
   "pass.salary": "Za nisko ({amount})",
-  "pass.seniorityLow": "Za junior",
-  "pass.seniorityHigh": "Za senior",
   "pass.locationOnly": "Tylko {city}",
   "toast.saving": "Zapisano. Szukam podobnych…",
   "toast.found": "Znaleźliśmy {n} podobnych.",
@@ -432,7 +418,6 @@ const basePl = {
   "toast.applied": "Oznaczono jako aplikowano.",
   "toast.undone": "Cofnięto.",
   "similar.title": "Podobne do: {title} · {company}",
-  "similar.basis": "Bo: {basis}",
   "similar.all": "Wszystkie podobne →",
   "similar.none": "Na razie brak podobnych. Obserwuj {company}, żeby nie przegapić nowych ofert.",
   "taste.title": "Twój gust",
@@ -446,7 +431,6 @@ const basePl = {
   "taste.source": "Skąd to wiemy: {n} ofert z tym tagiem",
   "taste.fromProfile": "Z Twojego profilu",
   "taste.remove": "Usuń ten sygnał",
-  "taste.mute": "Nie bierz tego pod uwagę",
   "taste.edit": "Edytuj",
   "taste.clearAll": "Wyczyść całą historię gustu",
   "taste.clearConfirm": "Usunąć wszystkie polubienia i odrzucenia? Tego nie da się cofnąć.",
@@ -547,17 +531,14 @@ const basePl = {
     "Dodaj firmę, w której chcesz pracować — także taką, której nie ma na portalach z ogłoszeniami.",
   "co.sim.title": "Podobne firmy, których możesz nie znać",
   "co.sim.sub": "Na podstawie ofert, które Ci się podobały.",
-  "co.sim.reason": "Jak {company}: {aspects}",
   "co.sim.dismiss": "Nie interesuje mnie",
   "co.sim.needLikes": "Polub 3 oferty, a podpowiemy podobne firmy.",
   "co.sim.goOffers": "Przejdź do ofert",
   "co.sim.needSearch":
     "Podpowiedzi firm korzystają z wyszukiwania w sieci. Połącz Claude Code — użyje Twojej licencji Claude.",
   "co.sim.connect": "Połącz z Claude Code",
-  "co.sim.err": "Nie udało się pobrać podpowiedzi.",
   "co.sim.none": "Na razie nie mamy podpowiedzi. Polub jeszcze kilka ofert.",
   "co.indexNew": "nowa w indeksie",
-  "co.signin": "Zacznij od profilu, żeby obserwować firmy.",
 
   // connect
   "cc.title": "Nowa Rola w Twoim Claude Code",
@@ -619,7 +600,7 @@ const basePl = {
     "Profil, decyzje, aplikacje, CV, baza odpowiedzi i zapisane wyszukiwania w jednym pliku.",
   "st.delProfile": "Usuń CV i profil",
   "st.delProfileBody":
-    "Usuwa odczytany profil i audyt. Polubienia, aplikacje, dokumenty CV i konto zostają (CV usuniesz w zakładce Moje CV). Dopasowania wrócą po ponownym wgraniu CV.",
+    "Usuwa odczytany profil. Polubienia, aplikacje, dokumenty CV z ich audytami i konto zostają (CV usuniesz w zakładce Moje CV). Dopasowania wrócą po ponownym wgraniu CV.",
   "st.delProfileDone": "Profil usunięty.",
   "st.delAccount": "Usuń konto",
   "st.delAccountBody":
@@ -652,12 +633,6 @@ const basePl = {
   "srch.new": "{n} nowych",
   "srch.matched": "{n} dopasowań",
   "srch.open": "Otwórz",
-  "srch.rerun": "Sprawdź ponownie",
-  "srch.rerunning": "Sprawdzam…",
-  "srch.results": "Wyniki",
-  "srch.back": "← Zapisane wyszukiwania",
-  "srch.noResults": "Brak ofert dla tego wyszukiwania.",
-  "srch.pending": "Wyszukiwanie trwa. Odśwież za chwilę.",
   sourcesEyebrow: "Skąd bierzemy oferty",
   sourcesList: "Lista źródeł",
   "sources.body":
@@ -685,6 +660,8 @@ const pl = {
   ...answersPl,
   ...extensionPl,
   ...setupPl,
+  ...gmailPl,
+  ...tailorPl,
 }
 
 export type CopyKey = keyof typeof pl
@@ -697,12 +674,15 @@ const en: Dict = {
   ...answersEn,
   ...extensionEn,
   ...setupEn,
+  ...gmailEn,
+  ...tailorEn,
   skip: "Skip to content",
   brandHome: "Nowa Rola, home",
   "nav.forYou": "For you",
   "nav.offers": "Offers",
   "nav.saved": "Saved",
   "nav.companies": "Companies",
+  "nav.sources": "Sources",
   "nav.profile": "Profile",
   "nav.claude": "Claude Code",
   "nav.start": "Get started",
@@ -714,7 +694,6 @@ const en: Dict = {
   "nav.coverage": "Crawling",
   "nav.signout": "Sign out",
   "nav.main": "Main navigation",
-  "nav.account": "Account",
   "nav.menu": "Menu",
   "nav.closeMenu": "Close menu",
   "nav.accountMenu": "Account menu",
@@ -737,9 +716,7 @@ const en: Dict = {
   "common.retry": "Try again",
   "common.newTab": "(opens in a new tab)",
   "common.more": "+{n} more",
-  "common.less": "Show less",
   "common.or": "or",
-  "common.today": "today",
   "common.yesterday": "yesterday",
   "common.daysAgo": "{n} days ago",
   "common.hoursAgo": "{n} h ago",
@@ -753,7 +730,6 @@ const en: Dict = {
     "Upload your CV or connect LinkedIn. In a minute we'll show the roles that fit — including the ones job boards never see.",
   "hero.drop": "Drop your CV (PDF) here",
   "hero.upload": "Upload CV (PDF)",
-  "hero.linkedin": "Connect LinkedIn",
   "hero.paste": "Paste CV text",
   "hero.browse": "Browse without a profile →",
   "hero.privacy": "We read the file and delete it right away. Only the profile summary is kept.",
@@ -786,7 +762,6 @@ const en: Dict = {
   "onb.tile.pdf": "Upload a CV or LinkedIn PDF",
   "onb.tile.pdf.hint": "PDF up to 8 MB",
   "onb.tile.li.hint": "Through Claude in Chrome, the ZIP export, or a PDF",
-  "onb.tile.li.setup": "Through Claude in Chrome, the ZIP export, or a PDF",
   "onb.tile.paste": "Paste text",
   "onb.tile.paste.hint": "Your CV or LinkedIn profile sections",
   "onb.paste.label": "CV text",
@@ -849,7 +824,6 @@ const en: Dict = {
   "f.mode.any": "Any",
   "f.cities": "Cities",
   "f.citiesPh": "Add a city",
-  "f.homeCity": "Set as home city",
   "f.homeCityIs": "Home city",
   "f.relocate": "Open to relocating",
   "f.industries": "Industries",
@@ -891,14 +865,8 @@ const en: Dict = {
   "li.hiAnon": "Hi!",
   "li.honest":
     "When you sign in, LinkedIn only shares your name, email and photo — no experience or skills. To match offers we need your profile. Choose how to bring it over:",
-  "li.step1": "Open your LinkedIn profile",
   "li.step1.btn": "Open profile ↗",
-  "li.step2": "Click More (below your cover photo), then Save to PDF.",
-  "li.step3": "Come back and drop the downloaded file below.",
-  "li.drop": "Drop Profile.pdf here or choose a file",
-  "li.choose": "Choose a file",
   "li.paste": "I'd rather paste text",
-  "li.viaClaude": "Fetch it with Claude in Chrome →",
   "li.setup.title": "Sign in with LinkedIn (optional)",
   "li.setup.sub":
     "You don't need this to get your profile — use Claude in Chrome, the ZIP export, or a PDF. This setup only adds a “Sign in with LinkedIn” button and is mainly for the hosted version.",
@@ -912,7 +880,6 @@ const en: Dict = {
   "li.setup.3.note": "Exactly this URL — 127.0.0.1, not localhost.",
   "li.setup.4": "Copy the Client ID and Client Secret into the .env file in the project folder:",
   "li.setup.5": "Restart the app (npm run dev:all or docker compose up).",
-  "li.setup.done": "Done",
   "li.setup.check": "Check connection",
   "li.setup.ok": "LinkedIn is set up ✓",
   "li.setup.go": "Sign in with LinkedIn",
@@ -926,6 +893,8 @@ const en: Dict = {
   "li.toast.state": "The sign-in session expired. Try once more.",
   "li.toast.exchange":
     "LinkedIn didn't accept the redirect URL. Add exactly this URL under the app's Auth tab.",
+  "li.toast.unverified":
+    "LinkedIn hasn't verified this email, and it already has an account. Sign in with the email link.",
   "li.toast.expired": "That sign-in link is invalid or already used. Request a new one.",
   "lix.title": "Get it from LinkedIn",
   "lix.sub": "Choose how to bring your profile over. No LinkedIn app or keys needed.",
@@ -1009,7 +978,6 @@ const en: Dict = {
   "card.score": "Match {n} out of 100",
   "card.scoreCaption": "match",
   "card.new": "New",
-  "card.open": "Open details: {title}",
   "src.company": "Company site",
   "src.company.tip": "Taken straight from the company's career page.",
   "src.ats.tip": "From this company's public {ats} API — the same offer as on its career page.",
@@ -1017,7 +985,6 @@ const en: Dict = {
   "src.link.tip": "This site doesn't allow automated reading. We show the title and link.",
   "src.claude": "Added by Claude Code",
   "pay.month": "PLN {range}k / month",
-  "pay.gross": "gross",
   "pay.none": "Salary not disclosed",
   "pay.other": "Salary from another listing of this role",
   "pay.foreign": "Listed in {cur}, not converted to PLN",
@@ -1061,7 +1028,6 @@ const en: Dict = {
   "feed.end": "That's every offer in this view.",
   "account.banner": "Save your account to keep your profile and likes on every device.",
   "account.banner.email": "Sign in with email",
-  "account.banner.li": "With LinkedIn",
   "keys.title": "Keyboard shortcuts",
   "keys.link": "Shortcuts",
   "keys.like": "Like the active offer",
@@ -1082,7 +1048,6 @@ const en: Dict = {
   "rail.watch.some": "{n} new offers at companies you watch",
   "rail.watch.total": "You watch {n} companies",
   "rail.watch.none": "Watch companies so you don't miss offers outside job boards",
-  "rail.watch.title": "Watched companies",
 
   "like.title": "What do you like about it?",
   "like.sub": "Pick what you like and we'll find similar offers. One click is enough.",
@@ -1097,8 +1062,6 @@ const en: Dict = {
   "pass.title": "Passed. Why?",
   "pass.thanks": "Thanks, we'll take that into account.",
   "pass.salary": "Too low ({amount})",
-  "pass.seniorityLow": "Too junior",
-  "pass.seniorityHigh": "Too senior",
   "pass.locationOnly": "{city} only",
   "toast.saving": "Saved. Looking for similar…",
   "toast.found": "Found {n} similar.",
@@ -1108,7 +1071,6 @@ const en: Dict = {
   "toast.applied": "Marked as applied.",
   "toast.undone": "Undone.",
   "similar.title": "Similar to: {title} · {company}",
-  "similar.basis": "Because: {basis}",
   "similar.all": "All similar →",
   "similar.none": "No similar offers yet. Watch {company} so you don't miss new ones.",
   "taste.title": "Your taste",
@@ -1122,7 +1084,6 @@ const en: Dict = {
   "taste.source": "Where this comes from: {n} offers with this tag",
   "taste.fromProfile": "From your profile",
   "taste.remove": "Remove this signal",
-  "taste.mute": "Ignore this",
   "taste.edit": "Edit",
   "taste.clearAll": "Clear all taste history",
   "taste.clearConfirm": "Delete all likes and passes? This can't be undone.",
@@ -1219,17 +1180,14 @@ const en: Dict = {
   "co.empty.b": "Add a company you'd like to work for — even one that's not on job boards.",
   "co.sim.title": "Similar companies you may not know",
   "co.sim.sub": "Based on offers you liked.",
-  "co.sim.reason": "Like {company}: {aspects}",
   "co.sim.dismiss": "Not interested",
   "co.sim.needLikes": "Like 3 offers and we'll suggest similar companies.",
   "co.sim.goOffers": "Go to offers",
   "co.sim.needSearch":
     "Company suggestions use web search. Connect Claude Code — it uses your Claude licence.",
   "co.sim.connect": "Connect Claude Code",
-  "co.sim.err": "Couldn't load suggestions.",
   "co.sim.none": "No suggestions yet. Like a few more offers.",
   "co.indexNew": "new to the index",
-  "co.signin": "Start with your profile to watch companies.",
 
   "cc.title": "Nowa Rola in your Claude Code",
   "cc.sub":
@@ -1289,7 +1247,7 @@ const en: Dict = {
     "Your profile, decisions, applications, CVs, answer bank and saved searches in one file.",
   "st.delProfile": "Delete CV and profile",
   "st.delProfileBody":
-    "Deletes the profile we read and the audit. Your likes, applications, CV documents and account stay (delete CVs under My CV). Matching returns when you upload a CV again.",
+    "Deletes the profile we read. Your likes, applications, CV documents with their audits and account stay (delete CVs under My CV). Matching returns when you upload a CV again.",
   "st.delProfileDone": "Profile deleted.",
   "st.delAccount": "Delete account",
   "st.delAccountBody":
@@ -1321,12 +1279,6 @@ const en: Dict = {
   "srch.new": "{n} new",
   "srch.matched": "{n} matches",
   "srch.open": "Open",
-  "srch.rerun": "Check again",
-  "srch.rerunning": "Checking…",
-  "srch.results": "Results",
-  "srch.back": "← Saved searches",
-  "srch.noResults": "No offers for this search.",
-  "srch.pending": "The search is running. Refresh in a moment.",
   sourcesEyebrow: "Where offers come from",
   sourcesList: "List of sources",
   "sources.body":
@@ -1374,6 +1326,11 @@ export function translator(locale: Locale): T {
   return (key, vars) => (vars ? fmt(dict[key], vars) : dict[key])
 }
 
+/** The BCP 47 tag the Intl formatters get for a UI locale. */
+export function intlLocale(locale: Locale): "pl-PL" | "en-GB" {
+  return locale === "pl" ? "pl-PL" : "en-GB"
+}
+
 export function numberFormat(locale: Locale): Intl.NumberFormat {
-  return new Intl.NumberFormat(locale === "pl" ? "pl-PL" : "en-GB")
+  return new Intl.NumberFormat(intlLocale(locale))
 }

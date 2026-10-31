@@ -162,7 +162,7 @@ export function parseSalary(text: string | undefined): {
   )
   if (!range) {
     const single = compact.match(
-      /(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7})(\s*[kK])?/i
+      /(?:(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)|([$€£]|zł|zl))\s*(\d{2,3}(?:[.,\s]\d{3})+|\d{2,7}(?:\.\d+)?)(\s*[kK])?/i
     )
     if (!single) return {}
     const amount = amountValue(single[3], single[4])
@@ -179,7 +179,9 @@ export function parseSalary(text: string | undefined): {
 
 function trailingCurrency(text: string): string | undefined {
   const code = text.match(/\b(USD|EUR|GBP|PLN|CHF|SEK|CAD|AUD)\b/i)?.[1]
-  return code?.toUpperCase()
+  if (code) return code.toUpperCase()
+  // "20 000 - 27 000 zł": Polish postings put the symbol after the amount.
+  return currencyOf(undefined, text.match(/zł|\bzl\b/i)?.[0])
 }
 
 function currencyOf(code: string | undefined, symbol: string | undefined): string | undefined {
@@ -189,10 +191,12 @@ function currencyOf(code: string | undefined, symbol: string | undefined): strin
 }
 
 function amountValue(raw: string, kilo: string | undefined): number {
-  const digits = raw.replace(/[^\d]/g, "")
-  const value = Number(digits)
+  // A dot with one or two digits after it is a decimal ("$140.8K", "120000.50"). Dropping it read
+  // Ashby's "$140.8K – $231K" as 1 408 000–231 000. Three digits ("140.800") are thousands.
+  const decimal = /^\d+\.\d{1,2}$/.test(raw)
+  const value = Number(decimal ? raw : raw.replace(/[^\d]/g, ""))
   if (!Number.isFinite(value)) return 0
-  return /k/i.test(kilo ?? "") ? value * 1000 : value
+  return Math.round(/k/i.test(kilo ?? "") ? value * 1000 : value)
 }
 
 export function cleanDescription(input: string | undefined): string {

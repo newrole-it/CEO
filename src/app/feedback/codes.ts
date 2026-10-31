@@ -4,7 +4,3 @@
  * SIGN_IN_REQUIRED: show the sign-in prompt instead of an error.
  */
 export const SIGN_IN_REQUIRED = "sign-in-required"
-
-export function isSignInRequired(error: unknown): boolean {
-  return error instanceof Error && error.name === "AuthenticationError"
-}

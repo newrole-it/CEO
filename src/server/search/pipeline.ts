@@ -14,11 +14,13 @@ import {
   normalizeCompanyName,
   normalizeWhitespace,
 } from "src/server/jobs/normalize"
+import { isUniqueViolation } from "src/server/jobs/prisma-errors"
 import { summarize } from "src/server/jobs/text"
 import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
 import { keepExternalPay } from "src/server/discovery/offer-search"
 import { excerpt } from "src/server/crawler/hygiene"
 import { createLlmClient, estimateCost, type LlmClient } from "src/server/llm/client"
+import { explainMatch } from "src/server/matching/explain"
 import {
   expansionView,
   liveMatchingConfig,
@@ -26,20 +28,17 @@ import {
   resolveExpansion,
   titleIsRelevant,
 } from "src/server/matching/live"
-import { publishIndexedMatches } from "src/server/index/query"
+import { APP_TO_SOURCE, SOURCE_TO_APP } from "src/server/matching/sources"
+import { publishIndexedMatches, RELEVANCE_FLOOR } from "src/server/index/query"
 import { boardsAwaitingIndex } from "src/server/index/run"
 import { nextCrawlAt } from "src/server/index/schedule"
 import { noteIndexStart, storeBoardInventory } from "src/server/index/store"
+import { mapPool } from "src/server/queue/pool"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob, SourceType, WorkplaceType } from "src/shared/schemas"
 import { runMatching } from "../../../matching/pipeline"
-import {
-  buildMatchExplanationMessages,
-  fallbackExplanation,
-  finalizeExplanation,
-} from "../../../matching/match-explanation.schema"
 import type { QueryExpansion } from "../../../matching/query-expansion.schema"
-import type { NormalizedPosting, RawPosting, Source } from "../../../matching/types"
+import type { NormalizedPosting, RawPosting } from "../../../matching/types"
 import type { ScoreResult } from "../../../matching/scoring"
 
 type BoardTarget = SeedBoard & { origin: "seed" | "search" }
@@ -57,46 +56,6 @@ export type SearchDeps = {
 
 const MAX_HYDRATIONS = 18
 const MAX_DISCOVERED = 12
-const SCORE_FLOOR = 40
-
-const SOURCE_TO_APP: Record<Source, SourceType> = {
-  greenhouse: "GREENHOUSE",
-  lever: "LEVER",
-  ashby: "ASHBY",
-  workable: "WORKABLE",
-  smartrecruiters: "SMARTRECRUITERS",
-  teamtailor: "TEAMTAILOR",
-  company_site: "GENERIC_HTML",
-  justjoin: "WEB_SEARCH",
-  nofluffjobs: "WEB_SEARCH",
-  pracuj: "WEB_SEARCH",
-  linkedin: "WEB_SEARCH",
-  web: "WEB_SEARCH",
-}
-
-const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
-  GREENHOUSE: "greenhouse",
-  LEVER: "lever",
-  ASHBY: "ashby",
-  WORKABLE: "workable",
-  SMARTRECRUITERS: "smartrecruiters",
-  TEAMTAILOR: "teamtailor",
-  TRAFFIT: "company_site",
-  RECRUITEE: "company_site",
-  PERSONIO: "company_site",
-  PINPOINT: "company_site",
-  BREEZY: "company_site",
-  BAMBOOHR: "company_site",
-  GENERIC_HTML: "company_site",
-  CAREER_SITE: "company_site",
-  SUCCESSFACTORS: "company_site",
-  WORKDAY: "company_site",
-  ICIMS: "company_site",
-  PHENOM: "company_site",
-  AVATURE: "company_site",
-  ERECRUITER: "company_site",
-  JOBVITE: "company_site",
-}
 
 const SCOPED_ATS = new Set<SourceType>([
   "TRAFFIT",
@@ -108,23 +67,21 @@ const SCOPED_ATS = new Set<SourceType>([
   "SUCCESSFACTORS",
   "WORKDAY",
   "CAREER_SITE",
+  "AVATURE",
+  // Ids in these vendors are per tenant, or come from a link pattern.
+  "EIGHTFOLD",
+  "SOFTGARDEN",
+  "BULLHORN",
+  "DVINCI",
+  "HOMERUN",
+  "ONLYFY",
+  "REXX",
+  "JAZZHR",
+  "CATSONE",
+  "LOXO",
+  "TALENTLYFT",
+  "FACTORIAL",
 ])
-
-async function mapPool<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<void>
-): Promise<void> {
-  let cursor = 0
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor
-      cursor += 1
-      await fn(items[index])
-    }
-  })
-  await Promise.all(workers)
-}
 
 async function log(searchRunId: string, message: string, level = "info") {
   await db.searchLog.create({ data: { searchRunId, message: message.slice(0, 400), level } })
@@ -220,7 +177,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       await log(
         searchRunId,
         indexed
-          ? `Index has ${indexed} offers at ${SCORE_FLOOR} or above.`
+          ? `Index has ${indexed} offers at ${RELEVANCE_FLOOR} or above.`
           : "Index has no offers at the relevance floor yet."
       )
     }
@@ -375,7 +332,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
     const profile = liveProfile(expansion)
     const matched = runMatching(raws, profile, now, liveMatchingConfig())
     const byId = new Map(matched.postings.map((posting) => [posting.id, posting]))
-    const ranked = matched.ranked.filter((score) => score.score >= SCORE_FLOOR)
+    const ranked = matched.ranked.filter((score) => score.score >= RELEVANCE_FLOOR)
 
     const prior = await db.jobMatch.findMany({
       where: {
@@ -397,15 +354,15 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       const posting = byId.get(score.postingId)
       if (!posting) continue
       const listed = listedByKey.get(posting.id)
-      const explained = await explain(
+      const explained = await explainMatch({
         llm,
         posting,
         score,
         profile,
         index,
-        listed?.llmOptOut,
-        run.savedSearch.userId
-      )
+        llmOptOut: listed?.llmOptOut,
+        userId: run.savedSearch.userId,
+      })
       tokenInput += explained.tokenInput
       tokenOutput += explained.tokenOutput
       const reason = explained.reason
@@ -463,7 +420,7 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
         ? `${matchedJobs} matching offers. This pass read ${scanned} listings.${
             hadPrior ? ` ${newJobs} are new since the last run.` : ""
           }`
-        : `Finished with no offers at ${SCORE_FLOOR} or above.`
+        : `Finished with no offers at ${RELEVANCE_FLOOR} or above.`
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : "Search failed"
@@ -735,49 +692,6 @@ function toRaw(job: ListedJob, now: Date): RawPosting | null {
   }
 }
 
-async function explain(
-  llm: LlmClient | null,
-  posting: NormalizedPosting,
-  score: ScoreResult,
-  profile: ReturnType<typeof liveProfile>,
-  index: number,
-  llmOptOut?: boolean,
-  userId?: number
-): Promise<{ reason: string; tokenInput: number; tokenOutput: number }> {
-  if (!llm || index >= 6 || llmOptOut)
-    return {
-      reason: fallbackExplanation(score).summary.slice(0, 500),
-      tokenInput: 0,
-      tokenOutput: 0,
-    }
-  const messages = buildMatchExplanationMessages({ posting, score, profile, language: "en" })
-  const system = messages.find((message) => message.role === "system")?.content ?? ""
-  const user = messages.find((message) => message.role === "user")?.content ?? ""
-  let result: Awaited<ReturnType<LlmClient["completeText"]>> = null
-  try {
-    result = await llm.completeText({
-      purpose: "match-explanation",
-      system,
-      user,
-      maxTokens: 900,
-      userId,
-    })
-  } catch {
-    result = null
-  }
-  if (!result?.data)
-    return {
-      reason: fallbackExplanation(score).summary.slice(0, 500),
-      tokenInput: 0,
-      tokenOutput: 0,
-    }
-  return {
-    reason: finalizeExplanation(result.data, score).explanation.summary.slice(0, 500),
-    tokenInput: result.tokenInput,
-    tokenOutput: result.tokenOutput,
-  }
-}
-
 function breakdown(score: ScoreResult, posting: NormalizedPosting) {
   const salary = posting.salary
   return {
@@ -812,7 +726,7 @@ async function upsertJob(args: {
     try {
       company = await db.company.create({ data: { name: companyName, normalizedName } })
     } catch (error) {
-      if (!isUnique(error)) throw error
+      if (!isUniqueViolation(error)) throw error
       company = await db.company.findUnique({ where: { normalizedName } })
       if (!company) throw error
     }
@@ -923,7 +837,7 @@ async function upsertJob(args: {
         data: { ...written, companyId: company.id, identityKey, firstSeenAt: now },
       })
     } catch (error) {
-      if (!isUnique(error)) throw error
+      if (!isUniqueViolation(error)) throw error
       const again = await db.job.findUnique({ where: { identityKey } })
       record = await db.job.update({ where: { identityKey }, data: keepExternalPay(again, data) })
     }
@@ -971,8 +885,4 @@ function careerUrl(provider: SourceType, boardId: string): string {
     if (match) return `https://${match[1]}.wd${match[2]}.myworkdayjobs.com/${match[3]}`
   }
   return `https://example.com/${boardId}`
-}
-
-function isUnique(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }

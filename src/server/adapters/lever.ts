@@ -101,13 +101,9 @@ export async function listLever(
   if (isBlockedSlug("LEVER", slug)) {
     return { jobs: [], proven: false, note: `Lever slug ${slug} is a known wrong-company board` }
   }
-  let sawMissing = false
   for (const url of leverPostingUrls(boardId)) {
     const response = await http.get(url, { maxBytes: 8_000_000, accept: "application/json" })
-    if (response.status === 404) {
-      sawMissing = true
-      continue
-    }
+    if (response.status === 404) continue
     if (response.status >= 400) throw new Error(`Lever ${slug} returned ${response.status}`)
     const jobs = parseLeverPostings(readJson(response.body), boardId, companyName)
     if (jobs.length === 0)
@@ -119,9 +115,5 @@ export async function listLever(
       note: companyName ? undefined : "Lever payload has no company name; identity is the slug",
     }
   }
-  return {
-    jobs: [],
-    proven: false,
-    note: sawMissing ? `Lever ${slug} was not found` : `Lever ${slug} was not found`,
-  }
+  return { jobs: [], proven: false, note: `Lever ${slug} was not found` }
 }

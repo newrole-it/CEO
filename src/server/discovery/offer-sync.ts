@@ -9,6 +9,7 @@ import { parseJsonLdJobs } from "src/server/adapters/jsonld"
 import { saveDiscoveredJob } from "src/server/index/store"
 import { canonicalUrl } from "src/server/jobs/dedupe"
 import { normalizeCompanyName } from "src/server/jobs/normalize"
+import { isUniqueViolation } from "src/server/jobs/prisma-errors"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import {
@@ -380,7 +381,7 @@ async function ensureSource() {
       },
     })
   } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error
+    if (!isUniqueViolation(error)) throw error
     const again = await db.discoverySource.findUnique({ where: { sourceName: OFFER_SEARCH_SOURCE } })
     if (!again) throw error
     return again

@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 import { pathToFileURL } from "url"
-import { contactLines, cvFlow, footerText, type CvAtom } from "src/shared/cv/flow"
+import { contactLines, cvFlow, documentLabel, footerText, type CvAtom } from "src/shared/cv/flow"
 import { assignPages, computePageBreaks } from "src/shared/cv/paginate"
 import { escapeAttr, escapeHtml, sanitizeInline } from "src/shared/cv/sanitize"
 import { CV_ACCENT, type CvContent, type CvSection } from "src/shared/cv/schema"
@@ -81,6 +81,27 @@ function atomInner(content: CvContent, atom: CvAtom): string {
   if (!section) return ""
   if (atom.kind === "title") return `<h2 class="cv-h2">${text(section.title)}</h2>`
   if (atom.kind === "empty") return ""
+  if (section.type === "letter") {
+    if (atom.kind === "letter-head") {
+      return [
+        section.date.trim() ? `<p class="cv-letter-date">${text(section.date)}</p>` : "",
+        section.recipient.trim() ? `<p class="cv-letter-to">${text(section.recipient)}</p>` : "",
+      ].join("")
+    }
+    if (atom.kind === "letter-subject")
+      return `<p class="cv-letter-subject">${text(section.subject)}</p>`
+    if (atom.kind === "letter-greeting")
+      return `<p class="cv-letter-text">${text(section.greeting)}</p>`
+    if (atom.kind === "letter-para")
+      return `<p class="cv-letter-text">${rich(section.paragraphs[atom.index ?? 0] ?? "")}</p>`
+    if (atom.kind === "letter-closing") {
+      return [
+        section.closing.trim() ? `<p class="cv-letter-text">${text(section.closing)}</p>` : "",
+        section.signature.trim() ? `<p class="cv-letter-sign">${text(section.signature)}</p>` : "",
+      ].join("")
+    }
+    return ""
+  }
   if (atom.kind === "text" && section.type === "text")
     return `<p class="cv-text">${rich(section.body)}</p>`
   if (atom.kind === "skills" && section.type === "skills") {
@@ -151,7 +172,8 @@ export function renderCvAtoms(content: CvContent): string {
 
 function pageScript(content: CvContent, autoPrint: boolean): string {
   const prefix = footerText(content, 0, 0).replace(/0\/0$/, "")
-  const title = content.header.name.trim() ? `${content.header.name.trim()} · CV` : "CV"
+  const label = documentLabel(content)
+  const title = content.header.name.trim() ? `${content.header.name.trim()} · ${label}` : label
   // JSON.stringify output can contain "</script>"; escape "<" so it cannot close the tag
   const json = (value: unknown) => JSON.stringify(value).replace(/</g, "\\u003c")
   return `(function () {
@@ -233,7 +255,8 @@ export function renderCvHtml(content: CvContent, opts: RenderOptions = {}): stri
   const accent = /^#[0-9a-fA-F]{6}$/.test(content.theme?.accent ?? "")
     ? content.theme.accent
     : CV_ACCENT
-  const title = content.header.name.trim() ? `${content.header.name.trim()} · CV` : "CV"
+  const label = documentLabel(content)
+  const title = content.header.name.trim() ? `${content.header.name.trim()} · ${label}` : label
   return `<!DOCTYPE html>
 <html lang="${opts.lang === "en" ? "en" : "pl"}">
 <head>

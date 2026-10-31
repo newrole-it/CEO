@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client"
 import db from "db"
 import { fold } from "matching/text"
 import {
+  ensureApplicationForJob,
+  removeUntouchedApplicationForJob,
+} from "src/server/applications/service"
+import {
   FEEDBACK_VERDICTS,
   parseAspects,
   type FeedbackAspect,
@@ -46,7 +50,7 @@ export function splitStoredTags(value: unknown): { tags: string[]; muted: string
         .map((item) => item.slice(1).trim().slice(0, 120))
         .filter(Boolean)
     ),
-  ].slice(0, MAX_MUTED)
+  ].slice(-MAX_MUTED) // dropSignal appends, so the newest mutes are the ones at the end
   return { tags: cleanTags(strings.filter((item) => !item.startsWith(MUTE_PREFIX))), muted }
 }
 
@@ -233,9 +237,8 @@ async function syncApplication(
 ) {
   if (next !== "APPLIED" && previous !== "APPLIED") return
   try {
-    const tracker = await import("src/server/applications/service")
-    if (next === "APPLIED") await tracker.ensureApplicationForJob(userId, jobId, channel)
-    else await tracker.removeUntouchedApplicationForJob(userId, jobId)
+    if (next === "APPLIED") await ensureApplicationForJob(userId, jobId, channel)
+    else await removeUntouchedApplicationForJob(userId, jobId)
   } catch (error) {
     console.error("Application tracker sync failed", error)
   }

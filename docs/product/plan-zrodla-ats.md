@@ -1,0 +1,117 @@
+# Plan: więcej źródeł ofert (ATS z publicznym API)
+
+Stan na 31.10.2026. Cel: żadna pasująca oferta ze strony firmy nie umyka. Dokument łączy trzy rzeczy: porównanie z katalogiem źródeł projektu [freehire](https://github.com/strelov1/freehire) (168 ATS), własną weryfikację endpointów i research trzech agentów (enterprise, europejskie SMB, Polska/CEE).
+
+## 1. Co zostało zrobione (31.10.2026)
+
+Pięć nowych adapterów w `src/server/adapters/`, podpiętych w rejestrze, detekcji stron kariery (`careers-detect.ts`, `boards.ts`), hydratacji na żądanie (`offer-text.ts`) i etykietach UI. Wszystkie pięć miało już wartości w enumie `SourceType` (Prisma i zod), więc nie było zmiany schematu.
+
+| Adapter | Board id | Lista | Opis | Weryfikacja |
+| --- | --- | --- | --- | --- |
+| `erecruiter.ts` | slug `{slug}.pracujunas.pl` **albo** 32-hex `cfg` widgetu | `offers.erecruiter.pl/skk/company/{id}/offers.json?hash=` (link z `__NEXT_DATA__`) albo `skk.erecruiter.pl/GetHtml.ashx?cfg=&grid=rows&pn=N` (15/stronę, znacznik `tr=` z sumą) | offers.json ma pełne opisy; widget wymaga `Offer.aspx` per oferta | Żabka (38 ofert), Echo Investment (34) |
+| `icims.ts` | slug `careers-{slug}.icims.com` albo host vanity | `/jobs/search?ss=1&in_iframe=1&pr=N` (karty z tytułem, lokalizacją, datą; "Page X of Y"), fallback `sitemap.xml` | JSON-LD w fragmencie `?in_iframe=1` | Teleperformance |
+| `phenom.ts` | host strony kariery | `POST /widgets` `ddoKey=refineSearch`, `selected_fields.country=["Poland"]`, 100/stronę | `POST /widgets` `ddoKey=jobDetail` | DHL (126 ofert PL z 9 201) |
+| `avature.ts` | host, opcjonalnie `/portal` (domyślnie `careers`) | `/{portal}/sitemap_index.xml` → sitemap pl_PL/en_US → `/JobDetail/{slug}/{id}`; polskie slugi pierwsze, limit 300 | og:title + pola `article__content__view__field` (najbogatsze z prozą), JSON-LD gdy ma opis | Qatar Airways (Wrocław) |
+| `jobvite.ts` | slug `jobs.jobvite.com/{slug}` | linki `/job/{code}` na `/jobs` | JSON-LD strony oferty | **Nie zweryfikowane na żywo**: wszystkie znane slugi przekierowują na `search.jobvite.com/?invalid=1`, a tablica Jobvite jest renderowana w JS. Parser za freehire; brak linków = `proven: false`. |
+
+Filtr Polska/zdalnie: iCIMS odrzuca karty z lokalizacją spoza Polski (globalne tablice mają tysiące ofert), Phenom pyta tylko o Polskę, Avature czyta najpierw slugi z polskimi miastami. Oferty bez lokalizacji zostają.
+
+Polityka źródeł (`config/source-policies.ts`): skk.erecruiter.pl (`/GetHtml.ashx`, `/Offer.aspx`) i offers.erecruiter.pl (`/skk/company/`) są czytane, bo żaden z tych hostów nie ma `robots.txt` z zakazem (sprawdzone 31.10); `system.erecruiter.pl` i `form.erecruiter.pl` zostają link-only. Jobvite dostał `/jobs` (lista), Phenom `/widgets`.
+
+Test na żywo przez `createHttpClient()` (31.10, 16:52): Żabka 38 ofert z opisami, Echo Investment 34 (hydratacja 1 766 znaków), DHL 126 ofert PL (hydratacja 7 594 znaki), Teleperformance 56 na 2 stronach (1 zdalna zachowana), Qatar Airways 177 (hydratacja 1 820 znaków), Jobvite `proven: false` zgodnie z założeniem.
+
+Poprawka: notatka o `boards-api.eu.greenhouse.io` w `types.ts`. Host nie istnieje w DNS (NXDOMAIN także przez 1.1.1.1), dokumentacja Greenhouse nie zna regionu EU. Tablice EU są pod `job-boards.eu.greenhouse.io/{token}`; API dla nich pozostaje nieznane.
+
+## 1b. Faza 2 wdrożona (31.10.2026)
+
+Migracja `20261031180000_more_ats_sources` dodaje 23 wartości `SourceType`. Adaptery: `json-boards.ts` i `html-boards.ts`.
+
+- **Działają, sprawdzone na żywo:** Eightfold, Softgarden, Bullhorn, Zoho Recruit, Rippling, Gem, Dover, d.vinci, Manatal, onlyfy, rexx, JazzHR, CATS, Factorial, Comeet.
+- **Kod bez testu na żywo (brak znanego tenanta):** Homerun, Polymer, TalentLyft.
+- **Usunięte (decyzja właściciela: zakaz w regulaminie = nie dodajemy):** Oracle, JOIN, HiBob, PeopleForce, adapter iCIMS. Lista i stan wszystkich źródeł są na stronie `/sources`.
+- **Loxo:** strona oferty renderowana w JS, więc są tylko tytuły, bez opisu.
+- **Nie dodane:** Vincere (sesja CSRF), JobAdder, Recruiterflow, Elevato (paginacja ViewState, robots blokuje boty AI), Radancy (robots), Taleo (polityka), oraz wszystko z listy "do pominięcia" poniżej.
+
+Tabela w sekcji 2 opisuje stan sprzed wdrożenia.
+
+## 2. Czego freehire ma, a Nowa Rola nie (po tej zmianie)
+
+freehire: 160 platform ATS z ofertami. Nowa Rola: 20. Lista poniżej pomija systemy bez znaczenia dla pracy w Polsce (USA payroll: Paycom, Paylocity, ADP, UKG, Dayforce, Paycor, JazzHR…; Brazylia, LATAM, Indie, Japonia, Chiny, Rosja) i agregatory (justjoin, nofluffjobs, pracuj, solid.jobs, inhire, bulldogjob), których zasady zabraniają pobierania.
+
+### Faza 2: wymaga nowych wartości `SourceType` (migracja Prisma, decyzja właściciela)
+
+Kolejność według wartości dla polskiego rynku tech i łatwości:
+
+| # | ATS | Enum | Endpoint (bez klucza) | Firmy w PL | Uwagi |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Oracle Recruiting Cloud | `ORACLE` | `GET https://{pod}.fa.{region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList.secondaryLocations&finder=findReqs;siteNumber=CX_1,limit=100,offset=N,sortBy=POSTING_DATES_DESC`; detal `recruitingCEJobRequisitionDetails?expand=all&finder=ById;Id="{id}",siteNumber=CX_1` | Nokia (558), JPMorgan, Oracle | Udokumentowane (docs.oracle.com). Board id `host/CX_n`. `--compressed`. 290 tys. ofert w freehire. |
+| 2 | Eightfold | `EIGHTFOLD` | `GET https://{host}/api/pcsx/search?domain={domain}&location=Poland&start=0&num=10`; detal `/api/pcsx/position_details?domain=&position_id=` | Ericsson, Morgan Stanley, Citi | 10/stronę (twardy limit). robots jawnie pozwala. Stare `/api/apply/v2/jobs` często 403. |
+| 3 | JOIN | `JOIN` | `GET https://join.com/api/public/companies/{companyId}/jobs?page=N&pageSize=5`; detal `/api/public/jobs/{id}`; companyId z `__NEXT_DATA__` strony `join.com/companies/{slug}`; sitemap firm 14,7 tys. | startupy DACH/FR/ES, biuro w Poznaniu | pageSize max 5. ToS zabrania "unreasonable load". |
+| 4 | HiBob | `HIBOB` | `GET https://{tenant}.careers.hibob.com/api/job-ad` z nagłówkiem `Referer: https://{tenant}.careers.hibob.com/` | scale-upy UK/IL/NL/DE | Pełne opisy jednym wywołaniem. Dziś link-only w detekcji. |
+| 5 | PeopleForce | `PEOPLEFORCE` | `GET https://{sub}.peopleforce.io/careers.json`; detal `/careers/v/{id}.json` | startupy UA/PL | robots `Disallow: /` dla tenantów. Dziś link-only. |
+| 6 | Softgarden | `SOFTGARDEN` | `GET https://{tenant}.career.softgarden.de/jobs.feed.json` (schema.org DataFeed z opisami) | Mittelstand DE, własność Grupy Pracuj | Strony "Kariera PRO" eRecruitera (`*.kariera.pro`) też stoją na softgarden: sitemap + HTML, obsłuży `CAREER_SITE`. |
+| 7 | Bullhorn | `BULLHORN` | `GET https://public-rest{swimlane}.bullhornstaffing.com/rest-services/{corpToken}/search/JobOrder?query=(isOpen:1)&fields=id,title,publicDescription,address(city,countryName),dateAdded,employmentType&count=500&start=0` | agencje IT (kontrakty) | Udokumentowane. Odkrywanie: `app.json` portalu agencji. |
+| 8 | Zoho Recruit | `ZOHO_RECRUIT` | `GET https://{tenant}.zohorecruit.{com,eu}/recruit/v2/public/Job_Openings?pagename=Careers&source=CareerSite` | SMB, agencje | Pełne opisy. |
+| 9 | Radancy | `RADANCY` | `GET https://{host}/search-jobs/results?CurrentPage=N&RecordsPerPage=100&…` z `X-Requested-With: XMLHttpRequest` | Citi (75 ofert PL) | robots zabrania `/search-jobs/`; tylko Citi w PL. Do rozważenia jako link. |
+| 10 | Rippling | `RIPPLING` | `GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs`; detal `/jobs/{uuid}` | USA | Proste JSON. |
+| 11 | Gem, Dover, Polymer | `GEM`, `DOVER`, `POLYMER` | Gem: `GET https://api.gem.com/job_board/v0/{slug}/job_posts/`; Dover: `careers-page-slug/{slug}` → `careers-page/{id}/jobs`; Polymer: `GET https://api.polymer.co/v1/hire/organizations/{slug}/jobs` | USA VC | Gem i Polymer udokumentowane. |
+| 12 | Comeet | `COMEET` | `GET https://www.comeet.co/careers-api/2.0/company/{uid}/positions?token={token}&details=true` (token ze strony `comeet.com/jobs/{company}/{uid}`) | IL, trochę EU | Udokumentowane. |
+| 13 | Homerun | `HOMERUN` | Atom `GET https://feed.homerun.co/{slug}` | NL/BE | Trywialne. |
+| 14 | d.vinci | `DVINCI` | `GET https://{slug}.dvinci-hr.com/jobPublication/list.json?lang=en` | DE | JSON bez klucza. |
+| 15 | Onlyfy (XING), rexx, Factorial, Elevato, Manatal, Talentlyft, Recruiterflow, Loxo, Vincere, JobAdder, CATS, Taleo BE | jak nazwa | HTML list + JSON-LD detalu (Onlyfy, rexx, Factorial, Talentlyft przez sitemap) albo JSON per agencja (Manatal udokumentowane, Vincere przez CSRF) | DE/ES/HR, agencje | Elevato: 20/stronę, paginacja przez ViewState, robots blokuje boty AI. |
+
+Do pominięcia: Cornerstone (wyszukiwarka wymaga tokenu SPA, robots `Crawl-delay: 10`), Taleo Enterprise (sekcje wygaszane, Oracle blokuje crawlery), Dayforce (API ukryte, 403), Welcome to the Jungle (ToS zabrania scrapowania, 122 oferty PL), Wellfound (DataDome, ToS), Work at a Startup (klucz w sesji), Freshteam (koniec życia czerwiec 2026), tomHRM (tylko OAuth), HRlink (w przerwie serwisowej 31.10, znany tylko wzorzec linku aplikacyjnego), Teamio/Recruitis (klucz publiczny per klient, CZ/SK).
+
+### Faza 2b: bez zmiany schematu
+
+- **eRecruiter Kariera PRO** (`{slug}.kariera.pro`, własne domeny): sitemap `/sitemap.xml` z `/jobs/{id}/{slug}/`, strony og:title/og:description, bez JSON-LD. Dodać jako `CAREER_SITE` z `detail: "html"`.
+- **Strony firm z własnym CMS** z badania PL: Synerise `https://synerise.com/api/cms/job-postings` (19 ofert, opisy, widełki), Allegro `jobs.allegro.eu` (sitemap rekrutacyjny Yoast), Miquido, Future Processing, Comarch (HTML). Pierwsze trzy to kandydaci do `KNOWN` w `career-site.ts` (plik ma niezacommitowane zmiany właściciela, więc nie ruszany).
+- **Avature RSS** jako alternatywa dla sitemap: `/{portal}/SearchJobs/feed/?jobRecordsPerPage=50&jobOffset=0` daje tytuły i linki; `/SearchJobs/Poland` filtruje po lokalizacji (Lenovo: 10 ofert Warszawa).
+- **Phenom przez Workday/SF**: wiele stron Phenom (Mastercard, Philips) kieruje aplikację do Workday. Dedupe po tytule i URL źródłowym, gdy ta sama firma ma oba boardy.
+
+## 3. Odkrywanie firm (większa dźwignia niż nowe adaptery)
+
+Discovery dziś nie wychodzi poza listę seed bez kluczy Brave/Serper. Trzy sposoby bez klucza, zweryfikowane 31.10:
+
+1. **Workable, globalne API**: `GET https://jobs.workable.com/api/v1/jobs?query=&location=Poland` (919 ofert stacjonarnych i hybrydowych) i `…&workplace=remote` (633). 20/stronę przez `nextPageToken`, pełne opisy i obiekt `company`. Daje listę firm na Workable zatrudniających w Polsce, których nie ma w seed.
+2. **SmartRecruiters, katalog**: `GET https://jobs.smartrecruiters.com/sr-jobs/search?keyword=Poland&limit=100` zwraca JSON (`content[]` z `company.identifier`). Filtruje tylko `keyword`, bez działającej paginacji, więc 100 ofert na zapytanie; zapytania per miasto (Warszawa 418, Kraków 245, Wrocław 146, Poznań 100, Gdańsk 64) dają po 22–34 nowe firmy na stronę.
+3. **Common Crawl, indeks URL**: zapytanie o `url_host_name` dla `*.teamtailor.com`, `*.recruitee.com`, `*.traffit.com`, `*.myworkdayjobs.com`, `*.pracujunas.pl`, `careers-*.icims.com` daje pełną listę tenantów. Publiczne CDX API (`index.commoncrawl.org`) odpowiadało 504 na zapytania domenowe, więc trzeba Athena/DuckDB nad Parquet (`CC-MAIN-2026-43`), offline.
+
+Ponadto: JOIN ma sitemap firm (14 687 wpisów), Phenom nie ma katalogu (odkrywanie przez `phenompeople.com` w HTML, już dodane), Avature przez `robots.txt` tenantów (`Sitemap:` wskazuje portale, także vanity jak `jobs.cisco.com`).
+
+## 4. Limity w obecnych adapterach, które ucinają oferty
+
+| Adapter | Limit | Skutek |
+| --- | --- | --- |
+| Teamtailor | `MAX_PAGES=3` × 100 | tablice >300 ofert ucięte |
+| Traffit | `MAX_PAGES=4` × 50 | >200 ucięte |
+| SmartRecruiters | offsety `[0, 100]` na filtr | >200 na `country=pl` ucięte |
+| Workday (cxs) | 5 × 20 dla `searchText: "Poland"`, tylko gdy sitemap ≥100 | max 100 z wyszukiwania |
+| Budżet detali | `DETAIL_DAILY_CAP=200` na hosta dziennie | duże strony kariery indeksują się tygodniami |
+
+Propozycja: podnieść Teamtailor do 10 stron i Traffit do 10 (odpowiedzi mają nagłówek `x-result-total-pages`), SmartRecruiters pętla do `totalFound`, Workday pętla do pustej strony z limitem 25 stron.
+
+## 5. Zasady źródeł (do wpisania w `source-policy`)
+
+- `system.erecruiter.pl`: `robots.txt` `Disallow: /`. Tylko link. Widget `skk.erecruiter.pl` i `offers.erecruiter.pl` nie mają zakazu; strony `pracujunas.pl` mają meta `index,follow`.
+- PeopleForce (tenanty): `Disallow: /`. Czytać tylko po zgodzie albo traktować jako link.
+- iCIMS: Terms of Use zabraniają robotów dla domen icims.com; `robots.txt` portali pozwala i wskazuje sitemap. Niskie ryzyko przy jednym żądaniu na stronę listy dziennie, ale warto to opisać na stronie `/bot`.
+- Welcome to the Jungle, Wellfound, Cornerstone, Radancy (`/search-jobs/`): zakaz w ToS albo robots. Nie pobierać.
+- Phenom: brak zakazu vendora; niektóre tenanty za Akamai (403). Hosty `*.phenom.com` już oznaczone jako TDM opt-out w `hygiene.ts`.
+
+## 6. Źródła
+
+- freehire: `docs/sources.md` (snapshot 30.10.2026), adaptery w `internal/ingest/sources/`.
+- Greenhouse Job Board API: https://docs.greenhouse.io/job-board.html (brak hosta EU).
+- Oracle: https://docs.oracle.com/en/cloud/saas/human-resources/farws/op-recruitingcejobrequisitions-get.html
+- eRecruiter integracje: https://pomoc.erecruiter.pl/en/articles/9357550-how-can-you-integrate-the-erecruiter-system-with-your-career-web-page
+- JOIN: https://join.com/llms.txt, https://join.com/en/terms
+- HiBob: https://apidocs.hibob.com/reference/post_hiring-job-ads-search.md
+- PeopleForce: https://developer.peopleforce.io/careers/v1/guides/own-career-site
+- Bullhorn: https://bullhorn.github.io/Public-API/
+- Comeet: https://developers.comeet.com/reference/careers-api-overview.md
+- Gem: https://help.gem.com/databases/gem-help-center/the-job-board-api
+- Polymer: https://developer.polymer.co
+- Manatal: https://developers.manatal.com
+- Softgarden: https://dev.softgarden.de/frontend-v3/jobs-eines-kanals/
+- Common Crawl URL index: https://blog.commoncrawl.org/url-index

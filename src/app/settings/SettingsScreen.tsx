@@ -12,12 +12,12 @@ import { Modal, ModalHead, useToast } from "src/app/components/ds/interactive"
 import { Segmented } from "src/app/components/ds/primitives"
 import { LinkedInMark } from "src/app/components/site/Brand"
 import { useLocaleToggle, useThemeToggle } from "src/app/components/site/SiteHeader"
+import { SHORTCUTS_KEY } from "src/app/jobs/components/Shortcuts"
 import { linkedInStartHref } from "src/app/start/pending"
 import { ExtensionSettings } from "./ExtensionSettings"
+import { GmailSettings } from "./GmailSettings"
 import { PasswordSettings } from "./PasswordSettings"
 import { SheetSettings } from "./SheetSettings"
-
-export const SHORTCUTS_KEY = "nr.shortcuts"
 
 export function SettingsScreen({
   email,
@@ -94,6 +94,7 @@ export function SettingsScreen({
 
       <PasswordSettings hasPassword={hasPassword} />
       <SheetSettings />
+      <GmailSettings />
       <ExtensionSettings />
 
       <section className="card settings-sec">

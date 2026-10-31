@@ -62,18 +62,28 @@ export async function claimGuest(guestId: number, userId: number) {
   await db.user.delete({ where: { id: guestId } })
 }
 
+/**
+ * The account for a LinkedIn identity, or null when LinkedIn has not verified the email and it
+ * belongs to an existing account: linking then would hand that account to whoever typed the email.
+ */
 export async function upsertLinkedInUser(identity: {
   sub: string
   email: string
+  emailVerified: boolean
   name: string | null
   picture: string | null
 }) {
   const bySub = await db.user.findUnique({ where: { linkedinSub: identity.sub } })
   if (bySub) {
+    // Email is unique: someone else may already hold the address the person moved to on LinkedIn.
+    const canMoveEmail =
+      identity.emailVerified &&
+      identity.email !== bySub.email &&
+      !(await db.user.findUnique({ where: { email: identity.email }, select: { id: true } }))
     return db.user.update({
       where: { id: bySub.id },
       data: {
-        email: identity.email,
+        email: canMoveEmail ? identity.email : bySub.email,
         name: identity.name || bySub.name,
         imageUrl: identity.picture,
         emailVerifiedAt: bySub.emailVerifiedAt ?? new Date(),
@@ -83,6 +93,7 @@ export async function upsertLinkedInUser(identity: {
   }
   const byEmail = await db.user.findUnique({ where: { email: identity.email } })
   if (byEmail) {
+    if (!identity.emailVerified) return null
     return db.user.update({
       where: { id: byEmail.id },
       data: {
@@ -101,7 +112,7 @@ export async function upsertLinkedInUser(identity: {
       imageUrl: identity.picture,
       linkedinSub: identity.sub,
       role: "USER",
-      emailVerifiedAt: new Date(),
+      emailVerifiedAt: identity.emailVerified ? new Date() : null,
     },
   })
 }

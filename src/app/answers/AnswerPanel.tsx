@@ -67,6 +67,7 @@ export function AnswerPanel({
   const [fields, setFields] = useState(() => fieldsOf(row))
   const [state, setState] = useState<SaveState>("saved")
   const [variants, setVariants] = useState<AnswerRow[] | null>(null)
+  const [offers, setOffers] = useState<{ id: string; company: string; title: string }[]>([])
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -156,7 +157,9 @@ export function AnswerPanel({
     let live = true
     invoke(getAnswer, { id: row.id })
       .then((result) => {
-        if (live) setVariants(result.variants.map(toRow))
+        if (!live) return
+        setVariants(result.variants.map(toRow))
+        setOffers(result.offers)
       })
       .catch(() => {
         if (live) setVariants([])
@@ -313,12 +316,24 @@ export function AnswerPanel({
             <span className="sr-only"> {t("common.newTab")}</span>
           </a>
         ) : null}
-        {row.applicationId ? (
-          <a className="link" href={`/applications?id=${encodeURIComponent(row.applicationId)}`}>
-            {t("ans.meta.application")}
-          </a>
-        ) : null}
       </p>
+
+      {offers.length ? (
+        <section aria-labelledby="ans-p-offers" className="ans-variants">
+          <h3 className="t-label" id="ans-p-offers">
+            {t("ans.offers")}
+          </h3>
+          <ul>
+            {offers.map((offer) => (
+              <li key={offer.id}>
+                <a className="link" href={`/applications?id=${encodeURIComponent(offer.id)}`}>
+                  {offer.company} · {offer.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {variants === null ? (
         <p className="t-sm muted">{t("ans.variants.loading")}</p>

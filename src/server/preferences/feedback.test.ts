@@ -83,4 +83,12 @@ describe("feedback validation", () => {
     expect(splitStoredTags(stored)).toEqual({ tags: ["Kotlin"], muted: ["skill:java"] })
     expect(splitStoredTags(null)).toEqual({ tags: [], muted: [] })
   })
+
+  it("keeps the newest mutes when there are too many", () => {
+    const keys = Array.from({ length: 45 }, (_, index) => `skill:s${index}`)
+    const { muted } = splitStoredTags(storedTags([], keys))
+    expect(muted).toHaveLength(40)
+    expect(muted[39]).toBe("skill:s44")
+    expect(muted).not.toContain("skill:s0")
+  })
 })

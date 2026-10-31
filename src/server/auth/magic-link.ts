@@ -45,6 +45,12 @@ export async function assertSearchRateLimit(userId: number, now = new Date()) {
   if (!ok) throw new Error("Too many searches. Wait an hour and try again.")
 }
 
+/** Reading a pasted link fetches a page and may call the model, so it is capped per person. */
+export async function assertOfferReadLimit(userId: number, now = new Date()) {
+  const ok = await takeSlot(`offer-read:${userId}`, 60, now)
+  if (!ok) throw new Error("Too many links read. Wait an hour and try again.")
+}
+
 export async function assertMagicLinkRateLimit(email: string, ip: string, now = new Date()) {
   const emailOk = await takeSlot(`email:${email}`, MAGIC_LINK_EMAIL_LIMIT, now)
   if (!emailOk) throw new AuthRateLimitError("email")

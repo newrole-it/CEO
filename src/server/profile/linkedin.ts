@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import { z } from "zod"
-import { fold } from "../../../matching/text"
+import { fold } from "matching/text"
 import { visibleText } from "./industry"
 
 export const blockKinds = ["headline", "about", "experience", "education", "skills"] as const

@@ -2,38 +2,15 @@ import { Prisma } from "@prisma/client"
 import db from "db"
 import type { BoardList } from "src/server/adapters/types"
 import { excerpt } from "src/server/crawler/hygiene"
-import { canonicalUrl, sha256 } from "src/server/jobs/dedupe"
+import { safeCanonicalUrl, sha256 } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
+import { isUniqueViolation } from "src/server/jobs/prisma-errors"
 import type { ListedJob, SourceType } from "src/shared/schemas"
 import { extractAtsKey } from "../../../matching/dedupe"
-import type { Source } from "../../../matching/types"
 import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
 import { keepExternalPay } from "src/server/discovery/offer-search"
+import { APP_TO_SOURCE } from "src/server/matching/sources"
 import { nextStatus } from "./schedule"
-
-const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
-  GREENHOUSE: "greenhouse",
-  LEVER: "lever",
-  ASHBY: "ashby",
-  WORKABLE: "workable",
-  SMARTRECRUITERS: "smartrecruiters",
-  TEAMTAILOR: "teamtailor",
-  TRAFFIT: "company_site",
-  RECRUITEE: "company_site",
-  PERSONIO: "company_site",
-  PINPOINT: "company_site",
-  BREEZY: "company_site",
-  BAMBOOHR: "company_site",
-  GENERIC_HTML: "company_site",
-  CAREER_SITE: "company_site",
-  SUCCESSFACTORS: "company_site",
-  WORKDAY: "company_site",
-  ICIMS: "company_site",
-  PHENOM: "company_site",
-  AVATURE: "company_site",
-  ERECRUITER: "company_site",
-  JOBVITE: "company_site",
-}
 
 export type IndexBoard = {
   provider: SourceType
@@ -42,25 +19,13 @@ export type IndexBoard = {
   careersUrl: string
 }
 
-function safeCanonical(raw: string): string {
-  try {
-    return canonicalUrl(raw)
-  } catch {
-    return raw
-  }
-}
-
 export function identityFor(job: ListedJob): string {
-  const canonical = safeCanonical(job.originalUrl)
+  const canonical = safeCanonicalUrl(job.originalUrl)
   const source = APP_TO_SOURCE[job.sourceType] ?? "company_site"
   const key = extractAtsKey(canonical, source, job.externalId, job.sourceBoardId)
   const company = (job.companyName || "").trim().toLowerCase()
   if (key && company && key.toLowerCase() === `${source}:${company}`) return `url:${canonical}`
   return key ?? `url:${canonical}`
-}
-
-function isUnique(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }
 
 async function companyFor(name: string) {
@@ -71,7 +36,7 @@ async function companyFor(name: string) {
   try {
     return await db.company.create({ data: { name: companyName, normalizedName } })
   } catch (error) {
-    if (!isUnique(error)) throw error
+    if (!isUniqueViolation(error)) throw error
     const again = await db.company.findUnique({ where: { normalizedName } })
     if (!again) throw error
     return again
@@ -100,7 +65,7 @@ export async function ensureCareerPage(board: IndexBoard, companyName: string, n
     create: {
       companyId: company.id,
       url: board.careersUrl,
-      normalizedUrl: safeCanonical(board.careersUrl),
+      normalizedUrl: safeCanonicalUrl(board.careersUrl),
       provider: board.provider,
       providerBoardId: board.boardId,
       resolutionStatus: "RESOLVED_ATS",
@@ -118,13 +83,13 @@ export async function knownCanonicals(careerPageId: string): Promise<Set<string>
   const urls = new Set<string>()
   for (const row of rows) {
     urls.add(row.canonicalUrl)
-    urls.add(safeCanonical(row.originalUrl))
+    urls.add(safeCanonicalUrl(row.originalUrl))
   }
   return urls
 }
 
 async function writeJob(job: ListedJob, careerPageId: string, companyId: string, now: Date) {
-  const canonical = safeCanonical(job.originalUrl)
+  const canonical = safeCanonicalUrl(job.originalUrl)
   const identityKey = identityFor(job)
   const description = excerpt(job.descriptionText || "")
   await rememberCompanyTech(companyId, { sourceType: job.sourceType })
@@ -166,7 +131,7 @@ async function writeJob(job: ListedJob, careerPageId: string, companyId: string,
   try {
     return await db.job.create({ data: { ...written, identityKey, firstSeenAt: now } })
   } catch (error) {
-    if (!isUnique(error)) throw error
+    if (!isUniqueViolation(error)) throw error
     const again = await db.job.findUnique({ where: { identityKey } })
     return db.job.update({ where: { identityKey }, data: keepExternalPay(again, data) })
   }

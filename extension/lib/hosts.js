@@ -24,6 +24,23 @@ export const ATS_MATCHES = [
   "https://*.icims.com/*",
 ]
 
+/** Job boards: people read offers here, so only the "already applied" check runs on them. */
+export const JOB_BOARD_MATCHES = [
+  "https://*.justjoin.it/*",
+  "https://*.nofluffjobs.com/*",
+  "https://*.pracuj.pl/*",
+  "https://*.theprotocol.it/*",
+  "https://*.bulldogjob.pl/*",
+  "https://*.bulldogjob.com/*",
+]
+
+/**
+ * The profile audit and the "already applied" check on offers. The whole site, not /in/* or
+ * /jobs/*: LinkedIn moves between pages without a load, so a script matched on one path alone
+ * would miss "View profile" from the feed.
+ */
+export const LINKEDIN_MATCHES = ["https://www.linkedin.com/*"]
+
 export const PAIR_MATCHES = [
   "http://127.0.0.1:43123/connect/extension*",
   "http://127.0.0.1:43123/setup*",

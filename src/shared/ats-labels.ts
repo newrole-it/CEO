@@ -1,0 +1,22 @@
+/** Display names for the ATS vendors added on 2026-10-31. */
+export const NEW_ATS_LABELS: Record<string, string> = {
+  EIGHTFOLD: "Eightfold",
+  SOFTGARDEN: "softgarden",
+  BULLHORN: "Bullhorn",
+  ZOHO_RECRUIT: "Zoho Recruit",
+  RIPPLING: "Rippling",
+  GEM: "Gem",
+  DOVER: "Dover",
+  POLYMER: "Polymer",
+  COMEET: "Comeet",
+  HOMERUN: "Homerun",
+  DVINCI: "d.vinci",
+  MANATAL: "Manatal",
+  ONLYFY: "onlyfy",
+  REXX: "rexx",
+  JAZZHR: "JazzHR",
+  CATSONE: "CATS",
+  LOXO: "Loxo",
+  TALENTLYFT: "TalentLyft",
+  FACTORIAL: "Factorial",
+}

@@ -1,6 +1,7 @@
 import "./styles/app.css"
 import "./styles/applications.css"
 import "./styles/cv.css"
+import "./styles/tailor.css"
 import "./styles/answers.css"
 import "./styles/extension.css"
 import "./styles/setup.css"

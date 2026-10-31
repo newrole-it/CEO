@@ -1,4 +1,4 @@
-import type { CopyKey, Locale, T } from "src/app/i18n/copy"
+import { intlLocale, type CopyKey, type Locale, type T } from "src/app/i18n/copy"
 import type { OfferView } from "src/shared/offer-view"
 
 const DAY = 86_400_000
@@ -81,7 +81,7 @@ export function freshness(
   const at = new Date(iso)
   if (Number.isNaN(at.getTime())) return null
   const age = now - at.getTime()
-  const title = at.toLocaleDateString(locale === "pl" ? "pl-PL" : "en-GB", {
+  const title = at.toLocaleDateString(intlLocale(locale), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -94,5 +94,5 @@ export function shortDate(iso: string | null | undefined, locale: Locale): strin
   if (!iso) return null
   const at = new Date(iso)
   if (Number.isNaN(at.getTime())) return null
-  return at.toLocaleDateString(locale === "pl" ? "pl-PL" : "en-GB", { day: "numeric", month: "short" })
+  return at.toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short" })
 }

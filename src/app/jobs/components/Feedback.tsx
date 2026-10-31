@@ -41,7 +41,7 @@ export const ASPECT_ICON: Record<FeedbackAspect, LucideIcon> = {
 
 export type ChipPick = { aspect: FeedbackAspect; tag: string | null; label: string; on: boolean }
 
-export function chipsFromPrompt(prompt: FeedbackPrompt | null, t: (key: CopyKey) => string): ChipPick[] {
+function chipsFromPrompt(prompt: FeedbackPrompt | null, t: (key: CopyKey) => string): ChipPick[] {
   if (!prompt) return []
   const out: ChipPick[] = []
   for (const suggestion of prompt.suggestions) {
@@ -288,7 +288,7 @@ export function CompactPrompt({
 
 const PASS_ORDER: FeedbackAspect[] = ["salary", "stack", "seniority", "location", "company", "industry"]
 
-export function passChips(prompt: FeedbackPrompt | null, t: (key: CopyKey, vars?: Record<string, string | number>) => string) {
+function passChips(prompt: FeedbackPrompt | null, t: (key: CopyKey, vars?: Record<string, string | number>) => string) {
   const byAspect = new Map<FeedbackAspect, string | null>()
   for (const suggestion of prompt?.suggestions ?? []) {
     if (!PASS_ORDER.includes(suggestion.aspect) || byAspect.has(suggestion.aspect)) continue

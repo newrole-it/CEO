@@ -1,10 +1,9 @@
-import { detectSeniority } from "../../../matching/normalization"
-import { fold } from "../../../matching/text"
-import type { LlmClient } from "src/server/llm/client"
-import { wrapUntrusted } from "src/server/llm/client"
+import { z } from "zod"
+import { detectSeniority } from "matching/normalization"
+import { fold } from "matching/text"
+import { wrapUntrusted, type LlmClient } from "src/server/llm/client"
 import { canonicalIndustry, visibleText } from "./industry"
 import { emptyProfileDraft, profileDraftSchema, seniorityValues, type ProfileDraft } from "./schema"
-import { z } from "zod"
 
 const SKILL_LEXICON = [
   "TypeScript",

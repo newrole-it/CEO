@@ -1,7 +1,7 @@
-import type { MatchingConfig } from "../../../matching/config"
-import { detectSeniority } from "../../../matching/normalization"
-import { fold } from "../../../matching/text"
-import { SENIORITY_RANK, type Seniority } from "../../../matching/types"
+import type { MatchingConfig } from "matching/config"
+import { detectSeniority } from "matching/normalization"
+import { fold } from "matching/text"
+import { SENIORITY_RANK, type Seniority } from "matching/types"
 import {
   explainCity,
   explainIndustry,

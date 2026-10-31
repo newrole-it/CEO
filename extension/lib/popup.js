@@ -1,19 +1,7 @@
-/** Popup: connection state, actions for the current tab, and the two switches. */
+/** Popup: connection state, actions for the current tab, and the switches. */
+import { linkedInJobId, statusLine } from "./offer.js"
 
 const ALL_SITES = "https://*/*"
-
-const STATUS = {
-  APPLIED: "Aplikowano",
-  SCREENING: "Rozmowa z rekruterem",
-  INTERVIEW: "Rozmowy",
-  TASK: "Zadanie",
-  FINAL: "Rozmowa finałowa",
-  OFFER: "Oferta",
-  ACCEPTED: "Przyjęta",
-  REJECTED: "Odrzucono",
-  WITHDRAWN: "Wycofałem się",
-  GHOSTED: "Brak odpowiedzi",
-}
 
 const ERRORS = {
   restricted: "Na tej stronie Chrome nie pozwala działać rozszerzeniom.",
@@ -21,8 +9,12 @@ const ERRORS = {
   "no-fields": "Nie widzę tu pól do wypełnienia.",
   offline: "Nie mogę połączyć się z aplikacją. Czy Nowa Rola jest uruchomiona?",
   disconnected: "Odśwież tę stronę i spróbuj ponownie.",
-  busy: "Już pracuję nad tym formularzem.",
+  busy: "Już nad tym pracuję.",
+  "not-profile": "Otwórz swój profil LinkedIn (linkedin.com/in/…) i spróbuj ponownie.",
+  "no-sections": "Nie widzę sekcji profilu. Przewiń stronę i spróbuj ponownie.",
 }
+
+const LINKEDIN_PROFILE = /^https:\/\/www\.linkedin\.com\/in\/[^/?#]+\/?(?:[?#].*)?$/
 
 const $ = (id) => document.getElementById(id)
 const ask = (message) => chrome.runtime.sendMessage(message)
@@ -46,12 +38,40 @@ async function activeTab() {
 
 async function showApplied(tab) {
   if (!tab?.url || !/^https?:/.test(tab.url)) return
-  const result = await ask({ type: "status", url: tab.url })
-  const applied = result?.ok ? result.data.applied : null
-  if (!applied) return
-  const date = new Date(applied.appliedAt).toLocaleDateString("pl-PL")
-  $("applied").textContent = `Już aplikowano: ${date}, ${STATUS[applied.status] || applied.status}`
+  if (/^https:\/\/www\.linkedin\.com\//.test(tab.url) && !linkedInJobId(tab.url)) return
+  // The script on the page also read the company and role; the address alone may not match.
+  const fromPage = await chrome.tabs.sendMessage(tab.id, { type: "nr:offer" }).catch(() => null)
+  const byAddress = await ask({ type: "status", url: tab.url })
+  const direct = byAddress?.ok ? byAddress.data : null
+  const line = statusLine(direct?.applied ? direct : fromPage?.data ?? direct)
+  if (!line) return
+  $("applied").textContent = line
   show("applied", true)
+}
+
+/** "Profil LinkedIn: 72/100 (31.10.2026)" from the latest audit, when there is one. */
+async function showScore() {
+  const result = await ask({ type: "linkedinLatest" })
+  const audit = result?.ok ? result.data.audit : null
+  if (!audit) return
+  const date = new Date(audit.auditedAt).toLocaleDateString("pl-PL")
+  $("profileScore").textContent = `Profil LinkedIn: ${audit.score}/100 (${date})`
+  show("profileScore", true)
+}
+
+async function auditProfile(button) {
+  const tab = await activeTab()
+  if (!tab?.id) return say(ERRORS.restricted, "err")
+  button.disabled = true
+  say("Czytam profil i oceniam go. To może potrwać kilkanaście sekund…")
+  const result = await ask({ type: "linkedinTab", tabId: tab.id })
+  button.disabled = false
+  if (result?.ok) {
+    say(`Ocena profilu: ${result.score}/100. Szczegóły są na stronie.`, "ok")
+    await showScore()
+    return
+  }
+  say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
 }
 
 async function act(type, button, working) {
@@ -107,9 +127,27 @@ async function init() {
   )
   $("save").addEventListener("click", () => void act("saveTab", $("save"), "Zapisuję…"))
 
+  // On a LinkedIn profile the form actions make no sense; the audit takes their place.
+  const tab = await activeTab()
+  const onProfile = LINKEDIN_PROFILE.test(tab?.url || "")
+  show("fill", !onProfile)
+  show("save", !onProfile)
+  show("audit", onProfile)
+  $("audit").addEventListener("click", () => void auditProfile($("audit")))
+
   $("autoTrack").checked = config.data.autoTrack
   $("autoTrack").addEventListener("change", (event) => {
     void chrome.storage.local.set({ autoTrack: event.target.checked })
+  })
+
+  $("offerCheck").checked = config.data.offerCheck !== false
+  $("offerCheck").addEventListener("change", (event) => {
+    void chrome.storage.local.set({ offerCheck: event.target.checked })
+  })
+
+  $("linkedinAuto").checked = config.data.linkedinAuto !== false
+  $("linkedinAuto").addEventListener("change", (event) => {
+    void chrome.storage.local.set({ linkedinAuto: event.target.checked })
   })
 
   $("allSites").checked = await chrome.permissions.contains({ origins: [ALL_SITES] })
@@ -121,7 +159,7 @@ async function init() {
       : !(await chrome.permissions.remove({ origins: [ALL_SITES] }))
   })
 
-  await showApplied(await activeTab())
+  await Promise.all([showApplied(tab), showScore()])
 }
 
 export function startPopup() {

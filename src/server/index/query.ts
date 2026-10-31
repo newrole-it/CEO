@@ -1,45 +1,19 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
-import {
-  fallbackExplanation,
-  finalizeExplanation,
-  buildMatchExplanationMessages,
-} from "../../../matching/match-explanation.schema"
 import { runMatching } from "../../../matching/pipeline"
 import type { QueryExpansion } from "../../../matching/query-expansion.schema"
-import type { ScoreResult } from "../../../matching/scoring"
-import type { NormalizedPosting, RawPosting, Source } from "../../../matching/types"
+import type { RawPosting } from "../../../matching/types"
 import { createLlmClient, type LlmClient } from "src/server/llm/client"
+import { explainMatch } from "src/server/matching/explain"
 import { liveMatchingConfig, liveProfile, titleIsRelevant } from "src/server/matching/live"
+import { APP_TO_SOURCE } from "src/server/matching/sources"
 import { extractJobIndustry } from "src/server/profile/industry"
 import { rankAgainstProfile, toSignals, bandFor } from "src/server/profile/rank"
 import type { SourceType } from "src/shared/schemas"
 
 export const RELEVANCE_FLOOR = 40
-
-const APP_TO_SOURCE: Partial<Record<SourceType, Source>> = {
-  GREENHOUSE: "greenhouse",
-  LEVER: "lever",
-  ASHBY: "ashby",
-  WORKABLE: "workable",
-  SMARTRECRUITERS: "smartrecruiters",
-  TEAMTAILOR: "teamtailor",
-  TRAFFIT: "company_site",
-  RECRUITEE: "company_site",
-  PERSONIO: "company_site",
-  PINPOINT: "company_site",
-  BREEZY: "company_site",
-  BAMBOOHR: "company_site",
-  GENERIC_HTML: "company_site",
-  CAREER_SITE: "company_site",
-  SUCCESSFACTORS: "company_site",
-  WORKDAY: "company_site",
-  ICIMS: "company_site",
-  PHENOM: "company_site",
-  AVATURE: "company_site",
-  ERECRUITER: "company_site",
-  JOBVITE: "company_site",
-}
+/** Industry extraction may call the model for this many matches per run; the rest use rules. */
+const INDUSTRY_LLM_BUDGET = 20
 
 function salaryText(job: {
   salaryMin: number | null
@@ -93,34 +67,6 @@ function toRaw(
   }
 }
 
-async function explain(
-  llm: LlmClient | null,
-  posting: NormalizedPosting,
-  score: ScoreResult,
-  profile: ReturnType<typeof liveProfile>,
-  index: number,
-  llmOptOut: boolean,
-  userId?: number
-) {
-  if (!llm || index >= 6 || llmOptOut) return fallbackExplanation(score).summary.slice(0, 500)
-  const messages = buildMatchExplanationMessages({ posting, score, profile, language: "en" })
-  const system = messages.find((message) => message.role === "system")?.content ?? ""
-  const user = messages.find((message) => message.role === "user")?.content ?? ""
-  try {
-    const result = await llm.completeText({
-      purpose: "match-explanation",
-      system,
-      user,
-      maxTokens: 900,
-      userId,
-    })
-    if (!result?.data) return fallbackExplanation(score).summary.slice(0, 500)
-    return finalizeExplanation(result.data, score).explanation.summary.slice(0, 500)
-  } catch {
-    return fallbackExplanation(score).summary.slice(0, 500)
-  }
-}
-
 /** Scores every active indexed job and writes one match row per offer at or above the floor. */
 export async function publishIndexedMatches(args: {
   searchRunId: string
@@ -160,6 +106,7 @@ export async function publishIndexedMatches(args: {
     ? toSignals(saved.user.candidateProfile, saved.user.locale)
     : null
   const byId = new Map(matched.postings.map((posting) => [posting.id, posting]))
+  const jobById = new Map(jobs.map((job) => [job.id, job]))
   const ranked = matched.ranked.filter((score) => score.score >= floor)
   const prior = await db.jobMatch.findMany({
     where: {
@@ -172,11 +119,11 @@ export async function publishIndexedMatches(args: {
   const hadPrior = prior.length > 0
   const llm = args.llm === undefined ? createLlmClient() : args.llm
   let index = 0
-  let industryBudget = llm ? 20 : 0
+  let industryBudget = llm ? INDUSTRY_LLM_BUDGET : 0
   for (const score of ranked) {
     const posting = byId.get(score.postingId)
     if (!posting) continue
-    const job = jobs.find((item) => item.id === score.postingId)
+    const job = jobById.get(score.postingId)
     let fit: ReturnType<typeof rankAgainstProfile> | null = null
     if (signals) {
       const useLlm = llm && industryBudget > 0 && !job?.llmOptOut ? llm : null
@@ -206,7 +153,17 @@ export async function publishIndexedMatches(args: {
     }
     const reason = fit
       ? fit.why
-      : await explain(llm, posting, score, profile, index, job?.llmOptOut ?? false, saved?.userId)
+      : (
+          await explainMatch({
+            llm,
+            posting,
+            score,
+            profile,
+            index,
+            llmOptOut: job?.llmOptOut ?? false,
+            userId: saved?.userId,
+          })
+        ).reason
     index += 1
     const isNew = hadPrior && !seen.has(score.postingId)
     const data = {

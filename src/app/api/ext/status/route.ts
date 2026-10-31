@@ -1,18 +1,23 @@
-import { findApplicationByUrl } from "src/server/applications/service"
+import { offerStatus } from "src/server/applications/offer-status"
 import { errorResponse, jsonResponse, preflight, withToken } from "src/server/autofill/http"
-import { normalizePostingUrl } from "src/server/autofill/job-extract"
 
 export const dynamic = "force-dynamic"
 
 export const OPTIONS = preflight
 
 export const GET = withToken(async (request, { userId }) => {
-  const url = new URL(request.url).searchParams.get("url")?.trim()
+  const params = new URL(request.url).searchParams
+  const url = params.get("url")?.trim()
   if (!url) return errorResponse(request, "The url parameter is required.", 400)
-  const application = await findApplicationByUrl(userId, normalizePostingUrl(url))
-  return jsonResponse(request, {
-    applied: application
-      ? { id: application.id, status: application.status, appliedAt: application.appliedAt }
-      : null,
-  })
+  const fact = (name: string) => params.get(name)?.trim().slice(0, 300) || null
+  return jsonResponse(
+    request,
+    await offerStatus(userId, {
+      url,
+      company: fact("company"),
+      title: fact("title"),
+      pageTitle: fact("pageTitle"),
+      siteName: fact("siteName"),
+    })
+  )
 })

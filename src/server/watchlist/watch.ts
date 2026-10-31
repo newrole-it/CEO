@@ -2,10 +2,11 @@
  * Watched companies: a person names a company (URL or name) and Nowa Rola keeps
  * reading its own careers page or ATS board, even when it never posts on aggregators.
  */
-import { Prisma, type SourceType } from "@prisma/client"
+import type { SourceType } from "@prisma/client"
 import db from "db"
-import { canonicalUrl } from "src/server/jobs/dedupe"
+import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
+import { isUniqueViolation } from "src/server/jobs/prisma-errors"
 import { saveDiscoveredJob } from "src/server/index/store"
 import { enqueueIndexWatched } from "src/server/queue/enqueue"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
@@ -64,18 +65,6 @@ export function linkBoardId(url: string): string {
   return `link:${hostOf(url) ?? url}`.slice(0, 180)
 }
 
-function safeCanonical(raw: string): string {
-  try {
-    return canonicalUrl(raw)
-  } catch {
-    return raw
-  }
-}
-
-function isUnique(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
-}
-
 /** Find or create a company by name, then by domain. The domain is set only when free. */
 async function upsertCompany(name: string, domain: string | null, byDomainFirst: boolean) {
   const companyName = normalizeWhitespace(name) || domain || "Unknown company"
@@ -94,7 +83,7 @@ async function upsertCompany(name: string, domain: string | null, byDomainFirst:
       data: { name: companyName, normalizedName, canonicalDomain: byDomain ? null : domain },
     })
   } catch (error) {
-    if (!isUnique(error)) throw error
+    if (!isUniqueViolation(error)) throw error
     const again = await db.company.findUnique({ where: { normalizedName } })
     if (!again) throw error
     return again
@@ -128,7 +117,7 @@ async function upsertPage(args: {
       data: {
         companyId: args.companyId,
         url: args.url,
-        normalizedUrl: safeCanonical(args.url),
+        normalizedUrl: safeCanonicalUrl(args.url),
         provider: args.provider,
         providerBoardId: args.boardId,
         resolutionStatus: args.status,
@@ -139,7 +128,7 @@ async function upsertPage(args: {
       },
     })
   } catch (error) {
-    if (!isUnique(error)) throw error
+    if (!isUniqueViolation(error)) throw error
     const again = await db.careerPage.findUnique({
       where: { provider_providerBoardId: { provider: args.provider, providerBoardId: args.boardId } },
     })

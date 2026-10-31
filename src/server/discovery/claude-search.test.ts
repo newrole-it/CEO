@@ -48,6 +48,9 @@ describe("claude provider gating", () => {
     expect(claudeSearchEnabled(env({ LLM_PROVIDER: "claude-cli" }), found)).toBe(true)
     expect(claudeSearchEnabled(env({ WEB_SEARCH_PROVIDER: "claude" }), found)).toBe(true)
     expect(claudeSearchEnabled(env({ LLM_PROVIDER: "claude-cli" }), missing)).toBe(false)
+    expect(
+      claudeSearchEnabled(env({ LLM_PROVIDER: "claude-cli", CLAUDE_SEARCH_DAILY_CAP: "0" }), found)
+    ).toBe(false)
     expect(claudeSearchEnabled(env({}), found)).toBe(false)
     expect(claudeSearchDailyCap(env({}))).toBe(40)
     expect(claudeSearchDailyCap(env({ CLAUDE_SEARCH_DAILY_CAP: "3" }))).toBe(3)

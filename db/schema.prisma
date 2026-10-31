@@ -45,6 +45,8 @@ model User {
   answers          Answer[]
   apiTokens        ApiToken[]
   sheetLink        SheetLink?
+  gmailLink        GmailLink?
+  mailEvents       MailEvent[]
 }
 
 model Session {
@@ -124,7 +126,8 @@ model CandidateProfile {
   updatedAt          DateTime  @updatedAt
 }
 
-// Parsed LinkedIn sections and one audit pass. The PDF itself is not stored.
+// Audits of the LinkedIn profile: one row per audit the Chrome extension ran on the person's own
+// profile page (src/server/profile/linkedin-audit.ts). The CV audit lives on CvDocument.audit.
 model ProfileAuditRun {
   id            String   @id @default(cuid())
   userId        Int
@@ -166,6 +169,25 @@ enum SourceType {
   ERECRUITER
   JOBVITE
   CAREER_SITE
+  EIGHTFOLD
+  SOFTGARDEN
+  BULLHORN
+  ZOHO_RECRUIT
+  RIPPLING
+  GEM
+  DOVER
+  POLYMER
+  COMEET
+  HOMERUN
+  DVINCI
+  MANATAL
+  ONLYFY
+  REXX
+  JAZZHR
+  CATSONE
+  LOXO
+  TALENTLYFT
+  FACTORIAL
 }
 
 enum ResolutionStatus {
@@ -359,6 +381,7 @@ model Job {
   matches      JobMatch[]
   feedback     OfferFeedback[]
   applications Application[]
+  cvDocuments  CvDocument[]
 
   @@index([fingerprint])
   @@index([status, classifiedAt])
@@ -591,15 +614,20 @@ model Application {
   nextStepAt      DateTime?
   contact         String?
   notes           String?     @db.Text
-  /// nowarola | extension | manual | mcp
+  /// The salary the person gave in the application form, as they wrote it
+  statedSalary    String?
+  /// The form as sent: [{ question, answer, kind }]. Answer keeps distinct answers for reuse.
+  formAnswers     Json        @default("[]")
+  /// nowarola | extension | manual | mcp | gmail
   source          String      @default("manual")
   cvDocumentId    String?
   cvDocument      CvDocument? @relation(fields: [cvDocumentId], references: [id], onDelete: SetNull)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  events  ApplicationEvent[]
-  answers Answer[]
+  events     ApplicationEvent[]
+  answers    Answer[]
+  mailEvents MailEvent[]
 
   @@index([userId, status])
   @@index([userId, urlKey])
@@ -610,41 +638,86 @@ model ApplicationEvent {
   id            String      @id @default(cuid())
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  /// created | status | note | next-step | answers | edit
+  /// created | status | note | next-step | answers | edit | mail
   type          String
   fromStatus    String?
   toStatus      String?
   note          String?     @db.Text
-  /// web | mcp | extension
+  /// web | mcp | extension | gmail
   channel       String      @default("web")
   at            DateTime    @default(now())
 
   @@index([applicationId, at])
 }
 
-/// A CV the person keeps here: an editable document (content) or an uploaded PDF.
+/// A CV the person keeps here: an editable document (content) or an uploaded PDF. A cover letter
+/// is the same document with one "letter" section, so it shares the editor, PDF and versions.
 model CvDocument {
-  id           String    @id @default(cuid())
-  userId       Int
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title        String
+  id               String       @id @default(cuid())
+  userId           Int
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
   /// pl | en
-  language     String    @default("pl")
+  language         String       @default("pl")
   /// EDITABLE | UPLOADED
-  kind         String    @default("EDITABLE")
+  kind             String       @default("EDITABLE")
+  /// CV | LETTER
+  docType          String       @default("CV")
   /// Structured CV (src/shared/cv/schema.ts). Null for an uploaded PDF without an editable copy.
-  content      Json?
+  content          Json?
   /// The uploaded PDF, or the last one rendered from content
-  pdf          Bytes?
-  pdfName      String?
-  pdfUpdatedAt DateTime?
-  isDefault    Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  pdf              Bytes?
+  pdfName          String?
+  pdfUpdatedAt     DateTime?
+  /// The latest audit of this CV (src/shared/cv/audit.ts). Writing it keeps updatedAt.
+  audit            Json?
+  isDefault        Boolean      @default(false)
+  /// The offer this document was written for; null for a general CV
+  jobId            String?
+  job              Job?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  /// Company and role at that moment: the offer can leave the index. Set on every tailored document.
+  targetCompany    String?
+  targetTitle      String?
+  /// What this one started from: a tailored CV's general CV, an editable copy's uploaded PDF
+  baseCvId         String?
+  baseCv           CvDocument?  @relation("CvBase", fields: [baseCvId], references: [id], onDelete: SetNull)
+  tailored         CvDocument[] @relation("CvBase")
+  /// What the model changed and what to check (src/shared/cv/tailor.ts)
+  tailorNotes      Json?
+  /// When an edit last considered taking an automatic version (src/server/cv/versions.ts)
+  versionCheckedAt DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   applications Application[]
+  versions     CvVersion[]
 
+  /// One tailored CV and one letter per offer; general CVs have no jobId and are not limited
+  @@unique([userId, jobId, docType])
   @@index([userId, updatedAt])
+}
+
+/// A saved state of a CV or letter. Restoring adds a new version, so history is never rewritten.
+model CvVersion {
+  id           String     @id @default(cuid())
+  documentId   String
+  document     CvDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  /// 1, 2, 3… within the document
+  number       Int
+  /// auto | manual | base | generated | restored
+  origin       String
+  /// The name the person gave it
+  label        String?
+  /// origin restored: the number of the version it came from
+  sourceNumber Int?
+  /// pl | en
+  language     String
+  content      Json
+  /// sha256 of the content, to tell whether anything changed without loading it
+  contentHash  String
+  createdAt    DateTime   @default(now())
+
+  @@unique([documentId, number])
 }
 
 /// One reusable answer to an application question. The same question can have variants.
@@ -714,4 +787,68 @@ model SheetLink {
   lastRowCount   Int?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+/// Read-only link to the person's Gmail (src/server/gmail, docs/product/plan-gmail.md).
+model GmailLink {
+  id            String    @id @default(cuid())
+  userId        Int       @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The mailbox address Google reported
+  email         String
+  /// AES-256-GCM (src/server/gmail/token-crypto.ts). Never exported, logged or sent to the client.
+  refreshToken  String
+  /// Change statuses without asking. The safeguards in src/server/gmail/policy.ts still apply.
+  autoApply     Boolean   @default(true)
+  /// Send unclear messages, trimmed and redacted, to the language model
+  useModel      Boolean   @default(true)
+  /// Everything before this date is handled; the next search starts just before it
+  cursorAt      DateTime?
+  /// Null stops the worker: the person has to connect again
+  nextSyncAt    DateTime? @default(now())
+  /// Set while a sync runs, so the worker and "Sprawdź teraz" do not overlap
+  syncingAt     DateTime?
+  lastSyncedAt  DateTime?
+  /// src/server/gmail/types.ts: reconnect | key | rate-limit | network | http
+  lastErrorCode String?
+  /// Counts from the last sync: listed, skipped, read, applied, created, pending
+  lastStats     Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([nextSyncAt])
+}
+
+/// One message whose body was read, and what came of it. The body itself is never stored.
+model MailEvent {
+  id            String       @id @default(cuid())
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Gmail message id, so one message is handled once
+  messageId     String
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  fromAddress   String
+  subject       String
+  receivedAt    DateTime
+  /// src/shared/gmail.ts: CONFIRMATION | NEXT_STAGE | SCREENING | INTERVIEW | TASK | FINAL | OFFER | REJECTED | OTHER
+  signal        String
+  /// rules | model
+  reader        String
+  /// Why: the sentence that matched, or the model's short quote
+  evidence      String?
+  /// src/shared/gmail.ts: APPLIED | CREATED | NOTED | PENDING | IGNORED | DISMISSED | UNDONE
+  outcome       String
+  fromStatus    String?
+  toStatus      String?
+  /// From a confirmation that matches nothing in the tracker
+  company       String?
+  title         String?
+  /// DKIM, DMARC or SPF passed for the From domain, as Gmail reported it
+  authenticated Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+
+  @@unique([userId, messageId])
+  @@index([userId, outcome, receivedAt])
+  @@index([applicationId])
 }

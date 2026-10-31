@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { forwardRef, useRef, type ReactNode } from "react"
-import { CircleCheck, Heart, X } from "lucide-react"
+import { CircleCheck, FileText, Heart, X } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button } from "src/app/components/ds/Button"
+import { Button, buttonClass } from "src/app/components/ds/Button"
 import { ScoreRing } from "src/app/components/ds/interactive"
 import { CompanyInitial } from "src/app/components/ds/primitives"
 import { cx } from "src/app/components/ds/cx"
@@ -189,6 +189,16 @@ export const OfferCard = forwardRef<
         >
           <span className="lbl-long">{t("act.applied")}</span>
         </Button>
+        <Link
+          className={buttonClass({ variant: "ghost", size: "sm" })}
+          href={`${href}/cv`}
+          prefetch={false}
+          tabIndex={demo ? -1 : undefined}
+          aria-label={t("tl.act")}
+        >
+          <FileText aria-hidden />
+          <span className="lbl-long">{t("tl.act")}</span>
+        </Link>
         <span className="spacer" />
         {offer.url ? (
           <a

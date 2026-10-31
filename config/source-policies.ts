@@ -116,9 +116,9 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
     platform: "Phenom",
     state: "limited",
     reason:
-      "Employer domains: sitemap plus JSON-LD. Apply, job cart, and chatbot paths are skipped.",
+      "Employer domains: the /widgets JSON (refineSearch, jobDetail), sitemap and JSON-LD. Apply, job cart, and chatbot paths are skipped.",
     termsUrl: "https://www.phenom.com/terms--conditions",
-    allowPaths: ["/sitemap", "/job/", "/jobs/"],
+    allowPaths: ["/sitemap", "/job/", "/jobs/", "/widgets"],
     denyPaths: ["/apply", "/jobcart", "/chatbot", "phenomtrack"],
   },
   "phenom-vendor": {
@@ -145,17 +145,19 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
   erecruiter: {
     platform: "eRecruiter",
     state: "limited",
-    reason: "JSON-LD on the employer's own career pages. skk.erecruiter.pl frames are link-only.",
+    reason:
+      "Career Sites Builder pages ({slug}.pracujunas.pl) publish offers.json on offers.erecruiter.pl, and the skk.erecruiter.pl widget lists offer rows and Offer.aspx pages; neither host has a robots.txt disallow (checked 2026-10-31). system.erecruiter.pl apply forms disallow / and stay link-only.",
     termsUrl: "https://erecruiter.pl/",
-    allowPaths: ["/careers", "/career", "/jobs/", "/job/"],
+    allowPaths: ["/careers", "/career", "/jobs/", "/job/", "/skk/company/", "/GetHtml.ashx", "/Offer.aspx"],
+    denyPaths: ["/FormTemplates/", "/RecruitmentForm"],
   },
   jobvite: {
     platform: "Jobvite",
     state: "limited",
     reason:
-      "Job pages carry JSON-LD. Whether Jobvite's terms cover jobs.jobvite.com is uncertain, so the crawl stays slow and small. The keyed API is not used.",
+      "The /{slug}/jobs listing and job pages (JSON-LD). Whether Jobvite's terms cover jobs.jobvite.com is uncertain, so the crawl stays slow and small. The keyed API is not used.",
     termsUrl: "https://www.jobvite.com/terms-of-use/",
-    allowPaths: ["/sitemap", "/job/"],
+    allowPaths: ["/sitemap", "/job/", "/jobs"],
   },
   hibob: {
     platform: "HiBob",
@@ -170,6 +172,13 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
     reason:
       "PeopleForce robots.txt disallows / for every crawler. Use the employer's own listing page. Detail links stay link-outs.",
     termsUrl: "https://peopleforce.io/",
+  },
+  join: {
+    platform: "JOIN",
+    state: "link_only",
+    reason:
+      "JOIN's company terms ban access through any automated system. Nothing is fetched.",
+    termsUrl: "https://join.com/en/terms",
   },
   dynatrace: {
     platform: "Dynatrace",
@@ -644,6 +653,7 @@ export function platformKeyForHost(hostname: string): string | null {
   if (host === "jobs.jobvite.com" || hostMatches(host, "jobvite.com")) return "jobvite"
   if (host === "careers.hibob.com" || host.endsWith(".careers.hibob.com")) return "hibob"
   if (hostMatches(host, "peopleforce.io")) return "peopleforce"
+  if (hostMatches(host, "join.com")) return "join"
   if (hostMatches(host, "dynatrace.com")) return "dynatrace"
   if (hostMatches(host, "revolut.com")) return "revolut"
   if (hostMatches(host, "oviva.com")) return "oviva"
@@ -704,16 +714,12 @@ export function decideFetch(url: URL): FetchDecision {
       reason: SMARTRECRUITERS_API_REASON,
     }
   }
-  if (host === "skk.erecruiter.pl" || host === "form.erecruiter.pl") {
-    const policy = {
-      ...PLATFORM_POLICIES.erecruiter,
-      state: "link_only" as const,
-      reason: "skk and form hosts have no JSON-LD. Link out.",
-    }
+  if (host === "form.erecruiter.pl" || host === "system.erecruiter.pl") {
+    const reason = "Apply-form hosts disallow crawling in robots.txt. Link out."
     if (url.pathname === "/robots.txt") {
-      return { allow: true, state: "link_only", platform: "eRecruiter", reason: policy.reason }
+      return { allow: true, state: "link_only", platform: "eRecruiter", reason }
     }
-    return { allow: false, state: "link_only", platform: "eRecruiter", reason: policy.reason }
+    return { allow: false, state: "link_only", platform: "eRecruiter", reason }
   }
   const override = HOST_POLICIES[host]
   const platformKey = override ? null : platformKeyForHost(host)

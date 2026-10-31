@@ -1,3 +1,5 @@
+import { envCount } from "config/env"
+
 const ATS = new Set([
   "greenhouse",
   "lever",
@@ -84,9 +86,5 @@ export function pickDiscoveryQueries(sites: SiteQuery[], limit = discoveryQueryL
 }
 
 export function discoveryQueryLimit(): number {
-  const raw = process.env.DISCOVERY_QUERY_LIMIT
-  if (raw == null || raw.trim() === "") return 14
-  const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed < 0) return 14
-  return Math.floor(parsed)
+  return envCount("DISCOVERY_QUERY_LIMIT", 14)
 }

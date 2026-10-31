@@ -62,7 +62,8 @@ function withItems(
   return {
     ...content,
     sections: content.sections.map((section) => {
-      if (section.id !== sectionId || section.type === "text") return section
+      if (section.id !== sectionId || section.type === "text" || section.type === "letter")
+        return section
       return { ...section, items: change(section.items) } as CvSection
     }),
   }
@@ -175,4 +176,59 @@ export function moveBullet(
   direction: MoveDirection
 ): CvContent {
   return withBullets(content, sectionId, itemId, (bullets) => moved(bullets, index, direction))
+}
+
+function withParagraphs(
+  content: CvContent,
+  sectionId: string,
+  change: (paragraphs: string[]) => string[]
+): CvContent {
+  return {
+    ...content,
+    sections: content.sections.map((section) =>
+      section.id === sectionId && section.type === "letter"
+        ? { ...section, paragraphs: change(section.paragraphs) }
+        : section
+    ),
+  }
+}
+
+export function updateParagraph(
+  content: CvContent,
+  sectionId: string,
+  index: number,
+  html: string
+): CvContent {
+  return withParagraphs(content, sectionId, (paragraphs) =>
+    paragraphs.map((paragraph, at) => (at === index ? html : paragraph))
+  )
+}
+
+/** Inserts a paragraph after `afterIndex` (-1 puts it first). */
+export function insertParagraph(
+  content: CvContent,
+  sectionId: string,
+  afterIndex: number,
+  html = ""
+): CvContent {
+  return withParagraphs(content, sectionId, (paragraphs) => {
+    const next = [...paragraphs]
+    next.splice(afterIndex + 1, 0, html)
+    return next
+  })
+}
+
+export function removeParagraph(content: CvContent, sectionId: string, index: number): CvContent {
+  return withParagraphs(content, sectionId, (paragraphs) =>
+    paragraphs.filter((_, at) => at !== index)
+  )
+}
+
+export function moveParagraph(
+  content: CvContent,
+  sectionId: string,
+  index: number,
+  direction: MoveDirection
+): CvContent {
+  return withParagraphs(content, sectionId, (paragraphs) => moved(paragraphs, index, direction))
 }

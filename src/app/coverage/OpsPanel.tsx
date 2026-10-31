@@ -1,9 +1,11 @@
+import { intlLocale } from "src/app/i18n/copy"
 import type { OpsSnapshot } from "./queries/getOps"
 import type { OfferSearchStats } from "src/server/discovery/offer-sync"
 
 const TASK: Record<string, { pl: string; en: string }> = {
   "candidate-profile": { pl: "Wyciąganie profilu z CV", en: "Profile extraction" },
   "profile-audit": { pl: "Audyt profilu", en: "Profile audit" },
+  "cv-audit": { pl: "Audyt CV", en: "CV audit" },
   "query-expansion": { pl: "Rozszerzanie wyszukiwania", en: "Search expansion" },
   "match-explanation": { pl: "Wyjaśnienie dopasowania", en: "Match explanation" },
   "job-industry": { pl: "Branża oferty", en: "Job industry" },
@@ -17,7 +19,7 @@ function taskName(purpose: string, pl: boolean): string {
 }
 
 function tokens(value: number, locale: "pl" | "en"): string {
-  return value.toLocaleString(locale === "pl" ? "pl-PL" : "en-GB")
+  return value.toLocaleString(intlLocale(locale))
 }
 
 function usd(value: number): string {
@@ -41,7 +43,7 @@ function offerSearchLine(search: OfferSearchStats, pl: boolean, locale: "pl" | "
 function formatRun(value: Date | string, locale: "pl" | "en"): string {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return locale === "pl" ? "jeszcze nie" : "not yet"
-  return new Intl.DateTimeFormat(locale === "pl" ? "pl-PL" : "en-GB", {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -51,7 +53,7 @@ function formatRun(value: Date | string, locale: "pl" | "en"): string {
 }
 
 function pln(value: number, locale: "pl" | "en"): string {
-  const formatted = value.toLocaleString(locale === "pl" ? "pl-PL" : "en-GB", {
+  const formatted = value.toLocaleString(intlLocale(locale), {
     maximumFractionDigits: value < 1 ? 2 : 0,
   })
   return `${formatted} zł`

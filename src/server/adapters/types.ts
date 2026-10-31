@@ -16,15 +16,16 @@ export type BoardList = {
 }
 
 /**
- * Greenhouse EU was unreachable on 2026-10-10 (TLS hang / HTTP 500).
- * Do not call boards-api.eu.greenhouse.io.
+ * boards-api.eu.greenhouse.io has no DNS record (NXDOMAIN on 2026-10-31, also via 1.1.1.1),
+ * and the official Job Board API docs name no EU host. EU-hosted boards render at
+ * job-boards.eu.greenhouse.io/{token}; their API host is unknown. Do not call this endpoint.
  */
 export const PLANNED_ATS = [
   {
     id: "greenhouse-eu",
     status: "unverified" as const,
     endpoint: "https://boards-api.eu.greenhouse.io/v1/boards/{token}/jobs",
-    note: "UNVERIFIED. The EU Greenhouse host did not answer on 2026-10-10. Not called.",
+    note: "UNVERIFIED. The host does not exist in DNS (2026-10-31). EU boards live at job-boards.eu.greenhouse.io/{token}. Not called.",
   },
 ]
 

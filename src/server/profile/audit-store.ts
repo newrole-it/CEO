@@ -4,6 +4,7 @@ import { buildProfileAudit, builtAuditSchema, type BuiltAudit } from "./audit"
 import { demandFromOffers, pickLatestRuns } from "./demand"
 import { parseStoredDocument, profileText, type LinkedInDocument } from "./linkedin"
 
+/** What the latest run of each saved search says about a text (profile and CV audits). */
 export async function demandForUser(userId: number, text: string) {
   const searches = await db.savedSearch.findMany({
     where: { userId },

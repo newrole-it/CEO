@@ -1,5 +1,4 @@
-import {createHash} from "crypto"
-import {normalizeCompanyName, normalizeWhitespace, titleTokens} from "./normalize"
+import { createHash } from "crypto"
 
 const TRACKING = /^(utm_|gh_|lever-|source|ref|trk|mc_|fbclid|gclid|igshid)/i
 
@@ -25,36 +24,11 @@ export function canonicalUrl(raw: string): string {
   return url.toString()
 }
 
-export function contentHash(parts: {title: string; description: string; location: string}): string {
-  return sha256(
-    [normalizeWhitespace(parts.title).toLowerCase(), normalizeWhitespace(parts.location).toLowerCase(), parts.description.slice(0, 2000)].join(
-      "\n",
-    ),
-  )
-}
-
-export function jobFingerprint(parts: {
-  companyName: string
-  title: string
-  location: string
-  description: string
-}): string {
-  const title = titleTokens(parts.title).join(" ")
-  const company = normalizeCompanyName(parts.companyName)
-  const location = normalizeWhitespace(parts.location).toLowerCase()
-  const desc = normalizeWhitespace(parts.description).toLowerCase().slice(0, 240)
-  return sha256([company, title, location, desc].join("|"))
-}
-
-export function sourceIdentity(parts: {
-  sourceType: string
-  sourceBoardId?: string
-  externalId?: string
-  canonical: string
-}): string {
-  if (parts.externalId && parts.sourceBoardId) {
-    return `${parts.sourceType}:${parts.sourceBoardId}:${parts.externalId}`
+/** canonicalUrl for input that may not parse: an unparseable value is its own key. */
+export function safeCanonicalUrl(raw: string): string {
+  try {
+    return canonicalUrl(raw)
+  } catch {
+    return raw
   }
-  if (parts.externalId) return `${parts.sourceType}:job:${parts.externalId}`
-  return `url:${parts.canonical}`
 }

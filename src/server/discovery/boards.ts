@@ -58,6 +58,53 @@ export function detectBoard(raw: string): DetectedBoard | null {
     const boardId = firstSegment(url.pathname)
     return boardId ? { provider: "SMARTRECRUITERS", boardId } : null
   }
+  if (host === "jobs.jobvite.com") {
+    const slug = parts[0]?.toLowerCase() === "careers" ? parts[1] : parts[0]
+    if (!slug || RESERVED.has(slug.toLowerCase()) || slug.toLowerCase() === "careers") return null
+    return { provider: "JOBVITE", boardId: slug }
+  }
+  if (host === "skk.erecruiter.pl" || host === "system.erecruiter.pl") {
+    const cfg = url.searchParams.get("skkcfg") ?? (host === "skk.erecruiter.pl" ? url.searchParams.get("cfg") : null)
+    return cfg && /^[0-9a-f]{32}$/i.test(cfg) ? { provider: "ERECRUITER", boardId: cfg.toLowerCase() } : null
+  }
+  const pracujunas = host.match(/^([a-z0-9-]+)\.pracujunas\.pl$/)
+  if (pracujunas && pracujunas[1] !== "www") return { provider: "ERECRUITER", boardId: pracujunas[1] }
+  if (host.endsWith(".avature.net") && host !== "www.avature.net") {
+    return { provider: "AVATURE", boardId: host }
+  }
+  // Bullhorn and Comeet boards need a token from the page, so they are added by hand.
+  if (host === "ats.rippling.com") {
+    const boardId = firstSegment(url.pathname)
+    return boardId ? { provider: "RIPPLING", boardId } : null
+  }
+  if (host === "jobs.gem.com") {
+    const boardId = firstSegment(url.pathname)
+    return boardId ? { provider: "GEM", boardId } : null
+  }
+  if (host === "jobs.polymer.co") {
+    const boardId = firstSegment(url.pathname)
+    return boardId ? { provider: "POLYMER", boardId } : null
+  }
+  if (host === "app.dover.com") {
+    const boardId = parts[0] === "jobs" || parts[0] === "apply" ? parts[1] : undefined
+    return boardId ? { provider: "DOVER", boardId } : null
+  }
+  if (host === "feed.homerun.co") {
+    const boardId = firstSegment(url.pathname)
+    return boardId ? { provider: "HOMERUN", boardId } : null
+  }
+  if (host === "app.loxo.co") {
+    const boardId = firstSegment(url.pathname)
+    return boardId ? { provider: "LOXO", boardId } : null
+  }
+  if (host === "www.careers-page.com") {
+    const boardId = firstSegment(url.pathname)
+    return boardId ? { provider: "MANATAL", boardId } : null
+  }
+  if (host.endsWith(".rexx-systems.com") || host.endsWith(".rexx-recruitment.com")) {
+    return { provider: "REXX", boardId: host }
+  }
+  if (host.endsWith(".zohorecruit.eu")) return { provider: "ZOHO_RECRUIT", boardId: host }
   const tenant = tenantBoard(host)
   if (tenant) return tenant
   return null
@@ -82,6 +129,15 @@ function tenantBoard(host: string): DetectedBoard | null {
     { root: "pinpointhq.com", provider: "PINPOINT" },
     { root: "breezy.hr", provider: "BREEZY" },
     { root: "bamboohr.com", provider: "BAMBOOHR" },
+    { root: "career.softgarden.de", provider: "SOFTGARDEN" },
+    { root: "zohorecruit.com", provider: "ZOHO_RECRUIT" },
+    { root: "dvinci-hr.com", provider: "DVINCI" },
+    { root: "homerun.co", provider: "HOMERUN" },
+    { root: "onlyfy.jobs", provider: "ONLYFY" },
+    { root: "applytojob.com", provider: "JAZZHR" },
+    { root: "catsone.com", provider: "CATSONE" },
+    { root: "talentlyft.com", provider: "TALENTLYFT" },
+    { root: "factorialhr.com", provider: "FACTORIAL" },
   ]
   for (const rule of rules) {
     const slug = tenantSlug(host, rule.root)

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { wrapUntrusted } from "src/server/llm/common"
+import { hasRedaction } from "./filter"
 import {
   detectLanguage,
   featureSimilarity,
@@ -136,6 +137,8 @@ export function pickReuse(
     const { row } = item
     if (answerLanguage(row) !== rules.language) continue
     if (companyMismatch(row, rules.company)) continue
+    // "[imię i nazwisko]" must not reach an employer: the model drafts from it instead.
+    if (hasRedaction(row.answer)) continue
     if (rules.options?.length) {
       const option = matchOption(row.answer, rules.options)
       if (option) return { row, text: option, score: item.score }
@@ -181,7 +184,7 @@ export const DRAFT_SYSTEM = [
   'Return JSON: {"answers": {"<question id>": {"text": "...", "basedOn": ["<answer id>"]}}} with one entry per question id.',
 ].join("\n")
 
-function wrapLong(label: string, text: string, max: number): string {
+export function wrapLong(label: string, text: string, max: number): string {
   const body = text.slice(0, max)
   const parts: string[] = []
   for (let start = 0; start < body.length; start += 3500)

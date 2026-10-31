@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest"
 import {
   ApplicationError,
+  applicationAnswers,
   coalesceEdit,
   compareApplications,
   computeStats,
   formatSalary,
   isUntouched,
   matchesQuery,
+  mergeFormAnswers,
   nextClosedAtStage,
+  parseFormAnswers,
   planUpdate,
   rankByName,
+  refillForm,
+  statedSalaryFrom,
   urlKey,
   type CurrentApplication,
 } from "./logic"
@@ -21,6 +26,15 @@ describe("urlKey", () => {
     )
     expect(urlKey("https://jobs.ashbyhq.com/docplanner/6be4bed3-22e6-4b4e-b13c-188563097a12")).toBe(
       "jobs.ashbyhq.com/docplanner/6be4bed3-22e6-4b4e-b13c-188563097a12"
+    )
+  })
+
+  it("keeps LinkedIn search links to different jobs apart", () => {
+    expect(urlKey("https://www.linkedin.com/jobs/search/?currentJobId=111&geoId=9")).toBe(
+      "linkedin.com/jobs/search?currentjobid=111"
+    )
+    expect(urlKey("https://www.linkedin.com/jobs/search/?currentJobId=222&geoId=9")).toBe(
+      "linkedin.com/jobs/search?currentjobid=222"
     )
   })
 
@@ -74,6 +88,7 @@ const base: CurrentApplication = {
   url: null,
   location: null,
   salaryText: null,
+  statedSalary: null,
   appliedAt: new Date("2026-10-01T10:00:00Z"),
   cvDocumentId: null,
 }
@@ -275,5 +290,111 @@ describe("search and names", () => {
     expect(formatSalary(20000, 30000, "pln")).toBe("20 000–30 000 PLN")
     expect(formatSalary(25000, null, "EUR")).toBe("25 000 EUR")
     expect(formatSalary(null, null, "PLN")).toBeNull()
+  })
+})
+
+describe("form answers", () => {
+  const salary = (question: string, answer: string) => ({ question, answer, kind: "salary" })
+
+  it("reads the salary the person gave", () => {
+    expect(statedSalaryFrom([salary("Oczekiwania", "20 000 - 25 000 PLN")])).toBe(
+      "20 000 - 25 000 PLN"
+    )
+    expect(
+      statedSalaryFrom([{ question: "Why?", answer: "20 lat", kind: "openQuestion" }])
+    ).toBeNull()
+    expect(statedSalaryFrom([])).toBeNull()
+  })
+
+  it("does not take a yes to the offered range, or the currency alone, for a salary", () => {
+    expect(statedSalaryFrom([salary("Akceptujesz widełki 20-25k?", "Tak")])).toBeNull()
+    expect(statedSalaryFrom([salary("Salary currency", "PLN")])).toBeNull()
+  })
+
+  it("joins minimum and maximum into a range, other fields side by side", () => {
+    expect(statedSalaryFrom([salary("Salary from", "20000"), salary("Salary to", "25000")])).toBe(
+      "20000 – 25000"
+    )
+    expect(
+      statedSalaryFrom([
+        salary("Wynagrodzenie min.", "20 000"),
+        salary("Wynagrodzenie max.", "25 000"),
+      ])
+    ).toBe("20 000 – 25 000")
+    expect(statedSalaryFrom([salary("Stawka B2B", "150/h"), salary("Pensja UoP", "15000")])).toBe(
+      "150/h · 15000"
+    )
+    expect(statedSalaryFrom([salary("Salary", "20000"), salary("Salary", "20000")])).toBe("20000")
+  })
+
+  it("puts a long answer on one line and caps it", () => {
+    const stated = statedSalaryFrom([salary("Stawka", `20 000\nPLN ${"bardzo ".repeat(60)}`)])
+    expect(stated).toMatch(/^20 000 PLN bardzo/)
+    expect(stated!.length).toBeLessThanOrEqual(200)
+  })
+
+  it("reads anything else in the column as an empty form", () => {
+    expect(parseFormAnswers(undefined)).toEqual([])
+    expect(parseFormAnswers({})).toEqual([])
+    expect(parseFormAnswers([null, 1, { question: "Q" }])).toEqual([])
+    expect(parseFormAnswers([{ question: "Q", answer: "A" }])).toEqual([
+      { question: "Q", answer: "A", kind: null },
+    ])
+  })
+
+  it("lets a form sent again overwrite only what it repeats", () => {
+    const first = [salary("Why us?", "Stare"), salary("Stawka", "20k")]
+    expect(mergeFormAnswers(first, [salary("why  US", "Nowe"), salary("Start", "Jutro")])).toEqual([
+      salary("why  US", "Nowe"),
+      salary("Stawka", "20k"),
+      salary("Start", "Jutro"),
+    ])
+  })
+
+  it("lists the form, then bank answers it does not repeat", () => {
+    const listed = applicationAnswers(
+      [salary("Why us?", "Z formularza")],
+      [
+        { id: "b1", question: "why us", answer: "Z banku" },
+        { id: "b2", question: "Dodana ręcznie", answer: "Tak" },
+      ]
+    )
+    expect(listed).toEqual([
+      { id: "form-0", question: "Why us?", answer: "Z formularza" },
+      { id: "b2", question: "Dodana ręcznie", answer: "Tak" },
+    ])
+  })
+
+  it("lets the person correct the stated salary, on the timeline", () => {
+    const plan = planUpdate(base, { statedSalary: "  22 000 PLN " }, now)
+    expect(plan.data.statedSalary).toBe("22 000 PLN")
+    expect(plan.edited).toEqual(["statedSalary"])
+    expect(planUpdate({ ...base, statedSalary: "x" }, { statedSalary: null }, now).data).toEqual({
+      statedSalary: null,
+    })
+  })
+})
+
+describe("refillForm", () => {
+  const form = { url: "https://a.pl/1", company: "", title: "", location: "", salaryText: "" }
+
+  it("fills what is empty and leaves what was typed", () => {
+    const next = refillForm({ ...form, title: "Mój tytuł" }, null, {
+      company: "Acme",
+      title: "QA",
+      location: "Warszawa",
+    })
+    expect(next).toMatchObject({ company: "Acme", title: "Mój tytuł", location: "Warszawa" })
+  })
+
+  it("drops what the previous link filled, unless the person changed it", () => {
+    const previous = { company: "Acme", title: "QA", location: "Warszawa", salaryText: null }
+    const filled = { ...form, company: "Acme", title: "QA, poprawione", location: "Warszawa" }
+    expect(refillForm(filled, previous, null)).toMatchObject({
+      company: "",
+      title: "QA, poprawione",
+      location: "",
+    })
+    expect(refillForm(filled, previous, { company: "Bravo" })).toMatchObject({ company: "Bravo" })
   })
 })

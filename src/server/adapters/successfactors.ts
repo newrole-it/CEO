@@ -88,7 +88,8 @@ export function parseSuccessFactorsJob(
   html: string,
   pageUrl: string,
   companyName?: string,
-  boardId?: string
+  boardId?: string,
+  opts?: { fullText?: boolean }
 ): ListedJob | null {
   let page: URL
   try {
@@ -124,7 +125,7 @@ export function parseSuccessFactorsJob(
       workplace === "Hybrid" || workplace === "Remote" || workplace === "On-site"
         ? workplaceMap(workplace)
         : undefined,
-    descriptionText: excerpt(description),
+    descriptionText: opts?.fullText ? description : excerpt(description),
     salaryText,
     publishedAt: asDate(posted),
     originalUrl,

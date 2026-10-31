@@ -66,9 +66,6 @@ export const QueryExpansionSchema = ExpansionLLMOutputSchema.extend({
 });
 export type QueryExpansion = z.infer<typeof QueryExpansionSchema>;
 
-/** JSON Schema for providers that support response_format json_schema (optional; json_object works too). */
-export const expansionJsonSchema = () => z.toJSONSchema(ExpansionLLMOutputSchema);
-
 /* ---------------- search query builder ---------------- */
 
 export const SITE_TARGETS: Array<{ source: Source; site: string; plBoard: boolean }> = [

@@ -35,10 +35,10 @@ export const CLOSED_STATUSES = [
 /** Closing statuses that record the stage they happened at (closedAtStage). */
 export const STAGE_RECORDING_STATUSES = ["REJECTED", "WITHDRAWN"] as const
 
-export const APPLICATION_SOURCES = ["nowarola", "extension", "manual", "mcp"] as const
+export const APPLICATION_SOURCES = ["nowarola", "extension", "manual", "mcp", "gmail"] as const
 export type ApplicationSource = (typeof APPLICATION_SOURCES)[number]
 
-export const CHANNELS = ["web", "mcp", "extension"] as const
+export const CHANNELS = ["web", "mcp", "extension", "gmail"] as const
 export type Channel = (typeof CHANNELS)[number]
 
 export function isApplicationStatus(value: unknown): value is ApplicationStatus {

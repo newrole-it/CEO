@@ -31,8 +31,9 @@ Language: the interface is Polish by default with an English switch. All user-fa
 | `/jobs/saved` | Your decisions. Segments: **Polubione / Liked** (default), **Aplikowano / Applied**, **Odrzucone / Passed**. | guest + signed-in | **new** (replaces `/interested`, `/rejected`) |
 | `/companies` | Watchlist + "Similar companies you may not know". | guest + signed-in | **new** |
 | `/connect` | Connect to Claude Code (MCP). | all | **new** |
-| `/profile` | Your profile: the same editable summary as onboarding review + "Twój gust / Your taste" (learned preferences) + re-import. Tab **Audyt CV / CV audit** = existing `/profile/audit`. | guest + signed-in | rebuilt |
-| `/profile/audit` | Existing CV audit, restyled only. | signed-in | restyle |
+| `/profile` | Your profile: the same editable summary as onboarding review + "Twój gust / Your taste" (learned preferences) + re-import. Tab **Audyt CV / CV audit** links to `/profile/audit`. | guest + signed-in | rebuilt |
+| `/profile/audit` | Sends the person to the CV editor with the audit open (`/cv/<id>?audit=1`), on the default CV when it can be edited. The audit itself lives on the sheet: wavy underlines on the text, comments beside it, suggestions to apply. | signed-in | redirect |
+| `/applications/stats` | Statistics of the whole process (tracker → "Statystyki / Statistics"): range control (4 / 12 / 26 / 52 weeks / all), five stat tiles, funnel with stage-to-stage shares, where applications drop out, applications per week with/without a reply, offer decisions per week, sources, plan measures as meters, and two "to do" lists (waiting longest, next steps). Charts: SVG on the tokens, hover/focus readout, table twin under each. Spec: `plan-aplikacje.md` E2.8. | guest + signed-in | **new** |
 | `/settings` | Account: email, LinkedIn connection status, language, theme, export data, delete CV/profile, delete account. | signed-in | restyle |
 | `/login` | Email (magic link) + LinkedIn. `/signup` redirects here (the first email creates the account). | signed-out | restyle |
 | `/searches` | Saved searches list. Removed from primary nav; reachable from the avatar menu. | signed-in | restyle (P2) |

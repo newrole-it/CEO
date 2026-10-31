@@ -34,7 +34,14 @@ describe("source policy", () => {
     )
     expect(decideFetch(new URL("https://careers.phenom.com/us/en/job/1")).allow).toBe(false)
     expect(decideFetch(new URL("https://codility.careers.hibob.com/jobs/1")).allow).toBe(false)
-    expect(decideFetch(new URL("https://skk.erecruiter.pl/Offer.aspx")).allow).toBe(false)
+    expect(decideFetch(new URL("https://skk.erecruiter.pl/Offer.aspx?oid=1&cfg=abc")).allow).toBe(true)
+    expect(decideFetch(new URL("https://skk.erecruiter.pl/GetHtml.ashx?cfg=abc&grid=rows&pn=1")).allow).toBe(true)
+    expect(decideFetch(new URL("https://offers.erecruiter.pl/skk/company/1/offers.json?hash=a")).allow).toBe(true)
+    expect(
+      decideFetch(new URL("https://system.erecruiter.pl/FormTemplates/RecruitmentForm.aspx?WebID=1")).allow
+    ).toBe(false)
+    expect(decideFetch(new URL("https://jobs.jobvite.com/acme/jobs")).allow).toBe(true)
+    expect(decideFetch(new URL("https://careers.mastercard.com/widgets")).allow).toBe(true)
   })
 
   it("allows Workday job pages and cxs, and blocks refreshFacet on every Workday host", () => {
@@ -264,6 +271,12 @@ describe("career pages", () => {
       stripPersonalData("Write to ada@gft.com or +48 600 100 200. Recruiter: Anna Nowak")
     ).not.toMatch(/ada@|600|Anna/)
     expect(stripPersonalData("Salary range: 30000 - 46000 PLN gross")).toContain("30000 - 46000")
+    for (const pay of ["22 000 - 30 000 PLN", "100 000 - 150 000 PLN", "20.000 - 30.000 PLN"]) {
+      expect(stripPersonalData(`Pensja: ${pay}`)).toBe(`Pensja: ${pay}`)
+    }
+    for (const phone of ["0048 600 100 200", "(0048) 600-100-200", "+48 600 100 200"]) {
+      expect(stripPersonalData(`Tel. ${phone}`)).not.toMatch(/600/)
+    }
     expect(excerpt("x".repeat(400)).length).toBeLessThanOrEqual(300)
     expect(aiOptOut('<meta name="robots" content="ai-input=no">', "example.com")).toBe(true)
     expect(aiOptOut("<p>Hello</p>", "jobs.siemens.com")).toBe(true)

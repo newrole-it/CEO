@@ -1,10 +1,8 @@
 /**
- * Strings for the password, the "form details" profile tab and the new navigation
- * (owner stream). Keys start with "pw.", "apl." or "nav.".
+ * Strings for the password and the "form details" profile tab (owner stream).
+ * Keys start with "pw." or "apl.".
  */
 export const accountPl = {
-  "nav.more": "Więcej",
-
   "pw.title": "Hasło",
   "pw.on": "Możesz logować się e-mailem i hasłem albo jednorazowym linkiem.",
   "pw.off":
@@ -63,8 +61,6 @@ export const accountPl = {
 }
 
 export const accountEn: Record<keyof typeof accountPl, string> = {
-  "nav.more": "More",
-
   "pw.title": "Password",
   "pw.on": "You can sign in with email and password, or with a one-time link.",
   "pw.off":

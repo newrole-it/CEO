@@ -7,13 +7,13 @@ vi.mock("src/server/applications/service", () => ({
   findApplicationByUrl: vi.fn(),
   findJobByUrl: vi.fn(),
 }))
-vi.mock("src/server/cv/service", () => ({ defaultCv: vi.fn() }))
+vi.mock("src/server/cv/service", () => ({ defaultCv: vi.fn(), tailoredCv: vi.fn() }))
 vi.mock("src/server/profile/applicant", () => ({ getApplicant: vi.fn() }))
 vi.mock("src/server/llm/client", () => ({ createLlmClient: vi.fn(() => null) }))
 
 import { draftAnswers } from "src/server/answers/service"
 import { findApplicationByUrl, findJobByUrl } from "src/server/applications/service"
-import { defaultCv } from "src/server/cv/service"
+import { defaultCv, tailoredCv } from "src/server/cv/service"
 import { getApplicant } from "src/server/profile/applicant"
 import { fillForm, planFill } from "./fill"
 
@@ -45,6 +45,7 @@ beforeEach(() => {
   mocked(findApplicationByUrl).mockReset().mockResolvedValue(null)
   mocked(findJobByUrl).mockReset().mockResolvedValue(null)
   mocked(defaultCv).mockReset().mockResolvedValue({ id: "cv1", title: "CV PL" })
+  mocked(tailoredCv).mockReset().mockResolvedValue(null)
   mocked(getApplicant).mockReset().mockResolvedValue({ saved: {}, effective: applicant })
 })
 

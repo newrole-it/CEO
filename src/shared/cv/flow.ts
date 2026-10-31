@@ -1,5 +1,5 @@
 import { isBlankInline } from "./sanitize"
-import type { CvContent, CvSection } from "./schema"
+import { letterSection, type CvContent, type CvLetterSection, type CvSection } from "./schema"
 
 /**
  * The CV as a flat sequence of atoms: the unit the paginator moves between pages. The editor
@@ -23,6 +23,11 @@ export type AtomKind =
   | "edu"
   | "empty"
   | "consent"
+  | "letter-head"
+  | "letter-subject"
+  | "letter-greeting"
+  | "letter-para"
+  | "letter-closing"
 
 export type CvAtom = {
   /** Unique and stable across edits (React key, focus restore) */
@@ -55,6 +60,11 @@ export const LEAD = {
   techAfterSummary: 2,
   techAfterHead: 1.5,
   consent: 8,
+  letterHead: 7,
+  letterSubject: 7,
+  letterGreeting: 6,
+  letterPara: 3.5,
+  letterClosing: 7,
 } as const
 
 export type FlowOptions = {
@@ -77,7 +87,31 @@ function pairs<T>(items: T[]): T[][] {
   return rows
 }
 
+/** A letter reads top to bottom with no heading; each paragraph can move to the next page alone. */
+function letterAtoms(section: CvLetterSection, opts: FlowOptions): CvAtom[] {
+  const editing = Boolean(opts.editing)
+  const sid = section.id
+  const atoms: CvAtom[] = []
+  const add = (part: string, kind: AtomKind, lead: number, keepWithNext = false, index?: number) =>
+    atoms.push({ key: atomKey(sid, part), kind, sectionId: sid, index, lead, keepWithNext })
+
+  if (editing || section.date.trim() || section.recipient.trim())
+    add("head", "letter-head", LEAD.letterHead)
+  if (editing || section.subject.trim()) add("subject", "letter-subject", LEAD.letterSubject, true)
+  if (editing || section.greeting.trim())
+    add("greeting", "letter-greeting", LEAD.letterGreeting, true)
+  section.paragraphs.forEach((paragraph, index) => {
+    if (editing || !isBlankInline(paragraph))
+      add(`para:${index}`, "letter-para", LEAD.letterPara, false, index)
+  })
+  if (editing && !section.paragraphs.length) add("empty", "empty", LEAD.letterPara)
+  if (editing || section.closing.trim() || section.signature.trim())
+    add("closing", "letter-closing", LEAD.letterClosing)
+  return atoms
+}
+
 function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
+  if (section.type === "letter") return letterAtoms(section, opts)
   const editing = Boolean(opts.editing)
   const keep = opts.keep
   const sid = section.id
@@ -249,10 +283,15 @@ export function cvFlow(content: CvContent, opts: FlowOptions = {}): CvAtom[] {
   return atoms
 }
 
+/** What the document calls itself: "CV", or the letter's own name. */
+export function documentLabel(content: CvContent): string {
+  return letterSection(content)?.title.trim() || "CV"
+}
+
 /** "Rafał Testowy · CV · 2/3" */
 export function footerText(content: CvContent, page: number, count: number): string {
   const name = content.header.name.trim()
-  return `${name ? `${name} · ` : ""}CV · ${page}/${count}`
+  return `${name ? `${name} · ` : ""}${documentLabel(content)} · ${page}/${count}`
 }
 
 /** Contact line pieces in header order: location, email, phone (line 1), then links (line 2). */

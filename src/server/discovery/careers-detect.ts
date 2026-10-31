@@ -19,11 +19,13 @@ const CAREER_PATH =
   /\/(kariera|careers?|jobs?|praca|join-?us|dolacz|dolacz-do-nas|oferty-pracy|work-with-us|open-positions|vacancies|rekrutacja)(\/|$|\?|#|\.html?)/i
 
 const LINK_ONLY_VENDORS: Array<{ vendor: string; host: RegExp }> = [
-  { vendor: "eRecruiter", host: /(^|\.)erecruiter\.pl$/i },
+  // skk.erecruiter.pl is the readable widget (adapters/erecruiter.ts); the other hosts stay links.
+  { vendor: "eRecruiter", host: /^(?!skk\.)([a-z0-9-]+\.)*erecruiter\.pl$/i },
   { vendor: "Workday", host: /(^|\.)myworkdayjobs\.com$/i },
   { vendor: "SuccessFactors", host: /(^|\.)(successfactors\.(com|eu)|sapsf\.(com|eu))$/i },
   { vendor: "iCIMS", host: /(^|\.)icims\.com$/i },
   { vendor: "Taleo", host: /(^|\.)taleo\.net$/i },
+  { vendor: "JOIN", host: /(^|\.)join\.com$/i },
   { vendor: "HiBob", host: /(^|\.)hibob\.com$/i },
 ]
 
@@ -145,10 +147,13 @@ const EMBED_PATTERNS: Array<{ provider: DetectedBoard["provider"]; pattern: RegE
     provider: "SMARTRECRUITERS",
     pattern: /api\.smartrecruiters\.com\/v1\/companies\/([a-z0-9_-]+)\/postings/gi,
   },
+  { provider: "ERECRUITER", pattern: /skk\.erecruiter\.pl\/Code\.ashx\?cfg=([0-9a-f]{32})/gi },
+  { provider: "ERECRUITER", pattern: /[?&]skkcfg=([0-9a-f]{32})/gi },
+  { provider: "ERECRUITER", pattern: /https?:\/\/([a-z0-9-]+)\.pracujunas\.pl/gi },
 ]
 
 const ATS_URL =
-  /https?:\/\/[a-z0-9.-]*(?:greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|smartrecruiters\.com|teamtailor\.com|recruitee\.com|personio\.(?:de|com)|traffit\.com|pinpointhq\.com|breezy\.hr|bamboohr\.com|erecruiter\.pl|myworkdayjobs\.com|successfactors\.(?:com|eu)|sapsf\.(?:com|eu)|icims\.com|taleo\.net|hibob\.com)[^\s"'<>)\\]*/gi
+  /https?:\/\/[a-z0-9.-]*(?:greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|smartrecruiters\.com|teamtailor\.com|recruitee\.com|personio\.(?:de|com)|traffit\.com|pinpointhq\.com|breezy\.hr|bamboohr\.com|erecruiter\.pl|pracujunas\.pl|myworkdayjobs\.com|successfactors\.(?:com|eu)|sapsf\.(?:com|eu)|icims\.com|taleo\.net|hibob\.com|jobvite\.com|avature\.net|rippling\.com|gem\.com|polymer\.co|dover\.com|homerun\.co|loxo\.co|careers-page\.com|rexx-systems\.com|rexx-recruitment\.com|zohorecruit\.(?:com|eu)|softgarden\.de|dvinci-hr\.com|onlyfy\.jobs|applytojob\.com|catsone\.com|talentlyft\.com|factorialhr\.com)[^\s"'<>)\\]*/gi
 
 /**
  * ATS boards named anywhere in the page: links, iframes, scripts, and embed snippets.
@@ -192,6 +197,10 @@ export function findAtsMarkers(html: string, pageUrl: string): AtsMarker[] {
   if (pageHost && !markers.some((marker) => marker.kind === "board")) {
     if (/teamtailor-cdn\.com|content=["']Teamtailor["']|teamtailor\.com\/assets/i.test(html)) {
       push({ kind: "board", provider: "TEAMTAILOR", boardId: pageHost, evidence: "Teamtailor assets" })
+    } else if (/phenompeople\.com|window\.phApp\b|["']ddoKey["']/i.test(html)) {
+      push({ kind: "board", provider: "PHENOM", boardId: pageHost, evidence: "Phenom assets" })
+    } else if (/\/JobDetail\/[^"'\s]+\/\d+|jobRecordsPerPage=/i.test(html)) {
+      push({ kind: "board", provider: "AVATURE", boardId: pageHost, evidence: "Avature portal paths" })
     }
   }
   return markers

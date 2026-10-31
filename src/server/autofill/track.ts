@@ -1,10 +1,14 @@
-import { recordFormAnswers } from "src/server/answers/service"
+import { formPairVerdict } from "src/server/answers/filter"
+import { formPrivacy, recordFormAnswers } from "src/server/answers/service"
+import { answerKey } from "src/server/applications/logic"
 import {
   addApplicationNote,
   createApplication,
   findApplicationByUrl,
+  saveFormAnswers,
 } from "src/server/applications/service"
-import { classifyField, FIELD_KINDS, type FieldKind } from "./fields"
+import type { FormAnswer } from "src/server/applications/types"
+import { classifyField, FIELD_KINDS, QUESTION_KINDS, type FieldKind } from "./fields"
 import { extractJob, normalizePostingUrl, type PageInput } from "./job-extract"
 
 /** POST /api/ext/submitted (docs/product/plan-aplikacje.md §5.3, E5.3). */
@@ -42,8 +46,9 @@ function asKind(value: string | null | undefined): FieldKind | null {
 
 /**
  * Question/answer pairs safe for the answer bank. The server classifies every field again and
- * keeps it only when both its own reading and the extension's agree that it is a question,
- * and the value does not look like an e-mail, a phone number, a card or a PESEL.
+ * keeps it only when neither its own reading nor the extension's says it is anything but a
+ * question, such as a short "Tech stack" nobody could name, and the value does not look like an
+ * e-mail, a phone number, a card or a PESEL.
  */
 export function answerPairs(fields: SubmittedField[]): { question: string; answer: string }[] {
   const out: { question: string; answer: string }[] = []
@@ -63,14 +68,81 @@ export function answerPairs(fields: SubmittedField[]): { question: string; answe
     const theirs = asKind(field.kind)
     const kinds = [ours, theirs].filter(Boolean) as FieldKind[]
     if (!kinds.every((kind) => BANK_KINDS.includes(kind) || kind === "other")) continue
-    if (!kinds.some((kind) => BANK_KINDS.includes(kind))) continue
     if (EMAIL_VALUE.test(answer) || PHONE_VALUE.test(answer) || CARD_OR_ID.test(answer)) continue
+    if (!formPairVerdict({ question, answer }).keep) continue
     const key = question.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
     out.push({ question: question.slice(0, 500), answer: answer.slice(0, 10_000) })
   }
   return out
+}
+
+/** Questions about the work. "other" is a short field nobody could name, such as "Tech stack". */
+const JOB_KINDS: readonly FieldKind[] = [...QUESTION_KINDS, "other"]
+
+/** Digits and dashes here are amounts and dates, not phone numbers or IDs. */
+const NUMERIC_KINDS: readonly FieldKind[] = ["salary", "noticePeriod", "availableFrom"]
+
+const CHOICE_TYPES = new Set(["select", "radio", "checkbox"])
+
+/** Below this an answer is a value that may be a phone or an ID; above it, prose as written. */
+const LONG_ANSWER = 200
+
+export type FormPrivacy = { personal: string[]; names: string[] }
+
+/** The answer as it may be kept, or null when it is personal data. */
+function jobAnswer(
+  question: string,
+  answer: string,
+  kind: FieldKind,
+  { personal, names }: FormPrivacy
+): string | null {
+  if (NUMERIC_KINDS.includes(kind)) return EMAIL_VALUE.test(answer) ? null : answer
+  // "Years of experience: 8" is too short to reuse from the bank, but it is an answer.
+  if (/^\d$/.test(answer)) return answer
+  if (answer.length < LONG_ANSWER && CARD_OR_ID.test(answer)) return null
+  const verdict = formPairVerdict({ question, answer }, personal, names)
+  return verdict.keep ? verdict.answer : null
+}
+
+/**
+ * The form as the application keeps it: the answers about the work, so the person can come back
+ * to what they told whom. No personal data: the server reads each field again, so an extension
+ * that calls an e-mail field a question cannot get it stored, and contacts or the person's name
+ * inside a longer answer are replaced.
+ */
+export function formAnswers(
+  fields: SubmittedField[],
+  privacy: FormPrivacy = { personal: [], names: [] }
+): FormAnswer[] {
+  const out = new Map<string, FormAnswer>()
+  for (const field of fields) {
+    const question = field.label?.replace(/\s+/g, " ").trim()
+    const answer = field.value?.trim()
+    if (!question || !answer) continue
+    const type =
+      field.type?.trim() || (answer.length > 120 || answer.includes("\n") ? "textarea" : "text")
+    const ours = classifyField({
+      key: question,
+      label: question,
+      type,
+      options: CHOICE_TYPES.has(type) ? [answer, "-"] : undefined,
+    })
+    const theirs = asKind(field.kind)
+    const kinds = [ours, theirs].filter(Boolean) as FieldKind[]
+    if (!kinds.every((item) => JOB_KINDS.includes(item))) continue
+    const kind = kinds.includes("salary") ? "salary" : theirs ?? ours
+    const value = jobAnswer(question, answer, kind, privacy)
+    if (!value) continue
+    const key = answerKey(question)
+    const same = out.get(key)
+    // One label several times, such as "Employer" per job: all of them are answers.
+    if (same) {
+      if (!same.answer.split("\n").includes(value)) same.answer += `\n${value}`
+    } else out.set(key, { question: question.slice(0, 500), answer: value.slice(0, 10_000), kind })
+  }
+  return [...out.values()]
 }
 
 export async function trackSubmission(input: {
@@ -114,6 +186,11 @@ export async function trackSubmission(input: {
         "extension"
       )
     }
+  }
+
+  if (input.fields.length) {
+    const form = formAnswers(input.fields, await formPrivacy(userId))
+    await saveFormAnswers(userId, application.id, form, "extension")
   }
 
   const pairs = answerPairs(input.fields)

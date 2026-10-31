@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   atsCompanySlug,
   atsUrlFacts,
+  boardUrlFacts,
   companyFromHost,
   companyFromSlug,
   extractJobByRules,
@@ -195,5 +196,104 @@ describe("index lookup and fallbacks", () => {
   it("names the company from the host", () => {
     expect(companyFromHost("https://careers.allegro.pl/offer/1")).toBe("Allegro")
     expect(companyFromHost("https://www.acme.com/jobs/1")).toBe("Acme")
+    expect(companyFromHost("https://careers.acme.co.uk/jobs/1")).toBe("Acme")
+    expect(companyFromHost("https://jobs.acme.com.au/1")).toBe("Acme")
+  })
+})
+
+describe("boardUrlFacts", () => {
+  const cases: [string, string | null, string | null, string | null][] = [
+    [
+      "https://justjoin.it/job-offer/jit-team-senior-java-developer-warszawa-java-6ba701d7",
+      "Jit Team",
+      "Senior Java Developer",
+      "Warszawa",
+    ],
+    [
+      "https://justjoin.it/job-offer/astek-polska-senior-java-developer-he-she--warszawa-java",
+      "Astek Polska",
+      "Senior Java Developer",
+      "Warszawa",
+    ],
+    [
+      "https://justjoin.it/job-offer/greenminds-sp-z-o-o--senior-java-developer---fullstack-warszawa-java",
+      "Greenminds sp. z o.o.",
+      "Senior Java Developer Fullstack",
+      "Warszawa",
+    ],
+    [
+      "https://justjoin.it/job-offer/kontomatik-sp-z-o-o-senior-java-developer",
+      "Kontomatik sp. z o.o.",
+      "Senior Java Developer",
+      null,
+    ],
+    [
+      "https://justjoin.it/job-offer/acme-java-developer-krakow-java",
+      "Acme",
+      "Java Developer",
+      "Kraków",
+    ],
+    [
+      "https://www.pracuj.pl/praca/senior-java-back-end-developer-warszawa-prosta-68,oferta,1005123928",
+      null,
+      "Senior Java Back End Developer",
+      "Warszawa",
+    ],
+    [
+      "https://theprotocol.it/praca/senior-java-engineer-gdansk,oferta,39060000-9d78-f2e0-5552-08dce21d8fc0",
+      null,
+      "Senior Java Engineer",
+      "Gdańsk",
+    ],
+    [
+      "https://bulldogjob.pl/companies/jobs/218225-senior-java-developer-warszawa-teamquest",
+      "Teamquest",
+      "Senior Java Developer",
+      "Warszawa",
+    ],
+    [
+      "https://bulldogjob.com/companies/jobs/137139-senior-java-developer-warszawa-lublin-gdansk-onwelo-sa",
+      "Onwelo Sa",
+      "Senior Java Developer",
+      "Warszawa, Lublin, Gdańsk",
+    ],
+    [
+      "https://www.linkedin.com/jobs/view/senior-backend-engineer-at-acme-corp-3912345678/",
+      "Acme Corp",
+      "Senior Backend Engineer",
+      null,
+    ],
+  ]
+
+  it("reads company, role and city from the link", () => {
+    for (const [url, company, title, location] of cases) {
+      expect([url, boardUrlFacts(url)]).toEqual([url, { company, title, location }])
+    }
+  })
+
+  it("reads the company LinkedIn's own lists put in the address", () => {
+    const url =
+      "https://www.linkedin.com/jobs/view/4478971728/?companyName=Fast+Forward+Solutions+-+Executive+%26+Direct+Search+Services&refId=x"
+    expect(boardUrlFacts(url)).toEqual({
+      company: "Fast Forward Solutions - Executive & Direct Search Services",
+      title: null,
+      location: null,
+    })
+  })
+
+  it("says nothing about search pages, bare ids and other sites", () => {
+    const empty = { company: null, title: null, location: null }
+    for (const url of [
+      "https://www.linkedin.com/jobs/view/3912345678/",
+      "https://www.linkedin.com/jobs/search/?currentJobId=1",
+      "https://justjoin.it/job-offers/all-locations",
+      "https://www.pracuj.pl/praca/senior%20java%20developer;kw",
+      "https://bulldogjob.com/companies/jobs/s/city,Warsaw",
+      "https://nofluffjobs.com/pl/job/senior-java-developer-acme-warszawa",
+      "https://acme.pl/kariera/qa",
+      "not a url",
+    ]) {
+      expect([url, boardUrlFacts(url)]).toEqual([url, empty])
+    }
   })
 })

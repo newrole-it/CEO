@@ -224,6 +224,7 @@ export async function createEditableFromUpload(
     language: stored.language,
     from: "content",
     content,
+    baseCvId: id,
   })
   return { cv, reader }
 }

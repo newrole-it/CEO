@@ -1,4 +1,4 @@
-import type { CopyKey, Locale, T } from "src/app/i18n/copy"
+import { intlLocale, type CopyKey, type Locale, type T } from "src/app/i18n/copy"
 import { isActiveStatus, type ApplicationStatus } from "src/shared/applications"
 import type { ApplicationView } from "src/server/applications/types"
 
@@ -72,7 +72,7 @@ export function dayLabel(iso: string | null, locale: Locale): string {
   const at = new Date(iso)
   if (Number.isNaN(at.getTime())) return ""
   const sameYear = at.getFullYear() === new Date().getFullYear()
-  return at.toLocaleDateString(locale === "pl" ? "pl-PL" : "en-GB", {
+  return at.toLocaleDateString(intlLocale(locale), {
     day: "numeric",
     month: "short",
     ...(sameYear ? {} : { year: "numeric" }),
@@ -82,7 +82,7 @@ export function dayLabel(iso: string | null, locale: Locale): string {
 /** Full date for titles and the timeline. */
 export function longDate(iso: string | Date, locale: Locale, withTime = false): string {
   const at = new Date(iso)
-  return at.toLocaleString(locale === "pl" ? "pl-PL" : "en-GB", {
+  return at.toLocaleString(intlLocale(locale), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -108,26 +108,8 @@ export function fromDateInput(value: string): Date | null {
 
 export function sourceKey(source: string): CopyKey {
   return (
-    ["nowarola", "extension", "manual", "mcp"].includes(source)
+    ["nowarola", "extension", "manual", "mcp", "gmail"].includes(source)
       ? `app.source.${source}`
       : "app.source.manual"
   ) as CopyKey
-}
-
-export function errorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String((error as { message: unknown }).message)
-    const name = String((error as { name?: unknown }).name ?? "")
-    if (
-      [
-        "missing-fields",
-        "invalid-url",
-        "invalid-status",
-        "invalid-webhook",
-        "invalid-spreadsheet",
-      ].includes(name)
-    )
-      return message
-  }
-  return fallback
 }

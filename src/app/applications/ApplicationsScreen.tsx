@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { invoke } from "@blitzjs/rpc"
-import { ClipboardList, Download, Plus, Search } from "lucide-react"
+import { ChartNoAxesColumn, ClipboardList, Download, Plus, Search } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { numberFormat, type CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink, buttonClass } from "src/app/components/ds/Button"
@@ -13,6 +13,7 @@ import { statusLabel, type ApplicationStatus } from "src/shared/applications"
 import updateApplication from "./mutations/updateApplication"
 import { AddApplicationDialog } from "./AddApplicationDialog"
 import { ApplicationDrawer } from "./ApplicationDrawer"
+import { MailInbox } from "./MailInbox"
 import {
   ApplicationTable,
   compareBy,
@@ -185,6 +186,15 @@ export function ApplicationsScreen({
               {t("app.add")}
             </Button>
             {rows.length ? (
+              <ButtonLink
+                href="/applications/stats"
+                variant="outline"
+                icon={<ChartNoAxesColumn aria-hidden />}
+              >
+                {t("stx.open")}
+              </ButtonLink>
+            ) : null}
+            {rows.length ? (
               <a
                 href="/applications/export"
                 className={buttonClass({ variant: "outline" })}
@@ -197,6 +207,20 @@ export function ApplicationsScreen({
           </div>
         ) : null}
       </div>
+
+      {signedIn ? (
+        <MailInbox
+          onChanged={(view) => {
+            const row = toRow(view)
+            setRows((current) =>
+              current.some((item) => item.id === row.id)
+                ? current.map((item) => (item.id === row.id ? row : item))
+                : [row, ...current]
+            )
+            setRevision((value) => value + 1)
+          }}
+        />
+      ) : null}
 
       {rows.length === 0 ? (
         <EmptyState

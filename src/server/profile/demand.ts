@@ -1,4 +1,4 @@
-import { fold } from "../../../matching/text"
+import { fold } from "matching/text"
 
 export type OfferText = {
   title: string
@@ -24,86 +24,109 @@ export type DemandFact = {
 type PhraseRule = {
   id: string
   label: string
+  labelPl: string
   patterns: RegExp[]
 }
 
 // Requirement language, not the role title itself. Counts come from the offers passed in.
+// Text is folded before matching, so the Polish patterns have no diacritics.
 const PHRASES: PhraseRule[] = [
   {
     id: "budget-ownership",
     label: "budget ownership",
+    labelPl: "odpowiedzialność za budżet",
     patterns: [
       /budget ownership/,
       /own(?:s|ing|ed)? the budget/,
       /budget owner/,
       /p\s*&\s*l/,
       /profit and loss/,
+      /budzet/,
     ],
   },
   {
     id: "hiring",
     label: "hiring or headcount",
-    patterns: [/\bhiring\b/, /\bheadcount\b/, /\brecruit(?:ing|ment)?\b/],
+    labelPl: "rekrutacja i wielkość zespołu",
+    patterns: [/\bhiring\b/, /\bheadcount\b/, /\brecruit(?:ing|ment)?\b/, /rekrut/],
   },
   {
     id: "roadmap",
     label: "a product roadmap",
-    patterns: [/\broadmaps?\b/],
+    labelPl: "roadmapa produktu",
+    patterns: [/\broadmaps?\b/, /\broadmap/],
   },
   {
     id: "stakeholders",
     label: "stakeholders",
-    patterns: [/\bstakeholders?\b/],
+    labelPl: "praca z interesariuszami",
+    patterns: [/\bstakeholders?\b/, /interesariusz/],
   },
   {
     id: "architecture",
     label: "architecture",
-    patterns: [/\barchitect(?:ure|ing|ed)?\b/],
+    labelPl: "architektura",
+    patterns: [/\barchitect(?:ure|ing|ed)?\b/, /architektur/],
   },
   {
     id: "mentoring",
     label: "mentoring",
-    patterns: [/\bmentor(?:ing|ship)?\b/, /\bcoaching\b/],
+    labelPl: "mentoring",
+    patterns: [/\bmentor(?:ing|ship)?\b/, /\bcoaching\b/, /\bmentor/],
   },
   {
     id: "revenue",
     label: "revenue ownership",
-    patterns: [/\brevenue\b/],
+    labelPl: "odpowiedzialność za przychód",
+    patterns: [/\brevenue\b/, /przychod/],
   },
   {
     id: "platform",
     label: "platform ownership",
-    patterns: [/\bplatforms?\b/],
+    labelPl: "odpowiedzialność za platformę",
+    patterns: [/\bplatforms?\b/, /\bplatform/],
   },
   {
     id: "ai",
     label: "AI",
-    patterns: [/\bai\b/, /artificial intelligence/, /machine learning/],
+    labelPl: "AI",
+    patterns: [
+      /\bai\b/,
+      /artificial intelligence/,
+      /machine learning/,
+      /sztuczn\w+ inteligencj/,
+      /uczeni\w+ maszynow/,
+    ],
   },
   {
     id: "cloud",
     label: "cloud platforms",
-    patterns: [/\bcloud\b/, /\baws\b/, /\bazure\b/, /\bgcp\b/],
+    labelPl: "chmura",
+    patterns: [/\bcloud\b/, /\baws\b/, /\bazure\b/, /\bgcp\b/, /chmur/],
   },
   {
     id: "security",
     label: "security",
-    patterns: [/\bsecurity\b/, /\bappsec\b/],
+    labelPl: "bezpieczeństwo",
+    patterns: [/\bsecurity\b/, /\bappsec\b/, /bezpieczenstw/],
   },
   {
     id: "leadership",
     label: "leadership",
-    patterns: [/\bleadership\b/],
+    labelPl: "przywództwo",
+    patterns: [/\bleadership\b/, /przywodztw/],
   },
   {
     id: "scale",
     label: "scaling a system or organization",
-    patterns: [/\bscal(?:e|ing)\b/],
+    labelPl: "skalowanie systemu lub organizacji",
+    patterns: [/\bscal(?:e|ing)\b/, /skalowa/],
   },
   {
     id: "delivery",
     label: "delivery ownership",
-    patterns: [/\bdelivery\b/],
+    labelPl: "odpowiedzialność za dostarczanie",
+    patterns: [/\bdelivery\b/, /dostarcza/],
   },
 ]
 
@@ -135,8 +158,26 @@ export function pickLatestRuns<T extends { phrase: string; startedAt: Date }>(ro
   return [...chosen.values()]
 }
 
-export function factSentence(fact: DemandFact): string {
-  return `${fact.role} offers in your results mention ${fact.phrase} in ${fact.percent}% of cases (${fact.matchingOffers} of ${fact.totalOffers}); your profile doesn't.`
+/** The phrase of a fact in the given language. */
+export function phraseLabel(fact: DemandFact, locale: "pl" | "en"): string {
+  if (locale !== "pl") return fact.phrase
+  const rule = PHRASES.find((candidate) => fact.id.endsWith(`:${candidate.id}`))
+  return rule?.labelPl ?? fact.phrase
+}
+
+/** The one sentence a keyword note cites. `subject` names the text that lacks the phrase. */
+export function factSentence(
+  fact: DemandFact,
+  locale: "pl" | "en" = "en",
+  subject: "cv" | "profile" = "cv"
+): string {
+  const phrase = phraseLabel(fact, locale)
+  if (locale === "pl") {
+    const lacks = subject === "profile" ? "a w Twoim profilu tego nie ma" : "a w tym CV tego nie ma"
+    return `Oferty „${fact.role}” w Twoich wynikach wspominają o tym: ${phrase}. To ${fact.percent}% przypadków (${fact.matchingOffers} z ${fact.totalOffers}), ${lacks}.`
+  }
+  const lacks = subject === "profile" ? "your profile doesn't" : "this CV doesn't"
+  return `${fact.role} offers in your results mention ${phrase} in ${fact.percent}% of cases (${fact.matchingOffers} of ${fact.totalOffers}); ${lacks}.`
 }
 
 export function demandFromOffers(input: {

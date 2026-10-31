@@ -1,34 +1,23 @@
 import { FileSearch, FileUp } from "lucide-react"
+import { redirect } from "next/navigation"
 import { invoke } from "src/app/blitz-server"
 import { ButtonLink } from "src/app/components/ds/Button"
-import { EmptyState, LinkTabs } from "src/app/components/ds/primitives"
+import { EmptyState } from "src/app/components/ds/primitives"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import getProfileAudit from "../queries/getProfileAudit"
-import { AuditProfile } from "./AuditProfile"
+import { listCvs } from "src/server/cv/service"
 
 export async function generateMetadata() {
   const t = translator(await getLocale())
   return { title: t("nav.audit") }
 }
 
+/** The audit lives in the CV editor; this is where the "CV audit" links land. */
 export default async function ProfileAuditPage() {
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
   const t = translator(locale)
-  const tabs = (
-    <div style={{ marginBottom: 24 }}>
-      <LinkTabs
-        label={t("pr.title")}
-        items={[
-          { href: "/profile", label: t("pr.tabProfile"), current: false },
-          { href: "/profile/details", label: t("apl.tab"), current: false },
-          { href: "/profile/audit", label: t("pr.tabAudit"), current: true },
-        ]}
-      />
-    </div>
-  )
   if (!user || user.role === "GUEST") {
     return (
       <SiteFrame user={user} locale={locale}>
@@ -40,19 +29,17 @@ export default async function ProfileAuditPage() {
       </SiteFrame>
     )
   }
-  const loaded = await invoke(getProfileAudit, null)
+  // the list has the default first, so this is the default when it can be edited
+  const cvs = await listCvs(user.id)
+  const target = cvs.find((cv) => cv.kind === "EDITABLE") ?? cvs[0]
+  if (target) redirect(`/cv/${target.id}?audit=1`)
   return (
     <SiteFrame user={user} locale={locale}>
-      {tabs}
-      {loaded.document ? (
-        <AuditProfile document={loaded.document} audit={loaded.audit} auditedAt={loaded.auditedAt} />
-      ) : (
-        <EmptyState icon={<FileUp />} title={t("pr.empty")} body={t("li.step2")}>
-          <ButtonLink href="/profile" variant="primary">
-            {t("pr.reimport")}
-          </ButtonLink>
-        </EmptyState>
-      )}
+      <EmptyState icon={<FileUp />} title={t("cv.au.noCv.title")} body={t("cv.au.noCv.body")}>
+        <ButtonLink href="/cv" variant="primary">
+          {t("cv.au.noCv.cta")}
+        </ButtonLink>
+      </EmptyState>
     </SiteFrame>
   )
 }

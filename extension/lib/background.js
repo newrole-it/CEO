@@ -2,26 +2,64 @@
  * Service worker: the only place that talks to the app and holds the token. Content scripts ask
  * it through messages and never see the token. See docs/product/plan-aplikacje.md §5.3 and §5.4.
  */
+import { linkedInJobId, statusLine } from "./offer.js"
 
 const DEFAULT_APP = "http://127.0.0.1:43123"
 const LOCAL_APPS = [DEFAULT_APP, "http://localhost:43123"]
 const ALL_SITES = "https://*/*"
 const ALL_SITES_SCRIPT = "nowarola-all-sites"
+const OFFER_SITES_SCRIPT = "nowarola-offer-all-sites"
 const PAIR_SCRIPT = "nowarola-pair"
 const CONTENT_FILE = "content-scripts/content.js"
+const OFFER_FILE = "content-scripts/offer.js"
 const PAIR_FILE = "content-scripts/pair.js"
+const OFFER_FACTS = ["company", "title", "pageTitle", "siteName"]
+/** Statuses on the icon, by statusTone in src/shared/applications.ts */
+const TONE_COLORS = {
+  neutral: "#5b3df5",
+  progress: "#5b3df5",
+  late: "#3f28b8",
+  success: "#0b7a52",
+  danger: "#c8281c",
+  muted: "#6b6b80",
+}
 
 // ---------------------------------------------------------------------- settings
 
 async function settings() {
-  const stored = await chrome.storage.local.get(["token", "apiBase", "autoTrack"])
+  const stored = await chrome.storage.local.get([
+    "token",
+    "apiBase",
+    "autoTrack",
+    "offerCheck",
+    "linkedinAuto",
+    "linkedinSlug",
+  ])
   return {
     token: stored.token || null,
     apiBase: stored.apiBase || DEFAULT_APP,
     // Both local addresses are the same app; only an https address is a real choice.
     customBase: Boolean(stored.apiBase) && !LOCAL_APPS.includes(stored.apiBase),
     autoTrack: stored.autoTrack !== false,
+    /** Say on an open offer whether the person already applied, and the status */
+    offerCheck: stored.offerCheck !== false,
+    /** Audit the person's own LinkedIn profile whenever they open it */
+    linkedinAuto: stored.linkedinAuto !== false,
+    /** The profile slug of the last audited profile: how the page is known to be theirs */
+    linkedinSlug: stored.linkedinSlug || null,
   }
+}
+
+const SLUG = /^[A-Za-z0-9%._~-]{1,120}$/
+const LINKEDIN_PROFILE = /^https:\/\/www\.linkedin\.com\/in\/([^/?#]+)\/?(?:[?#].*)?$/
+
+function linkedInSlug(url) {
+  const match = LINKEDIN_PROFILE.exec(String(url || ""))
+  return match ? match[1] : null
+}
+
+function isLinkedIn(url) {
+  return /^https:\/\/www\.linkedin\.com\//.test(String(url || ""))
 }
 
 /** An app address the extension may call: the local app, or any https site with permission. */
@@ -87,11 +125,51 @@ async function setBadge(tabId, applied) {
   await chrome.action.setBadgeText({ tabId, text: applied ? "✓" : "" }).catch(() => undefined)
 }
 
+/** The profile score on the tab's icon; green from 80, amber under 60. */
+async function setScoreBadge(tabId, score, slug) {
+  const color = score >= 80 ? "#0b7a52" : score >= 60 ? "#5b3df5" : "#b45309"
+  await chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => undefined)
+  await chrome.action.setBadgeText({ tabId, text: String(score) }).catch(() => undefined)
+  if (!chrome.storage.session) return
+  await chrome.storage.session.set({ [`score:${tabId}`]: { slug, score } }).catch(() => undefined)
+}
+
+/** LinkedIn pages never get the "applied" check; a profile tab keeps the score it was given. */
+async function linkedInBadge(tabId, url) {
+  const slug = linkedInSlug(url)
+  const key = `score:${tabId}`
+  const stored = chrome.storage.session
+    ? await chrome.storage.session.get(key).catch(() => ({}))
+    : {}
+  const kept = stored[key]
+  if (slug && kept && kept.slug === slug) return setScoreBadge(tabId, kept.score, slug)
+  return setBadge(tabId, false)
+}
+
+/** ✓ in the colour of the status; a dot for another role at this company; else nothing. */
+async function setOfferBadge(tabId, data) {
+  const applied = data?.applied
+  const text = applied ? "✓" : data?.sameCompany?.length ? "•" : ""
+  const color = applied ? TONE_COLORS[applied.tone] || TONE_COLORS.neutral : TONE_COLORS.muted
+  const title = text ? `Nowa Rola: ${statusLine(data)}` : ""
+  await chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => undefined)
+  await chrome.action.setBadgeText({ tabId, text }).catch(() => undefined)
+  await chrome.action.setTitle({ tabId, title }).catch(() => undefined)
+}
+
+/** Offers are left to the script on the page: it asks with the company and role it read there. */
 async function updateBadge(tabId, url) {
   const { token, apiBase } = await settings()
   if (!token || !isWebUrl(url) || url.startsWith(apiBase)) return setBadge(tabId, false)
-  const result = await api(`/api/ext/status?url=${encodeURIComponent(url)}`)
-  await setBadge(tabId, Boolean(result.ok && result.data?.applied))
+  if (isLinkedIn(url) && !linkedInJobId(url)) return linkedInBadge(tabId, url)
+}
+
+function statusPath(offer) {
+  const query = new URLSearchParams({ url: String(offer?.url || "") })
+  for (const name of OFFER_FACTS) {
+    if (offer?.[name]) query.set(name, String(offer[name]))
+  }
+  return `/api/ext/status?${query}`
 }
 
 // ---------------------------------------------------------------------- dynamic scripts
@@ -103,7 +181,7 @@ async function syncScript(id, wanted, definition) {
   if (!wanted && found.length) await chrome.scripting.unregisterContentScripts({ ids: [id] })
 }
 
-/** The form script on every https site, once the person allowed it. */
+/** The form script and the offer check on every https site, once the person allowed it. */
 async function syncAllSites() {
   const wanted = await chrome.permissions.contains({ origins: [ALL_SITES] })
   await syncScript(ALL_SITES_SCRIPT, wanted, {
@@ -111,6 +189,11 @@ async function syncAllSites() {
     js: [CONTENT_FILE],
     runAt: "document_idle",
     allFrames: true,
+  })
+  await syncScript(OFFER_SITES_SCRIPT, wanted, {
+    matches: [ALL_SITES],
+    js: [OFFER_FILE],
+    runAt: "document_idle",
   })
 }
 
@@ -142,6 +225,16 @@ async function inject(tabId) {
     await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files })
   } catch (_error) {
     await chrome.scripting.executeScript({ target: { tabId }, files })
+  }
+}
+
+/** Asks the LinkedIn script in the tab to audit the profile; the manifest already injects it. */
+async function auditInTab(tabId) {
+  try {
+    const answer = await chrome.tabs.sendMessage(tabId, { type: "nr:linkedin" })
+    return answer || { ok: false, error: "not-profile" }
+  } catch (_error) {
+    return { ok: false, error: "not-profile" }
   }
 }
 
@@ -208,9 +301,43 @@ async function handle(message, sender) {
   const tabId = sender.tab?.id
   switch (message?.type) {
     case "config": {
-      const { token, apiBase, autoTrack, customBase } = await settings()
-      return { ok: true, data: { connected: Boolean(token), apiBase, autoTrack, customBase } }
+      const { token, apiBase, autoTrack, offerCheck, customBase, linkedinAuto, linkedinSlug } =
+        await settings()
+      return {
+        ok: true,
+        data: {
+          connected: Boolean(token),
+          apiBase,
+          autoTrack,
+          offerCheck,
+          customBase,
+          linkedinAuto,
+          linkedinSlug,
+        },
+      }
     }
+    case "linkedinAudit": {
+      const result = await api("/api/ext/linkedin-profile", {
+        method: "POST",
+        body: JSON.stringify({
+          sections: message.sections,
+          force: Boolean(message.force),
+          profileUrl: message.profileUrl,
+          locale: "pl",
+        }),
+      })
+      if (!result.ok) return result
+      const slug = typeof message.slug === "string" && SLUG.test(message.slug) ? message.slug : null
+      if (tabId != null) await setScoreBadge(tabId, result.data.audit.score, slug)
+      // From now on this slug is the person's own profile, however the page looks.
+      if (slug) await chrome.storage.local.set({ linkedinSlug: slug }).catch(() => undefined)
+      return result
+    }
+    case "linkedinLatest":
+      return api("/api/ext/linkedin-profile?locale=pl")
+    case "linkedinTab":
+      if (!fromExtensionPage(sender)) return { ok: false, error: "forbidden" }
+      return auditInTab(message.tabId)
     case "me":
       return api("/api/ext/me")
     case "fill":
@@ -230,7 +357,18 @@ async function handle(message, sender) {
       return result
     }
     case "status":
-      return api(`/api/ext/status?url=${encodeURIComponent(String(message.url || ""))}`)
+      return api(statusPath({ url: message.url }))
+    case "offerStatus": {
+      const result = await api(statusPath(message.offer))
+      if (tabId != null) await setOfferBadge(tabId, result.ok ? result.data : null)
+      return result
+    }
+    case "offerLeft":
+      if (tabId != null) {
+        await setOfferBadge(tabId, null)
+        await linkedInBadge(tabId, sender.tab.url)
+      }
+      return { ok: true }
     case "cv":
       return cvFile(message.id)
     case "takeToast":
@@ -280,8 +418,8 @@ async function openSetup() {
 
 /** Chrome only wakes a service worker for listeners added in its first turn: keep this synchronous. */
 export function startBackground() {
-  // Without the "tabs" permission Chrome only reveals tab.url where the extension has host access,
-  // so this only ever asks about known ATS pages and pages the person opened it on.
+  // Without the "tabs" permission Chrome only reveals tab.url where the extension has host access
+  // and on pages the person opened it on.
   chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
     if (change.status === "complete" && tab.url) void updateBadge(tabId, tab.url)
   })

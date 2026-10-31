@@ -6,7 +6,7 @@ import { adapterFor, type LiveAts } from "src/server/adapters/registry"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { createHttpClient } from "src/server/security/safe-fetch"
 import { conditionalHttp, NotModifiedError } from "./conditional"
-import { nextCrawlAt } from "./schedule"
+import { BOARD_RETRY_MS, nextCrawlAt, SOURCE_RETRY_MS } from "./schedule"
 import {
   knownCanonicals,
   noteIndexFailure,
@@ -99,7 +99,7 @@ export async function indexBoard(
         await noteIndexFailure(
           board,
           now,
-          new Date(now.getTime() + 6 * 60 * 60 * 1000),
+          new Date(now.getTime() + SOURCE_RETRY_MS),
           listed.note || "Career page was not proven"
         )
         return "failed"
@@ -114,7 +114,7 @@ export async function indexBoard(
         await noteIndexFailure(
           board,
           now,
-          new Date(now.getTime() + 15 * 60 * 1000),
+          new Date(now.getTime() + BOARD_RETRY_MS),
           listed.note || "Board was not proven"
         )
         return "failed"
@@ -153,7 +153,7 @@ export async function indexBoard(
       return "unchanged"
     }
     const message = error instanceof Error ? error.message : "Index failed"
-    await noteIndexFailure(board, now, new Date(now.getTime() + 15 * 60 * 1000), message)
+    await noteIndexFailure(board, now, new Date(now.getTime() + BOARD_RETRY_MS), message)
     console.error(`Index ${board.companyName} failed`, message)
     return "failed"
   }

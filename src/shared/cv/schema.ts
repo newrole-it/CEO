@@ -117,12 +117,29 @@ export const CvEducationSection = z.object({
   items: z.array(CvEducationItem).max(30),
 })
 
+/**
+ * The one section of a cover letter. It has no heading on the sheet: `title` is the document's
+ * name in the footer ("List motywacyjny"). Only the paragraphs are rich text.
+ */
+export const CvLetterSection = z.object({
+  ...sectionBase,
+  type: z.literal("letter"),
+  date: plain(160),
+  recipient: plain(400),
+  subject: plain(300),
+  greeting: plain(300),
+  paragraphs: z.array(rich(4000)).max(20),
+  closing: plain(200),
+  signature: plain(200),
+})
+
 export const CvSection = z.discriminatedUnion("type", [
   CvTextSection,
   CvSkillsSection,
   CvExperienceSection,
   CvCardsSection,
   CvEducationSection,
+  CvLetterSection,
 ])
 
 export const CvContent = z.object({
@@ -140,7 +157,9 @@ export type CvContent = z.infer<typeof CvContent>
 export type CvHeader = z.infer<typeof CvHeader>
 export type CvLink = z.infer<typeof CvLink>
 export type CvSection = z.infer<typeof CvSection>
-export type CvSectionType = CvSection["type"]
+/** What can be added to a CV; a letter's section comes only with the letter. */
+export type CvSectionType = Exclude<CvSection["type"], "letter">
+export type CvLetterSection = z.infer<typeof CvLetterSection>
 export type CvTextSection = z.infer<typeof CvTextSection>
 export type CvSkillsSection = z.infer<typeof CvSkillsSection>
 export type CvExperienceSection = z.infer<typeof CvExperienceSection>
@@ -152,6 +171,11 @@ export type CvCardItem = z.infer<typeof CvCardItem>
 export type CvEducationItem = z.infer<typeof CvEducationItem>
 
 export const CV_SECTION_TYPES = ["text", "skills", "experience", "cards", "education"] as const
+
+/** The letter section of a cover letter; undefined for a CV. */
+export function letterSection(content: CvContent): CvLetterSection | undefined {
+  return content.sections.find((section): section is CvLetterSection => section.type === "letter")
+}
 
 /** Short random id for sections and items (stable across edits, unique within a CV). */
 export function cvId(prefix = "b"): string {

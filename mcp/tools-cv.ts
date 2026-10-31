@@ -6,17 +6,17 @@ import { z } from "zod"
 import { findChrome } from "src/server/cv/render"
 import {
   cvPdf,
-  cvPdfFileName,
   cvText,
   duplicateCv,
   getCv,
   listCvs,
   updateCv,
+  type CvDetail,
   type CvView,
 } from "src/server/cv/service"
 import { applyCvPatch } from "src/shared/cv/patch"
 import { cvContentError, parseCvContent } from "src/shared/cv/schema"
-import { failure, guard, reply } from "./tools"
+import { failure, guard, reply, type ToolResult } from "./tools"
 import { currentUser } from "./user"
 
 /** CV tools (stream B): cv_list, cv_get, cv_update, cv_export_pdf. */
@@ -38,7 +38,8 @@ function viewData(cv: CvView) {
 
 function viewLine(cv: CvView): string {
   const kind = cv.kind === "UPLOADED" ? "PDF" : "edytowalne"
-  return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${cv.language}, ${kind}, zmiana ${cv.updatedAt
+  const target = cv.target ? `, pod ofertę: ${cv.target.company}` : ""
+  return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${cv.language}, ${kind}${target}, zmiana ${cv.updatedAt
     .toISOString()
     .slice(0, 10)}) id ${cv.id}`
 }
@@ -54,6 +55,23 @@ export function exportPath(
   const expanded = value === "~" || value.startsWith("~/") ? join(home, value.slice(1)) : value
   if (!isAbsolute(expanded)) return { error: `path must be absolute, got "${value}".` }
   return /\.pdf$/i.test(expanded) ? expanded : join(expanded, fileName)
+}
+
+const NO_CV = "Brak CV. Utwórz je na http://127.0.0.1:43123/cv."
+
+/** The CV a tool works on: the given id, else the default (★), else the newest. */
+async function resolveCv(
+  userId: number,
+  id: string | undefined
+): Promise<{ cv: CvDetail } | { error: ToolResult }> {
+  let cvId = id
+  if (!cvId) {
+    const cvs = await listCvs(userId)
+    cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
+    if (!cvId) return { error: failure(NO_CV) }
+  }
+  const cv = await getCv(userId, cvId)
+  return cv ? { cv } : { error: failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`) }
 }
 
 export function registerCvTools(server: McpServer) {
@@ -92,14 +110,9 @@ export function registerCvTools(server: McpServer) {
     },
     guard(async ({ id }: { id?: string }) => {
       const user = await currentUser()
-      let cvId = id
-      if (!cvId) {
-        const cvs = await listCvs(user.id)
-        cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
-        if (!cvId) return failure("Brak CV. Utwórz je na http://127.0.0.1:43123/cv.")
-      }
-      const cv = await getCv(user.id, cvId)
-      if (!cv) return failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`)
+      const found = await resolveCv(user.id, id)
+      if ("error" in found) return found.error
+      const { cv } = found
       if (!cv.content) {
         return reply(`${cv.title}: wgrany PDF bez wersji edytowalnej. Utwórz ją na /cv/${cv.id}.`, {
           cv: viewData(cv),
@@ -240,14 +253,9 @@ export function registerCvTools(server: McpServer) {
     },
     guard(async ({ id, path }: { id?: string; path?: string }) => {
       const user = await currentUser()
-      let cvId = id
-      if (!cvId) {
-        const cvs = await listCvs(user.id)
-        cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
-        if (!cvId) return failure("Brak CV. Utwórz je na http://127.0.0.1:43123/cv.")
-      }
-      const cv = await getCv(user.id, cvId)
-      if (!cv) return failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`)
+      const found = await resolveCv(user.id, id)
+      if ("error" in found) return found.error
+      const { cv } = found
       const pdf = await cvPdf(user.id, cv.id)
       if (!pdf) {
         if (cv.kind === "EDITABLE" && !findChrome()) {
@@ -259,10 +267,8 @@ export function registerCvTools(server: McpServer) {
           `Nie udało się wygenerować PDF dla „${cv.title}”. Spróbuj z http://127.0.0.1:43123/cv/${cv.id}/print.`
         )
       }
-      const target = exportPath(
-        path,
-        cv.kind === "UPLOADED" ? pdf.name : cvPdfFileName(cv.content?.header.name)
-      )
+      // cvPdf names the file for both kinds (and adds the letter suffix for a cover letter)
+      const target = exportPath(path, pdf.name)
       if (typeof target !== "string") return failure(target.error)
       await mkdir(dirname(target), { recursive: true })
       await writeFile(target, new Uint8Array(pdf.bytes))

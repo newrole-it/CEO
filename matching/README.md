@@ -30,8 +30,9 @@ Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → no
 ## Use
 
 ```bash
-npm install
-npm test                 # node:test via tsx
+# Dependencies (zod, tsx, typescript) are pinned to the same versions as the repo root and
+# resolve from the root node_modules, so no install is needed inside this folder.
+npm test                 # node:test via tsx (or: npm test --prefix matching from the root)
 npm run typecheck
 npx tsx scripts/score-fixtures.ts --verbose
 npm run gen:examples     # regenerate query-expansion.examples.json
@@ -48,7 +49,7 @@ const { ranked, postings, merges } = runMatching(rawPostings, profile, new Date(
 ```
 
 LLM calls use only plain chat completions with `response_format: {type: "json_object"}` (OpenAI-compatible; no vendor-specific features).
-`expansionJsonSchema()` is available for providers that support `json_schema`. Output is always re-validated with Zod.
+Output is always re-validated with Zod.
 
 ## Key design decisions
 1. LLM only where language understanding helps (expansion, explanation); scoring/dedupe/normalization are deterministic and unit-tested.

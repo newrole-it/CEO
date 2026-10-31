@@ -22,7 +22,13 @@ import {
   titleSimilarity,
   type OfferProfile,
 } from "./facts"
-import { buildPreferenceModel, feedbackJobSelect, jobToOffer, preferenceAdjustment } from "./model"
+import {
+  buildPreferenceModel,
+  decay,
+  feedbackJobSelect,
+  jobToOffer,
+  preferenceAdjustment,
+} from "./model"
 import type { Bilingual, Locale, OfferForScoring, PreferenceModel, RankedOffer } from "./types"
 
 export const SIMILAR_POOL = 1500
@@ -333,10 +339,10 @@ async function loadSeeds(input: {
     take: MAX_SEEDS,
     select: { aspects: true, tags: true, updatedAt: true, job: { select: seedSelect } },
   })
-  const newest = rows[0]?.updatedAt.getTime() ?? Date.now()
+  // the newest seed weighs 1; older ones fade with the preference model's half-life
+  const newest = new Date(rows[0]?.updatedAt.getTime() ?? Date.now())
   return rows.map((row) => {
-    const days = (newest - row.updatedAt.getTime()) / 86_400_000
-    const weight = Math.pow(0.5, Math.max(0, days) / 60)
+    const weight = decay(row.updatedAt, newest)
     const tags = splitStoredTags(row.tags).tags
     return makeSeed(row.job, weight, override ?? parseAspects(row.aspects), tags)
   })

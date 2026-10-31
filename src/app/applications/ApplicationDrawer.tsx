@@ -77,7 +77,14 @@ function DrawerBody({
   const toast = useToast()
   const [detail, setDetail] = useState<ApplicationDetail | null>(null)
   const [load, setLoad] = useState<"loading" | "ready" | "error" | "missing">("loading")
-  const [form, setForm] = useState({ stage: "", nextStep: "", nextAt: "", contact: "", notes: "" })
+  const [form, setForm] = useState({
+    stage: "",
+    nextStep: "",
+    nextAt: "",
+    contact: "",
+    stated: "",
+    notes: "",
+  })
   const [saveState, setSaveState] = useState<SaveState>("idle")
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -101,6 +108,7 @@ function DrawerBody({
             nextStep: next.nextStep ?? "",
             nextAt: dateInput(next.nextStepAt ? new Date(next.nextStepAt).toISOString() : null),
             contact: next.contact ?? "",
+            stated: next.statedSalary ?? "",
             notes: next.notes ?? "",
           })
         }
@@ -122,6 +130,7 @@ function DrawerBody({
       nextStep?: string | null
       nextStepAt?: Date | null
       contact?: string | null
+      statedSalary?: string | null
       notes?: string | null
     }) => {
       setSaveState("saving")
@@ -167,10 +176,11 @@ function DrawerBody({
 
   const current: AppRow | null = row ?? (detail ? toRow(detail) : null)
 
-  function saveIfChanged(key: "stage" | "contact", stored: string | null | undefined) {
+  function saveIfChanged(key: "stage" | "contact" | "stated", stored: string | null | undefined) {
     const value = form[key].trim()
     if (value === (stored ?? "")) return
-    void save(key === "stage" ? { stageNote: value || null } : { contact: value || null })
+    const field = { stage: "stageNote", contact: "contact", stated: "statedSalary" }[key]
+    void save({ [field]: value || null })
   }
 
   function saveNext(nextAt = form.nextAt) {
@@ -338,6 +348,19 @@ function DrawerBody({
             </section>
 
             <section className="app-drawer__sec">
+              <Field label={t("app.col.stated")} htmlFor="app-d-stated">
+                <input
+                  id="app-d-stated"
+                  className="input"
+                  value={form.stated}
+                  maxLength={200}
+                  placeholder={t("app.d.statedPh")}
+                  onChange={(event) =>
+                    setForm((value) => ({ ...value, stated: event.target.value }))
+                  }
+                  onBlur={() => saveIfChanged("stated", detail.statedSalary)}
+                />
+              </Field>
               <Field label={t("app.d.contact")} htmlFor="app-d-contact">
                 <input
                   id="app-d-contact"
@@ -423,15 +446,6 @@ function DrawerBody({
               ) : null}
             </section>
 
-            <section className="app-drawer__sec" aria-labelledby="app-d-timeline">
-              <h3 id="app-d-timeline">{t("app.d.timeline")}</h3>
-              <ol className="timeline">
-                {[...detail.events].reverse().map((event) => (
-                  <TimelineItem key={event.id} event={event} />
-                ))}
-              </ol>
-            </section>
-
             <section className="app-drawer__sec" aria-labelledby="app-d-answers">
               <h3 id="app-d-answers">{t("app.d.answers")}</h3>
               {detail.answers.length ? (
@@ -446,6 +460,20 @@ function DrawerBody({
               ) : (
                 <p className="t-sm muted">{t("app.d.answersEmpty")}</p>
               )}
+              <p className="t-sm muted">
+                <Link className="link" href="/answers">
+                  {t("app.d.answersBank")}
+                </Link>
+              </p>
+            </section>
+
+            <section className="app-drawer__sec" aria-labelledby="app-d-timeline">
+              <h3 id="app-d-timeline">{t("app.d.timeline")}</h3>
+              <ol className="timeline">
+                {[...detail.events].reverse().map((event) => (
+                  <TimelineItem key={event.id} event={event} />
+                ))}
+              </ol>
             </section>
 
             <div className="app-drawer__foot">
@@ -513,6 +541,9 @@ function TimelineItem({ event }: { event: ApplicationEventView }) {
       break
     case "answers":
       title = t("app.ev.answers")
+      break
+    case "mail":
+      title = t("app.ev.mail")
       break
     default: {
       const fields = (event.note ?? "")

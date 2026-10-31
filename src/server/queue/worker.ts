@@ -4,8 +4,10 @@ import { indexNextDue } from "src/server/index/run"
 import { maybeSyncOfferSearch } from "src/server/discovery/offer-sync"
 import { maybeExpandSimilar, maybeHuntHiddenOffers } from "src/server/discovery/hidden-offers"
 import { executeSearch } from "src/server/search/pipeline"
-import { enqueueSearch, INDEX_WATCHED, SHEET_SYNC } from "src/server/queue/enqueue"
+import { enqueueSearch, GMAIL_SYNC, INDEX_WATCHED, SHEET_SYNC } from "src/server/queue/enqueue"
 import { syncSheet } from "src/server/applications/sheet"
+import { maybeSyncCompanyAliases } from "src/server/companies/aliases"
+import { maybeSyncGmail, syncGmail } from "src/server/gmail/sync"
 import { beat } from "src/server/setup/heartbeat"
 import { indexNextWatched, indexWatchedPage } from "src/server/watchlist/index-watched"
 
@@ -22,16 +24,23 @@ export function currentTaskId(): string | null {
   return activeTaskId
 }
 
-function readSearchRunId(payload: Prisma.JsonValue): string | null {
+function payloadField(payload: Prisma.JsonValue, key: string): unknown {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null
-  const value = (payload as { searchRunId?: unknown }).searchRunId
+  return (payload as Record<string, unknown>)[key]
+}
+
+function payloadString(payload: Prisma.JsonValue, key: string): string | null {
+  const value = payloadField(payload, key)
   return typeof value === "string" ? value : null
 }
 
-function readCareerPageId(payload: Prisma.JsonValue): string | null {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null
-  const value = (payload as { careerPageId?: unknown }).careerPageId
-  return typeof value === "string" ? value : null
+function payloadNumber(payload: Prisma.JsonValue, key: string): number | null {
+  const value = payloadField(payload, key)
+  return typeof value === "number" ? value : null
+}
+
+function readSearchRunId(payload: Prisma.JsonValue): string | null {
+  return payloadString(payload, "searchRunId")
 }
 
 async function markRun(
@@ -164,15 +173,19 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
       if (!searchRunId) throw new Error("Task is missing searchRunId")
       await executeSearch(searchRunId)
     } else if (task.type === INDEX_WATCHED) {
-      const careerPageId = readCareerPageId(task.payload)
+      const careerPageId = payloadString(task.payload, "careerPageId")
       if (!careerPageId) throw new Error("Task is missing careerPageId")
       await indexWatchedPage(careerPageId)
     } else if (task.type === SHEET_SYNC) {
-      const payload = task.payload as { userId?: unknown } | null
-      const userId = typeof payload?.userId === "number" ? payload.userId : null
+      const userId = payloadNumber(task.payload, "userId")
       if (!userId) throw new Error("Task is missing userId")
       const result = await syncSheet(userId)
       if (result.status === "failed") throw new Error(result.message)
+    } else if (task.type === GMAIL_SYNC) {
+      const userId = payloadNumber(task.payload, "userId")
+      if (!userId) throw new Error("Task is missing userId")
+      // A failure is recorded on the link and shown in settings; the next interval tries again.
+      await syncGmail(userId)
     } else {
       throw new Error(`Unknown task type ${task.type}`)
     }
@@ -223,6 +236,8 @@ export async function workerLoop(signal?: { stopped: boolean }) {
       if (!signal?.stopped) await maybeSyncOfferSearch()
       if (!signal?.stopped) await maybeHuntHiddenOffers()
       if (!signal?.stopped) await maybeExpandSimilar()
+      if (!signal?.stopped) await maybeSyncGmail()
+      if (!signal?.stopped) await maybeSyncCompanyAliases()
     } catch (error) {
       console.error("Worker loop error", error)
       await sleep(backoff)

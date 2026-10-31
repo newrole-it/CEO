@@ -1,5 +1,6 @@
 import { gunzipSync } from "zlib"
 import db from "db"
+import { envCount } from "config/env"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { noteHostInterval } from "src/server/security/safe-fetch"
 import { UnsafeUrlError } from "src/server/security/url-safety"
@@ -11,7 +12,7 @@ import { extractListingLinks, htmlJobTitle } from "src/server/crawler/listing"
 import { emptyRobots, parseRobots, robotsAllows, type RobotsRules } from "src/server/crawler/robots"
 import { orderSitemapChildren, parseSitemap, type SitemapEntry } from "src/server/crawler/sitemap"
 import { pairContractVariants } from "src/server/crawler/variants"
-import { canonicalUrl } from "src/server/jobs/dedupe"
+import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { htmlToText } from "src/server/jobs/text"
 import { parseJsonLdJobs } from "./jsonld"
 import { buildListedJob } from "./parse"
@@ -246,6 +247,14 @@ function workdayTarget(boardId: string, companyName?: string): CareerTarget | nu
   }
 }
 
+/** False on sites where only the listing may be read. Someone asking for an offer does not change that. */
+export function detailPagesAllowed(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  return !Object.values(KNOWN).some(
+    (target) => target.detail === "none" && sameSite(host, target.host.toLowerCase())
+  )
+}
+
 function targetFor(boardId: string, companyName?: string): CareerTarget | null {
   const known = KNOWN[boardId.toLowerCase()]
   if (known) {
@@ -260,10 +269,9 @@ function targetFor(boardId: string, companyName?: string): CareerTarget | null {
   return workdayTarget(boardId, companyName)
 }
 
+/** Detail pages per call, capped so one site cannot spend the whole daily host budget. */
 function detailLimit(): number {
-  const parsed = Number(process.env.CAREER_DETAIL_LIMIT || 40)
-  if (!Number.isFinite(parsed) || parsed < 0) return 40
-  return Math.min(200, parsed)
+  return Math.min(200, envCount("CAREER_DETAIL_LIMIT", 40))
 }
 
 function rankUrl(loc: string, target: CareerTarget): number {
@@ -562,7 +570,7 @@ async function readListing(
       ? "Listing API /api/cms/job-postings is disallowed by robots.txt. Job pages are fetched when web search finds them."
       : `${candidates.length} links on the listing. Fetched ${fetched} detail pages. Off-host detail links stay link-outs.`
   return {
-    jobs: jobs.filter((job): job is ListedJob => Boolean(job)),
+    jobs,
     proven: jobs.length > 0 || target.mode === "search",
     companyName: target.companyName,
     note,
@@ -733,14 +741,6 @@ export function careerListUsesCache(options?: CareerListOptions): boolean {
   return options?.detailBudget == null && options?.knownUrls == null
 }
 
-function safeCanonical(raw: string): string {
-  try {
-    return canonicalUrl(raw)
-  } catch {
-    return raw
-  }
-}
-
 export async function listCareerSite(
   boardId: string,
   http: HttpClient,
@@ -848,7 +848,7 @@ export async function listCareerSite(
   let blockedStreak = 0
   let budgetExhausted = false
   for (const entry of urls) {
-    const key = safeCanonical(entry.loc)
+    const key = safeCanonicalUrl(entry.loc)
     if (known?.has(key) || known?.has(entry.loc)) {
       covered.add(key)
       continue
@@ -864,7 +864,7 @@ export async function listCareerSite(
       fetched += 1
       if (job) {
         parsed.push(job)
-        covered.add(safeCanonical(job.originalUrl))
+        covered.add(safeCanonicalUrl(job.originalUrl))
         blockedStreak = 0
       } else {
         covered.add(key)

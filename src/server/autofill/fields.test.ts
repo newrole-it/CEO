@@ -246,6 +246,30 @@ describe("classifyField: Polish forms", () => {
       [field("Załącz CV", { type: "file" }), "resume"],
       [field("List motywacyjny", { type: "file" }), "coverLetter"],
       [field("Oczekiwania finansowe (brutto, miesięcznie)"), "salary"],
+      [field("Wymagania finansowe"), "salary"],
+      // Questions about the work that use words of personal data.
+      [field("Have you built mobile apps?"), "openQuestion"],
+      [field("Have you sent e-mail campaigns?", { type: "textarea" }), "openQuestion"],
+      [field("How do you handle race conditions?", { type: "textarea" }), "openQuestion"],
+      [field("Jak wygląda u Ciebie orientacja na klienta?", { type: "textarea" }), "openQuestion"],
+      [
+        field("How did you build this product for disabled users?", { type: "textarea" }),
+        "openQuestion",
+      ],
+      [
+        field("Describe a marketing campaign you ran and what you learned from it in practice", {
+          type: "textarea",
+        }),
+        "openQuestion",
+      ],
+      // And what they must not be confused with.
+      [field("What is your phone?"), "phone"],
+      [field("Where are you based?"), "city"],
+      [field("Race", { type: "textarea" }), "eeo"],
+      [field("I agree to receive marketing", { type: "checkbox" }), "consent"],
+      [field("Ile chcesz zarabiać?"), "salary"],
+      [field("What are your financial expectations?"), "salary"],
+      [field("Expected monthly pay"), "salary"],
       [
         field("Okres wypowiedzenia", {
           type: "select",

@@ -195,6 +195,9 @@ export function SiteHeader({
                   <span className="badge badge--count">{count(newAtWatched)}</span>
                 ) : null}
               </Link>
+              <Link href="/sources" aria-current={cur("/sources")}>
+                {t("nav.sources")}
+              </Link>
             </nav>
           ) : (
             <nav className="nav" aria-label={t("nav.main")}>
@@ -203,6 +206,9 @@ export function SiteHeader({
               </Link>
               <Link href="/companies" aria-current={cur("/companies")}>
                 {t("nav.companies")}
+              </Link>
+              <Link href="/sources" aria-current={cur("/sources")}>
+                {t("nav.sources")}
               </Link>
               <Link href="/connect" aria-current={cur("/connect")}>
                 {t("nav.claude")}

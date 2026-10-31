@@ -23,6 +23,7 @@ function fresh(overrides: Partial<SetupFacts> = {}): SetupFacts {
     },
     mcp: { lastSeenAt: null, command: "claude mcp add nowarola -s user -- npm run mcp" },
     sheet: { connected: false, lastSyncedAt: null, lastError: null },
+    gmail: { connected: false, lastSyncedAt: null, lastErrorCode: null },
     now,
     ...overrides,
   }
@@ -44,6 +45,7 @@ describe("buildSteps", () => {
       "extension",
       "mcp",
       "sheet",
+      "gmail",
     ])
   })
 
@@ -158,8 +160,12 @@ describe("nextStep", () => {
       mcp: { lastSeenAt: now, command: null },
     })
     expect(nextStep(buildSteps(facts))?.id).toBe("sheet")
-    const all = { ...facts, sheet: { connected: true, lastSyncedAt: now, lastError: null } }
+    const all = {
+      ...facts,
+      sheet: { connected: true, lastSyncedAt: now, lastError: null },
+      gmail: { connected: true, lastSyncedAt: now, lastErrorCode: null },
+    }
     expect(nextStep(buildSteps(all))).toBeNull()
-    expect(progress(buildSteps(all))).toEqual({ done: 10, total: 11 })
+    expect(progress(buildSteps(all))).toEqual({ done: 11, total: 12 })
   })
 })

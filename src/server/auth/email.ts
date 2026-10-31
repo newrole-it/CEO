@@ -46,6 +46,10 @@ export async function sendMagicLinkEmail(
     })
     return "smtp"
   }
+  // A live sign-in link must not fall into a production log because a key is missing.
+  if (provider !== "console") {
+    throw new Error(`EMAIL_PROVIDER=${provider} cannot send: its credentials are not set`)
+  }
   console.log(`Magic link (local console delivery): ${url}`)
   return "console"
 }

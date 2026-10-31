@@ -4,6 +4,9 @@ import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
 import { Modal, ModalHead } from "src/app/components/ds/interactive"
 
+/** localStorage key; "off" disables the feed shortcuts (switched in Settings). */
+export const SHORTCUTS_KEY = "nr.shortcuts"
+
 const FEED: [string[], CopyKey][] = [
   [["K", "→"], "keys.like"],
   [["J", "←"], "keys.pass"],

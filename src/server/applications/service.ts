@@ -8,6 +8,7 @@ import {
 } from "src/shared/applications"
 import {
   ApplicationError,
+  applicationAnswers,
   asStatus,
   cleanMultiline,
   cleanText,
@@ -20,9 +21,19 @@ import {
   isUntouched,
   LIMITS,
   matchesQuery,
+  mergeFormAnswers,
+  parseFormAnswers,
   planUpdate,
+  statedSalaryFrom,
   urlKey,
 } from "./logic"
+import { parseAspects } from "src/shared/feedback-aspects"
+import {
+  computeInsights,
+  type Insights,
+  type InsightsInput,
+  type InsightsOptions,
+} from "./insights"
 import { scheduleSheetSync } from "./sheet"
 import type {
   ApplicationDetail,
@@ -31,10 +42,11 @@ import type {
   ApplicationGroup,
   ApplicationStats,
   ApplicationView,
+  FormAnswer,
 } from "./types"
 
 export { ApplicationError, urlKey }
-export type { ApplicationDetail, ApplicationStats, ApplicationView }
+export type { ApplicationDetail, ApplicationStats, ApplicationView, Insights, InsightsInput }
 
 type Row = Prisma.ApplicationGetPayload<{}>
 
@@ -47,6 +59,7 @@ export function toApplicationView(row: Row): ApplicationView {
     url: row.url,
     location: row.location,
     salaryText: row.salaryText,
+    statedSalary: row.statedSalary ?? null,
     status: isApplicationStatus(row.status) ? row.status : "APPLIED",
     stageNote: row.stageNote,
     closedAtStage: asStatus(row.closedAtStage),
@@ -70,6 +83,7 @@ const EVENT_TYPES: ApplicationEventType[] = [
   "next-step",
   "answers",
   "edit",
+  "mail",
 ]
 
 function toEventView(row: Prisma.ApplicationEventGetPayload<{}>): ApplicationEventView {
@@ -81,7 +95,10 @@ function toEventView(row: Prisma.ApplicationEventGetPayload<{}>): ApplicationEve
     fromStatus: asStatus(row.fromStatus),
     toStatus: asStatus(row.toStatus),
     note: row.note,
-    channel: row.channel === "mcp" || row.channel === "extension" ? row.channel : "web",
+    channel:
+      row.channel === "mcp" || row.channel === "extension" || row.channel === "gmail"
+        ? row.channel
+        : "web",
     at: row.at,
   }
 }
@@ -102,6 +119,10 @@ export type IndexedJob = Prisma.JobGetPayload<{ select: typeof jobSelect }>
 
 function jobUrl(job: IndexedJob): string {
   return job.originalUrl || job.canonicalUrl
+}
+
+export function findJobById(id: string): Promise<IndexedJob | null> {
+  return db.job.findUnique({ where: { id }, select: jobSelect })
 }
 
 /** The indexed offer behind a URL: exact canonical/original URL first, then the same urlKey. */
@@ -188,12 +209,21 @@ export async function createApplication(input: {
   }
   let job: IndexedJob | null = null
   if (input.jobId) {
-    job = await db.job.findUnique({ where: { id: input.jobId }, select: jobSelect })
+    job = await findJobById(input.jobId)
     if (!job) throw new ApplicationError("job-not-found", "This offer is not in the index.")
   } else if (givenUrl) {
     job = await findJobByUrl(givenUrl)
   }
   if (input.cvDocumentId) await assertCv(userId, input.cvDocumentId)
+  // applying with no CV named: the one written for this offer, when there is one
+  const tailored =
+    job && !input.cvDocumentId
+      ? await db.cvDocument.findFirst({
+          where: { userId, jobId: job.id, docType: "CV" },
+          select: { id: true },
+        })
+      : null
+  const cvDocumentId = input.cvDocumentId ?? tailored?.id ?? null
 
   const url = givenUrl ?? (job ? jobUrl(job) : null)
   const key = url ? urlKey(url) : null
@@ -237,7 +267,7 @@ export async function createApplication(input: {
       if (location && !existing.location) fill.location = location
       if (salaryText && !existing.salaryText) fill.salaryText = salaryText
       if (notes && !existing.notes) fill.notes = notes
-      if (input.cvDocumentId && !existing.cvDocumentId) fill.cvDocumentId = input.cvDocumentId
+      if (cvDocumentId && !existing.cvDocumentId) fill.cvDocumentId = cvDocumentId
       const row = Object.keys(fill).length
         ? await tx.application.update({ where: { id: existing.id }, data: fill })
         : existing
@@ -268,7 +298,7 @@ export async function createApplication(input: {
         statusChangedAt: now,
         notes,
         source: input.source,
-        cvDocumentId: input.cvDocumentId ?? null,
+        cvDocumentId,
         events: {
           create: [{ type: "created", toStatus: status, channel: input.channel, at: now }],
         },
@@ -338,6 +368,7 @@ export async function updateApplication(input: {
   url?: string | null
   location?: string | null
   salaryText?: string | null
+  statedSalary?: string | null
   appliedAt?: Date
   cvDocumentId?: string | null
 }): Promise<ApplicationView> {
@@ -381,6 +412,32 @@ export async function updateApplication(input: {
   })
   await scheduleSheetSync(userId)
   return toApplicationView(row)
+}
+
+/**
+ * Keeps what was sent in a form on its application, with the salary stated in it. Unlike the
+ * answer bank, this holds every answer for every application, even one given word for word before.
+ */
+export async function saveFormAnswers(
+  userId: number,
+  id: string,
+  answers: FormAnswer[],
+  channel: Channel
+): Promise<void> {
+  if (!answers.length) return
+  const current = await ownApplication(userId, id)
+  const stated = statedSalaryFrom(answers)
+  await db.$transaction([
+    db.application.update({
+      where: { id },
+      data: {
+        formAnswers: mergeFormAnswers(parseFormAnswers(current.formAnswers), answers),
+        ...(stated ? { statedSalary: stated } : {}),
+      },
+    }),
+    db.applicationEvent.create({ data: { applicationId: id, type: "answers", channel } }),
+  ])
+  await scheduleSheetSync(userId)
 }
 
 /** Appends a note (blank line between notes) and puts it on the timeline. */
@@ -446,7 +503,7 @@ export async function getApplication(
   return {
     ...toApplicationView(rest),
     events: events.map(toEventView),
-    answers,
+    answers: applicationAnswers(parseFormAnswers(rest.formAnswers), answers),
     cv: cvDocument ? { id: cvDocument.id, title: cvDocument.title } : null,
   }
 }
@@ -478,4 +535,82 @@ export async function applicationStats(userId: number): Promise<ApplicationStats
     select: { status: true, closedAtStage: true, nextStepAt: true },
   })
   return computeStats(rows, new Date())
+}
+
+/** Picked tags, not the "-key" mute markers that dropSignal stores in the same list. */
+function hasPickedTags(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.some((item) => typeof item === "string" && item.trim() && !item.startsWith("-"))
+  )
+}
+
+/**
+ * Everything the statistics page and `applications_stats` compute from: applications with their
+ * timelines, offer decisions and the answer bank. Plain rows with ISO dates, so the page can
+ * recompute on the client when the range changes.
+ */
+export async function loadInsightsInput(userId: number): Promise<InsightsInput> {
+  const [applications, feedback, answers] = await Promise.all([
+    db.application.findMany({
+      where: { userId },
+      orderBy: { appliedAt: "desc" },
+      select: {
+        id: true,
+        company: true,
+        title: true,
+        status: true,
+        closedAtStage: true,
+        appliedAt: true,
+        statusChangedAt: true,
+        nextStep: true,
+        nextStepAt: true,
+        source: true,
+        jobId: true,
+        events: {
+          orderBy: { at: "asc" },
+          select: { type: true, toStatus: true, at: true, channel: true },
+        },
+      },
+    }),
+    db.offerFeedback.findMany({
+      where: { userId },
+      select: { verdict: true, createdAt: true, aspects: true, tags: true },
+    }),
+    db.answer.findMany({ where: { userId }, select: { origin: true, useCount: true } }),
+  ])
+  return {
+    applications: applications.map((row) => ({
+      id: row.id,
+      company: row.company,
+      title: row.title,
+      status: row.status,
+      closedAtStage: row.closedAtStage,
+      appliedAt: row.appliedAt.toISOString(),
+      statusChangedAt: row.statusChangedAt.toISOString(),
+      nextStep: row.nextStep,
+      nextStepAt: row.nextStepAt?.toISOString() ?? null,
+      source: row.source,
+      jobId: row.jobId,
+      events: row.events.map((event) => ({
+        type: event.type,
+        toStatus: event.toStatus,
+        at: event.at.toISOString(),
+        channel: event.channel,
+      })),
+    })),
+    decisions: feedback.map((row) => ({
+      verdict: row.verdict,
+      createdAt: row.createdAt.toISOString(),
+      withReason: parseAspects(row.aspects).length > 0 || hasPickedTags(row.tags),
+    })),
+    answers: answers.map((row) => ({ origin: row.origin, useCount: row.useCount })),
+  }
+}
+
+export async function applicationInsights(
+  userId: number,
+  opts: InsightsOptions = {}
+): Promise<Insights> {
+  return computeInsights(await loadInsightsInput(userId), opts)
 }

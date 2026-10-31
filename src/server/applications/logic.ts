@@ -11,7 +11,7 @@ import {
   type ApplicationStatus,
   type Channel,
 } from "src/shared/applications"
-import type { ApplicationEventType, ApplicationGroup, ApplicationStats } from "./types"
+import type { ApplicationEventType, ApplicationGroup, ApplicationStats, FormAnswer } from "./types"
 
 /** Pure rules of the tracker: no database here, so everything is unit-testable. */
 
@@ -21,6 +21,7 @@ export const LIMITS = {
   url: 2000,
   location: 200,
   salaryText: 120,
+  statedSalary: 200,
   stageNote: 160,
   nextStep: 300,
   contact: 500,
@@ -35,6 +36,7 @@ export type ApplicationErrorCode =
   | "missing-fields"
   | "invalid-status"
   | "invalid-url"
+  | "invalid-date"
 
 export class ApplicationError extends Error {
   code: ApplicationErrorCode
@@ -62,6 +64,8 @@ const POSTING_PARAMS = new Set([
   "position_id",
   "vacancyid",
   "vacancy_id",
+  // LinkedIn's search page: /jobs/search/?currentJobId=123
+  "currentjobid",
 ])
 
 /**
@@ -147,6 +151,83 @@ export function formatSalary(
   return `${range}${currency ? ` ${currency.toUpperCase()}` : ""}`
 }
 
+const OFFER_FIELDS = ["company", "title", "location", "salaryText"] as const
+
+type OfferFields = Partial<Record<(typeof OFFER_FIELDS)[number], string | null>>
+
+/**
+ * The add form after a link was read. A field takes the new value unless the person typed over
+ * what the previous link filled, so changing the link never keeps the old offer's company.
+ */
+export function refillForm<T extends Record<(typeof OFFER_FIELDS)[number], string>>(
+  form: T,
+  previous: OfferFields | null,
+  next: OfferFields | null
+): T {
+  const out = { ...form }
+  for (const field of OFFER_FIELDS) {
+    const current = form[field]
+    if (!current || current === (previous?.[field] ?? "")) {
+      out[field] = (next?.[field] ?? "") as T[typeof field]
+    }
+  }
+  return out
+}
+
+/** The stored form. Anything that is not a list of answers reads as an empty form. */
+export function parseFormAnswers(value: unknown): FormAnswer[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const { question, answer, kind } = (item ?? {}) as Record<string, unknown>
+    if (typeof question !== "string" || typeof answer !== "string") return []
+    return [{ question, answer, kind: typeof kind === "string" ? kind : null }]
+  })
+}
+
+/** Two labels for the same question: ignores case, accents, spacing and punctuation. */
+export function answerKey(question: string): string {
+  return fold(question)
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+}
+
+/** A form sent again overwrites the questions it repeats and keeps the others. */
+export function mergeFormAnswers(previous: FormAnswer[], next: FormAnswer[]): FormAnswer[] {
+  const merged = new Map(previous.map((item) => [answerKey(item.question), item]))
+  for (const item of next) merged.set(answerKey(item.question), item)
+  return [...merged.values()]
+}
+
+/** What the drawer lists: the form as sent, then bank answers linked by hand or by older forms. */
+export function applicationAnswers(
+  form: FormAnswer[],
+  linked: { id: string; question: string; answer: string }[]
+): { id: string; question: string; answer: string }[] {
+  const asked = new Set(form.map((item) => answerKey(item.question)))
+  return [
+    ...form.map(({ question, answer }, index) => ({ id: `form-${index}`, question, answer })),
+    ...linked.filter((item) => !asked.has(answerKey(item.question))),
+  ]
+}
+
+const RANGE_LOW = /\b(min\w*|from|od|lower)\b/
+const RANGE_HIGH = /\b(max\w*|to|do|upper)\b/
+
+/**
+ * The salary given in a form. A yes to "do you accept 20-25k?" has no number, so it does not
+ * count. Separate minimum and maximum fields become one range; other fields stay side by side.
+ */
+export function statedSalaryFrom(form: FormAnswer[]): string | null {
+  const stated = form.filter((item) => item.kind === "salary" && /\d/.test(item.answer))
+  if (!stated.length) return null
+  const values = [...new Set(stated.map((item) => item.answer.replace(/\s+/g, " ").trim()))]
+  const range =
+    stated.length === 2 &&
+    RANGE_LOW.test(fold(stated[0].question)) &&
+    RANGE_HIGH.test(fold(stated[1].question))
+  return cleanText(values.join(range ? " – " : " · "), LIMITS.statedSalary)
+}
+
 /** Where a closed application stopped: the last active stage, kept across closed → closed. */
 export function nextClosedAtStage(
   previous: string,
@@ -171,6 +252,7 @@ export type CurrentApplication = {
   url: string | null
   location: string | null
   salaryText: string | null
+  statedSalary: string | null
   appliedAt: Date
   cvDocumentId: string | null
 }
@@ -187,6 +269,7 @@ export type ApplicationPatch = {
   url?: string | null
   location?: string | null
   salaryText?: string | null
+  statedSalary?: string | null
   appliedAt?: Date
   cvDocumentId?: string | null
 }
@@ -261,7 +344,7 @@ export function planUpdate(
     events.push({ type: "next-step", note: nextStepNote(step, stepAt) })
   }
 
-  const text = (key: "contact" | "location" | "salaryText", max: number) => {
+  const text = (key: "contact" | "location" | "salaryText" | "statedSalary", max: number) => {
     if (input[key] === undefined) return
     const value = cleanText(input[key], max)
     if (value !== current[key]) {
@@ -283,6 +366,7 @@ export function planUpdate(
   text("contact", LIMITS.contact)
   text("location", LIMITS.location)
   text("salaryText", LIMITS.salaryText)
+  text("statedSalary", LIMITS.statedSalary)
 
   if (input.notes !== undefined) {
     const notes = cleanMultiline(input.notes, LIMITS.notes)

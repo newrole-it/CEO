@@ -1,6 +1,7 @@
 import type { SourceType } from "src/shared/schemas"
 import { isBlockedSlug } from "src/server/adapters/blocked"
 import { WORKDAY_BOARDS, type WorkdayBoardLink } from "src/shared/workday-boards"
+import { envCount } from "./env"
 import catalog from "./seed-companies.json"
 import polishCatalog from "./seed-companies-pl.json"
 
@@ -214,9 +215,5 @@ export function selectSeedBoards(
 }
 
 export function seedScanLimit(): number {
-  const raw = process.env.SCAN_SEED_LIMIT
-  if (raw == null || raw.trim() === "") return 40
-  const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed < 0) return 40
-  return Math.floor(parsed)
+  return envCount("SCAN_SEED_LIMIT", 40)
 }

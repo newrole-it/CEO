@@ -15,8 +15,12 @@ export async function candidateContext(userId: number, maxChars = 9000): Promise
     db.user.findUnique({ where: { id: userId }, select: { name: true } }),
     db.candidateProfile.findUnique({ where: { userId } }),
     db.cvDocument.findFirst({
-      where: { userId, kind: "EDITABLE" },
-      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+      where: { userId, kind: "EDITABLE", docType: "CV" },
+      orderBy: [
+        { isDefault: "desc" },
+        { targetCompany: { sort: "desc", nulls: "first" } },
+        { updatedAt: "desc" },
+      ],
       select: { content: true },
     }),
   ])

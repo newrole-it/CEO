@@ -25,14 +25,18 @@ import {
 import {
   insertBullet,
   insertItem,
+  insertParagraph,
   moveBullet,
   moveItem,
+  moveParagraph,
   moveSection,
   removeBullet,
   removeItem,
+  removeParagraph,
   updateBullet,
   updateHeader,
   updateItem,
+  updateParagraph,
   updateSection,
 } from "src/shared/cv/edit"
 import { atomKey, type CvAtom } from "src/shared/cv/flow"
@@ -157,7 +161,10 @@ function itemControls(
   onAdd: () => void
 ): Control[] {
   const { t, edit } = ops
-  const items = section.type === "text" ? [] : (section.items as { id: string }[])
+  const items =
+    section.type === "text" || section.type === "letter"
+      ? []
+      : (section.items as { id: string }[])
   const at = items.findIndex((item) => item.id === itemId)
   return [
     { icon: <Plus />, label: t("cv.ctl.add"), onClick: onAdd },
@@ -829,11 +836,118 @@ function EducationAtom({
   )
 }
 
+/** A cover letter on the sheet: the same fields and page flow as the CV, in reading order. */
+function LetterAtom({
+  ops,
+  atom,
+  section,
+}: {
+  ops: EditorOps
+  atom: CvAtom
+  section: Extract<CvSection, { type: "letter" }>
+}) {
+  const { t, edit } = ops
+  const sid = section.id
+  const line = (
+    key: "date" | "recipient" | "subject" | "greeting" | "closing" | "signature",
+    className: string
+  ) => (
+    <Editable
+      as="p"
+      className={className}
+      field={atomKey(sid, key)}
+      value={section[key]}
+      label={t(`tl.ph.${key}`)}
+      placeholder={t(`tl.ph.${key}`)}
+      onChange={(value) =>
+        edit((current) => updateSection(current, sid, { [key]: value }), atomKey(sid, key))
+      }
+    />
+  )
+  if (atom.kind === "letter-head") {
+    return (
+      <>
+        {line("date", "cv-letter-date")}
+        {line("recipient", "cv-letter-to")}
+      </>
+    )
+  }
+  if (atom.kind === "letter-subject") return line("subject", "cv-letter-subject")
+  if (atom.kind === "letter-greeting") return line("greeting", "cv-letter-text")
+  if (atom.kind === "letter-closing") {
+    return (
+      <>
+        {line("closing", "cv-letter-text")}
+        {line("signature", "cv-letter-sign")}
+      </>
+    )
+  }
+  if (atom.kind !== "letter-para") return null
+  const index = atom.index ?? 0
+  const key = atomKey(sid, "para", index)
+  return (
+    <>
+      <Editable
+        as="div"
+        rich
+        className="cv-letter-text"
+        field={key}
+        value={section.paragraphs[index] ?? ""}
+        label={t("tl.ph.paragraph")}
+        placeholder={t("tl.ph.paragraph")}
+        onChange={(value) => edit((current) => updateParagraph(current, sid, index, value), key)}
+        onSplit={(before, after) => {
+          edit((current) =>
+            insertParagraph(updateParagraph(current, sid, index, before), sid, index, after)
+          )
+          ops.focusField(atomKey(sid, "para", index + 1), "start")
+        }}
+        onBackspaceEmpty={() => {
+          edit((current) => removeParagraph(current, sid, index))
+          ops.focusField(index > 0 ? atomKey(sid, "para", index - 1) : atomKey(sid, "greeting"))
+        }}
+      />
+      <Controls
+        items={[
+          {
+            icon: <Plus />,
+            label: t("cv.ctl.add"),
+            onClick: () => {
+              edit((current) => insertParagraph(current, sid, index))
+              ops.focusField(atomKey(sid, "para", index + 1))
+            },
+          },
+          {
+            icon: <ArrowUp />,
+            label: t("cv.ctl.up"),
+            disabled: index === 0,
+            onClick: () => edit((current) => moveParagraph(current, sid, index, -1)),
+          },
+          {
+            icon: <ArrowDown />,
+            label: t("cv.ctl.down"),
+            disabled: index >= section.paragraphs.length - 1,
+            onClick: () => edit((current) => moveParagraph(current, sid, index, 1)),
+          },
+          {
+            icon: <Trash2 />,
+            label: t("cv.ctl.delete"),
+            onClick: () => edit((current) => removeParagraph(current, sid, index)),
+          },
+        ]}
+      />
+    </>
+  )
+}
+
 function EmptySection({ ops, section }: { ops: EditorOps; section: CvSection }) {
   const { t, edit, locale } = ops
   const add = () => {
     const sid = section.id
-    if (section.type === "skills") {
+    if (section.type === "letter") {
+      edit((current) => insertParagraph(current, sid, -1))
+      ops.focusField(atomKey(sid, "para", 0))
+    } else if (section.type === "skills") {
       const skill = newSkill(locale)
       edit((current) => insertItem(current, sid, skill))
       ops.focusField(atomKey(sid, skill.id, "label"))
@@ -890,6 +1004,7 @@ export function AtomContent({ ops, atom }: { ops: EditorOps; atom: CvAtom }) {
   if (!section) return null
   if (atom.kind === "title") return <TitleAtom ops={ops} section={section} />
   if (atom.kind === "empty") return <EmptySection ops={ops} section={section} />
+  if (section.type === "letter") return <LetterAtom ops={ops} atom={atom} section={section} />
   if (atom.kind === "text" && section.type === "text") {
     const key = atomKey(section.id, "text")
     return (

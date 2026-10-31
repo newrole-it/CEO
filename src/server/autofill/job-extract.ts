@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { CITY_ALIASES } from "matching/normalization"
+import { fold } from "matching/text"
 import { createLlmClient } from "src/server/llm/client"
 import { wrapUntrusted } from "src/server/llm/common"
 
@@ -16,6 +18,7 @@ export type PageInput = {
 }
 
 type JobFacts = { company: string | null; title: string | null; location: string | null }
+export type ModelFacts = JobFacts & { salaryText: string | null }
 
 // ---------------------------------------------------------------- ATS URL slugs
 
@@ -74,7 +77,14 @@ export function atsCompanySlug(rawUrl: string): string | null {
   }
   if (PATH_ATS.some((pattern) => pattern.test(host))) {
     const first = url.pathname.split("/").filter(Boolean)[0]
-    if (first && !GENERIC_SLUGS.has(first.toLowerCase())) return decodeURIComponent(first)
+    if (first && !GENERIC_SLUGS.has(first.toLowerCase())) {
+      // a malformed escape ("%E0") must not fail the Gmail sync or the extension
+      try {
+        return decodeURIComponent(first)
+      } catch {
+        return null
+      }
+    }
   }
   return null
 }
@@ -114,6 +124,109 @@ function unslug(slug: string): string {
     /(^|\s)(\p{Ll})/gu,
     (_all, space: string, letter: string) => space + letter.toUpperCase()
   )
+}
+
+// ---------------------------------------------------------------- job board links
+
+/** What "(he/she)" or "(k/m)" leaves behind in a slug. */
+const GENDER_SLUG =
+  /-(?:he-she|she-he|f-m(?:-[dx])?|m-f(?:-[dx])?|k-m(?:-[xn])?|m-k(?:-[xn])?|m-w|w-m|w-a)(?=-|$)/g
+
+const LEVEL_WORD = /^(?:senior|sr|junior|jr|mid|regular|lead|principal|staff|expert|trainee)$/
+
+/** Words that open a role when it has no level: "acme-java-developer". */
+const TITLE_WORD =
+  /^(?:java|javascript|js|typescript|ts|python|php|ruby|golang|go|rust|scala|kotlin|swift|android|ios|react|angular|vue|node|dotnet|cpp|data|software|cloud|ml|ai|machine|automation|test|security|embedded|mobile|ux|ui|salesforce|sap|aws|azure|gcp)$/
+
+const NO_FACTS: JobFacts = { company: null, title: null, location: null }
+
+function slugWords(slug: string): string[] {
+  return fold(decodeURIComponent(slug)).replace(GENDER_SLUG, "-").split("-").filter(Boolean)
+}
+
+function placeOf(word: string): string | null {
+  if (word === "remote" || word === "zdalnie") return "Remote"
+  return CITY_ALIASES[word]?.[0] ?? null
+}
+
+function placeIndexes(words: string[]): number[] {
+  return words.flatMap((word, index) => (placeOf(word) ? [index] : []))
+}
+
+function wordsLabel(words: string[]): string | null {
+  if (!words.length) return null
+  return unslug(words.join(" ")).replace(/\bSp Z O O\b/, "sp. z o.o.")
+}
+
+/** justjoin.it: company, then role. A level word is the safest place to tell them apart. */
+function splitCompanyRole(words: string[]): { company: string | null; title: string | null } {
+  let at = words.findIndex((word) => LEVEL_WORD.test(word))
+  if (at < 0) at = words.findIndex((word) => TITLE_WORD.test(word) || ROLE_WORDS.test(word))
+  if (at <= 0) return { company: null, title: wordsLabel(words) }
+  return { company: wordsLabel(words.slice(0, at)), title: wordsLabel(words.slice(at)) }
+}
+
+/**
+ * Company, role and city a job board's link spells out. Boards are never fetched, so this reads
+ * the URL alone, and it is a guess for the person to check. Shapes seen on the live sites,
+ * 2026-10-30. nofluffjobs could not be checked and returns nothing.
+ */
+export function boardUrlFacts(rawUrl: string): JobFacts {
+  try {
+    const url = new URL(rawUrl)
+    const host = url.hostname.toLowerCase().replace(/^www\./, "")
+    const path = url.pathname
+
+    if (host === "linkedin.com" || host.endsWith(".linkedin.com")) {
+      // /jobs/view/3912345678/?companyName=Acme+Corp, how LinkedIn's own lists link to an offer
+      const named = url.searchParams.get("companyName")?.trim() || null
+      // /jobs/view/senior-engineer-at-acme-corp-3912345678
+      const match = /\/jobs\/view\/(.+)-at-(.+)-\d+\/?$/.exec(path)
+      if (!match) return { ...NO_FACTS, company: named }
+      return {
+        company: named ?? wordsLabel(slugWords(match[2])),
+        title: wordsLabel(slugWords(match[1])),
+        location: null,
+      }
+    }
+    if (host === "pracuj.pl" || host.endsWith(".pracuj.pl") || host === "theprotocol.it") {
+      // /praca/senior-java-developer-warszawa-prosta-68,oferta,1005123928
+      const match = /\/praca\/([^/,]+),oferta,/.exec(path)
+      if (!match) return NO_FACTS
+      const words = slugWords(match[1])
+      const [first] = placeIndexes(words)
+      if (first === undefined) return { ...NO_FACTS, title: wordsLabel(words) }
+      return {
+        company: null,
+        title: wordsLabel(words.slice(0, first)),
+        location: placeOf(words[first]),
+      }
+    }
+    if (host === "bulldogjob.pl" || host === "bulldogjob.com") {
+      // /companies/jobs/218225-senior-java-developer-warszawa-teamquest
+      const match = /\/companies\/jobs\/\d+-([^/]+)\/?$/.exec(path)
+      if (!match) return NO_FACTS
+      const words = slugWords(match[1])
+      const places = placeIndexes(words)
+      if (!places.length) return { ...NO_FACTS, title: wordsLabel(words) }
+      return {
+        company: wordsLabel(words.slice(places[places.length - 1] + 1)),
+        title: wordsLabel(words.slice(0, places[0])),
+        location: places.map((index) => placeOf(words[index])).join(", "),
+      }
+    }
+    if (host === "justjoin.it") {
+      // /job-offer/jit-team-senior-java-developer-warszawa-java-6ba701d7
+      const match = /\/(?:job-offer|offers)\/([^/]+)\/?$/.exec(path)
+      if (!match) return NO_FACTS
+      const words = slugWords(match[1])
+      const places = placeIndexes(words)
+      const last = places[places.length - 1]
+      if (last === undefined) return { ...NO_FACTS, ...splitCompanyRole(words) }
+      return { ...splitCompanyRole(words.slice(0, last)), location: placeOf(words[last]) }
+    }
+  } catch {}
+  return NO_FACTS
 }
 
 function squash(value: string): string {
@@ -240,6 +353,8 @@ export function companyFromHost(rawUrl: string): string | null {
             part
           )
       )
+    // "acme.co.uk", "acme.com.pl": the label before the suffix is the name, not "co".
+    if (parts.length >= 3 && /^(co|com|org|net)$/.test(parts[parts.length - 2])) parts.pop()
     const name = parts.length >= 2 ? parts[parts.length - 2] : parts[0]
     return name && name.length > 1 ? unslug(name) : null
   } catch {
@@ -278,21 +393,36 @@ const ModelSchema = z.object({
   company: z.string().max(160).nullable().optional(),
   title: z.string().max(200).nullable().optional(),
   location: z.string().max(160).nullable().optional(),
+  salary: z.string().max(200).nullable().optional(),
 })
 
 const SYSTEM = [
-  "You read a job application page and name the hiring company, the job title and the job location.",
-  'Return JSON: {"company": string|null, "title": string|null, "location": string|null}.',
+  "You read a job application page and name the hiring company, the job title, the job location and the pay.",
+  'Return JSON: {"company": string|null, "title": string|null, "location": string|null, "salary": string|null}.',
   "Use the exact spelling from the page. Use null when the page does not say. Never guess a company from a job board's own name.",
+  'salary is the pay for this job as the page writes it, with the currency and period, e.g. "20 000 - 28 000 PLN brutto / mies.". Null for anything else, such as a bonus or a benefit.',
 ].join("\n")
 
-export async function extractJobByModel(page: PageInput): Promise<JobFacts | null> {
+const MONEY = /\d.*(?:PLN|zł|EUR|€|USD|\$|GBP|£|CHF)|(?:PLN|EUR|€|USD|\$|GBP|£|CHF).*\d/i
+
+/** The text sent to the model is cut at 4000 characters, and pay is often further down. */
+function payLines(text: string): string {
+  return text
+    .split("\n")
+    .filter((line) => line.length < 200 && MONEY.test(line))
+    .slice(0, 8)
+    .join("\n")
+}
+
+export async function extractJobByModel(page: PageInput): Promise<ModelFacts | null> {
   const client = createLlmClient()
   if (!client) return null
+  const pay = payLines(page.text ?? "")
   const user = [
     wrapUntrusted("page_url", page.url.slice(0, 500)),
     wrapUntrusted("page_title", (page.title ?? "").slice(0, 300)),
     wrapUntrusted("page_text", (page.text ?? "").slice(0, 4000)),
+    ...(pay ? [wrapUntrusted("page_pay_lines", pay)] : []),
   ].join("\n")
   try {
     const result = await client.completeJson({
@@ -308,6 +438,7 @@ export async function extractJobByModel(page: PageInput): Promise<JobFacts | nul
       company: clean(result.data.company),
       title: clean(result.data.title),
       location: clean(result.data.location),
+      salaryText: clean(result.data.salary),
     }
   } catch (error) {
     console.error("job-extract failed", error instanceof Error ? error.message : error)

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest"
-import { PendingError } from "./contracts"
 import { clampLimit, offerLine } from "./format"
 import { sinceDate, targetWords, titleWords } from "./jobs"
 import { profileData } from "./profile"
@@ -98,11 +97,5 @@ describe("formatting", () => {
     expect(sinceDate(undefined, false)).toBeUndefined()
     expect(sinceDate(undefined, true)).toBeInstanceOf(Date)
     expect(sinceDate("2026-10-01", false)?.toISOString().slice(0, 10)).toBe("2026-10-01")
-  })
-})
-
-describe("pending contracts", () => {
-  it("names the missing file", () => {
-    expect(new PendingError("src/server/x.ts").message).toContain("src/server/x.ts")
   })
 })

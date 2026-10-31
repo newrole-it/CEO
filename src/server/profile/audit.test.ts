@@ -71,7 +71,7 @@ describe("LinkedIn profile audit", () => {
       qualifies: true,
     })
     expect(factSentence(budget!)).toBe(
-      "Head of Engineering offers in your results mention budget ownership in 62% of cases (31 of 50); your profile doesn't."
+      "Head of Engineering offers in your results mention budget ownership in 62% of cases (31 of 50); this CV doesn't."
     )
     const thinner = demandFromOffers({
       roles: [

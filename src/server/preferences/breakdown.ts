@@ -8,6 +8,7 @@ import { DEFAULT_CONFIG } from "matching/config"
 import { functionTokens, normalizeTitle } from "matching/normalization"
 import { fold } from "matching/text"
 import { SENIORITY_RANK, type Seniority } from "matching/types"
+import { NEW_ATS_LABELS } from "src/shared/ats-labels"
 import { canonicalCity } from "src/server/jobs/offer-facts"
 import { profileMonthlyPln, type ProfilePay } from "src/server/profile/salary"
 import { asStringList } from "src/server/profile/schema"
@@ -36,6 +37,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   AVATURE: "Avature",
   ERECRUITER: "eRecruiter",
   JOBVITE: "Jobvite",
+  ...NEW_ATS_LABELS,
 }
 
 /**

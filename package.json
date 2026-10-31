@@ -1,6 +1,7 @@
 {
-  "name": "jobscanner",
+  "name": "nowarola",
   "version": "1.0.0",
+  "description": "Nowa Rola: a personal job finder that reads public ATS boards and career pages, with a worker, an MCP server for Claude Code, and a Chrome extension.",
   "private": true,
   "scripts": {
     "go": "node scripts/go.mjs",
@@ -15,12 +16,13 @@
     "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
     "test": "vitest run && npm test --prefix matching && npm run test:flow",
     "test:watch": "vitest",
-    "test:flow": "DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner_test SESSION_SECRET_KEY=jobscanner-dev-session-secret-key-32b tsx --test test/search-flow.test.ts test/indexer.test.ts test/auth.test.ts test/privacy.test.ts",
+    "test:flow": "DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner_test SESSION_SECRET_KEY=jobscanner-dev-session-secret-key-32b tsx --test test/search-flow.test.ts test/indexer.test.ts test/auth.test.ts test/privacy.test.ts test/gmail.test.ts test/cv-tailor.test.ts",
+    "test:db": "DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner_test prisma migrate deploy",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",
-    "ext:build": "npm run build --prefix extension",
-    "ext:dev": "npm run dev --prefix extension"
+    "ext:build": "node scripts/go.mjs --extension",
+    "ext:dev": "node scripts/go.mjs --extension && npm run dev --prefix extension"
   },
   "prisma": {
     "schema": "db/schema.prisma",

@@ -11,7 +11,7 @@ import { adapterFor, type LiveAts } from "src/server/adapters/registry"
 import { takeDetailSlot } from "src/server/crawler/budget"
 import { stripPersonalData } from "src/server/crawler/hygiene"
 import { identityFor, saveDiscoveredJob } from "src/server/index/store"
-import { canonicalUrl } from "src/server/jobs/dedupe"
+import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
 import { htmlToText } from "src/server/jobs/text"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
@@ -26,6 +26,8 @@ export type IngestUrlResult = {
   status: "created" | "updated" | "link-only" | "rejected"
   jobId?: string
   message: string
+  /** With `forTracker`: the page that was read but held no JobPosting. Not stored. */
+  page?: { url: string; html: string }
 }
 
 export type IngestPayloadResult = {
@@ -50,14 +52,6 @@ export function refusedHost(host: string): string | null {
   return null
 }
 
-function safeCanonical(raw: string): string {
-  try {
-    return canonicalUrl(raw)
-  } catch {
-    return raw
-  }
-}
-
 function slugName(boardId: string): string {
   const base = boardId.replace(/^eu:/, "").split(".")[0] ?? boardId
   return base.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
@@ -71,10 +65,13 @@ async function store(job: ListedJob, deps: IngestDeps, now: Date) {
   return { id: saved.id, created: !before }
 }
 
-/** Pick the posting a URL points at: same canonical URL, an id in the path, or the only one. */
-export function matchPosting(jobs: ListedJob[], url: string): ListedJob | null {
-  const target = safeCanonical(url)
-  const byUrl = jobs.find((job) => safeCanonical(job.originalUrl) === target)
+/**
+ * Pick the posting a URL points at: same canonical URL, an id in the path, or the only one.
+ * `exact` skips the last guess, which is wrong for a closed offer on a board with one other job.
+ */
+export function matchPosting(jobs: ListedJob[], url: string, exact = false): ListedJob | null {
+  const target = safeCanonicalUrl(url)
+  const byUrl = jobs.find((job) => safeCanonicalUrl(job.originalUrl) === target)
   if (byUrl) return byUrl
   const path = (() => {
     try {
@@ -88,7 +85,7 @@ export function matchPosting(jobs: ListedJob[], url: string): ListedJob | null {
     return Boolean(id && id.length >= 4 && path.includes(id))
   })
   if (byId) return byId
-  return jobs.length === 1 ? jobs[0]! : null
+  return !exact && jobs.length === 1 ? jobs[0]! : null
 }
 
 async function fromAts(
@@ -97,7 +94,8 @@ async function fromAts(
   boardId: string,
   http: HttpClient,
   deps: IngestDeps,
-  now: Date
+  now: Date,
+  exact: boolean
 ): Promise<IngestUrlResult> {
   const adapter = adapterFor(provider)
   let listed
@@ -106,7 +104,7 @@ async function fromAts(
   } catch (error) {
     return { status: "rejected", message: `The ${provider.toLowerCase()} board did not answer: ${error instanceof Error ? error.message : "error"}` }
   }
-  let job = matchPosting(listed.jobs, url)
+  let job = matchPosting(listed.jobs, url, exact)
   if (!job) {
     return {
       status: "rejected",
@@ -135,11 +133,16 @@ async function fromAts(
   }
 }
 
-/** Read one posting URL. ATS links use the board API; other pages need JSON-LD JobPosting data. */
+/**
+ * Read one posting URL. ATS links use the board API; other pages need JSON-LD JobPosting data.
+ * `forTracker` is for a link someone applied through: it must be that very offer, and a page
+ * without JSON-LD comes back so the caller can read it another way.
+ */
 export async function ingestOfferUrl(
-  input: { url: string; userId?: number; channel: "web" | "mcp" },
+  input: { url: string; userId?: number; channel: "web" | "mcp"; forTracker?: boolean },
   deps: IngestDeps = {}
 ): Promise<IngestUrlResult> {
+  const exact = input.forTracker === true
   const now = deps.now ?? new Date()
   const http = deps.http ?? createHttpClient()
   let url: URL
@@ -164,13 +167,13 @@ export async function ingestOfferUrl(
   }
   const robots = deps.robots ?? createRobotsCache()
   if (hit.kind === "ats") {
-    return fromAts(url.toString(), hit.provider as LiveAts, hit.boardId, http, deps, now)
+    return fromAts(url.toString(), hit.provider as LiveAts, hit.boardId, http, deps, now, exact)
   }
   if (hit.kind === "workable-shortcode") {
     const page = await politeGet(url.toString(), http, robots)
     const slug = page.ok ? workableSlugFromHtml(page.response.body) : null
     if (!slug) return { status: "rejected", message: "The Workable account could not be read." }
-    return fromAts(url.toString(), "WORKABLE", slug, http, deps, now)
+    return fromAts(url.toString(), "WORKABLE", slug, http, deps, now, exact)
   }
   const policy = policyFor(url.toString())
   if (!policy.allow) {
@@ -189,6 +192,9 @@ export async function ingestOfferUrl(
       status: "rejected",
       message:
         "No schema.org JobPosting on that page. If you read it yourself, send it with ingestOfferPayload.",
+      ...(exact
+        ? { page: { url: page.response.url || url.toString(), html: page.response.body } }
+        : {}),
     }
   }
   const companyName = job.companyName || hostOf(url.toString()) || "Company"
@@ -305,7 +311,7 @@ export async function ingestOfferPayload(
   const result = payloadToJob(input)
   if ("error" in result) return { status: "rejected", message: result.error }
   const now = deps.now ?? new Date()
-  const canonical = safeCanonical(result.job.originalUrl)
+  const canonical = safeCanonicalUrl(result.job.originalUrl)
   const crawled = await db.job.findFirst({
     where: {
       canonicalUrl: canonical,

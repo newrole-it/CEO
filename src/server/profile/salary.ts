@@ -1,6 +1,6 @@
-import type { MatchingConfig } from "../../../matching/config"
-import { toMonthlyPlnB2b } from "../../../matching/normalization"
-import type { ContractType, Currency, SalaryBasis, SalaryPeriod } from "../../../matching/types"
+import type { MatchingConfig } from "matching/config"
+import { toMonthlyPlnB2b } from "matching/normalization"
+import type { ContractType, Currency, SalaryBasis, SalaryPeriod } from "matching/types"
 
 export type SalaryKind =
   | "undisclosed"

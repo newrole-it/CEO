@@ -50,8 +50,12 @@ export async function getApplicant(userId: number): Promise<ApplicantView> {
     }),
     db.candidateProfile.findUnique({ where: { userId }, select: { homeCity: true } }),
     db.cvDocument.findFirst({
-      where: { userId, kind: "EDITABLE" },
-      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+      where: { userId, kind: "EDITABLE", docType: "CV" },
+      orderBy: [
+        { isDefault: "desc" },
+        { targetCompany: { sort: "desc", nulls: "first" } },
+        { updatedAt: "desc" },
+      ],
       select: { content: true },
     }),
   ])

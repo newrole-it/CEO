@@ -40,6 +40,8 @@ export function applyCvPatch(content: CvContent, patch: CvPatch): CvContent {
     const section = sections[at]
     if (section.type === "text")
       throw new Error(`Section ${sectionId} is plain text; change its body with section.`)
+    if (section.type === "letter")
+      throw new Error(`Section ${sectionId} has no items; change its fields with section.`)
     const items = section.items as { id: string }[]
     const next = items.some((item) => item.id === id)
       ? items.map((item) => (item.id === id ? { ...item, ...fields } : item))
@@ -56,7 +58,8 @@ export function applyCvPatch(content: CvContent, patch: CvPatch): CvContent {
     if (!itemId) {
       sections = sections.filter((entry) => entry.id !== sectionId)
     } else {
-      if (section.type === "text") throw new Error(`Section ${sectionId} has no items.`)
+      if (section.type === "text" || section.type === "letter")
+        throw new Error(`Section ${sectionId} has no items.`)
       const items = section.items as { id: string }[]
       if (!items.some((item) => item.id === itemId))
         throw new Error(`No item ${itemId} in section ${sectionId}.`)

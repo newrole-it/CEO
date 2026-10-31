@@ -36,6 +36,7 @@ export const UpdateApplicationInput = z.object({
   url: optionalText(2000),
   location: optionalText(200),
   salaryText: optionalText(120),
+  statedSalary: optionalText(200),
   appliedAt: z.coerce.date().optional(),
 })
 

@@ -18,6 +18,7 @@ export type StepId =
   | "extension"
   | "mcp"
   | "sheet"
+  | "gmail"
 
 export type StepGroup = "run" | "you" | "connect"
 export type StepState = "done" | "todo" | "wait" | "error"
@@ -56,6 +57,7 @@ export type SetupFacts = {
   extension: { built: boolean; path: string; tokens: number; lastUsedAt: Date | null }
   mcp: { lastSeenAt: Date | null; command: string | null }
   sheet: { connected: boolean; lastSyncedAt: Date | null; lastError: string | null }
+  gmail: { connected: boolean; lastSyncedAt: Date | null; lastErrorCode: string | null }
   now: Date
 }
 
@@ -200,6 +202,18 @@ function sheetStep({ sheet }: SetupFacts): SetupStep {
   return { ...base, state: "todo", note: "none" }
 }
 
+function gmailStep({ gmail }: SetupFacts): SetupStep {
+  const base = {
+    id: "gmail",
+    group: "connect",
+    importance: "optional",
+    href: "/settings#st-gmail",
+  } as const
+  if (gmail.lastErrorCode) return { ...base, state: "error", note: "failing" }
+  if (gmail.connected) return { ...base, state: "done", note: "ok" }
+  return { ...base, state: "todo", note: "none" }
+}
+
 export function buildSteps(facts: SetupFacts): SetupStep[] {
   return [
     dbStep(facts.db),
@@ -213,6 +227,7 @@ export function buildSteps(facts: SetupFacts): SetupStep[] {
     extensionStep(facts),
     mcpStep(facts),
     sheetStep(facts),
+    gmailStep(facts),
   ]
 }
 

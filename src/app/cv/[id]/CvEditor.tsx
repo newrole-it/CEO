@@ -7,30 +7,38 @@ import {
   Bold,
   CircleAlert,
   Download,
+  FileSearch,
+  History,
   Italic,
   Link2,
-  Plus,
   Printer,
   Redo2,
   RotateCcw,
-  Trash2,
   Undo2,
 } from "lucide-react"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { useToast } from "src/app/components/ds/interactive"
 import { useCopy } from "src/app/i18n/Locale"
+import type { TailorContext } from "src/server/cv/tailor"
+import type { CvAudit } from "src/shared/cv/audit"
 import { newSection } from "src/shared/cv/blank"
 import { insertSection, removeSection, updateHeader } from "src/shared/cv/edit"
 import { atomKey, cvFlow, footerText } from "src/shared/cv/flow"
 import { normalizeHref } from "src/shared/cv/sanitize"
-import type { CvContent, CvLink, CvSection } from "src/shared/cv/schema"
+import type { CvContent, CvSection } from "src/shared/cv/schema"
 import { CV_CSS, MM, PAGE_MM } from "src/shared/cv/styles"
+import { readOnlyExcerpt } from "src/shared/cv/tailor"
 import { downloadCvPdf, printViewUrl } from "../download"
 import { AtomContent, type EditorOps } from "./atoms"
+import { AuditBar, AuditRail } from "./AuditPanel"
+import { DocumentPanel, type PanelTab } from "./DocumentPanel"
 import { placeCaret } from "./Editable"
+import { LinksPopover } from "./LinksPopover"
 import { Outline } from "./Outline"
 import { photoToDataUrl } from "./photo"
+import { TailorBar } from "./TailorBar"
 import { sheetsHeight, sheetTop, usePagination } from "./usePagination"
+import { useCvAudit } from "./useCvAudit"
 import { useCvDocument, type CvLanguage, type SaveState } from "./useCvDocument"
 
 type LinkBox = {
@@ -58,9 +66,20 @@ function fieldHost(node: Node | null): HTMLElement | null {
 export function CvEditor({
   id,
   initial,
+  initialAudit,
+  startAudit,
+  isLetter = false,
+  tailor = null,
 }: {
   id: string
   initial: { title: string; language: CvLanguage; content: CvContent }
+  initialAudit: CvAudit | null
+  /** Arrived from the "CV audit" link: the audit is what the person came for */
+  startAudit: boolean
+  /** A cover letter: one section, so no outline and no audit */
+  isLetter?: boolean
+  /** Set when this document was written for an offer */
+  tailor?: TailorContext | null
 }) {
   const { t } = useCopy()
   const toast = useToast()
@@ -72,6 +91,38 @@ export function CvEditor({
 
   const flowRef = useRef<HTMLDivElement>(null)
   const { pageCount, ready, schedule } = usePagination(flowRef, atoms)
+  const audit = useCvAudit({
+    id,
+    content,
+    initial: initialAudit,
+    startOpen: startAudit,
+    flowRef,
+    flush: doc.flush,
+    edit,
+    undo,
+  })
+
+  // versions and tailoring share the place of the audit rail, so only one of them is open
+  const [panel, setPanel] = useState<PanelTab | null>(null)
+  const [tailorNotes, setTailorNotes] = useState(tailor?.notes ?? null)
+  function togglePanel(tab: PanelTab) {
+    if (audit.open) audit.toggle()
+    setPanel((current) => (current === tab ? null : tab))
+  }
+  // what the model changed is the first thing to read, where the sheet still fits next to it
+  useEffect(() => {
+    const notes = tailor?.notes
+    const worthReading =
+      notes &&
+      (notes.changes.length ||
+        notes.gaps.length ||
+        notes.unverified.length ||
+        !notes.usedJobText ||
+        readOnlyExcerpt(notes))
+    if (!startAudit && worthReading && window.matchMedia("(min-width: 1400px)").matches)
+      setPanel("review")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // fit-to-width scale for phones and narrow windows; the sheets stay editable
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -391,6 +442,32 @@ export function CvEditor({
         <span className="cve-toolbar__pages t-sm muted" aria-live="polite">
           {t("cv.ed.pages", { n: pageCount })}
         </span>
+        {isLetter ? null : (
+          <Button
+            size="sm"
+            variant={audit.open ? "soft" : "ghost"}
+            icon={<FileSearch />}
+            aria-pressed={audit.open}
+            onClick={() => {
+              setPanel(null)
+              audit.toggle()
+            }}
+          >
+            {t("cv.au.button")}
+            {audit.allOpen.length ? (
+              <span className="cva-count">{audit.allOpen.length}</span>
+            ) : null}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant={panel === "versions" ? "soft" : "ghost"}
+          icon={<History />}
+          aria-pressed={panel === "versions"}
+          onClick={() => togglePanel("versions")}
+        >
+          {t("tl.v.button")}
+        </Button>
         <ButtonLink
           href={printViewUrl(id, false)}
           external
@@ -411,15 +488,33 @@ export function CvEditor({
         </Button>
       </div>
 
-      <div className="cve-body">
-        <details
-          className="cve-outline"
-          open={outlineOpen}
-          onToggle={(event) => setOutlineOpen(event.currentTarget.open)}
-        >
-          <summary className="cve-outline__head">{t("cv.out.title")}</summary>
-          <Outline ops={ops} />
-        </details>
+      {tailor ? (
+        <TailorBar
+          id={id}
+          tailor={tailor}
+          notes={tailorNotes}
+          language={doc.language}
+          flush={doc.flush}
+          onReview={() => togglePanel("review")}
+        />
+      ) : null}
+      {audit.open ? <AuditBar state={audit} /> : null}
+
+      <div
+        className={`cve-body${audit.open ? " cve-body--audit" : ""}${
+          panel ? " cve-body--panel" : ""
+        }${isLetter ? " cve-body--letter" : ""}`}
+      >
+        {isLetter ? null : (
+          <details
+            className="cve-outline"
+            open={outlineOpen}
+            onToggle={(event) => setOutlineOpen(event.currentTarget.open)}
+          >
+            <summary className="cve-outline__head">{t("cv.out.title")}</summary>
+            <Outline ops={ops} />
+          </details>
+        )}
 
         <div
           className="cve-canvas"
@@ -427,6 +522,7 @@ export function CvEditor({
           role="region"
           aria-label={t("cv.ed.canvas")}
           onInput={schedule}
+          onClick={audit.onCanvasClick}
         >
           <div
             className="cve-stage"
@@ -464,6 +560,21 @@ export function CvEditor({
             </div>
           </div>
         </div>
+
+        {audit.open ? <AuditRail state={audit} /> : null}
+        {panel ? (
+          <DocumentPanel
+            id={id}
+            doc={doc}
+            isLetter={isLetter}
+            tab={panel}
+            onTab={setPanel}
+            onClose={() => setPanel(null)}
+            tailor={tailor}
+            notes={tailorNotes}
+            onNotes={setTailorNotes}
+          />
+        ) : null}
       </div>
 
       <input
@@ -571,105 +682,5 @@ function SaveStatus({
     <span className="cve-save t-sm muted" role="status" aria-live="polite">
       {t(state === "saving" ? "cv.ed.saving" : "cv.ed.saved")}
     </span>
-  )
-}
-
-/** Edits the header links: visible text on the sheet, address here. */
-function LinksPopover({
-  ops,
-  at,
-  onClose,
-}: {
-  ops: EditorOps
-  at: { top: number; left: number }
-  onClose: () => void
-}) {
-  const { t, edit, content } = ops
-  const box = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    box.current?.querySelector("input")?.focus()
-    function onDown(event: MouseEvent) {
-      if (!box.current?.contains(event.target as Node)) onClose()
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose()
-    }
-    document.addEventListener("mousedown", onDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [onClose])
-  const links = content.header.links
-  const setLinks = (next: CvLink[], group?: string) =>
-    edit((current) => updateHeader(current, { links: next }), group)
-  return (
-    <div
-      className="cve-pop cve-pop--links"
-      ref={box}
-      style={{ top: at.top, left: at.left }}
-      role="dialog"
-      aria-label={t("cv.links.title")}
-    >
-      <p className="t-label">{t("cv.links.title")}</p>
-      {links.map((link, index) => (
-        <div key={index} className="cve-pop__link">
-          <input
-            className="input"
-            value={link.label}
-            placeholder={t("cv.links.label")}
-            aria-label={t("cv.links.label")}
-            maxLength={160}
-            onChange={(event) =>
-              setLinks(
-                links.map((entry, i) =>
-                  i === index ? { ...entry, label: event.target.value } : entry
-                ),
-                `header:link:${index}`
-              )
-            }
-          />
-          <input
-            className="input"
-            value={link.url}
-            placeholder="https://"
-            aria-label={t("cv.links.url")}
-            maxLength={500}
-            onChange={(event) =>
-              setLinks(
-                links.map((entry, i) =>
-                  i === index ? { ...entry, url: event.target.value } : entry
-                ),
-                `header:url:${index}`
-              )
-            }
-            onBlur={(event) => {
-              const href = normalizeHref(event.target.value)
-              if (href && href !== link.url)
-                setLinks(links.map((entry, i) => (i === index ? { ...entry, url: href } : entry)))
-            }}
-          />
-          <Button
-            size="sm"
-            variant="ghost"
-            iconOnly
-            icon={<Trash2 />}
-            aria-label={t("cv.links.remove", { label: link.label })}
-            onClick={() => setLinks(links.filter((_, i) => i !== index))}
-          />
-        </div>
-      ))}
-      {links.length < 8 ? (
-        <Button
-          size="sm"
-          variant="outline"
-          icon={<Plus />}
-          onClick={() => setLinks([...links, { label: "", url: "" }])}
-        >
-          {t("cv.links.add")}
-        </Button>
-      ) : null}
-    </div>
   )
 }

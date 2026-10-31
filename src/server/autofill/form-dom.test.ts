@@ -20,6 +20,7 @@ type Collection = { fields: Entry["field"][]; entries: Map<string, Entry> }
 const F = Form as unknown as {
   labelFor(el: Element): string
   neverTouch(field: Partial<Entry["field"]> & { autocomplete?: string; name?: string }): boolean
+  isApplicationForm(scope: Element, doc: Document, href: string, hostname: string): boolean
   isContactField(field: Partial<Entry["field"]>): boolean
   collectFields(root: Element): Collection
   findApplicationRoot(
@@ -31,6 +32,11 @@ const F = Form as unknown as {
   fillFile(el: Element, file: unknown): boolean
   readValue(entry: Entry): string
   submitLikeTarget(target: Element): Element | null
+  nextStepTarget(target: Element): Element | null
+  mergeSteps(
+    earlier: { label: string; value: string }[],
+    rows: { label: string; value: string }[]
+  ): { label: string; value: string }[]
   hasEmptyRequired(collection: Collection): boolean
   snapshot(
     collection: Collection,
@@ -318,12 +324,70 @@ describe("submission", () => {
     expect(F.hasEmptyRequired(collection)).toBe(false)
   })
 
-  it("snapshots questions only: no contact details, EEO, consents or secrets", () => {
+  it("snapshots salary, notice period and start date, which are answers and not contact details", () => {
+    const root = mount(`<form>
+      <label>Salary expectations <input value="20 000 - 25 000 PLN"></label>
+      <label>Oczekiwania finansowe <input value="22 000 PLN"></label>
+      <label>Okres wypowiedzenia <input value="1 miesiąc"></label>
+      <label>Start date <input value="2026-12-01"></label>
+      <label>Available from <input value="od zaraz"></label>
+    </form>`)
+    expect(F.snapshot(F.collectFields(root)).map((row) => row.value)).toEqual([
+      "20 000 - 25 000 PLN",
+      "22 000 PLN",
+      "1 miesiąc",
+      "2026-12-01",
+      "od zaraz",
+    ])
+  })
+
+  it("tells the next step from sending the form", () => {
+    const button = (text: string, attrs = "") => {
+      mount(`<button ${attrs}>${text}</button>`)
+      return document.querySelector("button") as Element
+    }
+    for (const text of ["Dalej", "Next", "Continue", "Save and Continue", "Przejrzyj"]) {
+      const el = button(text)
+      expect([text, F.nextStepTarget(el)]).toEqual([text, el])
+      expect([text, F.submitLikeTarget(el)]).toEqual([text, null])
+    }
+    const labelled = button("Dalej", 'aria-label="Przejdź do następnego kroku"')
+    expect(F.nextStepTarget(labelled)).toBe(labelled)
+    for (const text of ["Wyślij aplikację", "Submit application", "Review and submit"]) {
+      expect([text, F.nextStepTarget(button(text))]).toEqual([text, null])
+    }
+    expect(F.nextStepTarget(button("Anuluj"))).toBeNull()
+  })
+
+  it("merges steps: a step visited again replaces what it said", () => {
+    const merged = F.mergeSteps(
+      [
+        { label: "Why us?", value: "Stare" },
+        { label: "Salary", value: "20k" },
+      ],
+      [
+        { label: "Why us?", value: "Nowe" },
+        { label: "Employer", value: "Acme" },
+        { label: "Employer", value: "Bravo" },
+      ]
+    )
+    expect(merged).toEqual([
+      { label: "Salary", value: "20k" },
+      { label: "Why us?", value: "Nowe" },
+      { label: "Employer", value: "Acme" },
+      { label: "Employer", value: "Bravo" },
+    ])
+  })
+
+  it("snapshots questions only: no contact details, EEO, consents, files or secrets", () => {
     const root = mount(`<form>
       <label>First Name <input value="Rafał"></label>
+      <label>Name <input value="Rafał W."></label>
       <label>Email <input type="email" value="a@b.pl"></label>
       <label>Phone <input type="tel" value="600000000"></label>
+      <label>City <input value="Warszawa"></label>
       <label>LinkedIn Profile <input value="https://linkedin.com/in/x"></label>
+      <label>Twitter <input value="@mw"></label>
       <label>PESEL <input value="90010112345"></label>
       <label>Password <input type="password" value="hunter2"></label>
       <input type="hidden" name="csrf" value="abc">
@@ -351,6 +415,9 @@ describe("submission", () => {
       "Rafał",
       "a@b.pl",
       "600000000",
+      "Warszawa",
+      "linkedin",
+      "@mw",
       "90010112345",
       "hunter2",
       "abc",
@@ -358,6 +425,54 @@ describe("submission", () => {
     ]) {
       expect(sent).not.toContain(secret)
     }
+  })
+
+  it("does not take a question about the work for contact details or EEO", () => {
+    const root = mount(`<form>
+      <label>Jaki ostatnio produkt zrobiłeś przy pomocy AI? <textarea>Asystenta.</textarea></label>
+      <label>What is the name of the last product you built? <input value="Lumen"></label>
+      <label>Have you built mobile apps? <input value="Tak"></label>
+      <label>Which location do you prefer to work from? <input value="Zdalnie"></label>
+      <label>How do you handle race conditions? <textarea>Blokady.</textarea></label>
+      <label>How did you build this product for disabled users? <textarea>WCAG.</textarea></label>
+      <label>Product name <input value="Lumen"></label>
+      <label>What is your phone? <input value="600000000"></label>
+    </form>`)
+    expect(F.snapshot(F.collectFields(root)).map((row) => row.value)).toEqual([
+      "Asystenta.",
+      "Lumen",
+      "Tak",
+      "Zdalnie",
+      "Blokady.",
+      "WCAG.",
+      "Lumen",
+    ])
+  })
+
+  it("records on its own only what looks like a job application", () => {
+    const form = (html: string) => {
+      mount(`<form>${html}</form>`)
+      return document.querySelector("form") as Element
+    }
+    const check = (scope: Element, href = "https://acme.pl/kontakt", host = "acme.pl") =>
+      F.isApplicationForm(scope, document, href, host)
+    document.title = "Acme"
+    const contact = "<label>Wiadomość <textarea></textarea></label><button>Wyślij</button>"
+    expect(check(form(contact))).toBe(false)
+    expect(check(form(`${contact}<input type="file">`))).toBe(true)
+    expect(check(form(`<h2>Aplikuj na stanowisko</h2>${contact}`))).toBe(true)
+    expect(check(form(contact), "https://acme.pl/kariera/qa")).toBe(true)
+    expect(check(form(contact), "https://www.linkedin.com/jobs/view/1", "www.linkedin.com")).toBe(
+      true
+    )
+    // A whole page is not a form, not even at an address full of job words.
+    const page = "https://www.linkedin.com/jobs-tracker/?stage=clicked_apply"
+    expect(check(document.body, page, "www.linkedin.com")).toBe(false)
+    expect(check(document.body, "https://www.linkedin.com/feed/", "www.linkedin.com")).toBe(false)
+    // Known ATS hosts are job applications by definition, and often have no <form>.
+    expect(check(document.body, "https://jobs.lever.co/acme/1", "jobs.lever.co")).toBe(true)
+    document.title = "Job Application for QA at Acme"
+    expect(check(form(contact))).toBe(true)
   })
 })
 

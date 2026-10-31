@@ -11,7 +11,16 @@ import { useCopy } from "src/app/i18n/Locale"
 import createEditableCvDocument from "../mutations/createEditableCvDocument"
 
 /** An uploaded PDF, shown as stored, with the way to an editable version next to it. */
-export function UploadedCv({ id, title }: { id: string; title: string }) {
+export function UploadedCv({
+  id,
+  title,
+  forAudit = false,
+}: {
+  id: string
+  title: string
+  /** Arrived from the "CV audit" link: the audit needs the editable version */
+  forAudit?: boolean
+}) {
   const { t } = useCopy()
   const toast = useToast()
   const router = useRouter()
@@ -23,7 +32,7 @@ export function UploadedCv({ id, title }: { id: string; title: string }) {
       const result = await invoke(createEditableCvDocument, { id })
       if (!result) throw new Error("no result")
       if (result.reader === "text") toast.show({ message: t("cv.up.textOnly"), duration: 10_000 })
-      router.push(`/cv/${result.id}`)
+      router.push(`/cv/${result.id}${forAudit ? "?audit=1" : ""}`)
     } catch {
       toast.show({ message: t("cv.up.err"), tone: "danger" })
       setBusy(false)
@@ -57,7 +66,7 @@ export function UploadedCv({ id, title }: { id: string; title: string }) {
         </Button>
       </div>
       <div className="cve-upload">
-        <p className="muted">{t("cv.up.lead")}</p>
+        <p className="muted">{t(forAudit ? "cv.up.leadAudit" : "cv.up.lead")}</p>
         <iframe
           className="cve-upload__frame"
           src={`/api/cv/${id}/pdf?inline=1`}

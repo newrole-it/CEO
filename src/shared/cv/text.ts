@@ -17,6 +17,15 @@ export function cvPlainText(content: CvContent): string {
   }
   for (const section of content.sections) {
     if (section.hidden) continue
+    if (section.type === "letter") {
+      lines.push("")
+      const head = [section.date, section.recipient, section.subject, section.greeting]
+      const paragraphs = section.paragraphs.map((paragraph) => inlineToText(paragraph))
+      for (const line of [...head, ...paragraphs, section.closing, section.signature]) {
+        if (line.trim()) lines.push(line.trim())
+      }
+      continue
+    }
     lines.push("", section.title.trim().toUpperCase())
     if (section.type === "text") {
       lines.push(inlineToText(section.body))

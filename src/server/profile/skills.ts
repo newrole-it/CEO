@@ -1,4 +1,4 @@
-import { fold } from "../../../matching/text"
+import { fold } from "matching/text"
 
 /** Canonical skill id → aliases. Short aliases are matched on word boundaries. */
 const SYNONYMS: Record<string, string[]> = {

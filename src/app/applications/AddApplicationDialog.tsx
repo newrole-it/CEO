@@ -2,30 +2,38 @@
 
 import { useEffect, useRef, useState } from "react"
 import { invoke } from "@blitzjs/rpc"
-import type { PromiseReturnType } from "blitz"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "src/app/components/ds/Button"
 import { Modal, ModalHead } from "src/app/components/ds/interactive"
 import { Field } from "src/app/components/ds/primitives"
+import { refillForm } from "src/server/applications/logic"
 import type { ApplicationStatus } from "src/shared/applications"
-import type { ApplicationView } from "src/server/applications/types"
+import type { ApplicationView, OfferFacts, OfferUrlCheck } from "src/server/applications/types"
 import createApplication from "./mutations/createApplication"
+import readApplicationUrl from "./mutations/readApplicationUrl"
 import lookupApplicationUrl from "./queries/lookupApplicationUrl"
 import { dateInput, fromDateInput } from "./rows"
 import { StatusSelect } from "./StatusSelect"
-
-type Lookup = PromiseReturnType<typeof lookupApplicationUrl>
 
 const EMPTY = {
   url: "",
   company: "",
   title: "",
   location: "",
+  salaryText: "",
   status: "APPLIED" as ApplicationStatus,
   appliedAt: "",
 }
 
-/** "Dodaj aplikację": a posting URL (filled from the index when it matches) or company + role. */
+const UNREADABLE: OfferUrlCheck = {
+  valid: true,
+  url: null,
+  outcome: "unreadable",
+  job: null,
+  existing: null,
+}
+
+/** "Dodaj aplikację": a posting URL, read and filled in by us, or company + role by hand. */
 export function AddApplicationDialog({
   open,
   onClose,
@@ -39,47 +47,83 @@ export function AddApplicationDialog({
 }) {
   const { t } = useCopy()
   const [form, setForm] = useState(EMPTY)
-  const [lookup, setLookup] = useState<Lookup | null>(null)
-  const [checking, setChecking] = useState(false)
+  const [check, setCheck] = useState<OfferUrlCheck | null>(null)
+  const [busy, setBusy] = useState<"index" | "page" | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  const asked = useRef("")
+  const run = useRef<{ url: string; read: boolean; done: Promise<OfferUrlCheck | null> } | null>(
+    null
+  )
+  const filled = useRef<OfferFacts | null>(null)
+  const pasted = useRef(false)
+
+  /** One request per link. A newer link makes the answer to an older one irrelevant. */
+  function ask(url: string, read: boolean): Promise<OfferUrlCheck | null> {
+    const current = run.current
+    if (current?.url === url && (current.read || !read)) return current.done
+    setBusy(read ? "page" : "index")
+    const done: Promise<OfferUrlCheck | null> = (
+      read ? invoke(readApplicationUrl, { url }) : invoke(lookupApplicationUrl, { url })
+    )
+      .catch(() => (read ? UNREADABLE : null))
+      .then((result) => {
+        if (run.current?.done === done) {
+          setBusy(null)
+          setCheck(result)
+          if (result?.job) {
+            const previous = filled.current
+            const next = result.job
+            filled.current = next
+            setForm((value) => refillForm(value, previous, next))
+          }
+        }
+        return result
+      })
+    run.current = { url, read, done }
+    return done
+  }
+
+  /** The index first: fetching a page takes seconds and counts against the hourly limit. */
+  async function readLink(url: string): Promise<OfferUrlCheck | null> {
+    const known = await ask(url, false)
+    if (run.current?.url !== url) return known
+    if (known && (!known.valid || known.job || known.existing)) return known
+    return ask(url, true)
+  }
 
   useEffect(() => {
     if (!open) return
     setForm({ ...EMPTY, appliedAt: dateInput(new Date().toISOString()) })
-    setLookup(null)
+    setCheck(null)
+    setBusy(null)
     setError(null)
-    asked.current = ""
+    run.current = null
+    filled.current = null
+    pasted.current = false
   }, [open])
 
   useEffect(() => {
+    if (!open) return
     const url = form.url.trim()
-    if (!open || !url || url === asked.current) {
-      if (!url) setLookup(null)
-      return
+    if (run.current?.url === url) return
+    run.current = null
+    setCheck(null)
+    setBusy(null)
+    const previous = filled.current
+    if (previous) {
+      filled.current = null
+      setForm((value) => refillForm(value, previous, null))
     }
-    const timer = window.setTimeout(() => {
-      asked.current = url
-      setChecking(true)
-      invoke(lookupApplicationUrl, { url })
-        .then((result) => {
-          if (asked.current !== url) return
-          setLookup(result)
-          if (result.job) {
-            const job = result.job
-            setForm((value) => ({
-              ...value,
-              company: value.company || job.company,
-              title: value.title || job.title,
-              location: value.location || job.location || "",
-            }))
-          }
-        })
-        .catch(() => setLookup(null))
-        .finally(() => setChecking(false))
-    }, 450)
+    if (!url) return
+    // While typing only the index is asked; a whole link (pasted, or on leaving the field) is read.
+    const eager = pasted.current
+    pasted.current = false
+    const timer = window.setTimeout(
+      () => void (eager ? readLink(url) : ask(url, false)),
+      eager ? 0 : 450
+    )
     return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.url, open])
 
   const set = (key: keyof typeof EMPTY) => (event: { target: { value: string } }) =>
@@ -89,22 +133,35 @@ export function AddApplicationDialog({
     event.preventDefault()
     setError(null)
     const url = form.url.trim()
-    if (url && lookup && !lookup.valid) {
-      setError(t("app.add.badUrl"))
-      return
-    }
-    if (!lookup?.job && (!form.company.trim() || !form.title.trim())) {
-      setError(t("app.add.required"))
-      return
-    }
     setPending(true)
     try {
+      const typed = form.company.trim() && form.title.trim()
+      const found = url && !typed ? await readLink(url) : check
+      if (url && found && !found.valid) {
+        setError(t("app.add.badUrl"))
+        return
+      }
+      if (found?.existing) {
+        onShow(found.existing.id)
+        return
+      }
+      // Read just now, so the form does not show it yet. A guess waits for the person to see it.
+      const fresh = found !== check
+      if (fresh && url && found?.outcome !== "read") return
+      const from = fresh ? found?.job : null
+      const company = form.company.trim() || from?.company
+      const title = form.title.trim() || from?.title
+      if (!company || !title) {
+        setError(t("app.add.required"))
+        return
+      }
       const result = await invoke(createApplication, {
-        url: url || null,
-        jobId: lookup?.job?.jobId ?? null,
-        company: form.company.trim() || undefined,
-        title: form.title.trim() || undefined,
-        location: form.location.trim() || null,
+        url: found?.url ?? (url || null),
+        jobId: found?.job?.jobId ?? null,
+        company,
+        title,
+        location: form.location.trim() || from?.location || null,
+        salaryText: form.salaryText.trim() || from?.salaryText || null,
         status: form.status,
         appliedAt: fromDateInput(form.appliedAt) ?? undefined,
       })
@@ -116,6 +173,26 @@ export function AddApplicationDialog({
     }
   }
 
+  const job = check?.job
+  const hint =
+    busy === "page"
+      ? t("app.add.reading")
+      : busy === "index"
+      ? t("app.add.checking")
+      : check && !check.valid
+      ? t("app.add.badUrl")
+      : check?.existing
+      ? t("app.add.existing", { company: check.existing.company, title: check.existing.title })
+      : check?.outcome === "read" && job?.company && job.title
+      ? t("app.add.found", { company: job.company, title: job.title })
+      : check?.outcome === "partial"
+      ? t("app.add.partial")
+      : check?.outcome === "link-only"
+      ? t("app.add.linkOnly")
+      : check?.outcome === "unreadable"
+      ? t("app.add.unreadable")
+      : t("app.add.urlHint")
+
   return (
     <Modal open={open} onClose={onClose} labelledBy="app-add-title" className="modal--wide">
       <ModalHead title={t("app.add.title")} id="app-add-title" onClose={onClose} />
@@ -123,22 +200,7 @@ export function AddApplicationDialog({
         <Field
           label={t("app.add.url")}
           htmlFor="app-add-url"
-          hint={
-            <span aria-live="polite">
-              {checking
-                ? t("app.add.checking")
-                : lookup && !lookup.valid
-                ? t("app.add.badUrl")
-                : lookup?.existing
-                ? t("app.add.existing", {
-                    company: lookup.existing.company,
-                    title: lookup.existing.title,
-                  })
-                : lookup?.job
-                ? t("app.add.found", { company: lookup.job.company, title: lookup.job.title })
-                : t("app.add.urlHint")}
-            </span>
-          }
+          hint={<span aria-live="polite">{hint}</span>}
         >
           <input
             id="app-add-url"
@@ -150,11 +212,18 @@ export function AddApplicationDialog({
             value={form.url}
             maxLength={2000}
             onChange={set("url")}
+            onPaste={() => {
+              pasted.current = true
+            }}
+            onBlur={() => {
+              const url = form.url.trim()
+              if (url) void readLink(url)
+            }}
           />
         </Field>
-        {lookup?.existing ? (
+        {check?.existing ? (
           <div>
-            <Button size="sm" variant="outline" onClick={() => onShow(lookup.existing!.id)}>
+            <Button size="sm" variant="outline" onClick={() => onShow(check.existing!.id)}>
               {t("app.add.showExisting")}
             </Button>
           </div>
@@ -180,15 +249,26 @@ export function AddApplicationDialog({
             />
           </Field>
         </div>
-        <Field label={t("app.add.location")} htmlFor="app-add-location">
-          <input
-            id="app-add-location"
-            className="input"
-            value={form.location}
-            maxLength={200}
-            onChange={set("location")}
-          />
-        </Field>
+        <div className="app-add__pair">
+          <Field label={t("app.add.location")} htmlFor="app-add-location">
+            <input
+              id="app-add-location"
+              className="input"
+              value={form.location}
+              maxLength={200}
+              onChange={set("location")}
+            />
+          </Field>
+          <Field label={t("app.add.salary")} htmlFor="app-add-salary">
+            <input
+              id="app-add-salary"
+              className="input"
+              value={form.salaryText}
+              maxLength={120}
+              onChange={set("salaryText")}
+            />
+          </Field>
+        </div>
         <div className="app-add__pair">
           <Field label={t("app.add.status")} htmlFor="app-add-status">
             <StatusSelect

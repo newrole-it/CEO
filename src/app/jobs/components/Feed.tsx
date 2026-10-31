@@ -38,7 +38,7 @@ import { FilterBar } from "./FilterBar"
 import { AppliedStrip, CompactPrompt, LikePanel, LikedStrip, PassStrip } from "./Feedback"
 import { OfferCard } from "./OfferCard"
 import { OfferDetailView } from "./OfferDetail"
-import { ShortcutsDialog } from "./Shortcuts"
+import { SHORTCUTS_KEY, ShortcutsDialog } from "./Shortcuts"
 import { SimilarRow } from "./Similar"
 import { TastePanel, TasteStrip } from "./Taste"
 
@@ -431,7 +431,7 @@ export function Feed(props: FeedProps) {
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return
       try {
-        if (localStorage.getItem("nr.shortcuts") === "off") return
+        if (localStorage.getItem(SHORTCUTS_KEY) === "off") return
       } catch {}
       const target = event.target as HTMLElement | null
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return
@@ -967,7 +967,7 @@ function WatchedCard({ watched, inline }: { watched: { count: number; fresh: num
   )
 }
 
-export function CardSkeleton() {
+function CardSkeleton() {
   return (
     <div className="ocard" aria-hidden style={{ cursor: "default" }}>
       <div className="row">

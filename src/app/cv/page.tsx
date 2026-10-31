@@ -14,7 +14,7 @@ export async function generateMetadata() {
 export default async function CvPage() {
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
   const t = translator(locale)
-  const cvs = user ? await listCvs(user.id) : []
+  const cvs = user ? await listCvs(user.id, { letters: true }) : []
   return (
     <SiteFrame user={user} locale={locale} width="narrow">
       <header className="page-head">

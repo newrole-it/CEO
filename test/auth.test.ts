@@ -1,7 +1,9 @@
+import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
 import getSearch from "../src/app/searches/queries/getSearch"
+import { upsertLinkedInUser } from "../src/server/auth/accounts"
 import {
   consumeMagicLink,
   issueMagicLink,
@@ -59,6 +61,50 @@ test("magic link rate limit trips after the email cap and for a hot IP", async (
     data: { key: `ip:${ip}`, windowStart: new Date(), count: 20 },
   })
   await assert.rejects(() => issueMagicLink(`fresh-auth-${stamp}@example.com`, ip))
+})
+
+test("LinkedIn links an existing account only when it verified the email", async () => {
+  const email = `link-auth-${stamp}@example.com`
+  const existing = await db.user.create({ data: { email, role: "USER" } })
+  const identity = { sub: `sub-${stamp}`, email, name: null, picture: null }
+
+  assert.equal(await upsertLinkedInUser({ ...identity, emailVerified: false }), null)
+  const untouched = await db.user.findUniqueOrThrow({ where: { id: existing.id } })
+  assert.equal(untouched.linkedinSub, null)
+
+  const linked = await upsertLinkedInUser({ ...identity, emailVerified: true })
+  assert.equal(linked?.id, existing.id)
+  assert.equal(linked?.linkedinSub, identity.sub)
+})
+
+test("a new LinkedIn account with an unverified email stays unverified", async () => {
+  const email = `new-auth-${stamp}@example.com`
+  const created = await upsertLinkedInUser({
+    sub: `new-sub-${stamp}`,
+    email,
+    emailVerified: false,
+    name: null,
+    picture: null,
+  })
+  assert.equal(created?.email, email)
+  assert.equal(created?.emailVerifiedAt, null)
+})
+
+test("a LinkedIn sign-in does not take an email another account holds", async () => {
+  const held = `held-auth-${stamp}@example.com`
+  await db.user.create({ data: { email: held, role: "USER" } })
+  const mine = await db.user.create({
+    data: { email: `mine-auth-${stamp}@example.com`, role: "USER", linkedinSub: `mine-${stamp}` },
+  })
+  const signedIn = await upsertLinkedInUser({
+    sub: `mine-${stamp}`,
+    email: held,
+    emailVerified: true,
+    name: null,
+    picture: null,
+  })
+  assert.equal(signedIn?.id, mine.id)
+  assert.equal(signedIn?.email, mine.email)
 })
 
 test("a user cannot read another user's search", async () => {

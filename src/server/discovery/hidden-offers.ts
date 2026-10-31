@@ -14,7 +14,7 @@ import { ingestOfferUrl } from "./ingest-offer"
 import { offerQuery } from "./offer-search"
 import { discoveryQueryLimit } from "./queries"
 import { searchProvider, searchWeb, type WebHit } from "./web-search"
-import { expandSimilarCompanies } from "./similar-companies"
+import { expandSimilarCompanies, SIMILAR_SOURCE } from "./similar-companies"
 
 export const HUNT_SOURCE = "hidden_offer_hunt"
 export const HUNT_INTERVAL_MS = 12 * 60 * 60 * 1000
@@ -272,7 +272,7 @@ export async function maybeExpandSimilar(now = new Date()): Promise<void> {
   if (now.getTime() < nextSimilarCheck) return
   nextSimilarCheck = now.getTime() + 60 * 60_000
   try {
-    const source = await ensureSource("similar_companies", "claude -p similar employers")
+    const source = await ensureSource(SIMILAR_SOURCE, "claude -p similar employers")
     if (!source.enabled) return
     const state = (source.rateLimitConfig ?? {}) as Record<string, unknown>
     const ran = (state.ran && typeof state.ran === "object" ? state.ran : {}) as Record<string, string>

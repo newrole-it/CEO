@@ -3,6 +3,8 @@
  * records the submission. It never submits a form. Logic that needs no chrome.* is in form.js.
  */
 import * as F from "./form.js"
+import { statusLine } from "./offer.js"
+import { connectionError, element, formatDate, send, session } from "./page.js"
 
 export function startContent() {
   // Injected again from the popup, or by both the manifest and the all-sites script.
@@ -22,32 +24,14 @@ export function startContent() {
     forced: false,
     href: location.href,
     statusFor: null,
-  }
-
-  function send(type, payload) {
-    return new Promise((resolve) => {
-      try {
-        chrome.runtime.sendMessage({ type, ...payload }, (response) => {
-          if (chrome.runtime.lastError) resolve({ ok: false, error: "disconnected" })
-          else resolve(response || { ok: false, error: "disconnected" })
-        })
-      } catch (_error) {
-        // The extension was reloaded; this page's script is orphaned.
-        resolve({ ok: false, error: "disconnected" })
-      }
-    })
-  }
-
-  function session(action, key) {
-    try {
-      if (action === "get") return sessionStorage.getItem(key)
-      sessionStorage.setItem(key, "1")
-    } catch (_error) {}
-    return null
+    // Answers from earlier steps of the form. In memory only: page scripts can read sessionStorage.
+    earlier: [],
+    stepDialog: null,
   }
 
   const dismissKey = () => `nr-dismissed:${location.pathname}`
-  const sentKey = () => `nr-submitted:${location.pathname}`
+  // With the query: on LinkedIn's search page each offer is ?currentJobId= on the same path.
+  const sentKey = () => `nr-submitted:${location.pathname}${location.search}`
 
   // -------------------------------------------------------------------- panel
 
@@ -93,13 +77,6 @@ export function startContent() {
     message: null,
     list: null,
     toast: null,
-  }
-
-  function element(tag, className, text) {
-    const node = document.createElement(tag)
-    if (className) node.className = className
-    if (text != null) node.textContent = text
-    return node
   }
 
   function ensurePanel() {
@@ -227,14 +204,7 @@ export function startContent() {
   }
 
   function errorText(result) {
-    if (result.status === 401 || result.error === "not-connected") {
-      return "Rozszerzenie nie jest połączone. Połącz je ponownie."
-    }
-    if (result.error === "offline")
-      return "Nie mogę połączyć się z aplikacją. Czy Nowa Rola jest uruchomiona?"
-    if (result.error === "disconnected")
-      return "Rozszerzenie zostało przeładowane. Odśwież tę stronę."
-    return result.error || "Coś poszło nie tak. Spróbuj ponownie."
+    return connectionError(result) ?? (result.error || "Coś poszło nie tak. Spróbuj ponownie.")
   }
 
   async function runFill() {
@@ -329,11 +299,6 @@ export function startContent() {
     return summary
   }
 
-  function formatDate(value) {
-    const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("pl-PL")
-  }
-
   function summaryText(summary, applied) {
     const known = summary.profile + summary.answers + summary.cv
     const parts = [`Uzupełniono: ${known}`]
@@ -377,7 +342,29 @@ export function startContent() {
 
   function snapshotFields() {
     const root = currentRoot(state.forced)
-    return root ? F.snapshot(F.collectFields(root), state.kinds) : []
+    const rows = root ? F.snapshot(F.collectFields(root), state.kinds) : []
+    return F.mergeSteps(state.earlier, rows)
+  }
+
+  /** A form in steps shows only the current one, so each is kept until the form is sent. */
+  function rememberStep(scope, button) {
+    state.earlier = F.mergeSteps(state.earlier, F.snapshot(F.collectFields(scope), state.kinds))
+    state.stepDialog = button.closest("[role='dialog']")
+  }
+
+  function forgetSteps() {
+    state.earlier = []
+    state.stepDialog = null
+  }
+
+  /**
+   * A last step often has no fields, so no form is found there. Only the step before it vouches
+   * for the button: the same open dialog, or a known ATS. Elsewhere "Wyślij" may be a chat.
+   */
+  function endsSteps(button) {
+    if (!state.earlier.length) return false
+    if (state.stepDialog) return state.stepDialog.isConnected && state.stepDialog.contains(button)
+    return F.knownAts(location.hostname)
   }
 
   async function saveManually() {
@@ -393,6 +380,7 @@ export function startContent() {
         return { ok: false, error: result.error }
       }
       markSent()
+      forgetSteps()
       say("")
       return { ok: true, application: result.data.application }
     } finally {
@@ -404,16 +392,20 @@ export function startContent() {
   /** The values are read now: the page may clear them or navigate right after this event. */
   function onSubmission(root) {
     if (state.sent || !state.config.connected || !state.config.autoTrack) return
+    if (!F.isApplicationForm(root, document, location.href, location.hostname)) return
     if (root.tagName === "FORM" && !root.noValidate && !root.checkValidity()) return
     const collection = F.collectFields(root)
     if (F.hasEmptyRequired(collection)) return
-    const anything = [...collection.entries.values()].some((entry) => F.readValue(entry))
+    const anything =
+      state.earlier.length || [...collection.entries.values()].some((entry) => F.readValue(entry))
     if (!anything) return
-    const fields = F.snapshot(collection, state.kinds)
+    const fields = F.mergeSteps(state.earlier, F.snapshot(collection, state.kinds))
     markSent()
+    forgetSteps()
     void report(fields).then((result) => {
       if (result.ok) return
       // Nothing was saved, so a second attempt may report again.
+      state.earlier = fields
       state.sent = false
       try {
         sessionStorage.removeItem(sentKey())
@@ -436,10 +428,21 @@ export function startContent() {
   document.addEventListener(
     "click",
     (event) => {
-      const root = state.root
-      if (!root || event.isTrusted === false) return
+      if (event.isTrusted === false) return
+      const root = state.root && state.root.isConnected ? state.root : null
+      const next = F.nextStepTarget(event.target)
+      if (next) {
+        const dialog = next.closest("[role='dialog']")
+        const scope = dialog || (root && root.contains(next) ? root : next.closest("form"))
+        if (scope) rememberStep(scope, next)
+        return
+      }
       const button = F.submitLikeTarget(event.target)
-      if (button && root.contains(button)) onSubmission(root)
+      if (!button) return
+      const dialog = button.closest("[role='dialog']")
+      if (root && root.contains(button))
+        onSubmission(dialog && root.contains(dialog) ? dialog : root)
+      else if (endsSteps(button)) onSubmission(dialog || button.closest("form") || document.body)
     },
     true
   )
@@ -469,7 +472,10 @@ export function startContent() {
       state.job = null
       state.kinds = {}
       state.sent = Boolean(session("get", sentKey()))
+      forgetSteps()
     }
+    // Answers of a closed dialog must not travel to the next offer opened on the same page.
+    if (state.stepDialog && !state.stepDialog.isConnected) forgetSteps()
     if (window.innerWidth < 250) return
     const root = currentRoot(state.forced)
     if (root && !session("get", dismissKey())) {
@@ -482,10 +488,11 @@ export function startContent() {
   async function showApplied() {
     const href = location.href
     if (state.statusFor === href || !state.config.connected) return
+    if (state.config.offerCheck === false) return
     state.statusFor = href
     const result = await send("status", { url: href })
     if (result.ok && result.data?.applied && location.href === href && !state.busy) {
-      say(`Już aplikowano: ${formatDate(result.data.applied.appliedAt)}.`)
+      say(statusLine(result.data))
     }
   }
 

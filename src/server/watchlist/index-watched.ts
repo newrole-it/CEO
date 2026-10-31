@@ -8,9 +8,9 @@ import type { SeedBoard } from "config/seed-boards"
 import { parseJsonLdJobs } from "src/server/adapters/jsonld"
 import { detailFetchesRemaining, takeDetailSlot } from "src/server/crawler/budget"
 import { indexBoard } from "src/server/index/run"
-import { nextCrawlAt, pickWatchedPage } from "src/server/index/schedule"
+import { nextCrawlAt, pickWatchedPage, SOURCE_RETRY_MS } from "src/server/index/schedule"
 import { knownCanonicals, noteIndexFailure, storeBoardInventory } from "src/server/index/store"
-import { canonicalUrl } from "src/server/jobs/dedupe"
+import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { hostOf, jobLinks } from "src/server/discovery/careers-detect"
@@ -64,14 +64,6 @@ export function boardFromPage(page: CareerPage, company: Company): SeedBoard {
   }
 }
 
-function safeCanonical(raw: string): string {
-  try {
-    return canonicalUrl(raw)
-  } catch {
-    return raw
-  }
-}
-
 /** Read a company careers page and its job pages for schema.org JobPosting data. */
 export async function refreshCareerSite(
   page: CareerPage,
@@ -88,7 +80,7 @@ export async function refreshCareerSite(
   const robots = createRobotsCache()
   const listing = await politeGet(page.url, http, robots)
   if (!listing.ok) {
-    await noteIndexFailure(board, now, new Date(now.getTime() + 6 * 3600_000), listing.reason)
+    await noteIndexFailure(board, now, new Date(now.getTime() + SOURCE_RETRY_MS), listing.reason)
     return "failed"
   }
   const html = listing.response.body
@@ -101,7 +93,7 @@ export async function refreshCareerSite(
   let fetched = 0
   let budgetExhausted = false
   for (const link of links) {
-    if (known.has(safeCanonical(link))) continue
+    if (known.has(safeCanonicalUrl(link))) continue
     if (fetched >= Math.min(SITE_BATCH, remaining) || !(await takeDetailSlot(host))) {
       budgetExhausted = true
       break
@@ -115,7 +107,7 @@ export async function refreshCareerSite(
     await noteIndexFailure(
       board,
       now,
-      new Date(now.getTime() + 6 * 3600_000),
+      new Date(now.getTime() + SOURCE_RETRY_MS),
       "No schema.org JobPosting data on the careers pages"
     )
     return "failed"
@@ -136,7 +128,7 @@ export async function refreshCareerSite(
       listedCount: Math.max(links.length, stamped.length),
       complete,
       budgetExhausted,
-      coveredUrls: complete ? [...links.map(safeCanonical), ...known] : undefined,
+      coveredUrls: complete ? [...links.map(safeCanonicalUrl), ...known] : undefined,
       note: `Company site, JSON-LD. ${fetched} job pages read this run.`,
     },
     now,
@@ -171,7 +163,7 @@ export async function indexWatchedPage(
     // Never leave a page due right away after a skip or crash: the loop would spin on it.
     await db.careerPage.update({
       where: { id: page.id },
-      data: { nextCheckAt: new Date(now.getTime() + 6 * 3600_000), lastCheckedAt: now },
+      data: { nextCheckAt: new Date(now.getTime() + SOURCE_RETRY_MS), lastCheckedAt: now },
     })
   }
   return result

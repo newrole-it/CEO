@@ -3,7 +3,8 @@
  * From a fresh clone to a running app, in one command: npm run go
  * Safe to run every day: each step skips what is already done. Built-in Node modules only,
  * because this runs before anything is installed. `--prepare` stops before starting the app
- * (npm run setup), `--no-open` leaves the browser alone.
+ * (npm run setup), `--no-open` leaves the browser alone, and `--extension` only installs and
+ * rebuilds the Chrome extension (npm run ext:build).
  */
 import { spawn, spawnSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
@@ -37,6 +38,9 @@ function run(command, args, { cwd = ROOT, env = process.env, title } = {}) {
   if (result.status === 0) return result
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim()
   if (result.error?.code === "ENOENT") fail(`${title}: "${command}" was not found.`)
+  // Could not start at all (permissions, a broken node_modules/.bin link): the error is the clue.
+  if (result.error) fail(`${title} failed.`, result.error.message)
+  if (result.signal) fail(`${title} was stopped by ${result.signal}.`, ...output.split("\n").slice(-25))
   fail(`${title} failed.`, ...output.split("\n").slice(-25))
 }
 
@@ -223,13 +227,17 @@ function migrate(env) {
 
 // --------------------------------------------------------------- extension
 
-function buildExtension() {
+function installExtension() {
+  install(join(ROOT, "extension"), join("node_modules", ".bin", "wxt"), "Extension")
+}
+
+function buildExtension({ force = false } = {}) {
   const dir = join(ROOT, "extension")
   const manifest = join(dir, ".output", "chrome-mv3", "manifest.json")
   const built = existsSync(manifest) ? statSync(manifest).mtimeMs : 0
   const sources = ["entrypoints", "lib", "icons", "wxt.config.ts", "package.json"]
   const changed = Math.max(...sources.map((name) => newestMtime(join(dir, name))))
-  if (built >= changed) {
+  if (!force && built >= changed) {
     ok("Chrome extension built")
     return
   }
@@ -325,6 +333,13 @@ async function start(env) {
 async function main() {
   console.log("\n  Nowa Rola\n")
   checkNode()
+  if (process.argv.includes("--extension")) {
+    installExtension()
+    buildExtension({ force: true })
+    console.log(`\n  Load this folder at chrome://extensions:`)
+    console.log(`  ${join(ROOT, "extension", ".output", "chrome-mv3")}\n`)
+    return
+  }
   await ensureEnv()
   // The shell wins, then .env.local, then .env: the same order Next reads them in.
   const local = join(ROOT, ".env.local")
@@ -335,7 +350,7 @@ async function main() {
   }
   install(ROOT, join("node_modules", ".bin", "blitz"), "App")
   install(join(ROOT, "matching"), join("node_modules", "zod", "package.json"), "Matching")
-  install(join(ROOT, "extension"), join("node_modules", ".bin", "wxt"), "Extension")
+  installExtension()
   await ensureDatabase(env)
   migrate(env)
   buildExtension()

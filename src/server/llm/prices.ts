@@ -19,6 +19,7 @@ export const USD_TO_PLN_ESTIMATE = 3.95
 export const LLM_TASKS = [
   "candidate-profile",
   "profile-audit",
+  "cv-audit",
   "query-expansion",
   "match-explanation",
   "job-industry",

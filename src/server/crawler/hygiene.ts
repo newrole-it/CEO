@@ -6,11 +6,14 @@ export function fetchUserAgent(): string {
   return `NowaRolaBot/0.1 (+${publicAppUrl()}/bot; contact: rafal@jobscanner.local; personal non-commercial job search)`
 }
 
-/** Drop emails, phone numbers, and labeled recruiter names before anything is stored. */
+/**
+ * Drop emails, phone numbers, and labeled recruiter names before anything is stored.
+ * A 00 right after a number is its thousands, not a dialling prefix: "22 000 - 30 000 PLN".
+ */
 export function stripPersonalData(text: string): string {
   return text
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
-    .replace(/(?<!\d)(?:\+\d|00\d)[\d\s().-]{6,}\d/g, "")
+    .replace(/(?<!\d)(?:\+\d|(?<!\d[\s.,])00\d)[\d\s().-]{6,}\d/g, "")
     .replace(
       /\b(?:recruiter|hiring manager|talent partner|kontakt)\s*:\s*[A-ZŁŚŻŹĆŃ][\p{L}'-]+(?:\s+[A-ZŁŚŻŹĆŃ][\p{L}'-]+){0,2}/giu,
       ""

@@ -16,6 +16,7 @@ const app = (over: Partial<SheetApplication>): SheetApplication => ({
   contact: null,
   location: null,
   salaryText: null,
+  statedSalary: null,
   source: "nowarola",
   url: null,
   notes: null,
@@ -39,6 +40,7 @@ describe("sheet table", () => {
       "Kontakt",
       "Lokalizacja",
       "Wynagrodzenie",
+      "Podane widełki",
       "Źródło",
       "Link",
       "Notatki",
@@ -74,7 +76,7 @@ describe("sheet table", () => {
     ).rows
     expect(row[5]).toBe("2026-10-02")
     expect(row[8]).toBe("2026-11-03")
-    expect(row[12]).toBe("Rozszerzenie")
+    expect(row[13]).toBe("Rozszerzenie")
     expect(sheetDate(null)).toBe("")
   })
 

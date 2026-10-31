@@ -7,6 +7,7 @@ import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { CodeBlock, Modal, ModalHead, useToast } from "src/app/components/ds/interactive"
 import { Badge, Skeleton } from "src/app/components/ds/primitives"
 import { useCopy } from "src/app/i18n/Locale"
+import { intlLocale } from "src/app/i18n/copy"
 import createExtensionToken from "./extension/mutations/createExtensionToken"
 import revokeExtensionToken from "./extension/mutations/revokeExtensionToken"
 import getExtensionSettings from "./extension/queries/getExtensionSettings"
@@ -27,7 +28,7 @@ export function ExtensionSettings() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const date = (value: Date | string) =>
-    new Date(value).toLocaleDateString(locale === "pl" ? "pl-PL" : "en-GB", {
+    new Date(value).toLocaleDateString(intlLocale(locale), {
       day: "numeric",
       month: "short",
       year: "numeric",

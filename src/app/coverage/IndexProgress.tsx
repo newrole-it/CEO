@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { useQuery } from "@blitzjs/rpc"
 import { useLocale } from "src/app/i18n/Locale"
+import { NEW_ATS_LABELS } from "src/shared/ats-labels"
+import { intlLocale } from "src/app/i18n/copy"
 import getCrawlProgress from "./queries/getCrawlProgress"
 
 const PROVIDER: Record<string, string> = {
@@ -20,6 +22,12 @@ const PROVIDER: Record<string, string> = {
   BAMBOOHR: "BambooHR",
   SUCCESSFACTORS: "SuccessFactors",
   WORKDAY: "Workday",
+  ICIMS: "iCIMS",
+  PHENOM: "Phenom",
+  AVATURE: "Avature",
+  ERECRUITER: "eRecruiter",
+  JOBVITE: "Jobvite",
+  ...NEW_ATS_LABELS,
   CAREER_SITE: "Career site",
 }
 
@@ -40,7 +48,7 @@ function remain(seconds: number | null, locale: "pl" | "en"): string | null {
 }
 
 function when(value: string, locale: "pl" | "en"): string {
-  return new Intl.DateTimeFormat(locale === "pl" ? "pl-PL" : "en-GB", {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value))
@@ -186,7 +194,7 @@ export function IndexProgress() {
       <dl className="crawl-facts">
         <div>
           <dt>{pl ? "Oferty" : "Offers"}</dt>
-          <dd>{data.jobs.toLocaleString(pl ? "pl-PL" : "en-GB")}</dd>
+          <dd>{data.jobs.toLocaleString(intlLocale(locale))}</dd>
         </div>
         <div>
           <dt>{pl ? "Tablice API" : "API boards"}</dt>

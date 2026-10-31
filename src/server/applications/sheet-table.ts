@@ -25,6 +25,7 @@ type Column =
   | "contact"
   | "location"
   | "salary"
+  | "stated"
   | "source"
   | "link"
   | "notes"
@@ -44,6 +45,7 @@ const HEADERS: Record<SheetLocale, Record<Column, string>> = {
     contact: "Kontakt",
     location: "Lokalizacja",
     salary: "Wynagrodzenie",
+    stated: "Podane widełki",
     source: "Źródło",
     link: "Link",
     notes: "Notatki",
@@ -62,6 +64,7 @@ const HEADERS: Record<SheetLocale, Record<Column, string>> = {
     contact: "Contact",
     location: "Location",
     salary: "Salary",
+    stated: "Stated salary",
     source: "Source",
     link: "Link",
     notes: "Notes",
@@ -70,8 +73,20 @@ const HEADERS: Record<SheetLocale, Record<Column, string>> = {
 }
 
 const SOURCES: Record<SheetLocale, Record<ApplicationSource, string>> = {
-  pl: { nowarola: "Nowa Rola", extension: "Rozszerzenie", manual: "Ręcznie", mcp: "Claude (MCP)" },
-  en: { nowarola: "Nowa Rola", extension: "Extension", manual: "Manual", mcp: "Claude (MCP)" },
+  pl: {
+    nowarola: "Nowa Rola",
+    extension: "Rozszerzenie",
+    manual: "Ręcznie",
+    mcp: "Claude (MCP)",
+    gmail: "Gmail",
+  },
+  en: {
+    nowarola: "Nowa Rola",
+    extension: "Extension",
+    manual: "Manual",
+    mcp: "Claude (MCP)",
+    gmail: "Gmail",
+  },
 }
 
 export function sourceLabel(source: string, locale: SheetLocale = "pl"): string {
@@ -117,6 +132,7 @@ export type SheetApplication = {
   contact: string | null
   location: string | null
   salaryText: string | null
+  statedSalary: string | null
   source: string
   url: string | null
   notes: string | null
@@ -141,6 +157,7 @@ export function buildSheetTable(
     "contact",
     "location",
     "salary",
+    "stated",
     "source",
     "link",
     ...(opts.includeNotes === false ? [] : (["notes"] as Column[])),
@@ -176,6 +193,8 @@ export function buildSheetTable(
         return app.location ?? ""
       case "salary":
         return app.salaryText ?? ""
+      case "stated":
+        return app.statedSalary ?? ""
       case "source":
         return sourceLabel(app.source, locale)
       case "link":

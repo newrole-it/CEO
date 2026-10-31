@@ -9,6 +9,12 @@ node_modules
 # testing
 /coverage
 
+# zero-byte probe files left behind by sandboxed tooling (two were committed by accident once)
+.probe
+.nr
+.nr-test
+.rm-test
+
 # next.js
 /.next/
 /out/
@@ -39,9 +45,6 @@ yarn-error.log*
 /db/*.sqlite-journal
 /db/dev.db
 /db/dev.db-journal
-
-# test output
-/coverage
 
 # vercel
 .vercel

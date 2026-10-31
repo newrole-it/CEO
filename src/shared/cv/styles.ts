@@ -72,6 +72,11 @@ padding-bottom:1.5mm;border-bottom:1px solid var(--cv-line)}
 .cv-doc .cv-edu__school{display:block;font-weight:700}
 .cv-doc .cv-small{color:var(--cv-muted);font-size:9pt}
 .cv-doc .cv-consent{display:block;color:var(--cv-faint);font-size:7pt;line-height:1.35}
+.cv-doc .cv-letter-date{display:block;text-align:right;color:var(--cv-muted);font-size:10pt}
+.cv-doc .cv-letter-to{display:block;font-size:10.5pt;font-weight:700}
+.cv-doc .cv-letter-subject{display:block;color:var(--cv-accent);font-size:10.5pt;font-weight:700}
+.cv-doc .cv-letter-text{display:block;font-size:10.5pt;line-height:1.5}
+.cv-doc .cv-letter-sign{display:block;font-size:10.5pt;font-weight:700;padding-top:2mm}
 .cv-doc .cv-page{position:relative;width:210mm;height:297mm;background:#fff;overflow:hidden}
 .cv-doc .cv-page__content{position:absolute;top:14mm;left:16mm;width:178mm}
 .cv-doc .cv-footer{position:absolute;right:16mm;bottom:0;height:15mm;display:flex;align-items:center;color:var(--cv-faint);

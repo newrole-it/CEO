@@ -208,8 +208,9 @@ describe("limiter", () => {
 describe("provider selection", () => {
   const yes = () => true
   const no = () => false
-  it("prefers an API key, then the claude binary, then nothing", () => {
-    expect(llmProvider({ LLM_API_KEY: "k" }, yes)).toBe("openai")
+  it("prefers the claude binary, then an API key, then nothing", () => {
+    expect(llmProvider({ LLM_API_KEY: "k" }, yes)).toBe("claude-cli")
+    expect(llmProvider({ LLM_API_KEY: "k" }, no)).toBe("openai")
     expect(llmProvider({}, yes)).toBe("claude-cli")
     expect(llmProvider({}, no)).toBe("none")
   })
@@ -217,7 +218,12 @@ describe("provider selection", () => {
   it("honours LLM_PROVIDER", () => {
     expect(llmProvider({ LLM_PROVIDER: "claude-cli", LLM_API_KEY: "k" }, yes)).toBe("claude-cli")
     expect(llmProvider({ LLM_PROVIDER: "none" }, yes)).toBe("none")
+    expect(llmProvider({ LLM_PROVIDER: "openai", LLM_API_KEY: "k" }, yes)).toBe("openai")
     expect(llmProvider({ LLM_PROVIDER: "openai" }, yes)).toBe("none")
     expect(llmProvider({ LLM_PROVIDER: "claude-cli" }, no)).toBe("none")
+  })
+
+  it("never falls back to an API key when Claude is asked for and missing", () => {
+    expect(llmProvider({ LLM_PROVIDER: "claude-cli", LLM_API_KEY: "k" }, no)).toBe("none")
   })
 })

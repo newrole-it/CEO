@@ -1,4 +1,4 @@
-import {DEFAULT_CONFIG, type MatchingConfig} from "../../../matching/config"
+import { DEFAULT_CONFIG, type MatchingConfig } from "../../../matching/config"
 import {
   buildQueryExpansionMessages,
   buildSearchQueries,
@@ -9,7 +9,7 @@ import {
   type QueryExpansion,
   type QueryExpansionInput,
 } from "../../../matching/query-expansion.schema"
-import {fold} from "../../../matching/text"
+import { fold } from "../../../matching/text"
 import {
   SENIORITY_LEVELS,
   SENIORITY_RANK,
@@ -18,16 +18,16 @@ import {
   type Seniority,
 } from "../../../matching/types"
 import examples from "../../../matching/query-expansion.examples.json"
-import type {LlmClient} from "src/server/llm/client"
+import type { LlmClient } from "src/server/llm/client"
 
 const CONTRACTS: ContractType[] = ["b2b", "uop", "uz", "uod", "employment_foreign", "unknown"]
 const STOP = new Set(["the", "and", "for", "of", "ds", "do", "dla", "oraz", "with", "role"])
 
-type ExampleRow = {input?: {phrase?: string}; modelOutput?: unknown}
+type ExampleRow = { input?: { phrase?: string }; modelOutput?: unknown }
 
 /** FX and hours stay overridable. DEFAULT_CONFIG itself is never mutated (matching tests depend on it). */
 export function liveMatchingConfig(): MatchingConfig {
-  const toPln = {...DEFAULT_CONFIG.fx.toPln}
+  const toPln = { ...DEFAULT_CONFIG.fx.toPln }
   let source = DEFAULT_CONFIG.fx.source
   const apply = (code: keyof typeof toPln, envName: string) => {
     const raw = process.env[envName]
@@ -43,7 +43,12 @@ export function liveMatchingConfig(): MatchingConfig {
   apply("CHF", "FX_CHF_PLN")
   return {
     ...DEFAULT_CONFIG,
-    fx: {...DEFAULT_CONFIG.fx, toPln, source, asOf: process.env.FX_AS_OF?.trim() || DEFAULT_CONFIG.fx.asOf},
+    fx: {
+      ...DEFAULT_CONFIG.fx,
+      toPln,
+      source,
+      asOf: process.env.FX_AS_OF?.trim() || DEFAULT_CONFIG.fx.asOf,
+    },
   }
 }
 
@@ -58,7 +63,7 @@ function seniorityAt(rank: number, fromEnd: boolean): Seniority {
   return (fromEnd ? matches[matches.length - 1] : matches[0]) ?? "manager"
 }
 
-function windowFor(level: Seniority): {min: Seniority; max: Seniority} {
+function windowFor(level: Seniority): { min: Seniority; max: Seniority } {
   const rank = SENIORITY_RANK[level]
   return {
     min: seniorityAt(Math.max(0, rank - 2), false),
@@ -77,14 +82,20 @@ export function liveProfile(expansion: QueryExpansion): MatchProfile {
     .split(",")
     .map((item) => item.trim())
     .filter((item): item is ContractType => (CONTRACTS as string[]).includes(item))
-  const cities = (process.env.MATCH_HYBRID_CITIES || "Warsaw,Kraków,Krakow,Wrocław,Wroclaw,Gdańsk,Gdansk,Poznań,Poznan,Łódź,Lodz,Katowice")
+  const cities = (
+    process.env.MATCH_HYBRID_CITIES ||
+    "Warsaw,Kraków,Krakow,Wrocław,Wroclaw,Gdańsk,Gdansk,Poznań,Poznan,Łódź,Lodz,Katowice"
+  )
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
   return {
     label: "neutral-defaults",
     targetTitles: titles.length ? titles : [expansion.inputPhrase],
-    relatedTitles: expansion.relatedTitles.map((item) => ({title: item.title, weight: item.weight})),
+    relatedTitles: expansion.relatedTitles.map((item) => ({
+      title: item.title,
+      weight: item.weight,
+    })),
     seniority: windowFor(expansion.canonicalRole.seniority),
     location: {
       homeCity: process.env.MATCH_HOME_CITY?.trim() || "Warsaw",
@@ -142,7 +153,7 @@ function tokens(value: string): string[] {
     ...new Set(
       fold(value)
         .split(/[^a-z0-9]+/)
-        .filter((word) => word.length > 2 && !STOP.has(word)),
+        .filter((word) => word.length > 2 && !STOP.has(word))
     ),
   ]
 }
@@ -162,34 +173,53 @@ function unique(values: string[]): string[] {
 export async function resolveExpansion(
   input: QueryExpansionInput,
   llm: LlmClient | null,
-  userId?: number,
-): Promise<{expansion: QueryExpansion; source: "llm" | "example" | "minimal"; tokenInput: number; tokenOutput: number}> {
+  userId?: number
+): Promise<{
+  expansion: QueryExpansion
+  source: "llm" | "example" | "minimal"
+  tokenInput: number
+  tokenOutput: number
+}> {
   if (llm) {
     const messages = buildQueryExpansionMessages(input)
     const system = messages.find((message) => message.role === "system")?.content ?? ""
     const user = messages.find((message) => message.role === "user")?.content ?? ""
     let result: Awaited<ReturnType<typeof llm.completeText>> = null
     try {
-      result = await llm.completeText({purpose: "query-expansion", system, user, maxTokens: 1400, userId})
+      result = await llm.completeText({
+        purpose: "query-expansion",
+        system,
+        user,
+        maxTokens: 1400,
+        userId,
+      })
     } catch {
       result = null
     }
     if (result?.data) {
       try {
-        return {expansion: finalizeExpansion(result.data, input), source: "llm", tokenInput: result.tokenInput, tokenOutput: result.tokenOutput}
+        return {
+          expansion: finalizeExpansion(result.data, input),
+          source: "llm",
+          tokenInput: result.tokenInput,
+          tokenOutput: result.tokenOutput,
+        }
       } catch {
         // The model reply was not a valid expansion. Fall through to the deterministic path.
       }
     }
   }
   const fromExample = expansionFromExample(input)
-  if (fromExample) return {expansion: fromExample, source: "example", tokenInput: 0, tokenOutput: 0}
-  return {expansion: minimalExpansion(input), source: "minimal", tokenInput: 0, tokenOutput: 0}
+  if (fromExample)
+    return { expansion: fromExample, source: "example", tokenInput: 0, tokenOutput: 0 }
+  return { expansion: minimalExpansion(input), source: "minimal", tokenInput: 0, tokenOutput: 0 }
 }
 
 function expansionFromExample(input: QueryExpansionInput): QueryExpansion | null {
   const key = fold(input.phrase)
-  const row = (examples as ExampleRow[]).find((item) => item.input?.phrase && fold(item.input.phrase) === key)
+  const row = (examples as ExampleRow[]).find(
+    (item) => item.input?.phrase && fold(item.input.phrase) === key
+  )
   if (!row?.modelOutput) return null
   const parsed = ExpansionLLMOutputSchema.safeParse(row.modelOutput)
   if (!parsed.success) return null
@@ -225,12 +255,12 @@ function minimalExpansion(input: QueryExpansionInput): QueryExpansion {
       track: "management",
     },
     relatedTitles: [
-      {title: phrase, lang: polish ? "pl" : "en", relation: "equivalent", weight: 1},
-      {title: `Senior ${phrase}`.slice(0, 80), lang: "en", relation: "step_up", weight: 0.7},
-      {title: `${phrase} Lead`.slice(0, 80), lang: "en", relation: "adjacent", weight: 0.6},
+      { title: phrase, lang: polish ? "pl" : "en", relation: "equivalent", weight: 1 },
+      { title: `Senior ${phrase}`.slice(0, 80), lang: "en", relation: "step_up", weight: 0.7 },
+      { title: `${phrase} Lead`.slice(0, 80), lang: "en", relation: "adjacent", weight: 0.6 },
     ],
     seniorityVariants: [],
-    synonyms: {en: [], pl: []},
+    synonyms: { en: [], pl: [] },
     signalKeywords: [],
     exclusions: {
       titleKeywords: ["intern", "junior"],
@@ -240,5 +270,9 @@ function minimalExpansion(input: QueryExpansionInput): QueryExpansion {
     webQueries: [`${phrase} ${input.locationHint ?? "Poland remote"}`.slice(0, 200)],
   }
   const parsed = ExpansionLLMOutputSchema.parse(llm)
-  return {...parsed, version: QUERY_EXPANSION_VERSION, searchQueries: buildSearchQueries(parsed, input)}
+  return {
+    ...parsed,
+    version: QUERY_EXPANSION_VERSION,
+    searchQueries: buildSearchQueries(parsed, input),
+  }
 }

@@ -1,6 +1,7 @@
 import { draftAnswers } from "src/server/answers/service"
-import { findApplicationByUrl } from "src/server/applications/service"
-import { defaultCv } from "src/server/cv/service"
+import type { DraftResult } from "src/server/answers/types"
+import { findApplicationByUrl, findJobByUrl } from "src/server/applications/service"
+import { defaultCv, tailoredCv } from "src/server/cv/service"
 import { getApplicant } from "src/server/profile/applicant"
 import { classifyField, isNeverFill, type FieldKind, type FormField } from "./fields"
 import {
@@ -117,8 +118,12 @@ export function planFill(
   return { values, questions: questions.slice(0, MAX_DRAFTED_QUESTIONS) }
 }
 
-async function cvForFill(userId: number): Promise<{ id: string; title: string } | null> {
+/** The CV written for this posting when there is one, else the default. */
+async function cvForFill(userId: number, url: string): Promise<{ id: string; title: string } | null> {
   try {
+    const job = await findJobByUrl(url)
+    const tailored = job ? await tailoredCv(userId, job.id) : null
+    if (tailored) return tailored
     const cv = await defaultCv(userId)
     return cv ? { id: cv.id, title: cv.title } : null
   } catch (error) {
@@ -136,7 +141,7 @@ export async function fillForm(input: {
   const page = { ...input.page, url: normalizePostingUrl(input.page.url) }
   const [applicant, cv, applied, indexed] = await Promise.all([
     getApplicant(userId),
-    cvForFill(userId),
+    cvForFill(userId, page.url),
     findApplicationByUrl(userId, page.url).catch(() => null),
     extractJobFromIndex(page.url).catch(() => null),
   ])
@@ -146,6 +151,7 @@ export async function fillForm(input: {
   const rules = indexed ?? extractJobByRules(page)
   const needsModel = !indexed && !isComplete(rules)
   const ruled = isComplete(rules) ? rules : null
+  const noDrafts: Record<string, DraftResult> = {}
   const [drafts, modelJob] = await Promise.all([
     plan.questions.length
       ? draftAnswers({
@@ -165,9 +171,9 @@ export async function fillForm(input: {
           // No language: each draft follows the language of its question.
         }).catch((error) => {
           console.error("fill: drafts failed", error instanceof Error ? error.message : error)
-          return {} as Awaited<ReturnType<typeof draftAnswers>>
+          return noDrafts
         })
-      : Promise.resolve({} as Awaited<ReturnType<typeof draftAnswers>>),
+      : Promise.resolve(noDrafts),
     needsModel ? extractJobByModel(page) : Promise.resolve(null),
   ])
   const job: ExtractedJob | null = indexed ?? finishJob(page, mergeFacts(rules, modelJob))
@@ -196,8 +202,11 @@ export async function fillForm(input: {
   }
 
   return {
-    // Same order as the fields the extension sent.
-    values: fields.map((field) => plan.values.get(field.key)!).filter(Boolean),
+    // Same order as the fields the extension sent; questions past the draft cap have no entry.
+    values: fields.flatMap((field) => {
+      const value = plan.values.get(field.key)
+      return value ? [value] : []
+    }),
     job: job ? { company: job.company, title: job.title } : null,
     applied: applied
       ? { id: applied.id, status: applied.status, appliedAt: applied.appliedAt }

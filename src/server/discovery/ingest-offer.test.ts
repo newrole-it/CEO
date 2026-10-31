@@ -80,6 +80,14 @@ describe("matchPosting", () => {
   })
 })
 
+describe("matchPosting, exact", () => {
+  it("does not take a board's only offer for the one in the link", () => {
+    const job = { title: "T", originalUrl: "https://x.io/jobs/1", externalId: "11111" } as ListedJob
+    expect(matchPosting([job], "https://x.io/jobs/2", true)).toBeNull()
+    expect(matchPosting([job], "https://x.io/jobs/1", true)).toBe(job)
+  })
+})
+
 describe("ingestOfferUrl", () => {
   const http = {
     get: async () => {
@@ -131,5 +139,27 @@ describe("ingestOfferUrl", () => {
     )
     expect(result).toMatchObject({ status: "created", jobId: "job_1" })
     expect(saved[0]).toMatchObject({ title: "QA Engineer", companyName: "Acme", sourceBoardId: "page:acme.pl:acme" })
+  })
+
+  it("hands back a page without a posting only for the tracker", async () => {
+    const page = {
+      http: {
+        get: async (url: string) => ({
+          url,
+          status: url.endsWith("robots.txt") ? 404 : 200,
+          body: "<html><title>QA Engineer - Acme</title></html>",
+          contentType: "text/html",
+        }),
+        post: http.post,
+      },
+      takeSlot: async () => true,
+    }
+    const url = "https://acme.pl/kariera/qa"
+    const plain = await ingestOfferUrl({ url, channel: "mcp" }, page)
+    expect(plain.status).toBe("rejected")
+    expect(plain.page).toBeUndefined()
+    const tracker = await ingestOfferUrl({ url, channel: "web", forTracker: true }, page)
+    expect(tracker.status).toBe("rejected")
+    expect(tracker.page?.html).toContain("QA Engineer")
   })
 })

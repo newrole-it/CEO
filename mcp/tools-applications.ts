@@ -7,10 +7,19 @@ import {
   statusLabel,
   type ApplicationStatus,
 } from "src/shared/applications"
-import { ApplicationError, computeStats, rankByName } from "src/server/applications/logic"
+import { DEFAULT_WEEKS, type Insights } from "src/server/applications/insights"
+import {
+  ApplicationError,
+  computeStats,
+  rankByName,
+  type ApplicationErrorCode,
+} from "src/server/applications/logic"
+import { readOffer } from "src/server/applications/read-offer"
 import {
   addApplicationNote,
+  applicationInsights,
   createApplication,
+  findApplicationByUrl,
   getApplication,
   listApplications,
   updateApplication,
@@ -18,6 +27,8 @@ import {
 import { sheetStatus, sheetTable, syncSheet, toCsv } from "src/server/applications/sheet"
 import { sheetDate, sourceLabel } from "src/server/applications/sheet-table"
 import type { ApplicationDetail, ApplicationView } from "src/server/applications/types"
+import { gmailStatus, mailInbox } from "src/server/gmail/service"
+import { syncGmail } from "src/server/gmail/sync"
 import { clampLimit, facts } from "./format"
 import { failure, guard, reply, type Structured, type ToolResult } from "./tools"
 import { currentUser } from "./user"
@@ -39,9 +50,10 @@ export function parseWhen(value: string | null | undefined): Date | null | undef
   if (value === undefined) return undefined
   if (value === null || value.trim() === "") return null
   const text = value.trim()
+  // a bare day is local noon, so it stays the same day in every view and in the sheet
   const at = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T12:00:00`) : new Date(text)
   if (Number.isNaN(at.getTime()))
-    throw new ApplicationError("missing-fields", `Nieczytelna data: ${text}`)
+    throw new ApplicationError("invalid-date", `Nieczytelna data: ${text}`)
   return at
 }
 
@@ -104,6 +116,14 @@ export function pickApplication<T extends ApplicationView>(
   return { match: first, others: ranked.slice(1, 4) }
 }
 
+/**
+ * A mail's subject stays out of what the model reads: a stranger wrote it, and this model can
+ * change the tracker. The person sees it in the app.
+ */
+export function timelineNote(event: { type: string; note: string | null }): string | null {
+  return event.type === "mail" ? null : event.note
+}
+
 function describe(detail: ApplicationDetail): string {
   const lines = [
     `${detail.company} · ${detail.title}`,
@@ -126,6 +146,7 @@ function describe(detail: ApplicationDetail): string {
       ["Kontakt", detail.contact],
       ["Lokalizacja", detail.location],
       ["Wynagrodzenie", detail.salaryText],
+      ["Podane widełki", detail.statedSalary],
       ["Źródło", sourceLabel(detail.source)],
       ["CV", detail.cv?.title],
       ["Link", detail.url],
@@ -146,7 +167,8 @@ function describe(detail: ApplicationDetail): string {
               : event.type === "created"
               ? `dodano (${statusLabel(event.toStatus ?? "APPLIED")})`
               : event.type
-          return `- ${sheetDate(event.at)} ${what}${event.note ? `: ${event.note}` : ""} [${
+          const note = timelineNote(event)
+          return `- ${sheetDate(event.at)} ${what}${note ? `: ${note}` : ""} [${
             event.channel
           }]`
         })
@@ -159,13 +181,18 @@ function describe(detail: ApplicationDetail): string {
 function detailJson(detail: ApplicationDetail): Structured {
   return {
     ...applicationJson(detail),
-    events: detail.events.map((event) => ({ ...event, at: event.at.toISOString() })),
+    events: detail.events.map((event) => ({
+      ...event,
+      note: timelineNote(event),
+      at: event.at.toISOString(),
+    })),
     answers: detail.answers,
     cv: detail.cv,
   }
 }
 
-const ERRORS: Record<string, string> = {
+/** Polish text per tracker error; parseWhen's invalid-date message is Polish already. */
+const ERRORS: Record<Exclude<ApplicationErrorCode, "invalid-date">, string> = {
   "not-found": "Nie ma takiej aplikacji. Sprawdź id w applications_list.",
   "job-not-found": "Tej oferty nie ma w indeksie. Podaj url albo company i title.",
   "cv-not-found": "Nie ma takiego CV.",
@@ -181,12 +208,7 @@ function tracked<A>(handler: (args: A) => Promise<ToolResult>) {
       return await handler(args)
     } catch (error) {
       if (error instanceof ApplicationError) {
-        const base = ERRORS[error.code] ?? error.message
-        return failure(
-          error.code === "missing-fields" && error.message.startsWith("Nieczytelna")
-            ? error.message
-            : base
-        )
+        return failure(error.code === "invalid-date" ? error.message : ERRORS[error.code])
       }
       throw error
     }
@@ -261,11 +283,7 @@ export function registerApplicationTools(server: McpServer) {
             args.q ? ` dla „${args.q}”` : ""
           }. ${summary}`
         : "Tracker jest pusty. Oznacz ofertę jako aplikowaną (job_feedback z verdict APPLIED) albo dodaj aplikację przez application_add."
-      return reply(text, {
-        group,
-        applications: rows.map(applicationJson),
-        stats: stats as unknown as Structured,
-      })
+      return reply(text, { group, applications: rows.map(applicationJson), stats })
     })
   )
 
@@ -297,7 +315,7 @@ export function registerApplicationTools(server: McpServer) {
     {
       title: "Dodaj aplikację",
       description:
-        "Record an application the person sent. Pass `jobId` (an offer from jobs_search / jobs_for_me), or the posting `url` (filled in from the index when it is there), or `company` + `title`. Optional status (default APPLIED), appliedAt (YYYY-MM-DD), location, notes. An application already tracked for the same offer or URL is returned instead of a duplicate. Also marks the offer as applied in the feed.",
+        "Record an application the person sent. Pass `jobId` (an offer from jobs_search / jobs_for_me), or the posting `url` alone (read from the index, the ATS or the page; LinkedIn and job boards are never fetched, so for those pass `company` + `title` with what the person sees), or `company` + `title`. Optional status (default APPLIED), appliedAt (YYYY-MM-DD), location, notes. An application already tracked for the same offer or URL is returned instead of a duplicate. Also marks the offer as applied in the feed.",
       inputSchema: {
         jobId: z.string().min(1).max(64).optional(),
         url: z.string().max(2000).optional(),
@@ -324,13 +342,32 @@ export function registerApplicationTools(server: McpServer) {
           return failure("Podaj jobId, url albo company i title.")
         }
         const user = await currentUser()
+        const needsReading =
+          args.url &&
+          !args.jobId &&
+          !(args.company && args.title) &&
+          !(await findApplicationByUrl(user.id, args.url))
+        const reading = needsReading ? await readOffer(args.url!) : null
+        if (reading && reading.outcome !== "read") {
+          const known = [reading.facts?.company, reading.facts?.title].filter(Boolean).join(" · ")
+          const why =
+            reading.outcome === "link-only"
+              ? "ta strona nie jest pobierana"
+              : "nie udało się jej odczytać"
+          return failure(
+            `Nie odczytano oferty: ${why}. Podaj company i title.${
+              known ? ` Z linku wynika: ${known}, ale trzeba to sprawdzić.` : ""
+            }`
+          )
+        }
         const result = await createApplication({
           userId: user.id,
-          jobId: args.jobId ?? null,
-          url: args.url ?? null,
-          company: args.company,
-          title: args.title,
-          location: args.location ?? null,
+          jobId: args.jobId ?? reading?.facts?.jobId ?? null,
+          url: reading?.url ?? args.url ?? null,
+          company: args.company ?? reading?.facts?.company ?? undefined,
+          title: args.title ?? reading?.facts?.title ?? undefined,
+          location: args.location ?? reading?.facts?.location ?? null,
+          salaryText: reading?.facts?.salaryText ?? null,
           status: args.status,
           appliedAt: parseWhen(args.appliedAt) ?? undefined,
           notes: args.notes ?? null,
@@ -369,6 +406,12 @@ export function registerApplicationTools(server: McpServer) {
           .optional()
           .describe("YYYY-MM-DD or ISO; null clears"),
         contact: z.string().max(500).nullable().optional(),
+        statedSalary: z
+          .string()
+          .max(200)
+          .nullable()
+          .optional()
+          .describe("The salary the person gave in the application; null clears"),
         notes: z.string().max(20_000).optional(),
         notesMode: z.enum(["append", "replace"]).optional(),
       },
@@ -383,6 +426,7 @@ export function registerApplicationTools(server: McpServer) {
         nextStep?: string | null
         nextStepAt?: string | null
         contact?: string | null
+        statedSalary?: string | null
         notes?: string
         notesMode?: "append" | "replace"
       }) => {
@@ -399,6 +443,7 @@ export function registerApplicationTools(server: McpServer) {
           nextStep: args.nextStep,
           nextStepAt: parseWhen(args.nextStepAt),
           contact: args.contact,
+          statedSalary: args.statedSalary,
           ...(replaceNotes && args.notes !== undefined ? { notes: args.notes } : {}),
         })
         if (!replaceNotes && args.notes?.trim()) {
@@ -495,7 +540,232 @@ export function registerApplicationTools(server: McpServer) {
       const user = await currentUser()
       const result = await syncSheet(user.id)
       if (result.status === "failed") return failure(result.message)
-      return reply(result.message, result as unknown as Structured)
+      return reply(result.message, result)
     })
   )
+
+  // Subjects and quotes stay out of both Gmail tools: whoever sent the mail wrote them, and this
+  // text goes straight to a model that can change the tracker.
+  server.registerTool(
+    "gmail_status",
+    {
+      title: "Stan Gmaila",
+      description:
+        "Whether the person's Gmail is connected, when it was last checked, the last error, and the applications with a message waiting for their confirmation in the tracker (company, role, proposed status; never the mail's text). Confirming happens on /applications; to change a status yourself use application_update.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    tracked(async () => {
+      const user = await currentUser()
+      const [status, inbox] = await Promise.all([gmailStatus(user.id), mailInbox(user.id)])
+      if (!status.connected) {
+        return reply(
+          "Gmail nie jest połączony. Połączysz go w Ustawieniach → Gmail (http://127.0.0.1:43123/settings#st-gmail).",
+          { connected: false }
+        )
+      }
+      const name = (item: (typeof inbox.pending)[number]) =>
+        item.application
+          ? `${item.application.company} · ${item.application.title}`
+          : "bez przypisanej aplikacji"
+      const pending = inbox.pending.map((item, index) => {
+        const target = item.toStatus ? statusLabel(item.toStatus) : item.signal
+        return `${index + 1}. ${name(item)}: ${target}${
+          item.authenticated ? "" : " (nadawca niezweryfikowany)"
+        }`
+      })
+      const text = [
+        "Gmail: połączony.",
+        facts([
+          ["Skrzynka", status.email],
+          [
+            "Ostatnio sprawdzono",
+            status.lastSyncedAt ? sheetDate(status.lastSyncedAt) : "jeszcze nie",
+          ],
+          ["Automatyczne statusy", status.autoApply ? "tak" : "nie"],
+          ["Błąd", status.lastErrorCode],
+        ]),
+        ...(pending.length
+          ? [`Do potwierdzenia na /applications (${pending.length}):`, ...pending]
+          : ["Nic nie czeka na potwierdzenie."]),
+      ].join("\n")
+      return reply(text, {
+        connected: true,
+        email: status.email,
+        autoApply: status.autoApply,
+        lastSyncedAt: status.lastSyncedAt?.toISOString() ?? null,
+        lastErrorCode: status.lastErrorCode,
+        pending: inbox.pending.map((item) => ({
+          id: item.id,
+          signal: item.signal,
+          toStatus: item.toStatus,
+          authenticated: item.authenticated,
+          applicationId: item.application?.id ?? null,
+        })),
+      })
+    })
+  )
+
+  server.registerTool(
+    "gmail_sync",
+    {
+      title: "Sprawdź Gmail",
+      description:
+        "Check the connected Gmail now for messages about the person's applications and update statuses. The worker also does this every 15 minutes. Only mail from recruiting systems and companies they applied to is read. Returns counts, never the mail's text.",
+      inputSchema: {},
+    },
+    tracked(async () => {
+      const user = await currentUser()
+      const result = await syncGmail(user.id)
+      if (result.status === "not-connected") {
+        return failure("Gmail nie jest połączony. Połączysz go w Ustawieniach → Gmail.")
+      }
+      if (result.status === "not-configured") {
+        return failure("Brakuje GMAIL_CLIENT_ID i GMAIL_CLIENT_SECRET w pliku .env.")
+      }
+      if (result.status === "failed") {
+        return failure(`Nie udało się sprawdzić poczty (${result.code}). Szczegóły w Ustawieniach.`)
+      }
+      if (result.status !== "synced") {
+        return reply("Skrzynka jest właśnie sprawdzana.", { busy: true })
+      }
+      const { stats } = result
+      return reply(
+        `Sprawdzono Gmail. Przeczytano ${stats.read}, zmiany statusu: ${stats.applied}, do potwierdzenia: ${stats.pending}.`,
+        stats
+      )
+    })
+  )
+
+  server.registerTool(
+    "applications_stats",
+    {
+      title: "Statystyki moich aplikacji",
+      description:
+        "Statistics of the person's job search from the tracker: the funnel (how many applications reached recruiter screen, interviews, task, final, offer), response / interview / offer rates, median days to the first reply, where rejections and withdrawals happen, weekly cadence, sources, what waits longest without a reply and the next steps due. `weeks` scopes it to applications sent in the last N weeks (default 12; 0 = everything). Use it for 'jak mi idzie', 'ile mam odpowiedzi', 'gdzie odpadam' and at the start of the pipeline review. The same numbers are on /applications/stats.",
+      inputSchema: { weeks: z.number().int().min(0).max(104).optional() },
+      annotations: { readOnlyHint: true },
+    },
+    tracked(async (args: { weeks?: number }) => {
+      const user = await currentUser()
+      const weeks = args.weeks === undefined ? DEFAULT_WEEKS : args.weeks || null
+      const insights = await applicationInsights(user.id, { weeks })
+      if (!insights.sent) {
+        return reply(
+          weeks
+            ? `Brak aplikacji wysłanych w ostatnich ${weeks} tyg. Podaj weeks: 0, żeby policzyć wszystko.`
+            : "Tracker jest pusty. Oznacz ofertę jako aplikowaną (job_feedback z verdict APPLIED) albo dodaj aplikację przez application_add.",
+          { weeks, ...insights }
+        )
+      }
+      return reply(insightsText(insights, weeks), { weeks, ...insights })
+    })
+  )
+}
+
+function pct(value: number | null): string {
+  return value == null ? "—" : `${Math.round(value * 100)}%`
+}
+
+function share(part: number, whole: number): string {
+  return `${whole ? pct(part / whole) : "—"} (${part} z ${whole})`
+}
+
+/** The statistics as a few dense lines for the model. */
+export function insightsText(insights: Insights, weeks: number | null): string {
+  const { outcomes, rates, timing, automation, decisions } = insights
+  const offers = insights.funnel.find((row) => row.stage === "OFFER")?.reached ?? 0
+  const lines = [
+    `Statystyki (${weeks ? `ostatnie ${weeks} tyg.` : "wszystko"}): wysłane ${insights.sent}${
+      insights.perWeek != null ? ` (śr. ${insights.perWeek}/tydz.)` : ""
+    }, odpowiedzi ${pct(rates.response)}, do rozmów ${pct(
+      rates.interview
+    )}, propozycje pracy ${offers}${
+      timing.medianDaysToReply != null
+        ? `, mediana czasu do odpowiedzi ${timing.medianDaysToReply} dni`
+        : ""
+    }.`,
+    `Lejek: ${insights.funnel
+      .map(
+        (row, index) =>
+          `${statusLabel(row.stage)} ${row.reached}${
+            index && row.fromPrevious != null ? ` (${pct(row.fromPrevious)})` : ""
+          }`
+      )
+      .join(" → ")}.`,
+    `Zakończone: przyjęte ${outcomes.accepted}, odrzucone ${outcomes.rejected}, wycofane ${outcomes.withdrawn}, bez odpowiedzi ${outcomes.ghosted}.`,
+  ]
+  if (insights.dropOff.length) {
+    lines.push(
+      `Gdzie odpadam: ${insights.dropOff
+        .map(
+          (row) =>
+            `${statusLabel(row.stage)}: ${[
+              row.rejected ? `${row.rejected} odrzuc.` : null,
+              row.withdrawn ? `${row.withdrawn} wycof.` : null,
+            ]
+              .filter(Boolean)
+              .join(", ")}`
+        )
+        .join(" · ")}${
+        timing.medianDaysToRejection != null
+          ? ` · mediana czasu do odrzucenia ${timing.medianDaysToRejection} dni`
+          : ""
+      }.`
+    )
+  }
+  if (insights.sources.length) {
+    lines.push(
+      `Źródła: ${insights.sources
+        .map(
+          (row) => `${sourceLabel(row.source)} ${row.sent} (odpowiedzi ${pct(row.responseRate)})`
+        )
+        .join(", ")}. Z indeksu Nowej Roli: ${insights.fromIndex}.`
+    )
+  }
+  const recent = insights.weekly.slice(-8)
+  lines.push(
+    `Wysłane tygodniowo (ostatnie ${recent.length} tyg., od najstarszego): ${recent
+      .map((week) => week.sent)
+      .join(", ")}.`
+  )
+  if (decisions.total) {
+    lines.push(
+      `Decyzje o ofertach: polubione ${decisions.liked}, pominięte ${
+        decisions.passed
+      }, aplikowano ${decisions.applied}; z powodem ${share(
+        decisions.withReason,
+        decisions.total
+      )}.`
+    )
+  }
+  if (insights.waiting.length) {
+    lines.push(
+      `Najdłużej bez odpowiedzi: ${insights.waiting
+        .map((row) => `${row.company} · ${row.title} (${row.days} dni, id ${row.id})`)
+        .join("; ")}.`
+    )
+  }
+  if (insights.upcoming.length) {
+    lines.push(
+      `Najbliższe kroki: ${insights.upcoming
+        .map(
+          (row) =>
+            `${sheetDate(new Date(row.nextStepAt))} ${row.nextStep ?? "krok"} · ${row.company}${
+              row.overdue ? " (po terminie)" : ""
+            } (id ${row.id})`
+        )
+        .join("; ")}.`
+    )
+  }
+  lines.push(
+    `Proces: zapisane automatycznie ${share(
+      automation.autoTracked,
+      automation.tracked
+    )}, odpowiedzi użyte ponownie lub ze szkicu ${share(
+      automation.answersReused,
+      automation.answersTotal
+    )}.`
+  )
+  return lines.join("\n")
 }

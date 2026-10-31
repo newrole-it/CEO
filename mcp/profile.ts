@@ -101,6 +101,10 @@ export async function importProfile(args: {
   return { profile, reader: llm ? llmProvider() : "rules", ms: Date.now() - started }
 }
 
+export function loadProfile(userId: number) {
+  return db.candidateProfile.findUnique({ where: { userId } })
+}
+
 export function profileSummary(profile: CandidateProfile) {
   return {
     headline: profile.headline,

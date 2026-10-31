@@ -131,6 +131,25 @@ export function useCvDocument(id: string, initial: Doc) {
     setHistoryTick((tick) => tick + 1)
   }, [change])
 
+  /**
+   * Content the server already stored (a restored version, a new generation): nothing to save,
+   * and the state before it is one undo away. Call flush() first, so no save is pending.
+   */
+  const replace = useCallback((next: Pick<Doc, "content" | "language">) => {
+    clearTimer()
+    past.current.push(latest.current.content)
+    if (past.current.length > HISTORY_LIMIT) past.current.shift()
+    future.current = []
+    lastEdit.current = { group: null, at: 0 }
+    const updated = { ...latest.current, ...next }
+    latest.current = updated
+    saved.current = updated
+    setDoc(updated)
+    setSaveState("saved")
+    setSaveError(null)
+    setHistoryTick((tick) => tick + 1)
+  }, [])
+
   const setTitle = useCallback((title: string) => change({ ...latest.current, title }), [change])
   const setLanguage = useCallback(
     (language: CvLanguage) => change({ ...latest.current, language }),
@@ -164,5 +183,6 @@ export function useCvDocument(id: string, initial: Doc) {
     setTitle,
     setLanguage,
     flush,
+    replace,
   }
 }

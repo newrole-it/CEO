@@ -12,6 +12,7 @@ const MESSAGES: Record<string, CopyKey> = {
   "linkedin-denied": "li.toast.denied",
   "linkedin-state": "li.toast.state",
   "linkedin-exchange": "li.toast.exchange",
+  "linkedin-unverified": "li.toast.unverified",
   expired: "li.toast.expired",
 }
 

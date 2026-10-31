@@ -1,3 +1,5 @@
+import { NEW_ATS_LABELS } from "src/shared/ats-labels"
+
 const LABELS: Record<string, string> = {
   GREENHOUSE: "Greenhouse",
   LEVER: "Lever",
@@ -18,6 +20,7 @@ const LABELS: Record<string, string> = {
   AVATURE: "Avature",
   ERECRUITER: "eRecruiter",
   JOBVITE: "Jobvite",
+  ...NEW_ATS_LABELS,
 }
 
 /** "GREENHOUSE" → "Greenhouse"; career-site / link providers → null. */

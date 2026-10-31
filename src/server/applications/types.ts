@@ -2,7 +2,14 @@ import type { ApplicationSource, ApplicationStatus, Channel } from "src/shared/a
 
 export type { ApplicationSource, ApplicationStatus, Channel }
 
-export type ApplicationEventType = "created" | "status" | "note" | "next-step" | "answers" | "edit"
+export type ApplicationEventType =
+  | "created"
+  | "status"
+  | "note"
+  | "next-step"
+  | "answers"
+  | "edit"
+  | "mail"
 
 /** One application as every surface sees it: tracker, sheet, MCP and the Chrome extension. */
 export type ApplicationView = {
@@ -12,7 +19,10 @@ export type ApplicationView = {
   title: string
   url: string | null
   location: string | null
+  /** Pay in the posting */
   salaryText: string | null
+  /** Pay the person gave in the application form */
+  statedSalary: string | null
   status: ApplicationStatus
   /** Free label for the step, e.g. "2. rozmowa techniczna" */
   stageNote: string | null
@@ -43,7 +53,7 @@ export type ApplicationEventView = {
 export type ApplicationDetail = ApplicationView & {
   /** Oldest first */
   events: ApplicationEventView[]
-  /** Answers from the answer bank given in this application */
+  /** The form as sent, then answers from the answer bank linked to this application */
   answers: { id: string; question: string; answer: string }[]
   cv: { id: string; title: string } | null
 }
@@ -66,3 +76,32 @@ export type ApplicationStats = {
 }
 
 export type ApplicationGroup = "active" | "closed" | "rejected" | "all"
+
+/** One field of a sent application form. kind is a FieldKind from src/server/autofill/fields.ts. */
+export type FormAnswer = { question: string; answer: string; kind: string | null }
+
+/** What a posting link told us. jobId is set when the offer is in the index. */
+export type OfferFacts = {
+  jobId: string | null
+  company: string | null
+  title: string | null
+  location: string | null
+  salaryText: string | null
+}
+
+/**
+ * read: company and role are known, safe to save as they are. partial: a part of them, or a guess
+ * from a page without structured data, to check first. link-only: the site is never fetched, only
+ * what the link spells out is known. unreadable: fetching failed or found nothing.
+ */
+export type OfferOutcome = "read" | "partial" | "link-only" | "unreadable"
+
+/** A posting link checked for the add form. */
+export type OfferUrlCheck = {
+  valid: boolean
+  /** The posting to store: an /apply page or an embed becomes the offer itself. */
+  url: string | null
+  outcome: OfferOutcome | null
+  job: OfferFacts | null
+  existing: { id: string; company: string; title: string; status: ApplicationStatus } | null
+}

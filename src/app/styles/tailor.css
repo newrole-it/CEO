@@ -1,0 +1,343 @@
+/* Tailoring a CV to an offer, the cover letter and version history. */
+
+/* the offer's actions got one more button: let them wrap rather than overflow */
+.ocard__actions,
+.od__bar {
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------- editor layout */
+
+.cve-body--letter {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cve-body--panel {
+  grid-template-columns: minmax(0, 1fr) 372px;
+}
+.cve-body--panel .cve-outline {
+  display: none;
+}
+@media (min-width: 1560px) {
+  .cve-body--panel {
+    grid-template-columns: 280px minmax(0, 1fr) 372px;
+  }
+  .cve-body--panel .cve-outline {
+    display: block;
+  }
+  .cve-body--letter.cve-body--panel {
+    grid-template-columns: minmax(0, 1fr) 372px;
+  }
+}
+
+/* ---------------------------------------------------------------- the bar above a document */
+
+.cvt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 0 var(--gutter);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.cvt-bar .tabs {
+  border-bottom: 0;
+}
+.cvt-bar__add {
+  white-space: nowrap;
+}
+.cvt-bar__for {
+  flex: 1;
+  min-width: 160px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cvt-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- the panel */
+
+.cvt-panel {
+  position: sticky;
+  top: calc(var(--header-h) + var(--cve-toolbar-h));
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  min-width: 0;
+  max-height: calc(100dvh - var(--header-h) - var(--cve-toolbar-h));
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+.cvt-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.cvt-panel__head .tabs {
+  flex: 1;
+  border-bottom: 0;
+}
+.cvt-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+}
+.cvt-save {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.cvt-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cvt-version {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cvt-version.is-current {
+  border-color: var(--primary);
+}
+.cvt-version__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cvt-version__label {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.cvt-version__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0 -8px;
+}
+
+/* ---------------------------------------------------------------- comparing versions */
+
+.cvt-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cvt-diff p {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.cvt-diff__same {
+  color: var(--text-muted);
+}
+.cvt-diff__gap {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.cvt-diff__del {
+  background: var(--danger-soft);
+}
+.cvt-diff__add {
+  background: var(--success-soft);
+}
+.cvt-diff del {
+  color: var(--danger);
+  font-weight: 600;
+}
+.cvt-diff ins {
+  color: var(--success);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ---------------------------------------------------------------- what the model did */
+
+.cvt-note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.cvt-note h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cvt-note p {
+  margin: 0;
+}
+.cvt-note ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+.cvt-note--warn {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.cvt-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cvt-note ul.cvt-terms {
+  flex-direction: row;
+  padding-left: 0;
+  list-style: none;
+}
+.cvt-terms li {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+}
+.cvt-again {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------- the start page */
+
+.cvt-start {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cvt-start__job {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.cvt-start__job strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.cvt-start__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.cvt-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+.cvt-check input {
+  margin-top: 4px;
+}
+.cvt-check small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.cvt-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cvt-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.cvt-steps li[aria-current="step"] {
+  color: var(--text);
+  font-weight: 600;
+}
+.cvt-steps svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.cvt-notice {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 14px;
+}
+
+/* ---------------------------------------------------------------- the list */
+
+.cvt-list-title {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .cve-body--panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cve-body--panel .cve-canvas {
+    padding-bottom: 46dvh;
+  }
+  .cvt-panel {
+    position: fixed;
+    z-index: 45;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: 44dvh;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+    box-shadow: var(--e2);
+  }
+  .cvt-start__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

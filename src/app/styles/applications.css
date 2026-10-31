@@ -249,6 +249,10 @@ th[aria-sort="descending"] .apps-sort svg {
 .apps-title {
   max-width: 280px;
 }
+.apps-stated {
+  max-width: 180px;
+  overflow-wrap: anywhere;
+}
 .apps-sub {
   display: block;
   font-size: 12px;
@@ -551,4 +555,523 @@ th[aria-sort="descending"] .apps-sort svg {
 }
 .sheet-toggle .field__hint {
   padding-left: 26px;
+}
+
+/* ------------------------------------------------------------------- gmail */
+
+.gm-facts {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.gm-facts h3 {
+  gap: 6px;
+  font-weight: 600;
+}
+.gm-facts h3 svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.gm-facts ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+.mail-inbox {
+  margin-bottom: 24px;
+}
+.mail-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mail-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.mail-item:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+.mail-item__main {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.mail-item__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0;
+}
+.mail-item__arrow {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.mail-item__subject,
+.mail-item__quote {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mail-item__quote {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-strong);
+}
+.mail-item__actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+.mail-meta {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------- statistics page */
+
+/* Chart colours. Two series hues (violet = the thing itself, orange = the second series) and a
+ * de-emphasis grey, plus a one-hue violet ramp for the funnel's ordered stages. Each set was
+ * checked for colour-vision separation and contrast against the surface of its theme. */
+:root {
+  --viz-1: #5b3df5;
+  --viz-2: #eb6834;
+  --viz-mute: #c9c9d6;
+  --viz-ramp-1: #b4a5ff;
+  --viz-ramp-2: #9a87ff;
+  --viz-ramp-3: #7d66fb;
+  --viz-ramp-4: #5b3df5;
+  --viz-ramp-5: #4326d9;
+  --viz-ramp-6: #32199f;
+}
+:root[data-theme="dark"] {
+  --viz-1: #8f7cff;
+  --viz-2: #d95926;
+  --viz-mute: #5b5e72;
+  --viz-ramp-1: #4a3aa8;
+  --viz-ramp-2: #5f4dc9;
+  --viz-ramp-3: #7461e4;
+  --viz-ramp-4: #8f7cff;
+  --viz-ramp-5: #a697ff;
+  --viz-ramp-6: #bdb2ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --viz-1: #8f7cff;
+    --viz-2: #d95926;
+    --viz-mute: #5b5e72;
+    --viz-ramp-1: #4a3aa8;
+    --viz-ramp-2: #5f4dc9;
+    --viz-ramp-3: #7461e4;
+    --viz-ramp-4: #8f7cff;
+    --viz-ramp-5: #a697ff;
+    --viz-ramp-6: #bdb2ff;
+  }
+}
+
+.stx-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+}
+.stx-back svg {
+  width: 14px;
+  height: 14px;
+}
+.stx-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.stx-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-subtle);
+}
+
+.stx-kpis {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+@media (min-width: 720px) {
+  .stx-kpis {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.stx-kpi {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 14px 16px;
+}
+.stx-kpi dt {
+  order: 2;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.stx-kpi dd {
+  order: 1;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.stx-kpi__sub {
+  order: 3;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.stx-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 880px) {
+  .stx-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.stx-card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding: 20px;
+  min-width: 0;
+}
+.stx-card__head {
+  display: grid;
+  gap: 4px;
+}
+.stx-card__head h2 {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 650;
+}
+.stx-card__head p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* funnel and drop-off: horizontal bars, square at the baseline, rounded at the data end */
+.stx-funnel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.stx-funnel li {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  align-items: center;
+  font-size: 14px;
+}
+.stx-funnel__label {
+  overflow-wrap: anywhere;
+}
+.stx-funnel__bar,
+.stx-drop__bar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 20px;
+}
+.stx-funnel__bar span,
+.stx-drop__bar span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+}
+.stx-funnel__bar span,
+.stx-drop__bar span:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.stx-funnel__val {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.stx-funnel__meta {
+  grid-column: 2 / -1;
+  font-size: 12px;
+  color: var(--text-subtle);
+  min-height: 1em;
+}
+@media (max-width: 479px) {
+  .stx-funnel li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .stx-funnel__label,
+  .stx-funnel__meta {
+    grid-column: 1 / -1;
+  }
+}
+.stx-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.stx-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.stx-outcome b {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* columns */
+.stx-viz {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+/* Inline-size containment: the SVG's intrinsic width must never widen the page on a phone. */
+.stx-chart {
+  position: relative;
+  min-width: 0;
+  container-type: inline-size;
+}
+.stx-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.stx-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.stx-chart text {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  fill: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.stx-chart .stx-value {
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+.stx-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.stx-axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.stx-col.is-hover path,
+.stx-col.is-hover rect {
+  filter: brightness(1.1);
+}
+.stx-hit {
+  outline: none;
+  cursor: default;
+}
+.stx-hit:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+.stx-tip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  min-width: 150px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: var(--e2);
+  pointer-events: none;
+  z-index: 5;
+}
+.stx-tip strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.stx-tip ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.stx-tip li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stx-tip li i {
+  flex: none;
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+.stx-tip li b {
+  min-width: 2.5ch;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stx-tip__total {
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgb(255 255 255 / 0.2);
+}
+.stx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.stx-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.stx-legend i {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.stx-table summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  width: fit-content;
+}
+.stx-table summary:hover {
+  color: var(--text);
+}
+.stx-table .table {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.stx-src {
+  width: 100%;
+  font-size: 14px;
+}
+
+/* meters: the track is a lighter step of the same ramp */
+.stx-meter {
+  display: grid;
+  gap: 6px;
+}
+.stx-meter__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.stx-meter__head strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stx-meter__track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--primary-soft);
+  overflow: hidden;
+}
+.stx-meter__track span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 0 4px 4px 0;
+}
+.stx-meter__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/* "to do" lists */
+.stx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.stx-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.stx-list li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.stx-list li > div {
+  min-width: 0;
+}
+.stx-list a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.stx-list a:hover {
+  color: var(--primary);
+}
+.stx-list__sub {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.stx-list__right {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.stx-list__right.is-overdue {
+  color: var(--danger);
+  font-weight: 600;
 }

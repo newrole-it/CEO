@@ -99,17 +99,25 @@ export type SkipReason =
   | "duplicate"
 
 const EEO =
-  /\b(gender|sex|race|racial|ethnic\w*|ethnicity|hispanic|latin[oax]|veteran\w*|disabilit\w*|disabled|pronouns?|sexual orientation|transgender|lgbt\w*|plec|niepelnospraw\w*|narodowosc\w*|pochodzeni\w*|wyznani\w*|religi\w*)\b/
+  /\b(gender|sex|race(?! conditions?)|racial|ethnic\w*|ethnicity|hispanic|latin[oax]|veteran\w*|disabilit\w*|disabled|pronouns?|sexual orientation|transgender|lgbt\w*|plec|niepelnospraw\w*|narodowosc\w*|nationality|citizenship|obywatelstw\w*|pochodzeni\w*|wyznani\w*|religi\w*)\b/
 
 const CONSENT =
   /\b(consent\w*|agree|agrees|acknowledg\w*|privacy|gdpr|rodo|zgod\w*|wyrazam|akceptuj\w*|terms (and conditions|of (service|use))|regulamin\w*|polityk\w* prywatnosci|przetwarzani\w*|data processing|certify|oswiadczam|potwierdzam|confirm\w*|newsletter)\b/
 
 const IDENTITY =
-  /\b(first|last|full|given|family|middle|preferred|legal|nick) ?names?\b|\bsurnames?\b|^(your )?names?\b|\bimie\b|\bimiona\b|\bnazwisko\b|\be ?mail\b|\bphone\b|\bmobile\b|\btelephone\b|\btelefon\w*\b|\bcell ?phone\b|\bwhatsapp\b|\bskype\b|\bpesel\b|\bnip\b|\bpassport\b|\bpaszport\w*\b|\bid number\b|\bnational id\b|\bsocial security\b|\bssn\b|\bdate of birth\b|\bbirth ?date\b|\bbirthday\b|\bdata urodzenia\b|\burodzeni\w*\b|\bpassword\b|\bhaslo\b|\bhome address\b|\bstreet\b|\bpostal\b|\bpost ?code\b|\bzip( code)?\b|\bkod pocztowy\b|\badres zamieszkania\b|\bulica\b/
+  /\b(first|last|full|given|family|middle|preferred|legal|nick) ?names?\b|\bsurnames?\b|^(your )?names?$|\bimie\b|\bimiona\b|\bnazwisko\b|\bpesel\b|\bnip\b|\bpassport\b|\bpaszport\w*\b|\bid number\b|\bnational id\b|\bsocial security\b|\bssn\b|\bdate of birth\b|\bbirth ?date\b|\bbirthday\b|\bdata urodzenia\b|\burodzeni\w*\b|\bpassword\b|\bhaslo\b|\bhome address\b|\bstreet\b|\bpostal\b|\bpost ?code\b|\bzip( code)?\b|\bkod pocztowy\b|\badres zamieszkania\b|\bulica\b/
+
+/** Words of the trade too ("Have you built mobile apps?"): personal when they ask for the person's own. */
+const CONTACT_WORD =
+  /\be ?mail\b|\bphone\b|\bmobile\b|\btelephone\b|\btelefon\w*\b|\bcell ?phone\b|\bwhatsapp\b|\bskype\b/
+const ASKS_FOR_THEIRS = /\b(your|twoj\w*|swoj\w*|podaj\w*)\b/
+
+/** Who recommended the person: someone else's name. */
+const REFERRER = /\b(referr\w*|referee|polecaj\w*|polecil\w*|polecon\w*)\b/
 
 /** Only for short field labels ("City", "LinkedIn profile"); long questions may mention these. */
 const SHORT_FIELD =
-  /\b(address|adres|city|town|miasto|miejscowosc|country|kraj|location|lokalizacja|linkedin|github|gitlab|website|web site|portfolio|strona( www| internetowa)?|url|link|twitter|x com|resume|cv|curriculum vitae|photo|zdjecie|avatar|age|wiek)\b/
+  /\b(address|adres|city|town|miasto|miejscowosc|country|kraj|location|lokalizacja|linkedin|github|gitlab|website|web site|portfolio|strona( www| internetowa)?|url|link|twitter|x com|instagram|facebook|tiktok|mastodon|resume|cv|curriculum vitae|photo|zdjecie|avatar|age|wiek)\b/
 
 const SALARY =
   /\b(salary|salar\w*|compensation|remuneration|pay|rate|wage|wynagrodz\w*|zarob\w*|stawk\w*|pensj\w*|finansow\w*)\b/
@@ -176,25 +184,61 @@ export function personalValues(input: {
   return [...out]
 }
 
+/** The person's own name as it may appear inside an answer, the longest form first. */
+export function personalNames(input: {
+  name?: string | null
+  applicant?: Record<string, string | undefined> | null
+}): string[] {
+  const { firstName, lastName } = input.applicant ?? {}
+  const full = firstName && lastName ? `${firstName} ${lastName}` : null
+  const names = [full, input.name, lastName, firstName]
+    .map((name) => name?.trim() ?? "")
+    .filter((name) => name.length >= 2)
+  return [...new Set(names)].sort((a, b) => b.length - a.length)
+}
+
+export const NAME_PLACEHOLDER = "[imię i nazwisko]"
+
+/** The person's name inside an answer, such as the signature under a cover letter. */
+export function redactNames(text: string, names: string[]): string {
+  return names.reduce((out, name) => {
+    const literal = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const word = new RegExp(`(?<![\\p{L}\\p{N}])${literal}(?![\\p{L}\\p{N}])`, "giu")
+    return out.replace(word, NAME_PLACEHOLDER)
+  }, text)
+}
+
+/** An answer with personal data replaced: worth reading, not worth sending again as it is. */
+export function hasRedaction(text: string): boolean {
+  return text.includes(NAME_PLACEHOLDER) || /\[(e-mail|telefon)\]/.test(text)
+}
+
 export type PairVerdict = { keep: true; answer: string } | { keep: false; reason: SkipReason }
 
 /**
- * Whether a submitted form answer belongs in the answer bank. Skips contact and identity data,
- * consent and EEO questions, links, file names and checkbox values; keeps open answers and
- * salary expectations (useful next time). A kept answer may come back with contacts redacted.
+ * Whether a submitted form answer is one worth keeping: an answer about the work, with no personal
+ * data. Skips contact and identity data, consent and EEO questions, links, file names and checkbox
+ * values; keeps open answers and salary expectations. A sentence or more under a question that
+ * mentions "GDPR" or "disabled users" is about the work: consents and EEO are answered in a word
+ * or two. A kept answer may come back with contacts and the person's name replaced.
  */
 export function formPairVerdict(
   pair: { question: string; answer: string },
-  personal: string[] = []
+  personal: string[] = [],
+  names: string[] = []
 ): PairVerdict {
   const answer = cleanText(pair.answer ?? "", MAX_ANSWER_LENGTH)
   const key = questionKey(pair.question ?? "")
   if (!answer || !key) return { keep: false, reason: "empty" }
   if (answer.length < 2) return { keep: false, reason: "too-short" }
-  if (EEO.test(key)) return { keep: false, reason: "eeo" }
-  if (CONSENT.test(key)) return { keep: false, reason: "consent" }
+  const prose = answer.split(/\s+/).length > 6
+  if (EEO.test(key) && !prose) return { keep: false, reason: "eeo" }
+  if (CONSENT.test(key) && !prose) return { keep: false, reason: "consent" }
   if (IDENTITY.test(key)) return { keep: false, reason: "personal-question" }
   const words = key.split(" ").length
+  if (CONTACT_WORD.test(key) && (words <= 3 || ASKS_FOR_THEIRS.test(key)))
+    return { keep: false, reason: "personal-question" }
+  if (REFERRER.test(key) && !prose) return { keep: false, reason: "personal-question" }
   if (words <= 6 && SHORT_FIELD.test(key)) return { keep: false, reason: "personal-question" }
   if (CHECKBOX.test(answer)) return { keep: false, reason: "checkbox" }
   if (URL_ONLY.test(answer)) return { keep: false, reason: "url" }
@@ -214,13 +258,14 @@ export function formPairVerdict(
   const hasContact =
     EMAIL.test(answer) || (!salary && PHONE.test(answer) && redactContacts(answer) !== answer)
   if (hasContact && answer.length < 200) return { keep: false, reason: "contact" }
-  return { keep: true, answer: hasContact ? redactContacts(answer) : answer }
+  return { keep: true, answer: redactNames(hasContact ? redactContacts(answer) : answer, names) }
 }
 
 /** The pairs to store from one submitted form, deduped, with the reason for each skipped one. */
 export function selectFormPairs(
   pairs: { question: string; answer: string }[],
-  personal: string[] = []
+  personal: string[] = [],
+  names: string[] = []
 ): {
   keep: { question: string; answer: string }[]
   skipped: { question: string; reason: SkipReason }[]
@@ -229,7 +274,7 @@ export function selectFormPairs(
   const skipped: { question: string; reason: SkipReason }[] = []
   const seen = new Set<string>()
   for (const pair of pairs) {
-    const verdict = formPairVerdict(pair, personal)
+    const verdict = formPairVerdict(pair, personal, names)
     if (!verdict.keep) {
       skipped.push({ question: pair.question, reason: verdict.reason })
       continue

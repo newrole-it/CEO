@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
+import { revokeGmailAccess } from "src/server/gmail/service"
 import { PERSONAL_LLM_PURPOSES } from "src/server/llm/client"
+import { GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 
 type Writer = Prisma.TransactionClient | typeof db
 
@@ -20,6 +22,9 @@ export async function eraseProfile(userId: number, client: Writer = db) {
 export async function eraseAccount(userId: number) {
   const user = await db.user.findUnique({ where: { id: userId } })
   if (!user) return { deleted: "missing" as const }
+
+  // Outside the transaction: an unreachable Google must not keep the account from being deleted.
+  await revokeGmailAccess(userId).catch(() => false)
 
   await db.$transaction(async (tx) => {
     const runs = await tx.searchRun.findMany({
@@ -45,9 +50,13 @@ export async function eraseAccount(userId: number) {
     }
 
     await tx.backgroundTask.deleteMany({
-      where: { type: "SHEET_SYNC", payload: { path: ["userId"], equals: userId } },
+      where: {
+        type: { in: [SHEET_SYNC, GMAIL_SYNC] },
+        payload: { path: ["userId"], equals: userId },
+      },
     })
-    // Applications, CVs, answers, API tokens and the sheet link cascade with the user row below.
+    // Applications, CVs, answers, API tokens, the sheet and Gmail links and the mail log cascade
+    // with the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
     await tx.offerFeedback.deleteMany({ where: { userId } })
     await tx.watchedCompany.deleteMany({ where: { userId } })

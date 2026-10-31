@@ -69,7 +69,7 @@ export const CONTACT_KINDS: readonly FieldKind[] = [
   "website",
 ]
 
-/** Kinds whose answers go to the answer bank after a submission. */
+/** Questions about the work: their answers stay on the application after a submission. */
 export const QUESTION_KINDS: readonly FieldKind[] = [
   "openQuestion",
   "choiceQuestion",
@@ -121,7 +121,7 @@ const SECRET =
 const SECRET_AUTOCOMPLETE = /^(cc |cc-|new password|current password|one time code)/
 
 const EEO =
-  /\b(gender|genders|sex|plec|race|racial|ethnicity|ethnic|hispanic|latino|latinx|veteran|veterans|military status|disability|disabilities|disabled|niepelnosprawn\w*|pronoun|pronouns|zaimki|age|wiek|date of birth|birth date|birthdate|birthday|data urodzenia|urodzon\w*|sexual orientation|orientacja|transgender|lgbt\w*|religion|religious|wyznanie|marital|stan cywilny|self identify|voluntary self|eeo|eeoc|equal employment)\b/
+  /\b(gender|genders|sex|plec|race(?! conditions?)|racial|ethnicity|ethnic|hispanic|latino|latinx|veteran|veterans|military status|disability|disabilities|disabled|niepelnosprawn\w*|pronoun|pronouns|zaimki|age|wiek|date of birth|birth date|birthdate|birthday|data urodzenia|urodzon\w*|sexual orientation|orientacj\w* seksualn\w*|transgender|lgbt\w*|religion|religious|wyznanie|marital|stan cywilny|self identify|voluntary self|eeo|eeoc|equal employment)\b/
 
 const CONSENT_STRONG =
   /\b(privacy (policy|notice|statement)|polityk\w* prywatnosci|rodo|gdpr|data protection|przetwarzani\w*|przetwarzanie danych|processing of (my )?(personal )?data|personal data|danych osobowych|terms (and|&) conditions|terms of (use|service)|regulamin\w*|wyrazam zgode|zgod\w* na|i consent|consent to|consent|zgoda|future recruitment|przyszlych rekrutac\w*|talent (pool|community)|newsletter|marketing|i acknowledge|acknowledge that|i certify|i confirm|oswiadczam|potwierdzam|i agree|agree to|accept the|akceptuje|zapoznalem|zapoznalam|information clause|klauzul\w*)\b/
@@ -153,7 +153,7 @@ const ADDRESS =
   /\b(address|adres|street|ulica|ul|postal|postcode|post code|zip|kod pocztowy|house number|numer domu|numer mieszkania|apartment|apt|wojewodztwo|state|province|region)\b/
 
 const SALARY =
-  /\b(salary|salaries|compensation|remuneration|wynagrodzeni\w*|oczekiwani\w* finansow\w*|oczekiwani\w* placow\w*|pay expectation\w*|expected pay|desired pay|pay range|hourly rate|daily rate|day rate|rate expectation\w*|stawk\w*|widelki|pensj\w*|zarobk\w*|b2b rate|gross|brutto|netto)\b/
+  /\b(salary|salaries|compensation|remuneration|wynagrodzeni\w*|oczekiwani\w* finansow\w*|oczekiwani\w* placow\w*|wymagani\w* finansow\w*|wymagani\w* placow\w*|financial expectation\w*|pay expectation\w*|expected (\w+ )?(pay|rate)|desired pay|pay range|hourly rate|daily rate|day rate|rate expectation\w*|stawk\w*|widelki|pensj\w*|zarobk\w*|zarabia\w*|b2b rate|gross|brutto|netto)\b/
 const NOTICE = /\b(notice period|notice|okres wypowiedzenia|wypowiedzeni\w*)\b/
 const AVAILABLE =
   /\b(start date|available from|availability|available to start|earliest start|when (can|could) you start|date available|dostepnos\w*|data rozpoczecia|od kiedy|kiedy (mozesz|moglbys|moglabys) (zaczac|rozpoczac)|gotowos\w* do podjecia pracy|termin rozpoczecia)\b/
@@ -259,14 +259,22 @@ export function classifyField(field: FormField): FieldKind {
   const all = [label, placeholder, attrs].filter(Boolean).join(" ")
   const autocomplete = (field.autocomplete ?? "").toLowerCase()
 
+  // A question to write about ("Describe a marketing campaign you ran…") is about the work: EEO
+  // and consent forms are picked or ticked, not written.
+  const asked = label.endsWith("?")
+  const prose = (type === "textarea" || type === "contenteditable") && (label.length > 40 || asked)
+
   // 1. Never touch: secrets, then EEO, then consents.
   if (type === "password" || type === "hidden") return "secret"
   if (SECRET_AUTOCOMPLETE.test(autocomplete) || SECRET.test(all)) return "secret"
-  if (fromAutocomplete(autocomplete) === "eeo" || EEO.test(label) || EEO.test(placeholder))
-    return "eeo"
+  if (fromAutocomplete(autocomplete) === "eeo") return "eeo"
+  if (!prose && (EEO.test(label) || EEO.test(placeholder))) return "eeo"
   if (!label && EEO.test(attrs)) return "eeo"
   if (isSingleCheckbox(field) && !RELOCATION.test(label) && !WORK_AUTH.test(label)) return "consent"
-  if (CONSENT_STRONG.test(label) && (type === "checkbox" || type === "radio" || label.length > 60))
+  if (
+    CONSENT_STRONG.test(label) &&
+    (type === "checkbox" || type === "radio" || (label.length > 60 && !asked && !prose))
+  )
     return "consent"
   if (/\b(eeo|demographic|voluntary self identification|equal opportunit\w*)\b/.test(section))
     return "eeo"
@@ -296,6 +304,12 @@ export function classifyField(field: FormField): FieldKind {
     const looksLikeQuestion = label.length > 90 || (label.endsWith("?") && label.length > 60)
     if (looksLikeQuestion && CONTACT_KINDS.includes(known) && type === "textarea")
       return "openQuestion"
+    // "Have you built mobile apps?" is about the work, "What is your phone?" is not.
+    const aboutWork =
+      label.endsWith("?") &&
+      label.split(" ").length >= 4 &&
+      !/\b(your|twoj\w*|swoj\w*|where|gdzie)\b/.test(label)
+    if (aboutWork && CONTACT_KINDS.includes(known)) return "openQuestion"
     return known
   }
   if (known === "other") return "other"

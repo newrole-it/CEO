@@ -11,7 +11,7 @@ export default resolver.pipe(
     const userId = requireMember(ctx.session)
     try {
       await deleteCv(userId, id)
-      return await listCvs(userId)
+      return await listCvs(userId, { letters: true })
     } catch (error) {
       rethrowCv(error)
     }

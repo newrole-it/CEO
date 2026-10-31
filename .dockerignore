@@ -7,7 +7,14 @@ extension/.wxt
 uploads
 agent-tools
 .git
+.husky
+.claude
+.agents
 coverage
+docs
+sources
+pnpm-lock.yaml
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

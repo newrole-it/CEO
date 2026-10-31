@@ -11,7 +11,7 @@ async function cvFiles(): Promise<string[]> {
 }
 
 describe("pdf extraction", () => {
-  it("deletes the temporary PDF after a failed read", async () => {
+  it("leaves nothing on disk and rejects a file that is not a PDF", async () => {
     const before = new Set(await cvFiles())
     await expect(extractPdfText(Buffer.from("this is not a pdf"))).rejects.toThrow()
     const left = (await cvFiles()).filter((name) => !before.has(name))

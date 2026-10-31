@@ -40,10 +40,24 @@ export type CvRow = {
   title: string
   language: "pl" | "en"
   kind: "EDITABLE" | "UPLOADED"
+  docType: "CV" | "LETTER"
   isDefault: boolean
   hasPdf: boolean
   hasContent: boolean
   updatedAt: Date | string
+  target: { jobId: string | null; company: string; title: string } | null
+}
+
+/** Tailored documents with an offer's CV and letter side by side, newest offer first. */
+function byOffer(rows: CvRow[]): CvRow[] {
+  const order = new Map<string, number>()
+  const key = (row: CvRow) => row.target?.jobId ?? row.id
+  for (const row of rows) if (!order.has(key(row))) order.set(key(row), order.size)
+  return [...rows].sort(
+    (a, b) =>
+      (order.get(key(a)) ?? 0) - (order.get(key(b)) ?? 0) ||
+      Number(a.docType === "LETTER") - Number(b.docType === "LETTER")
+  )
 }
 
 /** The dropdown behaviour used across the app: outside click and Esc close it, arrows move. */
@@ -320,19 +334,38 @@ export function CvList({ signedIn, initial }: { signedIn: boolean; initial: CvRo
             </EmptyState>
           ) : (
             <ul className="cvl-grid" role="list">
-              {rows.map((row) => (
-                <CvCard
-                  key={row.id}
-                  row={row}
-                  onDownload={() => void download(row)}
-                  onDuplicate={() => void duplicate(row)}
-                  onDefault={() => void makeDefault(row)}
-                  onDelete={() => setConfirm(row)}
-                />
-              ))}
+              {rows
+                .filter((row) => !row.target)
+                .map((row) => (
+                  <CvCard
+                    key={row.id}
+                    row={row}
+                    onDownload={() => void download(row)}
+                    onDuplicate={() => void duplicate(row)}
+                    onDefault={() => void makeDefault(row)}
+                    onDelete={() => setConfirm(row)}
+                  />
+                ))}
             </ul>
           )}
           {rows.length > 0 ? <p className="t-caption muted">{t("cv.drop")}</p> : null}
+          {rows.some((row) => row.target) ? (
+            <>
+              <h2 className="cvt-list-title">{t("tl.list.title")}</h2>
+              <ul className="cvl-grid" role="list">
+                {byOffer(rows.filter((row) => row.target)).map((row) => (
+                  <CvCard
+                    key={row.id}
+                    row={row}
+                    onDownload={() => void download(row)}
+                    onDuplicate={() => void duplicate(row)}
+                    onDefault={() => void makeDefault(row)}
+                    onDelete={() => setConfirm(row)}
+                  />
+                ))}
+              </ul>
+            </>
+          ) : null}
 
           <Modal
             open={Boolean(confirm)}
@@ -378,6 +411,7 @@ function CvCard({
   const { t } = useCopy()
   const menu = useMenu()
   const uploaded = row.kind === "UPLOADED"
+  const letter = row.docType === "LETTER"
   return (
     <li className="card card--pad cvl-card">
       <div className="cvl-card__top">
@@ -394,9 +428,13 @@ function CvCard({
                 {t("cv.default")}
               </Badge>
             ) : null}
-            <Badge tone={uploaded ? "plain" : "success"}>
-              {t(uploaded ? "cv.kind.pdf" : "cv.kind.editable")}
-            </Badge>
+            {letter ? (
+              <Badge tone="primary">{t("tl.list.letter")}</Badge>
+            ) : (
+              <Badge tone={uploaded ? "plain" : "success"}>
+                {t(uploaded ? "cv.kind.pdf" : "cv.kind.editable")}
+              </Badge>
+            )}
             <Badge tone="plain">{t(row.language === "en" ? "cv.lang.en" : "cv.lang.pl")}</Badge>
           </div>
           <span className="t-caption muted">
@@ -424,19 +462,21 @@ function CvCard({
           />
           {menu.open ? (
             <div className="menu" role="menu" ref={menu.ref}>
-              <button
-                type="button"
-                className="menu__item"
-                role="menuitem"
-                onClick={() => {
-                  menu.setOpen(false)
-                  onDuplicate()
-                }}
-              >
-                <Copy aria-hidden />
-                {t("cv.act.duplicate")}
-              </button>
-              {row.isDefault ? null : (
+              {letter ? null : (
+                <button
+                  type="button"
+                  className="menu__item"
+                  role="menuitem"
+                  onClick={() => {
+                    menu.setOpen(false)
+                    onDuplicate()
+                  }}
+                >
+                  <Copy aria-hidden />
+                  {t("cv.act.duplicate")}
+                </button>
+              )}
+              {row.isDefault || row.target ? null : (
                 <button
                   type="button"
                   className="menu__item"

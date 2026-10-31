@@ -4,7 +4,7 @@ import { invoke } from "src/app/blitz-server"
 import { ButtonLink } from "src/app/components/ds/Button"
 import { EmptyState } from "src/app/components/ds/primitives"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { translator } from "src/app/i18n/copy"
+import { intlLocale, translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import listSearches from "./queries/listSearches"
@@ -18,7 +18,7 @@ export default async function SearchesPage() {
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
   const t = translator(locale)
   const searches = user ? await invoke(listSearches, null) : []
-  const date = new Intl.DateTimeFormat(locale === "pl" ? "pl-PL" : "en-GB", { day: "numeric", month: "short" })
+  const date = new Intl.DateTimeFormat(intlLocale(locale), { day: "numeric", month: "short" })
   return (
     <SiteFrame user={user} locale={locale} width="narrow">
       <header className="page-head">

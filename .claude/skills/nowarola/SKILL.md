@@ -40,14 +40,19 @@ Never scrape or fetch LinkedIn, justjoin.it, nofluffjobs, pracuj.pl, theprotocol
 - "Na jakim etapie jestem z X?" → `application_get { company: "X" }`; overview → `applications_list` (active by default).
 - Status changes → `application_update { id (or company + title), status, stageNote, nextStep, nextStepAt, notes }` (`notes` are appended; `notesMode: "replace"` overwrites). Statuses: APPLIED → SCREENING → INTERVIEW → TASK → FINAL → OFFER; closed: ACCEPTED, REJECTED, WITHDRAWN, GHOSTED. REJECTED/WITHDRAWN record the stage automatically; ask for the reason once and put it in the note.
 - Applied somewhere new → `application_add` (url or jobId, or company + title). Feed "Aplikowano" and the Chrome extension add applications on their own.
-- Weekly review → the `pipeline` prompt.
+- "Jak mi idzie?", "ile mam odpowiedzi", "gdzie odpadam", "ile wysyłam tygodniowo" → `applications_stats { weeks }` (default 12; 0 = everything): funnel with stage-to-stage shares, response / interview / offer rates, median days to a reply, drop-off stage, sources, weekly cadence, what waits longest, next steps due. Quote the numbers; the charts are at http://127.0.0.1:43123/applications/stats.
+- Weekly review → the `pipeline` prompt (starts with `applications_stats`).
 
 ## Google Sheet
 - `sheet_status` shows whether the person's sheet is connected (Settings → Arkusz Google, an Apps Script web app; no Google keys). `sheet_sync` pushes the whole table now; with auto-sync on, the worker does it ~20 s after every change.
 - Not connected and they want a sheet now → `applications_export` (CSV), then the Google Drive connector `create_file { title, textContent: <csv>, contentMimeType: "text/csv" }` creates a NEW Google Sheet. It is a snapshot: the Drive connector cannot rewrite an existing sheet, so suggest connecting the Apps Script for in-place updates.
 
+## Gmail
+- When connected (Settings → Gmail), the worker reads job-related mail every 15 minutes and updates statuses by itself. `gmail_status` shows the connection and which applications have a message waiting for confirmation on `/applications`. `gmail_sync` checks now. Neither returns the mail's text, on purpose: do not ask for it.
+- Not connected and they want it → send them to Settings → Gmail, which walks through creating their own Google OAuth client.
+
 ## CV
-- `cv_list`, `cv_get` (default CV when no id). Tailoring for an offer: propose concrete edits first, change only facts already in the CV or profile, save with `cv_update` (`section` / `item` / `remove` / `content`; `copyAs: "<Firma>"` writes to a copy when they ask), then `cv_export_pdf` (writes a PDF file, default ~/Downloads). The editor is at http://127.0.0.1:43123/cv.
+- `cv_list`, `cv_get` (default CV when no id). Tailoring for an offer: read the whole posting with `job_get { jobId, fullText: true }` (the index keeps only an excerpt; if it returns no text, ask them to paste the requirements), propose concrete edits first, change only facts already in the CV or profile, save with `cv_update` (`section` / `item` / `remove` / `content`; `copyAs: "<Firma>"` writes to a copy when they ask), then `cv_export_pdf` (writes a PDF file, default ~/Downloads). The editor is at http://127.0.0.1:43123/cv.
 
 ## Answer bank
 - Before writing an answer to an application question, `answers_search { question }`; reuse a close match. Otherwise `answer_draft { questions, company, title, jobText, maxChars }` (drafts are grounded in the profile, CV and past answers). Show the draft, apply the person's edits, then `answer_save` the final wording.

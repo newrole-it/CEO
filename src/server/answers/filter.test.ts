@@ -3,7 +3,9 @@ import {
   cleanTags,
   cleanText,
   formPairVerdict,
+  hasRedaction,
   normalizeAnswer,
+  personalNames,
   personalValues,
   queryMatch,
   queryTerms,
@@ -29,6 +31,30 @@ describe("form answers worth keeping", () => {
     expect(
       skip("How do you address technical debt in a large codebase?", "Budget 20% of each sprint.")
     ).toBeNull()
+  })
+
+  it("keeps questions about the work that use words of personal data", () => {
+    const answer = "Zbudowałem asystenta do analizy umów, wdrożony u 40 klientów w trzy miesiące."
+    for (const question of [
+      "Jaki ostatnio produkt zrobiłeś przy pomocy AI?",
+      "Name a product you built that you are proud of",
+      "How do you handle race conditions in distributed systems?",
+      "Have you built mobile apps?",
+      "Have you sent e-mail campaigns?",
+      "How do you ensure GDPR compliance in your product?",
+      "Describe a data processing pipeline you designed",
+      "How did you build for disabled users?",
+    ]) {
+      expect([question, skip(question, answer)]).toEqual([question, null])
+    }
+    expect(skip("Have you built mobile apps?", "Tak")).toBeNull()
+  })
+
+  it("skips who recommended the person, and their nationality", () => {
+    expect(skip("Kto Cię polecił?", "Anna Nowak")).toBe("personal-question")
+    expect(skip("Referred by", "Anna Nowak")).toBe("personal-question")
+    expect(skip("Obywatelstwo", "polskie")).toBe("eeo")
+    expect(skip("What is your phone?", "Zadzwoń po południu")).toBe("personal-question")
   })
 
   it("skips empty and one-character answers", () => {
@@ -91,6 +117,23 @@ describe("form answers worth keeping", () => {
       expect(verdict.answer).not.toContain("me@example.com")
     }
     expect(redactContacts("Budget 2024: 25 000 PLN")).toBe("Budget 2024: 25 000 PLN")
+  })
+
+  it("replaces the person's name inside an answer, whole words only", () => {
+    const names = personalNames({
+      name: "Rafał Testowy",
+      applicant: { firstName: "Rafał", lastName: "Testowy" },
+    })
+    expect(names).toEqual(["Rafał Testowy", "Testowy", "Rafał"])
+    const verdict = formPairVerdict(
+      { question: "Cover letter", answer: "Pozdrawiam, rafał testowy. Rafałowi się uda." },
+      [],
+      names
+    )
+    expect(verdict.keep && verdict.answer).toBe("Pozdrawiam, [imię i nazwisko]. Rafałowi się uda.")
+    expect(hasRedaction("Pozdrawiam, [imię i nazwisko].")).toBe(true)
+    expect(hasRedaction("Pisz na [e-mail].")).toBe(true)
+    expect(hasRedaction("Zwykła odpowiedź [1].")).toBe(false)
   })
 
   it("dedupes one submission and reports why the rest were skipped", () => {
