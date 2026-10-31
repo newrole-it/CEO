@@ -22,8 +22,11 @@ const CONFIDENCE = { name: 1, curated: 1, board: 0.9, bracket: 0.8 } as const
 
 const SYNC_EVERY_MS = 60 * 60 * 1000
 
-/** A board id that reads as a company name, not as a number or a tenant path. */
-const NAME_LIKE_BOARD = /^[a-z][a-z0-9]{2,39}$/
+/**
+ * A board id as an ATS address spells it: "booksy-1", "realtimeboardglobal" (Miro). Not a host
+ * ("careers.allegro.eu"), a tenant path ("visa/wd5/Visa") or a region prefix ("eu:olx").
+ */
+const SLUG_BOARD = /^[a-z][a-z0-9_-]{2,39}$/i
 
 export function planCompanyAliases(input: {
   companies: { id: string; name: string }[]
@@ -39,12 +42,16 @@ export function planCompanyAliases(input: {
 
   const byKey = new Map<string, string[]>()
   for (const company of input.companies) {
-    const [main, ...also] = companyKeys(company.name)
-    if (main) {
-      add(company.id, readCompanyName(company.name).main, main, CONFIDENCE.name)
-      byKey.set(main, [...(byKey.get(main) ?? []), company.id])
+    const keys = companyKeys(company.name)
+    const { main, also } = readCompanyName(company.name)
+    const key = companyKey(main)
+    if (key.length >= 2) {
+      add(company.id, main, key, CONFIDENCE.name)
+      byKey.set(key, [...(byKey.get(key) ?? []), company.id])
     }
-    for (const key of also) add(company.id, key, key, CONFIDENCE.bracket)
+    for (const name of also) {
+      if (keys.includes(companyKey(name))) add(company.id, name, companyKey(name), CONFIDENCE.bracket)
+    }
   }
 
   for (const entry of input.curated ?? COMPANY_ALIASES) {
@@ -54,8 +61,9 @@ export function planCompanyAliases(input: {
   }
 
   for (const { companyId, boardId } of input.boards) {
-    const key = companyKey(boardId ?? "")
-    if (boardId && NAME_LIKE_BOARD.test(key)) add(companyId, boardId, key, CONFIDENCE.board)
+    if (boardId && SLUG_BOARD.test(boardId)) {
+      add(companyId, boardId, companyKey(boardId), CONFIDENCE.board)
+    }
   }
   return [...rows.values()]
 }

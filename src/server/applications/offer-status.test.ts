@@ -55,6 +55,16 @@ describe("sameRole", () => {
     ["Programista Java", "Programista Java (k/m) - zdalnie"],
     ["Sr. Data Engineer", "Senior Data Engineer"],
     [".NET Developer", "Senior .NET Developer"],
+    ["Java Developer", "Java Software Engineer"],
+    ["Programista Java", "Java Developer"],
+    ["Front-end Developer", "Frontend Engineer"],
+    ["Director of Software Engineering / 3696094", "Director of Software Engineering"],
+    [
+      "Senior Engineering Manager – Payments (100% Remote within Poland)",
+      "Senior Engineering Manager, Payments",
+    ],
+    ["Kierownik Zespołu Developerów", "Kierownik zespołu developerów (k/m)"],
+    ["Software Developer", "Software Engineer"],
   ])("reads %j and %j as one role", (a, b) => {
     expect(sameRole(a, b)).toBe(true)
   })
@@ -66,6 +76,11 @@ describe("sameRole", () => {
     ["Senior Software Engineer, Payments", "Senior Software Engineer, Search"],
     ["Developer", "Senior Java Developer"],
     ["", "Senior Java Developer"],
+    ["Engineering Manager", "Senior Engineering Manager"],
+    ["Staff Engineer", "Senior Engineer"],
+    ["Software Engineer", "Data Engineer"],
+    ["Senior Engineering Manager – Payments", "Senior Engineering Manager – Platform"],
+    ["BambooHR", "Senior Java Developer"],
   ])("keeps %j and %j apart", (a, b) => {
     expect(sameRole(a, b)).toBe(false)
   })
@@ -92,6 +107,84 @@ describe("matchOffer", () => {
       title: "Senior Backend Engineer (m/f/d)",
     })
     expect(applied).toMatchObject({ match: "role", row: { id: "a" } })
+  })
+
+  it("says the company is the same when spellings or the map show it", () => {
+    const rows = [row({ id: "a", company: "LiveChat Software", title: "Staff Engineer" })]
+    const offer = { url: LEVER, company: "Text S.A.", title: "Staff Engineer" }
+    expect(matchOffer(rows, offer).applied).toBeNull()
+    const map = new Map([
+      ["livechatsoftware", ["c_text"]],
+      ["text", ["c_text"]],
+    ])
+    expect(matchOffer(rows, offer, map).applied).toMatchObject({
+      match: "role",
+      companyMatch: "same",
+      row: { id: "a" },
+    })
+  })
+
+  it("uses the company of the indexed offer behind an application", () => {
+    const rows = [
+      row({ id: "a", company: "Inna nazwa", title: "QA", job: { companyId: "c_acme" } }),
+    ]
+    const map = new Map([["acme", ["c_acme"]]])
+    expect(matchOffer(rows, { url: LEVER, company: "Acme", title: "QA" }, map).applied).toMatchObject(
+      { match: "role", row: { id: "a" } }
+    )
+  })
+
+  it("lets a similar company name count only together with the role", () => {
+    const rows = [row({ id: "a", company: "Fast Forward", title: "Staff Engineer" })]
+    const same = { url: LEVER, company: "Fast Forward Solutions", title: "Staff Engineer" }
+    expect(matchOffer(rows, same)).toMatchObject({
+      applied: { match: "role", companyMatch: "similar" },
+      sameCompany: [],
+    })
+    const other = { url: LEVER, company: "Fast Forward Solutions", title: "Data Analyst" }
+    expect(matchOffer(rows, other)).toEqual({ applied: null, sameCompany: [] })
+  })
+
+  it("says a certain match needs no comparing of companies", () => {
+    const rows = [row({ id: "a", url: LEVER })]
+    expect(matchOffer(rows, { url: LEVER }).applied).toMatchObject({
+      match: "url",
+      companyMatch: null,
+    })
+  })
+
+  it("takes no site for a company, on either side", () => {
+    const junk = row({
+      id: "feed",
+      company: "LinkedIn",
+      title: "Kanał informacji",
+      url: "https://www.linkedin.com/feed/",
+    })
+    const asEmployer = matchOffer([junk], {
+      url: "https://boards.greenhouse.io/linkedin/jobs/1",
+      company: "LinkedIn",
+      title: "Staff Engineer",
+    })
+    expect(asEmployer).toEqual({ applied: null, sameCompany: [] })
+
+    const real = row({ id: "real", company: "LinkedIn", url: "https://acme.pl/1" })
+    const siteAsCompany = matchOffer([real], {
+      url: "https://www.linkedin.com/jobs/view/1/",
+      company: "LinkedIn",
+      title: "Senior Backend Engineer",
+    })
+    expect(siteAsCompany).toEqual({ applied: null, sameCompany: [] })
+  })
+
+  it("finds what the application's address says even when the site is its company", () => {
+    const junk = row({
+      id: "a",
+      company: "LinkedIn",
+      url: "https://www.linkedin.com/jobs/view/123/",
+    })
+    expect(matchOffer([junk], { url: "https://www.linkedin.com/jobs/view/123/" }).applied?.row.id).toBe(
+      "a"
+    )
   })
 
   it("does not call another role at the company this offer", () => {
@@ -158,6 +251,15 @@ describe("offerFacts", () => {
         null
       )
     ).toEqual({ company: "Acme Corp", title: "Senior Engineer" })
+  })
+
+  it("reads the company LinkedIn's lists leave in the address", () => {
+    expect(
+      offerFacts(
+        { url: "https://www.linkedin.com/jobs/view/4478971728/?companyName=Fast+Forward+Solutions" },
+        null
+      )
+    ).toEqual({ company: "Fast Forward Solutions", title: null })
   })
 
   it("reads the company from an ATS address and the role from its window title", () => {

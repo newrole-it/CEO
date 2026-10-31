@@ -47,7 +47,13 @@ Na ofertach na LinkedIn, justjoin.it, No Fluff Jobs, pracuj.pl, theprotocol.it, 
 
 Panel w prawym górnym rogu pokazuje status, etap, datę wysłania, następny krok i link do aplikacji w trackerze. Krzyżyk chowa go dla tej oferty do końca sesji karty. Na ikonie rozszerzenia jest ✓ w kolorze statusu albo kropka przy innym stanowisku w tej firmie, a ten sam tekst co w panelu widać po najechaniu i w popupie. Przełącznik „Pokazuj na ofertach, czy już aplikowano” w popupie to wyłącza.
 
-Firmę i stanowisko rozszerzenie czyta z danych `JobPosting` na stronie, a na LinkedIn z karty oferty albo tytułu okna. Na znanych ATS wysyła tytuł okna, a aplikacja czyta firmę także z adresu. Sprawdzanie nie woła modelu. Gdy aplikacja jest wyłączona, panelu po prostu nie ma; powód zobaczysz w popupie.
+Firmę i stanowisko rozszerzenie czyta z danych `JobPosting` na stronie, a na LinkedIn z karty oferty albo tytułu okna. Na znanych ATS wysyła tytuł okna, a aplikacja czyta firmę także z adresu, w tym z `companyName=` w adresach z list LinkedIn. Sprawdzanie nie woła modelu. Gdy aplikacja jest wyłączona, panelu po prostu nie ma; powód zobaczysz w popupie.
+
+Jak porównywane są nazwy:
+
+- **Firma:** formy prawne, „Polska”, „Careers at”, „- English” i pisownia się nie liczą, a nazwa w nawiasie („Exadel (acquired Codete)”) to druga nazwa tej firmy. Resztę zna mapa firm w tabeli `CompanyAlias`: nazwy z indeksu, nazwy z `config/company-aliases.ts` (np. „LiveChat” to „Text”) i identyfikatory tablic ATS (np. `realtimeboardglobal` to Miro). Worker uzupełnia ją co godzinę o nowe firmy. Zły wiersz wyłączysz na stałe, ustawiając mu `confidence` na 0. Nazwa, która tylko zaczyna inną („Fast Forward” i „Fast Forward Solutions”), liczy się tylko razem ze zgodnym stanowiskiem, a panel mówi wtedy, że nazwa firmy jest podobna.
+- **Stanowisko:** według tych samych zasad co deduplikacja ofert (`matching/`): liczą się słowa i poziom, a nie liczą się płeć, miasto, tryb pracy ani numer rekrutacji. „Developer”, „Programista” i „Software Engineer” znaczą tu to samo. „Senior” i „Junior” tej samej roli to różne stanowiska, a brak poziomu po jednej stronie niczego nie przekreśla.
+- **Strona zamiast firmy:** gdy w aplikacji albo na ofercie firmą jest sam portal (np. „LinkedIn” na linkedin.com), taka nazwa nie bierze udziału w porównaniu.
 
 ## Ocena profilu LinkedIn
 

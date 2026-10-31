@@ -28,5 +28,4 @@ export const COMPANY_ALIASES: CompanyAliasEntry[] = [
   { company: "Vodeno", aliases: ["Aion Bank"] },
   { company: "Wise", aliases: ["TransferWise"] },
   { company: "XTM International", aliases: ["XTM"] },
-  { company: "ZEN.COM", aliases: ["ZEN"] },
 ]

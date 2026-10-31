@@ -318,6 +318,22 @@ describe("lib/offer-notice.js", () => {
   it("says when it is only a likely match", async () => {
     await load(answering({ applied: { ...APPLIED, match: "role" }, sameCompany: [] }))
     expect(shadow?.textContent).toContain("Prawdopodobnie już aplikowano na tę ofertę")
+    expect(shadow?.textContent).toContain("Inny adres, ale zgadzają się firma i stanowisko.")
+  })
+
+  it("says when the company's name is only similar", async () => {
+    await load(
+      answering({
+        applied: { ...APPLIED, match: "role", companyMatch: "similar" },
+        sameCompany: [],
+      })
+    )
+    expect(shadow?.textContent).toContain("nazwa firmy jest podobna")
+  })
+
+  it("gives no reason when the address settles it", async () => {
+    await load(answering({ applied: APPLIED, sameCompany: [] }))
+    expect(shadow?.textContent).not.toContain("Inny adres")
   })
 
   it("tells about other roles at the company", async () => {
