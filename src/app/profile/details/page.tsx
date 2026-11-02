@@ -6,6 +6,7 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { getApplicant } from "src/server/profile/applicant"
+import { setupBack } from "src/app/setup/back"
 import { ApplicantForm } from "./ApplicantForm"
 
 export async function generateMetadata() {
@@ -17,9 +18,12 @@ export default async function ApplicantDetailsPage() {
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
   const t = translator(locale)
   const signedIn = Boolean(user && user.role !== "GUEST")
-  const details = user ? await getApplicant(user.id) : null
+  const [details, back] = await Promise.all([
+    user ? getApplicant(user.id) : null,
+    setupBack(user?.id ?? null),
+  ])
   return (
-    <SiteFrame user={user} locale={locale} width="narrow">
+    <SiteFrame user={user} locale={locale} width="narrow" setupBack={back}>
       <header className="page-head">
         <h1 className="t-h1">{t("pr.title")}</h1>
         <p>{t("apl.sub")}</p>
@@ -37,7 +41,7 @@ export default async function ApplicantDetailsPage() {
         />
       </div>
       {details ? (
-        <ApplicantForm saved={details.saved} effective={details.effective} />
+        <ApplicantForm saved={details.saved} effective={details.effective} after={back} />
       ) : (
         <div className="card settings-sec">
           <p>{t("apl.signIn")}</p>

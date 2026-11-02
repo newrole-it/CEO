@@ -345,7 +345,7 @@ describe("computeInsights", () => {
     const out = computeInsights(input, { now: NOW, weeks: 12 })
     expect(out.automation.tracked).toBe(4)
     expect(out.automation.autoTracked).toBe(3)
-    expect(out.automation.byChannel).toEqual({ web: 1, mcp: 1, extension: 0, gmail: 1 })
+    expect(out.automation.byChannel).toEqual({ web: 1, mcp: 1, extension: 0, gmail: 1, sheet: 0 })
     expect(out.automation.answersTotal).toBe(3)
     expect(out.automation.answersReused).toBe(2)
     expect(out.sources.map((row) => [row.source, row.sent, row.replied])).toEqual([

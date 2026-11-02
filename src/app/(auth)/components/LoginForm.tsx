@@ -15,7 +15,17 @@ import { LinkedInMark } from "src/app/components/site/Brand"
 import { useLinkedInSignIn } from "src/app/components/site/LinkedInSignIn"
 import { safeReturnTo } from "src/shared/return-to"
 
-export const LoginForm = () => {
+/**
+ * `local`: the app runs on this machine, where an email opens the account with no link.
+ * `after`: where to go once signed in when the URL has no returnTo (/setup mid-checklist).
+ */
+export const LoginForm = ({
+  local = false,
+  after = "/jobs",
+}: {
+  local?: boolean
+  after?: string
+}) => {
   const { t } = useCopy()
   const [loginMutation, { isPending: passwordPending }] = useMutation(login)
   const [requestLink, { isPending }] = useMutation(requestMagicLink)
@@ -26,7 +36,7 @@ export const LoginForm = () => {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
-  const destination = safeReturnTo(params.get("returnTo")) ?? "/jobs"
+  const destination = safeReturnTo(params.get("returnTo")) ?? after
   const linkedInHref = `/api/auth/linkedin/start?returnTo=${encodeURIComponent(destination)}`
 
   async function onEmail(event: FormEvent) {
@@ -70,7 +80,7 @@ export const LoginForm = () => {
     <div className="card auth-card">
       <div className="stack-sm">
         <h1 className="t-h1">{t("login.title")}</h1>
-        <p className="muted">{t("login.sub")}</p>
+        <p className="muted">{t(local ? "login.local.sub" : "login.sub")}</p>
       </div>
       {error ? (
         <Banner tone="danger" role="alert" icon={<CircleAlert aria-hidden />}>
@@ -96,7 +106,9 @@ export const LoginForm = () => {
           />
         </label>
         <Button type="submit" variant="primary" size="lg" block loading={isPending}>
-          {isPending ? t("login.sending") : t("login.email.cta")}
+          {isPending
+            ? t(local ? "login.verifying" : "login.sending")
+            : t(local ? "login.local.cta" : "login.email.cta")}
         </Button>
       </form>
       <p className="or">{t("common.or")}</p>

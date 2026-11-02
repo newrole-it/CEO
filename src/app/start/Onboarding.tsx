@@ -81,6 +81,7 @@ export function Onboarding({
   stats,
   firstName,
   photo,
+  after,
 }: {
   initialStep: Step
   linkedIn: boolean
@@ -88,6 +89,8 @@ export function Onboarding({
   stats: { offers: number; companies: number | null; careerPages: number | null }
   firstName: string | null
   photo: string | null
+  /** Where a saved profile goes without a returnTo: /setup mid-checklist, else the feed */
+  after: string
 }) {
   const { t, locale } = useCopy()
   const router = useRouter()
@@ -251,7 +254,7 @@ export function Onboarding({
       await save(cleanDraft(draft))
       // /setup sends people here and expects them back at the next step of the checklist.
       const back = safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"))
-      router.push(back ?? "/jobs?welcome=1")
+      router.push(back ?? after)
       router.refresh()
     } catch {
       toast.show({ message: t("err.saveProfile"), tone: "danger" })
@@ -308,7 +311,11 @@ export function Onboarding({
           <p>{t("onb.source.sub")}</p>
         </div>
         {tiles}
-        <Link className="card card--hover rail-link" href="/connect#linkedin" style={{ marginTop: 16 }}>
+        <Link
+          className="card card--hover rail-link"
+          href="/connect#linkedin"
+          style={{ marginTop: 16 }}
+        >
           <SquareTerminal aria-hidden />
           <span>{t("onb.claudeHint")}</span>
         </Link>
@@ -378,9 +385,9 @@ export function Onboarding({
 
   if (step === "reading") {
     const slow = elapsed > 30 && !slowDismissed
-    const note =
-      elapsed < 8 ? t("onb.read.usual") : t("onb.read.counting", { s: elapsed })
-    const announce = elapsed === 10 || elapsed === 20 ? note : elapsed < 2 ? t("onb.read.usual") : ""
+    const note = elapsed < 8 ? t("onb.read.usual") : t("onb.read.counting", { s: elapsed })
+    const announce =
+      elapsed === 10 || elapsed === 20 ? note : elapsed < 2 ? t("onb.read.usual") : ""
     const stageState = (n: 1 | 2 | 3) => (stage > n ? "done" : stage === n ? "active" : "pending")
     return (
       <div className="onb container">

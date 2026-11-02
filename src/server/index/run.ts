@@ -2,7 +2,7 @@ import db from "db"
 import { decideFetch } from "config/source-policies"
 import { loadSeedBoards, type SeedBoard } from "config/seed-boards"
 import { listCareerSite } from "src/server/adapters/career-site"
-import { adapterFor, type LiveAts } from "src/server/adapters/registry"
+import { adapterFor, type BoardList, type LiveAts } from "src/server/adapters/registry"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { createHttpClient } from "src/server/security/safe-fetch"
 import { conditionalHttp, NotModifiedError } from "./conditional"
@@ -19,6 +19,26 @@ const CAREER = new Set<SeedBoard["provider"]>(["CAREER_SITE", "SUCCESSFACTORS", 
 
 /** Pages fetched from one career host before the worker looks for a search again. */
 export const CAREER_BATCH = 30
+
+/** A board API that answered with an empty list says so in the note; that still proves the board. */
+export function isEmptyBoardNote(note: string | undefined): boolean {
+  return /no open jobs|has no open|empty jobs array/i.test(note || "")
+}
+
+/** A board API answers with its whole list unless the adapter reports a cap. */
+export function settleApiList(listed: BoardList): BoardList {
+  return {
+    ...listed,
+    complete: listed.complete !== false,
+    listedCount: listed.jobs.length,
+    coveredUrls: undefined,
+  }
+}
+
+/** Seed boards read through a board API. Career sites have a daily page cap and stay local. */
+export function isCareerProvider(provider: SeedBoard["provider"]): boolean {
+  return CAREER.has(provider)
+}
 
 export function boardIsIndexable(board: SeedBoard): boolean {
   try {
@@ -95,8 +115,7 @@ export async function indexBoard(
           wrapped.client,
           board.companyName
         )
-    const emptyBoard =
-      !career && /no open jobs|has no open|empty jobs array/i.test(listed.note || "")
+    const emptyBoard = !career && isEmptyBoardNote(listed.note)
     // Unproven is a failure in every case, whatever else the result says: storing it would
     // mark the board as successfully fetched.
     if (!listed.proven && !emptyBoard) {
@@ -113,10 +132,7 @@ export async function indexBoard(
       listed.complete = listed.complete === true
       listed.listedCount = listed.listedCount ?? listed.jobs.length
     } else {
-      // A board API answers with its whole list unless the adapter reports a cap.
-      listed.complete = listed.complete !== false
-      listed.listedCount = listed.jobs.length
-      listed.coveredUrls = undefined
+      Object.assign(listed, settleApiList(listed))
     }
     if (!listed.complete) listed.coveredUrls = undefined
     const complete = listed.complete === true

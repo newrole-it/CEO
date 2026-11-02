@@ -41,7 +41,10 @@ export function fieldsFrom(draft: ProfileDraft | null): Set<DraftField> {
   return set
 }
 
-/** Thousands in the input, full numbers in the draft (user types 25 → 25000). */
+/**
+ * Thousands in the input, full numbers in the draft (user types 25 → 25000). A full amount typed
+ * anyway (25000, 25 000) stays as it is: nobody means a million or more a month.
+ */
 function toK(value: number | null, period: string | null): string {
   if (value == null) return ""
   const monthly = period === "year" ? value / 12 : value
@@ -53,7 +56,7 @@ function fromK(text: string): number | null {
   if (!clean) return null
   const n = Number(clean)
   if (!Number.isFinite(n) || n < 0) return null
-  return Math.round(n * 1000)
+  return Math.round(n >= 1000 ? n : n * 1000)
 }
 
 export function salaryError(draft: ProfileDraft): boolean {

@@ -4,6 +4,7 @@
  */
 export const setupPl = {
   "nav.setup": "Konfiguracja",
+  "setup.back": "Wróć do konfiguracji",
 
   "setup.title": "Uruchom newrole.it krok po kroku",
   "setup.sub": "Oto wszystko, co jest potrzebne, i co już działa. Status odświeża się sam.",
@@ -12,6 +13,10 @@ export const setupPl = {
   "setup.ready.title": "Podstawy działają. Możesz szukać ofert.",
   "setup.ready.body": "Pozostałe kroki są opcjonalne. Wrócisz do nich z menu „Konfiguracja”.",
   "setup.ready.cta": "Przejdź do ofert",
+  "setup.done.title": "Wszystko połączone",
+  "setup.done.body": "Wszystkie kroki konfiguracji są gotowe. Możesz zacząć szukać ofert.",
+  "setup.done.cta": "Przejdź do ofert",
+  "setup.done.stay": "Zostań tutaj",
   "setup.skip": "Pomiń na razie, pokaż oferty",
   "setup.offline": "Nie mogę odczytać statusu. Sprawdź, czy aplikacja działa w terminalu.",
 
@@ -36,7 +41,8 @@ export const setupPl = {
   "setup.db.why": "Trzyma oferty, profil i aplikacje. Działa lokalnie, na Twoim komputerze.",
   "setup.db.ok": "Połączona i aktualna.",
   "setup.db.down": "Nie mogę połączyć się z bazą. Uruchom Docker Desktop, a potem:",
-  "setup.db.pending": "Baza wymaga aktualizacji (migracje do wykonania: {n}).",
+  "setup.db.pending":
+    "Baza wymaga aktualizacji (migracje do wykonania: {n}). Zatrzymaj aplikację i worker (Ctrl+C), a potem:",
 
   "setup.worker.title": "Worker",
   "setup.worker.why": "Pobiera oferty ze stron firm w tle i aktualizuje arkusz.",
@@ -63,7 +69,8 @@ export const setupPl = {
   "setup.account.title": "Konto",
   "setup.account.why": "Twoje dane zostają w lokalnej bazie. Nic nie trafia do nas.",
   "setup.account.ok": "Zalogowano jako {email}.",
-  "setup.account.none": "Podaj e-mail. Pierwszy e-mail od razu tworzy konto, bez potwierdzania.",
+  "setup.account.none":
+    "Podaj e-mail. Lokalnie od razu otwiera konto, bez potwierdzania i bez wysyłania maili.",
   "setup.account.guest":
     "Korzystasz bez konta i dane zależą od ciasteczka. Podaj e-mail, żeby je zachować.",
   "setup.account.cta": "Załóż konto lub zaloguj się",
@@ -122,6 +129,7 @@ export const setupPl = {
 
 export const setupEn: Record<keyof typeof setupPl, string> = {
   "nav.setup": "Setup",
+  "setup.back": "Back to setup",
 
   "setup.title": "Get newrole.it running, step by step",
   "setup.sub": "Everything you need, and what already works. The status updates by itself.",
@@ -130,6 +138,10 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.ready.title": "The basics work. You can look for jobs.",
   "setup.ready.body": "The other steps are optional. Come back to them from the “Setup” menu.",
   "setup.ready.cta": "Go to offers",
+  "setup.done.title": "Everything is connected",
+  "setup.done.body": "Every setup step is done. You can start looking for jobs.",
+  "setup.done.cta": "Go to offers",
+  "setup.done.stay": "Stay here",
   "setup.skip": "Skip for now, show offers",
   "setup.offline": "Can't read the status. Check that the app is running in your terminal.",
 
@@ -154,7 +166,8 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.db.why": "Holds offers, your profile and applications. It runs locally, on your computer.",
   "setup.db.ok": "Connected and up to date.",
   "setup.db.down": "Can't reach the database. Start Docker Desktop, then:",
-  "setup.db.pending": "The database needs an update (migrations to run: {n}).",
+  "setup.db.pending":
+    "The database needs an update (migrations to run: {n}). Stop the app and the worker (Ctrl+C), then:",
 
   "setup.worker.title": "Worker",
   "setup.worker.why": "Reads offers from company sites in the background and updates your sheet.",
@@ -180,7 +193,7 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.account.why": "Your data stays in the local database. Nothing reaches us.",
   "setup.account.ok": "Signed in as {email}.",
   "setup.account.none":
-    "Enter an email. Your first email creates the account right away, with no confirmation.",
+    "Enter an email. Locally it opens the account right away, with no confirmation and no email sent.",
   "setup.account.guest":
     "You're using the app without an account, so your data depends on a cookie. Enter an email to keep it.",
   "setup.account.cta": "Create an account or sign in",

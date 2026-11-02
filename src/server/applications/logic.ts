@@ -22,6 +22,7 @@ export const LIMITS = {
   location: 200,
   salaryText: 120,
   statedSalary: 200,
+  origin: 120,
   stageNote: 160,
   nextStep: 300,
   contact: 500,
@@ -255,6 +256,7 @@ export type CurrentApplication = {
   statedSalary: string | null
   appliedAt: Date
   cvDocumentId: string | null
+  origin?: string | null
 }
 
 export type ApplicationPatch = {
@@ -272,6 +274,7 @@ export type ApplicationPatch = {
   statedSalary?: string | null
   appliedAt?: Date
   cvDocumentId?: string | null
+  origin?: string | null
 }
 
 export type PlannedEvent = {
@@ -344,10 +347,13 @@ export function planUpdate(
     events.push({ type: "next-step", note: nextStepNote(step, stepAt) })
   }
 
-  const text = (key: "contact" | "location" | "salaryText" | "statedSalary", max: number) => {
+  const text = (
+    key: "contact" | "location" | "salaryText" | "statedSalary" | "origin",
+    max: number
+  ) => {
     if (input[key] === undefined) return
     const value = cleanText(input[key], max)
-    if (value !== current[key]) {
+    if (value !== (current[key] ?? null)) {
       data[key] = value
       edited.push(key)
     }
@@ -367,6 +373,7 @@ export function planUpdate(
   text("location", LIMITS.location)
   text("salaryText", LIMITS.salaryText)
   text("statedSalary", LIMITS.statedSalary)
+  text("origin", LIMITS.origin)
 
   if (input.notes !== undefined) {
     const notes = cleanMultiline(input.notes, LIMITS.notes)

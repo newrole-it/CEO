@@ -12,6 +12,7 @@
 | `npm run dev` / `npm run worker`        | Web and worker separately. A scan does nothing until the worker runs                                                                                                               |
 | `npm run build && npm start`            | Production build on the same port                                                                                                                                                  |
 | `npm run mcp`                           | The MCP server over stdio (Claude Code starts it for you)                                                                                                                          |
+| `npm run harvest`                       | Reads the due board APIs and pushes them to a harvest branch, for a scheduled cloud agent. See below                                                                               |
 | `npm run ext:build` / `npm run ext:dev` | Rebuild the Chrome extension into `extension/.output/chrome-mv3`, or run WXT's dev mode                                                                                            |
 
 To use a Postgres you already run instead of Docker, set `DATABASE_URL` in `.env`: `npm run go` uses it and leaves Docker alone. If port 5432 is taken on the first run, it picks another port and writes it to `.env`.
@@ -28,6 +29,22 @@ docker compose up --build
 ```
 
 Open http://127.0.0.1:43123. Search is public. The owner account is `OWNER_EMAIL` / `OWNER_PASSWORD`. Everyone else signs in with email or LinkedIn.
+
+### Offers read in the cloud while this computer is off
+
+The worker reads boards only while it runs. A scheduled agent task in the cloud can read them in the meantime: it runs `npm run harvest`, which reads the due board APIs with the worker's own adapters, schedule and 5-second pace per host, writes the offers to a branch ending in `newrole-harvest` (`harvest/manifest.json` plus one file per board, descriptions cut to the stored excerpt) and pushes it. It needs no database. Career sites, SuccessFactors and Workday are left to the local worker, because their 200-pages-per-host daily cap lives in the local database.
+
+While the worker runs, it checks the remote every 10 minutes (a `HARVEST_IMPORT` task) and writes each board's newest cloud read into the index through the same code as a local read, when it is newer than the local one and its file matches the hash in the manifest. `/sync` shows what is read now, what waits, every board's last and next read, the queue, the cloud runs, and the prompt and network allowlist for Claude Code, Cursor or Codex.
+
+```bash
+npm run harvest -- --agent claude --every 120   # what the agent's prompt runs
+npm run harvest -- --hosts                      # hosts to allow in the agent's network settings
+npm run harvest -- --dry-run --minutes 2        # read and report, commit nothing
+```
+
+Use it with a private repository only: the branch holds the offer index.
+
+What the providers' docs said on 2 November 2026: Claude Code cloud scheduled tasks run with the laptop closed, at most hourly, and their default Trusted network blocks the ATS hosts until they are added under Custom ([scheduled tasks](https://code.claude.com/docs/en/routines), [cloud environments](https://code.claude.com/docs/en/cloud-environments)). Cursor Automations run in a cloud VM on a preset or cron schedule and can open pull requests; the page does not say whether they push to a branch directly ([automations](https://cursor.com/docs/cloud-agent/automations)). Codex scheduled tasks in the app need the computer on and the app running ([scheduled tasks](https://learn.chatgpt.com/docs/automations?surface=app)).
 
 ### Embedding the MCP server
 
@@ -97,6 +114,8 @@ With `claude-cli`, each model call is one `claude -p --output-format json` proce
 | `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET`      | no       | LinkedIn OpenID Connect sign-in. Empty hides the LinkedIn button's success path. See [accounts.md](accounts.md)                                                                                                                                                                                                                                         |
 | `GMAIL_TOKEN_KEY`                                    | no       | Only to revoke a mailbox connected in an earlier version (Settings → Gmail → Disconnect): it opens that token, or `SESSION_SECRET_KEY` does when it is empty. Nothing connects a mailbox any more and `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` are no longer read; mail is picked in the extension. See [product/plan-gmail.md](product/plan-gmail.md) |
 | `LINKEDIN_BROWSER_IMPORT` / `LINKEDIN_BROWSER_MODEL` | no       | The Claude-in-Chrome profile import: `on` forces it, `off` hides it. Model defaults to `CLAUDE_CLI_MODEL`                                                                                                                                                                                                                                               |
+| `HARVEST`                                            | no       | `off` stops the worker from checking the harvest branches a cloud agent pushes. Default on                                                                                                                                                                                                                                                              |
+| `HARVEST_REMOTE`                                     | no       | The git remote the worker checks for harvest branches. Default `origin`                                                                                                                                                                                                                                                                                 |
 
 ## Tests
 

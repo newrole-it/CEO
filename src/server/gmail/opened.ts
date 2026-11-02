@@ -11,6 +11,7 @@ import { createLlmClient, type LlmClient } from "src/server/llm/client"
 import {
   ACTIVE_STATUSES,
   APPLICATION_STATUSES,
+  PICKABLE_STATUSES,
   statusLabel,
   type ApplicationStatus,
 } from "src/shared/applications"
@@ -221,7 +222,7 @@ export async function previewOpenedMail(
       statusLabel: statusLabel(row.status),
       likely: likely.has(row.id),
     })),
-    statuses: APPLICATION_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
+    statuses: PICKABLE_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
     used: used
       ? {
           applicationId: used.application?.id ?? null,

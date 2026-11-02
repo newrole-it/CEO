@@ -10,6 +10,7 @@
     "prepare": "husky install",
     "dev": "next dev --webpack -p 43123 -H 127.0.0.1",
     "worker": "tsx src/worker.ts",
+    "harvest": "tsx src/harvest.ts",
     "mcp": "tsx mcp/server.ts",
     "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
     "build": "next build --webpack",

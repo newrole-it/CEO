@@ -343,7 +343,8 @@ export function computeInsights(input: InsightsInput, opts: InsightsOptions = {}
     source.sent += 1
     if (replied) source.replied += 1
     if (reached[index] >= interviewRank) source.interviewing += 1
-    if (app.source !== "manual") autoTracked += 1
+    // Typed by hand somewhere: in the app, in the sheet or in a CSV.
+    if (!["manual", "sheet", "csv"].includes(app.source)) autoTracked += 1
     if (app.jobId) fromIndex += 1
     for (const event of app.events) {
       if (event.type === "status") byChannel[asChannel(event.channel)] += 1

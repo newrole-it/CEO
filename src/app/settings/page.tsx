@@ -6,6 +6,7 @@ import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { setupBack, setupPage } from "src/app/setup/back"
 import { SettingsScreen } from "./SettingsScreen"
 
 export async function generateMetadata() {
@@ -24,7 +25,12 @@ export default async function SettingsPage() {
       })
     : null
   return (
-    <SiteFrame user={user} locale={locale} width="narrow">
+    <SiteFrame
+      user={user}
+      locale={locale}
+      width="narrow"
+      setupBack={await setupBack(user?.id ?? null)}
+    >
       <header className="page-head">
         <h1 className="t-h1">{t("st.title")}</h1>
       </header>
@@ -34,6 +40,7 @@ export default async function SettingsPage() {
           linkedIn={Boolean(linked?.linkedinSub)}
           linkedInConfigured={Boolean(linkedInCredentials())}
           hasPassword={Boolean(linked?.hashedPassword)}
+          sheetAfter={await setupPage()}
         />
       ) : (
         <div className="card settings-sec">

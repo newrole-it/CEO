@@ -42,6 +42,13 @@ export default resolver.pipe(
       await ctx.session.$create({ userId: user.id, role: "USER" as const })
       return { status: "signed-in" as const }
     }
+    // An account that already exists opens the same way locally: the app listens only on this
+    // machine, and a link would need a mail server nobody has set up yet.
+    if (instant && existing && existing.role !== "GUEST") {
+      if (sessionUserId) await claimGuest(sessionUserId, existing.id)
+      await ctx.session.$create({ userId: existing.id, role: sessionRole(existing.role) })
+      return { status: "signed-in" as const }
+    }
 
     if (existing && sessionUserId === existing.id) return { status: "signed-in" as const }
 

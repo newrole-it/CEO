@@ -6,6 +6,7 @@ import { indexStats, roundDown } from "src/app/components/landing/stats"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { setupBack } from "src/app/setup/back"
 import { Onboarding, type Step } from "./Onboarding"
 
 export async function generateMetadata() {
@@ -32,7 +33,10 @@ export default async function StartPage({
     searchParams,
     invoke(getCurrentUser, null),
   ])
-  const stats = await indexStats().catch(() => ({ offers: 0, companies: null, careerPages: null }))
+  const [stats, back] = await Promise.all([
+    indexStats().catch(() => ({ offers: 0, companies: null, careerPages: null })),
+    setupBack(user?.id ?? null),
+  ])
   const firstName = user?.name?.trim().split(/\s+/)[0] ?? null
   return (
     <SiteFrame user={user} locale={locale} variant="focus">
@@ -42,6 +46,7 @@ export default async function StartPage({
         browserImport={linkedInBrowserAvailable()}
         firstName={user && user.role !== "GUEST" ? firstName : null}
         photo={user?.imageUrl ?? null}
+        after={back ?? "/jobs?welcome=1"}
         stats={{
           offers: roundDown(stats.offers),
           companies: stats.companies ? roundDown(stats.companies) : null,

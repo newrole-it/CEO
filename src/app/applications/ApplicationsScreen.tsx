@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { invoke } from "@blitzjs/rpc"
-import { ChartNoAxesColumn, ClipboardList, Download, Plus, Search } from "lucide-react"
+import { ChartNoAxesColumn, ClipboardList, Download, Plus, Search, Upload } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { numberFormat, type CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink, buttonClass } from "src/app/components/ds/Button"
@@ -11,6 +11,7 @@ import { EmptyState } from "src/app/components/ds/primitives"
 import { computeStats, matchesQuery, nextClosedAtStage } from "src/server/applications/logic"
 import { statusLabel, type ApplicationStatus } from "src/shared/applications"
 import updateApplication from "./mutations/updateApplication"
+import importApplicationsCsv from "./mutations/importApplicationsCsv"
 import { AddApplicationDialog } from "./AddApplicationDialog"
 import { ApplicationDrawer } from "./ApplicationDrawer"
 import { MailInbox } from "./MailInbox"
@@ -43,6 +44,8 @@ export function ApplicationsScreen({
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [revision, setRevision] = useState(0)
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const csvInput = useRef<HTMLInputElement>(null)
   const pushed = useRef(false)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -72,6 +75,26 @@ export function ApplicationsScreen({
     },
     [setParam]
   )
+
+  async function importFile(file: File) {
+    setImporting(true)
+    try {
+      const result = await invoke(importApplicationsCsv, { text: await file.text() })
+      if (result.error || !result.applications) {
+        toast.show({ message: t("app.import.columns"), tone: "danger", duration: 8000 })
+        return
+      }
+      setRows(result.applications.map(toRow))
+      toast.show({
+        message: t("app.import.done", { created: result.created, skipped: result.skipped }),
+      })
+    } catch {
+      toast.show({ message: t("app.import.failed"), tone: "danger" })
+    } finally {
+      setImporting(false)
+      if (csvInput.current) csvInput.current.value = ""
+    }
+  }
 
   const close = useCallback(() => {
     setOpenId(null)
@@ -194,6 +217,24 @@ export function ApplicationsScreen({
                 {t("stx.open")}
               </ButtonLink>
             ) : null}
+            <Button
+              variant="outline"
+              icon={<Upload aria-hidden />}
+              loading={importing}
+              onClick={() => csvInput.current?.click()}
+            >
+              {t("app.import")}
+            </Button>
+            <input
+              ref={csvInput}
+              type="file"
+              accept=".csv,text/csv"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void importFile(file)
+              }}
+            />
             {rows.length ? (
               <a
                 href="/applications/export"

@@ -90,7 +90,16 @@ function useMenu() {
   return { open, setOpen, ref }
 }
 
-export function CvList({ signedIn, initial }: { signedIn: boolean; initial: CvRow[] }) {
+/** `after`: /setup mid-checklist. An uploaded PDF needs no editing, so the step ends there. */
+export function CvList({
+  signedIn,
+  initial,
+  after = null,
+}: {
+  signedIn: boolean
+  initial: CvRow[]
+  after?: string | null
+}) {
   const { t, locale } = useCopy()
   const toast = useToast()
   const router = useRouter()
@@ -172,7 +181,7 @@ export function CvList({ signedIn, initial }: { signedIn: boolean; initial: CvRo
         toast.show({ message: t(key), tone: "danger" })
         return
       }
-      router.push(`/cv/${data.cv.id}`)
+      router.push(after ?? `/cv/${data.cv.id}`)
     } catch {
       toast.show({ message: t("cv.err.upload"), tone: "danger" })
     } finally {

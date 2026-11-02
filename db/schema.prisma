@@ -618,8 +618,10 @@ model Application {
   statedSalary    String?
   /// The form as sent: [{ question, answer, kind }]. Answer keeps distinct answers for reuse.
   formAnswers     Json        @default("[]")
-  /// nowarola (the web app, named before the rename to newrole.it) | extension | manual | mcp | gmail
+  /// nowarola (the web app, named before the rename to newrole.it) | extension | manual | mcp | gmail | sheet | csv
   source          String      @default("manual")
+  /// Where the offer was found, as the person wrote it in the sheet or a CSV ("LinkedIn", "polecenie")
+  origin          String?
   cvDocumentId    String?
   cvDocument      CvDocument? @relation(fields: [cvDocumentId], references: [id], onDelete: SetNull)
   createdAt       DateTime    @default(now())
@@ -628,6 +630,7 @@ model Application {
   events     ApplicationEvent[]
   answers    Answer[]
   mailEvents MailEvent[]
+  sheetRow   SheetRow?
 
   @@index([userId, status])
   @@index([userId, urlKey])
@@ -770,6 +773,25 @@ model ServiceHeartbeat {
   lastSeenAt DateTime @default(now())
 }
 
+/// One look at the harvest branches a cloud agent pushes (src/server/harvest). The newest 50 are kept.
+model HarvestImport {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// imported | nothing_new | no_branch | unavailable | failed
+  status     String
+  /// Per branch: name, commit, generatedAt and the runs its manifest lists
+  branches   Json      @default("[]")
+  /// Boards written to the index: key and the cloud read time
+  applied    Json      @default("[]")
+  boards     Int       @default(0)
+  stored     Int       @default(0)
+  closed     Int       @default(0)
+  error      String?
+
+  @@index([startedAt])
+}
+
 /// Where the applications table is mirrored: a Google Apps Script web app bound to the person's sheet.
 model SheetLink {
   id             String    @id @default(cuid())
@@ -785,8 +807,19 @@ model SheetLink {
   lastSyncedAt   DateTime?
   lastError      String?
   lastRowCount   Int?
+  /// The tab in the person's spreadsheet that newrole.it reads and writes
+  tabName        String    @default("Aplikacje")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+/// An application as newrole.it last wrote it to the sheet: tells a sheet edit from a system edit.
+model SheetRow {
+  applicationId String      @id
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  /// Hash of the row's fields as written (src/server/applications/sheet-layout.ts)
+  hash          String
+  syncedAt      DateTime
 }
 
 /// Read-only link to the person's Gmail (src/server/gmail, docs/product/plan-gmail.md).

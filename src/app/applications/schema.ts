@@ -45,6 +45,7 @@ export const SheetSettingsInput = z.object({
   spreadsheetUrl: optionalText(500),
   autoSync: z.boolean().optional(),
   includeNotes: z.boolean().optional(),
+  tabName: z.string().trim().max(100).optional(),
   test: z.boolean().optional(),
 })
 

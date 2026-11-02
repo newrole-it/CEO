@@ -11,6 +11,11 @@ export const applicationsPl = {
   "app.sub": "Każda wysłana aplikacja w jednym miejscu: etap, następny krok i notatki.",
   "app.add": "Dodaj aplikację",
   "app.export": "Eksportuj CSV",
+  "app.import": "Importuj CSV",
+  "app.import.done":
+    "Zaimportowano: {created}. Pominięto (już są albo bez firmy i stanowiska): {skipped}. Arkusz dostanie je przy najbliższej synchronizacji.",
+  "app.import.columns": "Plik musi mieć kolumny Firma i Stanowisko (albo Company i Role).",
+  "app.import.failed": "Nie udało się zaimportować pliku.",
   "app.stats.label": "Podsumowanie aplikacji",
   "app.stats.active": "Aktywne",
   "app.stats.interviewing": "W rozmowach",
@@ -45,6 +50,8 @@ export const applicationsPl = {
   "app.source.extension": "Rozszerzenie",
   "app.source.manual": "Ręcznie",
   "app.source.mcp": "Claude",
+  "app.source.sheet": "Arkusz Google",
+  "app.source.csv": "Import CSV",
   "app.openOffer": "Otwórz ofertę",
   "app.openOfferOf": "Otwórz ofertę: {title} (nowa karta)",
   "app.openDetails": "Szczegóły: {company}, {title}",
@@ -227,6 +234,7 @@ export const applicationsPl = {
   "stx.ch.mcp": "przez Claude",
   "stx.ch.extension": "z rozszerzenia",
   "stx.ch.gmail": "z Gmaila",
+  "stx.ch.sheet": "z arkusza",
   "stx.now.title": "Do zrobienia",
   "stx.now.note": "Te listy obejmują wszystkie aktywne aplikacje, niezależnie od zakresu.",
   "stx.wait.title": "Najdłużej bez odpowiedzi",
@@ -265,9 +273,15 @@ export const applicationsPl = {
   "sheet.step2.show": "Pokaż skrypt",
   "sheet.step2.hide": "Ukryj skrypt",
   "sheet.step2.copy": "Kopiuj skrypt",
+  "sheet.step2.service":
+    "Potem po lewej, obok „Usługi”, kliknij +, wybierz Google Sheets API i Dodaj. Dzięki temu zakładka będzie tabelą, a Status listą do wyboru.",
   "sheet.step3.title": "Wdróż jako aplikację internetową",
-  "sheet.step3.body":
-    "Wdróż → Nowe wdrożenie → typ „Aplikacja internetowa”. Wykonaj jako: Ja. Kto ma dostęp: Każdy. Przy zatwierdzaniu uprawnień Google pokaże ostrzeżenie „Google hasn’t verified this app”, bo to Twój własny skrypt: wybierz Advanced → Go to… (unsafe) → Allow. Na końcu skopiuj adres URL kończący się na /exec.",
+  "sheet.step3.deploy": "Wdróż → Nowe wdrożenie → typ „Aplikacja internetowa”.",
+  "sheet.step3.access":
+    "Wykonaj jako: Ja. Kto ma dostęp: Każdy. newrole.it wysyła wiersze bez logowania do Google, więc przy innym dostępie połączenie nie zadziała. Skrypt przyjmuje tylko żądania z Twoim sekretem.",
+  "sheet.step3.warning":
+    "Przy zatwierdzaniu uprawnień Google pokaże ostrzeżenie „Google hasn’t verified this app”, bo to Twój własny skrypt, a nie aplikacja ze sklepu. Wybierz Advanced → Go to… (unsafe) → Allow.",
+  "sheet.step3.copy": "Skopiuj adres URL kończący się na /exec.",
   "sheet.step4.title": "Wklej adres i wyślij test",
   "sheet.webhook": "Adres aplikacji internetowej (/exec)",
   "sheet.webhookPh": "https://script.google.com/macros/s/…/exec",
@@ -290,10 +304,22 @@ export const applicationsPl = {
   "sheet.err.network": "Brak połączenia z Google. Sprawdź internet i spróbuj ponownie.",
   "sheet.err.http": "Google odpowiedział błędem. Sprawdź, czy wdrożenie nadal istnieje.",
   "sheet.err.auth":
-    "Google prosi o logowanie. Wdróż skrypt z dostępem „Każdy” i wklej nowy adres /exec.",
+    "Google odesłał stronę zamiast odpowiedzi skryptu: wdrożenie wymaga logowania albo starsza wersja skryptu przerwała się błędem. Wdróż najnowszy skrypt z dostępem „Każdy”.",
   "sheet.err.secret": "Skrypt odrzucił sekret. Skopiuj skrypt jeszcze raz i wdróż nową wersję.",
   "sheet.err.script": "Skrypt zgłosił błąd. Wdróż najnowszą wersję skryptu.",
   "sheet.err.response": "Nieoczekiwana odpowiedź skryptu. Wdróż najnowszą wersję skryptu.",
+  "sheet.err.outdated":
+    "Skrypt w arkuszu jest w starej wersji i umie tylko zapisywać. Skopiuj nowy skrypt, wklej go w Apps Script i wdróż nową wersję.",
+  "sheet.err.foreign":
+    "Zakładka ma dane, których newrole.it nie umie odczytać, więc ich nie nadpisze. Sprawdź nagłówki kolumn albo wybierz inną zakładkę.",
+  "sheet.tab": "Zakładka w arkuszu",
+  "sheet.tabHint":
+    "Tę zakładkę newrole.it czyta i zapisuje. Gdy ma już Twoje aplikacje, przy pierwszej synchronizacji trafią do systemu, a obok zostanie ich kopia.",
+  "sheet.imported": "Z arkusza: nowe {created}, zmienione {updated}, usunięte {deleted}.",
+  "sheet.table.noService":
+    "Arkusz zapisany, ale bez tabeli: w Apps Script dodaj usługę Google Sheets API (Usługi → +) i wdróż nową wersję.",
+  "sheet.table.error":
+    "Arkusz zapisany, ale Google nie zamienił zakładki w tabelę. Szczegóły są w logu aplikacji.",
   "sheet.err.generic": "Nie udało się zsynchronizować arkusza.",
 }
 
@@ -304,6 +330,11 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.sub": "Every application you sent in one place: stage, next step and notes.",
   "app.add": "Add application",
   "app.export": "Export CSV",
+  "app.import": "Import CSV",
+  "app.import.done":
+    "Imported: {created}. Skipped (already there, or no company and role): {skipped}. The sheet gets them on the next sync.",
+  "app.import.columns": "The file needs Company and Role columns (or Firma and Stanowisko).",
+  "app.import.failed": "Couldn't import the file.",
   "app.stats.label": "Applications summary",
   "app.stats.active": "Active",
   "app.stats.interviewing": "Interviewing",
@@ -338,6 +369,8 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.source.extension": "Extension",
   "app.source.manual": "Manual",
   "app.source.mcp": "Claude",
+  "app.source.sheet": "Google Sheet",
+  "app.source.csv": "CSV import",
   "app.openOffer": "Open posting",
   "app.openOfferOf": "Open posting: {title} (new tab)",
   "app.openDetails": "Details: {company}, {title}",
@@ -517,6 +550,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "stx.ch.mcp": "via Claude",
   "stx.ch.extension": "from the extension",
   "stx.ch.gmail": "from Gmail",
+  "stx.ch.sheet": "from the sheet",
   "stx.now.title": "To do",
   "stx.now.note": "These lists cover every active application, whatever the range.",
   "stx.wait.title": "Waiting longest",
@@ -554,9 +588,15 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "sheet.step2.show": "Show script",
   "sheet.step2.hide": "Hide script",
   "sheet.step2.copy": "Copy script",
+  "sheet.step2.service":
+    "Then, on the left next to Services, click +, pick Google Sheets API and Add. The tab then becomes a table with Status as a dropdown.",
   "sheet.step3.title": "Deploy it as a web app",
-  "sheet.step3.body":
-    "Deploy → New deployment → type “Web app”. Execute as: Me. Who has access: Anyone. When you approve the permissions, Google warns “Google hasn’t verified this app” because this is your own script: choose Advanced → Go to… (unsafe) → Allow. Then copy the URL ending in /exec.",
+  "sheet.step3.deploy": "Deploy → New deployment → type “Web app”.",
+  "sheet.step3.access":
+    "Execute as: Me. Who has access: Anyone. newrole.it sends the rows without signing in to Google, so any other access breaks the connection. The script only accepts requests that carry your secret.",
+  "sheet.step3.warning":
+    "When you approve the permissions, Google warns “Google hasn’t verified this app” because this is your own script, not a published app. Choose Advanced → Go to… (unsafe) → Allow.",
+  "sheet.step3.copy": "Copy the URL ending in /exec.",
   "sheet.step4.title": "Paste the URL and send a test",
   "sheet.webhook": "Web app URL (/exec)",
   "sheet.webhookPh": "https://script.google.com/macros/s/…/exec",
@@ -579,11 +619,23 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "sheet.err.network": "Couldn't reach Google. Check your connection and try again.",
   "sheet.err.http": "Google answered with an error. Check that the deployment still exists.",
   "sheet.err.auth":
-    "Google asks to sign in. Deploy the script with access “Anyone” and paste the new /exec URL.",
+    "Google sent a page instead of the script's answer: the deployment needs a sign-in, or an older script stopped on an error. Deploy the latest script with access “Anyone”.",
   "sheet.err.secret":
     "The script rejected the secret. Copy the script again and deploy a new version.",
   "sheet.err.script": "The script reported an error. Deploy the latest version of the script.",
   "sheet.err.response":
     "Unexpected answer from the script. Deploy the latest version of the script.",
+  "sheet.err.outdated":
+    "The script in your sheet is an old version that can only write. Copy the new script, paste it into Apps Script and deploy a new version.",
+  "sheet.err.foreign":
+    "The tab holds data newrole.it can't read, so it won't write over it. Check the column headers or pick another tab.",
+  "sheet.tab": "Tab in the sheet",
+  "sheet.tabHint":
+    "newrole.it reads and writes this tab. If it already holds your applications, the first sync brings them in and keeps a copy of the tab next to it.",
+  "sheet.imported": "From the sheet: {created} new, {updated} changed, {deleted} deleted.",
+  "sheet.table.noService":
+    "Sheet written, but not as a table: add the Google Sheets API service in Apps Script (Services → +) and deploy a new version.",
+  "sheet.table.error":
+    "Sheet written, but Google did not turn the tab into a table. The details are in the app log.",
   "sheet.err.generic": "Couldn't sync the sheet.",
 }

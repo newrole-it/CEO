@@ -3,6 +3,7 @@ import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { setupBack } from "src/app/setup/back"
 import { latestCvAudit } from "src/server/cv/audit-store"
 import { getCv } from "src/server/cv/service"
 import { tailorContext } from "src/server/cv/tailor"
@@ -30,7 +31,12 @@ export default async function CvEditorPage({
   const startAudit = query.audit === "1"
   const tailor = await tailorContext(user.id, cv)
   return (
-    <SiteFrame user={user} locale={locale} variant="bare">
+    <SiteFrame
+      user={user}
+      locale={locale}
+      variant="bare"
+      setupBack={await setupBack(user?.id ?? null)}
+    >
       {cv.kind === "EDITABLE" && cv.content ? (
         <CvEditor
           id={cv.id}

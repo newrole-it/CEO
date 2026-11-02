@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import { Puzzle } from "lucide-react"
@@ -49,12 +50,16 @@ const GROUPS: { title: CopyKey; rows: Row[] }[] = [
 export function ApplicantForm({
   saved,
   effective,
+  after = null,
 }: {
   saved: ApplicantInfo
   effective: ApplicantInfo
+  /** /setup mid-checklist: saving ends the step there */
+  after?: string | null
 }) {
   const { t } = useCopy()
   const toast = useToast()
+  const router = useRouter()
   const [save, { isPending }] = useMutation(saveApplicantDetails)
   const [values, setValues] = useState<ApplicantInfo>(saved)
   const [defaults, setDefaults] = useState<ApplicantInfo>(effective)
@@ -68,6 +73,7 @@ export function ApplicantForm({
       setDefaults(result.effective)
       setDirty(false)
       toast.show({ message: t("apl.saved") })
+      if (after) router.push(after)
     } catch {
       toast.show({ message: t("err.save"), tone: "danger" })
     }

@@ -12,7 +12,7 @@ import {
   PartyPopper,
 } from "lucide-react"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { CodeBlock } from "src/app/components/ds/interactive"
+import { CodeBlock, Modal, ModalHead } from "src/app/components/ds/interactive"
 import { Banner, Badge } from "src/app/components/ds/primitives"
 import { SETUP_SKIP_COOKIE } from "src/app/components/site/links"
 import { useCopy } from "src/app/i18n/Locale"
@@ -36,6 +36,17 @@ const STATE_ICON: Record<StepState, typeof Circle> = {
 }
 
 type Hello = { connected: boolean; version: string | null }
+
+/** Set once the "everything connected" dialog was seen, so it shows once per browser. */
+const CELEBRATED_KEY = "nr-setup-celebrated"
+
+function celebrated(): boolean {
+  try {
+    return typeof window !== "undefined" && window.localStorage.getItem(CELEBRATED_KEY) === "1"
+  } catch {
+    return false
+  }
+}
 
 /** The extension's content script says hello on this page, so the page knows it is installed. */
 function useExtensionHello() {
@@ -104,6 +115,18 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
   )
   const next = nextStep(steps)
   const count = progress(steps)
+  // Every step, optional ones too; the index may still be filling.
+  const complete = steps.every((step) => step.state === "done" || step.state === "wait")
+  const [seen, setSeen] = useState(celebrated)
+
+  function closeCelebration() {
+    try {
+      window.localStorage.setItem(CELEBRATED_KEY, "1")
+    } catch {
+      // Without storage the dialog may show again on the next visit. That is all.
+    }
+    setSeen(true)
+  }
 
   function skip() {
     document.cookie = `${SETUP_SKIP_COOKIE}=1; path=/; max-age=31536000; samesite=lax`
@@ -188,6 +211,21 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
           </button>
         </div>
       )}
+
+      <Modal open={complete && !seen} onClose={closeCelebration} labelledBy="setup-done-title">
+        <ModalHead title={t("setup.done.title")} id="setup-done-title" onClose={closeCelebration} />
+        <div className="modal__body">
+          <p className="muted">{t("setup.done.body")}</p>
+        </div>
+        <div className="modal__foot">
+          <Button variant="ghost" onClick={closeCelebration}>
+            {t("setup.done.stay")}
+          </Button>
+          <ButtonLink href="/jobs" variant="primary" onClick={closeCelebration}>
+            {t("setup.done.cta")}
+          </ButtonLink>
+        </div>
+      </Modal>
     </div>
   )
 }

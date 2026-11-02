@@ -108,7 +108,7 @@ export function fromDateInput(value: string): Date | null {
 
 export function sourceKey(source: string): CopyKey {
   return (
-    ["nowarola", "extension", "manual", "mcp", "gmail"].includes(source)
+    ["nowarola", "extension", "manual", "mcp", "gmail", "sheet", "csv"].includes(source)
       ? `app.source.${source}`
       : "app.source.manual"
   ) as CopyKey

@@ -5,8 +5,17 @@ import { maybeSyncOfferSearch } from "src/server/discovery/offer-sync"
 import { offerIndexEnabled } from "src/server/offer-index"
 import { maybeExpandSimilar, maybeHuntHiddenOffers } from "src/server/discovery/hidden-offers"
 import { executeSearch } from "src/server/search/pipeline"
-import { enqueueSearch, GMAIL_SYNC, INDEX_WATCHED, SHEET_SYNC } from "src/server/queue/enqueue"
-import { syncSheet } from "src/server/applications/sheet"
+import {
+  enqueueHarvestImport,
+  enqueueSearch,
+  GMAIL_SYNC,
+  HARVEST_CHECK_MS,
+  HARVEST_IMPORT,
+  INDEX_WATCHED,
+  SHEET_SYNC,
+} from "src/server/queue/enqueue"
+import { harvestEnabled, importHarvest } from "src/server/harvest/import"
+import { enqueueStaleSheetSyncs, syncSheet } from "src/server/applications/sheet"
 import { maybeSyncCompanyAliases } from "src/server/companies/aliases"
 import { beat } from "src/server/setup/heartbeat"
 import { indexNextWatched, indexWatchedPage } from "src/server/watchlist/index-watched"
@@ -181,6 +190,8 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
       if (!userId) throw new Error("Task is missing userId")
       const result = await syncSheet(userId)
       if (result.status === "failed") throw new Error(result.message)
+    } else if (task.type === HARVEST_IMPORT) {
+      await importHarvest()
     } else if (task.type === GMAIL_SYNC) {
       // The mailbox is no longer searched: a message is used only when the person picks it in the
       // extension. A task queued before that change finishes without doing anything.
@@ -215,6 +226,7 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
 export async function workerLoop(signal?: { stopped: boolean }) {
   let backoff = 1000
   let lastRecover = 0
+  let lastHarvestCheck = 0
   // On its own timer: a long crawl must not look like a stopped worker on /setup.
   void beat("worker")
   setInterval(() => void beat("worker"), SERVICE_BEAT_MS).unref()
@@ -222,7 +234,17 @@ export async function workerLoop(signal?: { stopped: boolean }) {
     try {
       if (Date.now() - lastRecover > 60_000) {
         await recoverStaleTasks()
+        // Edits made in the sheet come in on this beat too.
+        await enqueueStaleSheetSyncs()
         lastRecover = Date.now()
+      }
+      if (
+        offerIndexEnabled() &&
+        harvestEnabled() &&
+        Date.now() - lastHarvestCheck > HARVEST_CHECK_MS
+      ) {
+        await enqueueHarvestImport()
+        lastHarvestCheck = Date.now()
       }
       const did = await workOnce(signal)
       backoff = 1000

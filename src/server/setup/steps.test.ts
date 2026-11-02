@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { buildSteps, isReady, nextStep, progress, type SetupFacts, type StepId } from "./steps"
+import {
+  buildSteps,
+  isReady,
+  nextStep,
+  progress,
+  setupDone,
+  type SetupFacts,
+  type StepId,
+} from "./steps"
 
 const now = new Date("2026-10-30T12:00:00Z")
 
@@ -51,7 +59,7 @@ describe("buildSteps", () => {
     const down = step(fresh({ db: { ok: false, pendingMigrations: 0 } }), "db")
     expect(down).toMatchObject({ state: "error", note: "down", command: "docker compose up -d db" })
     const behind = step(fresh({ db: { ok: true, pendingMigrations: 2 } }), "db")
-    expect(behind).toMatchObject({ state: "error", command: "npm run db:deploy", vars: { n: 2 } })
+    expect(behind).toMatchObject({ state: "error", command: "npm run go", vars: { n: 2 } })
   })
 
   it("calls the worker stopped once its heartbeat is old", () => {
@@ -164,5 +172,27 @@ describe("nextStep", () => {
     }
     expect(nextStep(buildSteps(all))).toBeNull()
     expect(progress(buildSteps(all))).toEqual({ done: 10, total: 11 })
+  })
+})
+
+describe("setupDone", () => {
+  const finished = fresh({
+    user: { signedIn: true, guest: false, email: "a@b.pl" },
+    profile: true,
+    details: { firstName: true, email: true, phone: true },
+    cvCount: 1,
+    extension: { ...fresh().extension, tokens: 1, lastUsedAt: now },
+    mcp: { lastSeenAt: now, command: null },
+  })
+
+  it("is done with only optional steps and the filling index left", () => {
+    expect(setupDone(buildSteps(finished))).toBe(true)
+  })
+
+  it("is not done while a recommended step waits, even once the app is ready", () => {
+    const noCv = { ...finished, cvCount: 0 }
+    expect(isReady(noCv)).toBe(true)
+    expect(setupDone(buildSteps(noCv))).toBe(false)
+    expect(setupDone(buildSteps(fresh()))).toBe(false)
   })
 })

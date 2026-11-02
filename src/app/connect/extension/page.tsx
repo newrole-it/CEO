@@ -4,6 +4,7 @@ import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { setupBack } from "src/app/setup/back"
 import { PairExtension } from "./PairExtension"
 
 export async function generateMetadata() {
@@ -16,7 +17,12 @@ export default async function ConnectExtensionPage() {
   const t = translator(locale)
   const signedIn = Boolean(user && user.role !== "GUEST")
   return (
-    <SiteFrame user={user} locale={locale} width="narrow">
+    <SiteFrame
+      user={user}
+      locale={locale}
+      width="narrow"
+      setupBack={await setupBack(user?.id ?? null)}
+    >
       {signedIn ? (
         <PairExtension />
       ) : (

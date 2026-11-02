@@ -47,7 +47,14 @@ export type CrawlSnapshot = {
   paceSeconds: number | null
   phase: "reading" | "working" | "paused" | "idle" | "done"
   current: { company: string; provider: string; slow: boolean }[]
-  last: { company: string; provider: string; at: string; jobs: number; complete: boolean; slow: boolean } | null
+  last: {
+    company: string
+    provider: string
+    at: string
+    jobs: number
+    complete: boolean
+    slow: boolean
+  } | null
   recent: CrawlActivity[]
   failures: { company: string; provider: string; note: string }[]
   activeSearches: number
@@ -63,7 +70,8 @@ function reading(
 ): boolean {
   if (board.fetchNote !== INDEXING_NOTE || !board.lastCheckedAt) return false
   if (now.getTime() - board.lastCheckedAt.getTime() > INDEX_STALE_MS) return false
-  if (board.lastSuccessfulFetchAt && board.lastSuccessfulFetchAt >= board.lastCheckedAt) return false
+  if (board.lastSuccessfulFetchAt && board.lastSuccessfulFetchAt >= board.lastCheckedAt)
+    return false
   return true
 }
 
@@ -104,7 +112,11 @@ export function buildCrawlSnapshot(args: {
   const current = boards
     .filter((board) => reading(board, now))
     .sort((a, b) => b.lastCheckedAt!.getTime() - a.lastCheckedAt!.getTime())
-    .map((board) => ({ company: board.company, provider: board.provider, slow: slow(board.provider) }))
+    .map((board) => ({
+      company: board.company,
+      provider: board.provider,
+      slow: slow(board.provider),
+    }))
   const recent = [...fetchedBoards]
     .sort((a, b) => b.lastSuccessfulFetchAt!.getTime() - a.lastSuccessfulFetchAt!.getTime())
     .slice(0, 12)
@@ -225,7 +237,9 @@ export type FetchProgress = {
  * Where one board stands right now. A due board counts as waiting even after a failure,
  * because the worker is about to try it again.
  */
-function fetchState(board: FetchBoard, now: Date): "reading" | "waiting" | "failed" | "partial" | "ready" {
+export type FetchState = "reading" | "waiting" | "failed" | "partial" | "ready"
+
+export function fetchState(board: FetchBoard, now: Date): FetchState {
   if (reading(board, now)) return "reading"
   if (!board.nextCheckAt || board.nextCheckAt <= now) return "waiting"
   if (board.lastErrorCode) return "failed"
@@ -273,7 +287,10 @@ export function buildFetchProgress(args: {
   const watched = new Map<string, boolean>()
   for (const { board, state } of states) {
     if (!board.watchedCompanyId) continue
-    watched.set(board.watchedCompanyId, (watched.get(board.watchedCompanyId) ?? true) && state === "ready")
+    watched.set(
+      board.watchedCompanyId,
+      (watched.get(board.watchedCompanyId) ?? true) && state === "ready"
+    )
   }
   const edge = (dates: Date[], pick: (...times: number[]) => number) =>
     dates.length ? new Date(pick(...dates.map((date) => date.getTime()))).toISOString() : null
@@ -294,7 +311,9 @@ export function buildFetchProgress(args: {
       Math.max
     ),
     nextCheckAt: edge(
-      boards.flatMap((board) => (board.nextCheckAt && board.nextCheckAt > now ? board.nextCheckAt : [])),
+      boards.flatMap((board) =>
+        board.nextCheckAt && board.nextCheckAt > now ? board.nextCheckAt : []
+      ),
       Math.min
     ),
   }

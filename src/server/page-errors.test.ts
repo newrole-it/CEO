@@ -28,6 +28,7 @@ vi.mock("src/app/components/site/SiteFrame", () => ({ SiteFrame: () => null }))
 vi.mock("src/app/components/ds/primitives", () => ({ LinkTabs: () => null }))
 vi.mock("src/app/jobs/[id]/OfferPage", () => ({ OfferPage: () => null }))
 vi.mock("src/app/profile/ProfileEditor", () => ({ ProfileEditor: () => null }))
+vi.mock("src/app/setup/back", () => ({ setupBack: async () => null }))
 vi.mock("src/app/users/queries/getCurrentUser", () => ({ default: "getCurrentUser" }))
 vi.mock("src/app/profile/queries/getProfile", () => ({ default: "getProfile" }))
 vi.mock("src/app/blitz-server", () => ({

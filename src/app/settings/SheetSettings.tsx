@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { invoke } from "@blitzjs/rpc"
 import type { PromiseReturnType } from "blitz"
 import { ChevronRight, ExternalLink, RefreshCw, Unplug } from "lucide-react"
@@ -23,14 +24,19 @@ const WEBHOOK =
 const SPREADSHEET = /^https:\/\/docs\.google\.com\/spreadsheets\/\S+$/
 const STALE_QUEUE_MS = 2 * 60_000
 
-/** Settings → Google Sheet (stream A). Loads its own data; rendered inside SettingsScreen. */
-export function SheetSettings() {
+/**
+ * Settings → Google Sheet (stream A). Loads its own data; rendered inside SettingsScreen.
+ * `after`: /setup on a local install, where a working connection goes back to the checklist.
+ */
+export function SheetSettings({ after = null }: { after?: string | null }) {
   const { t, locale } = useCopy()
   const toast = useToast()
+  const router = useRouter()
   const [data, setData] = useState<Settings | null>(null)
   const [state, setState] = useState<"loading" | "ready" | "error">("loading")
   const [webhook, setWebhook] = useState("")
   const [sheetUrl, setSheetUrl] = useState("")
+  const [tabName, setTabName] = useState("")
   const [fieldError, setFieldError] = useState<{ webhook?: string; sheet?: string }>({})
   const [busy, setBusy] = useState<null | "test" | "sync" | "toggle" | "disconnect">(null)
   const [showScript, setShowScript] = useState(false)
@@ -42,6 +48,7 @@ export function SheetSettings() {
       setData(next)
       setWebhook(next.status.webhookUrl ?? "")
       setSheetUrl(next.status.spreadsheetUrl ?? "")
+      setTabName(next.status.tabName)
       setState("ready")
     } catch {
       setState("error")
@@ -59,7 +66,14 @@ export function SheetSettings() {
     setData((current) => (current ? { ...current, status: reply.status } : current))
     const sync = reply.sync
     if (!sync) return
-    if (sync.status === "synced") toast.show({ message: t("sheet.ok", { n: sync.rows }) })
+    const imported = sync.imported
+    if (
+      sync.status === "synced" &&
+      imported &&
+      imported.created + imported.updated + imported.deleted
+    )
+      toast.show({ message: t("sheet.imported", imported), duration: 8000 })
+    else if (sync.status === "synced") toast.show({ message: t("sheet.ok", { n: sync.rows }) })
     else if (sync.status === "not-configured")
       toast.show({ message: t("sheet.notConnected"), tone: "danger" })
     else
@@ -67,6 +81,11 @@ export function SheetSettings() {
         message: errorText(reply.status) ?? t("sheet.err.generic"),
         tone: "danger",
         duration: 8000,
+      })
+    if (sync.status === "synced" && (sync.table === "no-service" || sync.table === "error"))
+      toast.show({
+        message: t(sync.table === "error" ? "sheet.table.error" : "sheet.table.noService"),
+        duration: 10000,
       })
   }
 
@@ -81,13 +100,14 @@ export function SheetSettings() {
     if (nextErrors.webhook || nextErrors.sheet) return
     setBusy("test")
     try {
-      report(
-        await invoke(saveSheetSettings, {
-          webhookUrl: hook,
-          spreadsheetUrl: sheet || null,
-          test: true,
-        })
-      )
+      const reply = await invoke(saveSheetSettings, {
+        webhookUrl: hook,
+        spreadsheetUrl: sheet || null,
+        tabName: tabName.trim(),
+        test: true,
+      })
+      report(reply)
+      if (after && reply.sync?.status === "synced") router.push(after)
     } catch {
       toast.show({ message: t("err.save"), tone: "danger" })
     } finally {
@@ -161,6 +181,7 @@ export function SheetSettings() {
       <li className="sheet-step">
         <h3>{t("sheet.step2.title")}</h3>
         <p className="t-sm muted">{t("sheet.step2.body")}</p>
+        <p className="t-sm muted">{t("sheet.step2.service")}</p>
         <div className="stack-sm">
           <div className="row">
             <CopyButton text={data.script} label={t("sheet.step2.copy")} variant="primary" />
@@ -178,7 +199,12 @@ export function SheetSettings() {
       </li>
       <li className="sheet-step">
         <h3>{t("sheet.step3.title")}</h3>
-        <p className="t-sm muted">{t("sheet.step3.body")}</p>
+        <ul className="t-sm muted">
+          <li>{t("sheet.step3.deploy")}</li>
+          <li>{t("sheet.step3.access")}</li>
+          <li>{t("sheet.step3.warning")}</li>
+          <li>{t("sheet.step3.copy")}</li>
+        </ul>
       </li>
       <li className="sheet-step">
         <h3>{t("sheet.step4.title")}</h3>
@@ -221,6 +247,17 @@ export function SheetSettings() {
               value={sheetUrl}
               aria-invalid={Boolean(fieldError.sheet) || undefined}
               onChange={(event) => setSheetUrl(event.target.value)}
+            />
+          </Field>
+          <Field label={t("sheet.tab")} htmlFor="sheet-tab" hint={t("sheet.tabHint")}>
+            <input
+              id="sheet-tab"
+              className="input"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Aplikacje"
+              value={tabName}
+              onChange={(event) => setTabName(event.target.value)}
             />
           </Field>
           <div>

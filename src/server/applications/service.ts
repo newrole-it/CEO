@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import {
+  DELETED_STATUS,
   isApplicationStatus,
   type ApplicationSource,
   type ApplicationStatus,
@@ -157,6 +158,63 @@ export async function findJobByUrl(url: string): Promise<IndexedJob | null> {
   )
 }
 
+/** The indexed offer with exactly this company and role (any case), when only one has them. */
+export async function findJobByName(company: string, title: string): Promise<IndexedJob | null> {
+  const jobs = await db.job.findMany({
+    where: {
+      title: { equals: title.trim(), mode: "insensitive" },
+      company: { name: { equals: company.trim(), mode: "insensitive" } },
+    },
+    orderBy: { lastSeenAt: "desc" },
+    take: 2,
+    select: jobSelect,
+  })
+  return jobs.length === 1 ? jobs[0] : null
+}
+
+/**
+ * Applications typed by hand (sheet, CSV) without a link that name an offer in the index: they get
+ * its link and, when the offer has them, its salary range and location. Only empty fields change.
+ */
+export async function linkApplicationsToIndex(userId: number): Promise<number> {
+  const apps = await db.application.findMany({
+    where: { userId, jobId: null, url: null },
+    select: { id: true, company: true, title: true, salaryText: true, location: true },
+  })
+  if (!apps.length) return 0
+  const taken = new Set(
+    (
+      await db.application.findMany({
+        where: { userId, jobId: { not: null } },
+        select: { jobId: true },
+      })
+    ).map((row) => row.jobId)
+  )
+  let linked = 0
+  for (const app of apps) {
+    const job = await findJobByName(app.company, app.title)
+    if (!job || taken.has(job.id)) continue
+    taken.add(job.id)
+    const url = jobUrl(job)
+    await db.$transaction(async (tx) => {
+      await tx.application.update({
+        where: { id: app.id },
+        data: {
+          jobId: job.id,
+          url,
+          urlKey: urlKey(url),
+          salaryText:
+            app.salaryText ?? formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency),
+          location: app.location ?? job.locationText,
+        },
+      })
+      await markJobApplied(tx, userId, job.id, "web")
+    })
+    linked += 1
+  }
+  return linked
+}
+
 /** Marks the offer as applied in the feed too (OfferFeedback), keeping what was liked about it. */
 async function markJobApplied(
   tx: Prisma.TransactionClient,
@@ -198,6 +256,15 @@ export async function createApplication(input: {
   source: ApplicationSource
   channel: Channel
   cvDocumentId?: string | null
+  /** From a sheet row or a CSV line */
+  stageNote?: string | null
+  statedSalary?: string | null
+  nextStep?: string | null
+  nextStepAt?: Date | null
+  contact?: string | null
+  origin?: string | null
+  /** The sheet sync itself: no new sync for this change */
+  quiet?: boolean
 }): Promise<{ application: ApplicationView; created: boolean }> {
   const { userId } = input
   if (input.status !== undefined && !isApplicationStatus(input.status)) {
@@ -297,6 +364,12 @@ export async function createApplication(input: {
         appliedAt: input.appliedAt ?? now,
         statusChangedAt: now,
         notes,
+        stageNote: cleanText(input.stageNote, LIMITS.stageNote),
+        statedSalary: cleanText(input.statedSalary, LIMITS.statedSalary),
+        nextStep: cleanText(input.nextStep, LIMITS.nextStep),
+        nextStepAt: input.nextStepAt ?? null,
+        contact: cleanText(input.contact, LIMITS.contact),
+        origin: cleanText(input.origin, LIMITS.origin),
         source: input.source,
         cvDocumentId,
         events: {
@@ -308,7 +381,7 @@ export async function createApplication(input: {
     return { row, created: true, changed: true }
   })
 
-  if (result.changed) await scheduleSheetSync(userId)
+  if (result.changed && !input.quiet) await scheduleSheetSync(userId)
   return { application: toApplicationView(result.row), created: result.created }
 }
 
@@ -371,8 +444,11 @@ export async function updateApplication(input: {
   statedSalary?: string | null
   appliedAt?: Date
   cvDocumentId?: string | null
+  origin?: string | null
+  /** The sheet sync itself: no new sync for this change */
+  quiet?: boolean
 }): Promise<ApplicationView> {
-  const { userId, id, channel, ...patch } = input
+  const { userId, id, channel, quiet, ...patch } = input
   const current = await ownApplication(userId, id)
   if (patch.cvDocumentId) await assertCv(userId, patch.cvDocumentId)
   const now = new Date()
@@ -410,7 +486,7 @@ export async function updateApplication(input: {
     }
     return updated
   })
-  await scheduleSheetSync(userId)
+  if (!quiet) await scheduleSheetSync(userId)
   return toApplicationView(row)
 }
 
@@ -531,7 +607,7 @@ export async function findApplicationByUrl(
 
 export async function applicationStats(userId: number): Promise<ApplicationStats> {
   const rows = await db.application.findMany({
-    where: { userId },
+    where: { userId, status: { not: DELETED_STATUS } },
     select: { status: true, closedAtStage: true, nextStepAt: true },
   })
   return computeStats(rows, new Date())
@@ -553,7 +629,7 @@ function hasPickedTags(value: unknown): boolean {
 export async function loadInsightsInput(userId: number): Promise<InsightsInput> {
   const [applications, feedback, answers] = await Promise.all([
     db.application.findMany({
-      where: { userId },
+      where: { userId, status: { not: DELETED_STATUS } },
       orderBy: { appliedAt: "desc" },
       select: {
         id: true,

@@ -5,6 +5,7 @@ import { cx } from "src/app/components/ds/cx"
 import {
   ACTIVE_STATUSES,
   CLOSED_STATUSES,
+  DELETED_STATUS,
   statusLabel,
   statusTone,
   type ApplicationStatus,
@@ -52,6 +53,10 @@ export function StatusSelect({
             {statusLabel(status, locale)}
           </option>
         ))}
+        {/* Only on a row deleted from the sheet: picking another status brings it back. */}
+        {value === DELETED_STATUS ? (
+          <option value={DELETED_STATUS}>{statusLabel(DELETED_STATUS, locale)}</option>
+        ) : null}
       </optgroup>
     </select>
   )

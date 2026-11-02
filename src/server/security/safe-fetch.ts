@@ -3,6 +3,7 @@ import { lookup } from "dns/promises"
 import { isIP } from "net"
 import { Agent } from "undici"
 import { reserveHostSlot } from "src/server/crawler/host-pace"
+import { harvestMode } from "src/server/harvest/mode"
 import { fetchUserAgent } from "src/server/crawler/hygiene"
 import { assertSourcePolicy } from "./source-policy"
 import { assertPublicAddresses, assertSafeUrl, UnsafeUrlError } from "./url-safety"
@@ -60,7 +61,7 @@ const defaultLookup: LookupFn = async (hostname) => {
 async function waitForHost(host: string, minIntervalMs: number): Promise<void> {
   const interval = HOST_INTERVAL_MS[host] ?? minIntervalMs
   if (interval <= 0) return
-  if (!process.env.VITEST) {
+  if (!process.env.VITEST && !harvestMode()) {
     try {
       // Shared by every process on the database; the in-memory slot below is the fallback.
       const delay = await reserveHostSlot(host, interval)

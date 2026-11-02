@@ -5,6 +5,7 @@ import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { setupBack } from "src/app/setup/back"
 import { mcpUserCommand, shellQuote } from "src/server/setup/mcp-command"
 import { Connect, type ToolKey } from "./Connect"
 
@@ -41,7 +42,12 @@ export default async function ConnectPage() {
   const repo = process.cwd()
   const [userCommand, tools] = await Promise.all([mcpUserCommand(repo), availableTools(repo)])
   return (
-    <SiteFrame user={user} locale={locale} width="narrow">
+    <SiteFrame
+      user={user}
+      locale={locale}
+      width="narrow"
+      setupBack={await setupBack(user?.id ?? null)}
+    >
       <Connect
         repoCommand={userCommand ? `cd ${shellQuote(repo)} && claude` : null}
         userCommand={userCommand}

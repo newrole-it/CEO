@@ -5,6 +5,7 @@ import { cvEn, cvPl } from "./copy-cv"
 import { extensionEn, extensionPl } from "./copy-extension"
 import { gmailEn, gmailPl } from "./copy-gmail"
 import { setupEn, setupPl } from "./copy-setup"
+import { syncEn, syncPl } from "./copy-sync"
 import { tailorEn, tailorPl } from "./copy-tailor"
 
 export type Locale = "pl" | "en"
@@ -656,6 +657,9 @@ const basePl = {
   "login.sent": "Sprawdź skrzynkę. Link działa 15 minut.",
   "login.sent.local": "Lokalnie link jest w logu serwera.",
   "login.limited": "Za dużo linków dla tego adresu. Odczekaj godzinę i spróbuj ponownie.",
+  "login.local.sub":
+    "Aplikacja działa na Twoim komputerze, więc e-mail od razu otwiera konto. Nic nie wysyłamy.",
+  "login.local.cta": "Dalej",
   "login.li": "Zaloguj przez LinkedIn",
   "login.li.setup": "Skonfiguruj LinkedIn",
   "login.owner": "Zaloguj hasłem",
@@ -727,6 +731,7 @@ const pl = {
   ...answersPl,
   ...extensionPl,
   ...setupPl,
+  ...syncPl,
   ...gmailPl,
   ...tailorPl,
 }
@@ -741,6 +746,7 @@ const en: Dict = {
   ...answersEn,
   ...extensionEn,
   ...setupEn,
+  ...syncEn,
   ...gmailEn,
   ...tailorEn,
   skip: "Skip to content",
@@ -1373,6 +1379,9 @@ const en: Dict = {
   "login.sent": "Check your inbox. The link works for 15 minutes.",
   "login.sent.local": "Locally, the link is in the server log.",
   "login.limited": "Too many links for this address. Wait an hour and try again.",
+  "login.local.sub":
+    "The app runs on your computer, so your email opens the account right away. Nothing is sent.",
+  "login.local.cta": "Continue",
   "login.li": "Sign in with LinkedIn",
   "login.li.setup": "Set up LinkedIn",
   "login.owner": "Sign in with a password",

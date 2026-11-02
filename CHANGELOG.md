@@ -8,6 +8,8 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- A Sync tab (/sync): whether the worker runs, what it reads now, what waits, what failed, every board's last and next read, the task queue, and the offers cloud agents brought in.
+- Offers can be read while this computer is off: a scheduled Claude Code, Cursor or Codex task runs npm run harvest, which pushes the offers to a private git branch, and the worker brings them in when it runs again. /sync gives the prompt and the hosts to allow.
 - Search in a country: the list shows offers there plus remote roles open to people there. Your profile's country is the default, or your browser's region before you have a profile. Pick another country in the Where filter, type it in the search ("w USA", "Germany"), or choose All countries. Claude's jobs_search and jobs_for_me take a country too.
 - Offers are placed in a country from their location text in any country, including US, Canadian and Australian states, so many more of them show their country.
 - A public changelog: CHANGELOG.md and the /changelog page, linked from the footer.

@@ -535,8 +535,15 @@ th[aria-sort="descending"] .apps-sort svg {
   padding-top: 3px;
 }
 .sheet-step > div,
-.sheet-step > p {
+.sheet-step > p,
+.sheet-step > ul {
   grid-column: 2;
+}
+.sheet-step > ul {
+  display: grid;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
 }
 .sheet-step .code pre {
   max-height: 260px;

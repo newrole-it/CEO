@@ -35,6 +35,7 @@ const CHANNEL_KEY: Record<Channel, CopyKey> = {
   mcp: "stx.ch.mcp",
   extension: "stx.ch.extension",
   gmail: "stx.ch.gmail",
+  sheet: "stx.ch.sheet",
 }
 
 const OUTCOMES = ["ACCEPTED", "REJECTED", "WITHDRAWN", "GHOSTED"] as const

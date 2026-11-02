@@ -4,6 +4,7 @@ import { LinkTabs } from "src/app/components/ds/primitives"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { setupBack } from "src/app/setup/back"
 import { getPreferenceSummary } from "src/server/preferences/model"
 import { ProfileEditor } from "./ProfileEditor"
 import getProfile from "./queries/getProfile"
@@ -29,7 +30,12 @@ export default async function ProfilePage() {
     : [null, null]
   const signedIn = Boolean(user && user.role !== "GUEST")
   return (
-    <SiteFrame user={user} locale={locale} width="narrow">
+    <SiteFrame
+      user={user}
+      locale={locale}
+      width="narrow"
+      setupBack={await setupBack(user?.id ?? null)}
+    >
       <header className="page-head">
         <h1 className="t-h1">{t("pr.title")}</h1>
         <p>{t("pr.sub")}</p>
@@ -46,7 +52,11 @@ export default async function ProfilePage() {
           />
         </div>
       ) : null}
-      <ProfileEditor initial={profile?.draft ?? null} guest={Boolean(user && !signedIn)} summary={summary} />
+      <ProfileEditor
+        initial={profile?.draft ?? null}
+        guest={Boolean(user && !signedIn)}
+        summary={summary}
+      />
     </SiteFrame>
   )
 }

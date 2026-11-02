@@ -83,13 +83,15 @@ export function isReady(facts: {
 function dbStep(db: SetupFacts["db"]): SetupStep {
   const base = { id: "db", group: "run", importance: "required" } as const
   if (!db.ok) return { ...base, state: "error", note: "down", command: "docker compose up -d db" }
+  // Not `npm run db:deploy`: it only migrates, and the running app and worker keep the old
+  // database client. A stop and `npm run go` migrates, regenerates the client and starts both.
   if (db.pendingMigrations > 0) {
     return {
       ...base,
       state: "error",
       note: "pending",
       vars: { n: db.pendingMigrations },
-      command: "npm run db:deploy",
+      command: "npm run go",
     }
   }
   return { ...base, state: "done", note: "ok" }
@@ -223,6 +225,13 @@ export function nextStep(steps: SetupStep[]): SetupStep | null {
     steps.find((step) => step.state === "todo" && step.importance !== "optional") ??
     steps.find((step) => step.state !== "done" && step.state !== "wait") ??
     null
+  )
+}
+
+/** Nothing left but optional steps: setup steps stop sending people back to /setup. */
+export function setupDone(steps: SetupStep[]): boolean {
+  return steps.every(
+    (step) => step.importance === "optional" || step.state === "done" || step.state === "wait"
   )
 }
 

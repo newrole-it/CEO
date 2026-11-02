@@ -18,7 +18,9 @@ import { UrlToasts } from "./UrlToasts"
 
 export type { ShellUser }
 
-async function navCounts(userId: number): Promise<{ liked: number; newAtWatched: number; hasProfile: boolean }> {
+async function navCounts(
+  userId: number
+): Promise<{ liked: number; newAtWatched: number; hasProfile: boolean }> {
   const jar = await cookies()
   const seen = Number(jar.get(COMPANIES_SEEN_COOKIE)?.value)
   const since = Number.isFinite(seen) && seen > 0 ? new Date(seen) : undefined
@@ -47,6 +49,7 @@ export async function SiteFrame({
   variant = "page",
   width,
   bare,
+  setupBack,
 }: {
   user?: ShellUser
   locale: Locale
@@ -55,6 +58,8 @@ export async function SiteFrame({
   width?: "narrow" | "focus"
   /** @deprecated use variant="bare" */
   bare?: boolean
+  /** A setup step's page while the checklist is unfinished: a way back to /setup (see setupBack) */
+  setupBack?: string | null
 }) {
   const kind = bare ? "bare" : variant
   const t = translator(locale)
@@ -67,7 +72,9 @@ export async function SiteFrame({
     kind === "page" ? (
       <main
         id="main"
-        className={`container page${width === "narrow" ? " container--narrow" : width === "focus" ? " container--focus" : ""}`}
+        className={`container page${
+          width === "narrow" ? " container--narrow" : width === "focus" ? " container--focus" : ""
+        }`}
       >
         {children}
       </main>
@@ -103,6 +110,13 @@ export async function SiteFrame({
               offerIndex={offerIndexEnabled()}
             />
           )}
+          {setupBack && kind !== "focus" ? (
+            <div className="container" style={{ paddingTop: 16 }}>
+              <Link className="link t-sm" href={setupBack}>
+                ← {t("setup.back")}
+              </Link>
+            </div>
+          ) : null}
           {main}
           {kind === "focus" ? null : <SiteFooter locale={locale} />}
           {app && kind !== "focus" ? (

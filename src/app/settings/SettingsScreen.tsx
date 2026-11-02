@@ -24,11 +24,14 @@ export function SettingsScreen({
   linkedIn,
   linkedInConfigured,
   hasPassword,
+  sheetAfter = null,
 }: {
   email: string
   linkedIn: boolean
   linkedInConfigured: boolean
   hasPassword: boolean
+  /** /setup on a local install: where a working sheet connection goes */
+  sheetAfter?: string | null
 }) {
   const { t, locale } = useCopy()
   const router = useRouter()
@@ -85,7 +88,11 @@ export function SettingsScreen({
             {linkedIn ? t("st.linkedin.on", { email }) : t("st.linkedin.off")}
           </span>
           {!linkedIn ? (
-            <ButtonLink href={linkedInConfigured ? linkedInStartHref() : "/start/linkedin"} variant="outline" size="sm">
+            <ButtonLink
+              href={linkedInConfigured ? linkedInStartHref() : "/start/linkedin"}
+              variant="outline"
+              size="sm"
+            >
               {t("st.linkedin.connect")}
             </ButtonLink>
           ) : null}
@@ -93,7 +100,7 @@ export function SettingsScreen({
       </section>
 
       <PasswordSettings hasPassword={hasPassword} />
-      <SheetSettings />
+      <SheetSettings after={sheetAfter} />
       <GmailSettings />
       <ExtensionSettings />
 
@@ -156,7 +163,13 @@ export function SettingsScreen({
         <hr className="divider" />
         <div className="settings-row">
           <p style={{ flex: "1 1 300px" }}>{t("st.delProfileBody")}</p>
-          <Button variant="danger-ghost" size="sm" icon={<Trash2 />} disabled={pending} onClick={() => setConfirm("profile")}>
+          <Button
+            variant="danger-ghost"
+            size="sm"
+            icon={<Trash2 />}
+            disabled={pending}
+            onClick={() => setConfirm("profile")}
+          >
             {t("st.delProfile")}
           </Button>
         </div>
@@ -185,11 +198,18 @@ export function SettingsScreen({
           onClose={() => setConfirm(null)}
         />
         <div className="modal__body stack-sm">
-          <p className="muted">{confirm === "profile" ? t("st.delProfileBody") : t("st.delAccountBody")}</p>
+          <p className="muted">
+            {confirm === "profile" ? t("st.delProfileBody") : t("st.delAccountBody")}
+          </p>
           {confirm === "account" ? (
             <label className="field">
               <span className="field__label">{t("st.delConfirm")}</span>
-              <input className="input" value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" />
+              <input
+                className="input"
+                value={typed}
+                onChange={(event) => setTyped(event.target.value)}
+                autoComplete="off"
+              />
             </label>
           ) : null}
           {error ? (
@@ -208,7 +228,11 @@ export function SettingsScreen({
             disabled={confirm === "account" && typed.trim().toUpperCase() !== word}
             onClick={() => void onConfirm()}
           >
-            {pending ? t("st.deleting") : confirm === "profile" ? t("st.delProfile") : t("st.delAccount")}
+            {pending
+              ? t("st.deleting")
+              : confirm === "profile"
+              ? t("st.delProfile")
+              : t("st.delAccount")}
           </Button>
         </div>
       </Modal>

@@ -7,12 +7,14 @@ import { findClaudeBinary } from "src/server/llm/claude-cli"
 import { llmProvider } from "src/server/llm/client"
 import { findChrome } from "src/server/cv/render"
 import { getApplicant } from "src/server/profile/applicant"
+import { isLocalInstall } from "src/server/local-install"
 import { mcpUserCommand } from "./mcp-command"
 import {
   buildSteps,
   isReady,
   nextStep,
   progress,
+  setupDone,
   type SetupFacts,
   type SetupStep,
   type StepId,
@@ -69,7 +71,7 @@ function claudeLoggedIn(binary: string): Promise<boolean | null> {
   })
 }
 
-async function claudeFacts(now: number): Promise<SetupFacts["claude"]> {
+export async function claudeFacts(now: number): Promise<SetupFacts["claude"]> {
   if (claudeCache && now - claudeCache.at < CLAUDE_CACHE_MS) return claudeCache.value
   // A copy of the environment skips the binary cache, so a fresh install shows up on the next poll.
   const env = { ...process.env }
@@ -231,4 +233,10 @@ export async function setupStatus(userId: number | null): Promise<SetupStatus> {
     ready: isReady(facts),
     signedIn: facts.user.signedIn,
   }
+}
+
+/** A local install with checklist steps still to do. Each step then ends back on /setup. */
+export async function setupUnfinished(userId: number | null): Promise<boolean> {
+  if (!isLocalInstall()) return false
+  return !setupDone(buildSteps(await collectFacts(userId)))
 }

@@ -16,6 +16,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  RefreshCw,
   Rows3,
   Settings,
   SquareTerminal,
@@ -213,6 +214,9 @@ export function SiteHeader({
               <Link href="/sources" aria-current={cur("/sources")}>
                 {t("nav.sources")}
               </Link>
+              <Link href="/sync" aria-current={cur("/sync")}>
+                {t("nav.sync")}
+              </Link>
             </nav>
           ) : (
             <nav className="nav" aria-label={t("nav.main")}>
@@ -338,6 +342,9 @@ export function SiteHeader({
                         </Link>
                         <Link className="menu__item" role="menuitem" href="/settings">
                           <Settings aria-hidden /> {t("nav.settings")}
+                        </Link>
+                        <Link className="menu__item" role="menuitem" href="/sync">
+                          <RefreshCw aria-hidden /> {t("nav.sync")}
                         </Link>
                         {setup ? (
                           <Link className="menu__item" role="menuitem" href="/setup">

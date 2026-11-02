@@ -11,6 +11,7 @@ export const APPLICATION_STATUSES = [
   "REJECTED",
   "WITHDRAWN",
   "GHOSTED",
+  "DELETED",
 ] as const
 
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
@@ -32,14 +33,31 @@ export const CLOSED_STATUSES = [
   "GHOSTED",
 ] as const satisfies readonly ApplicationStatus[]
 
+/**
+ * Removed from the sheet: kept in the system, out of stats and out of the sheet. closedAtStage
+ * remembers the status it had, so it can come back.
+ */
+export const DELETED_STATUS = "DELETED" satisfies ApplicationStatus
+
+/** Statuses a person or a mail can move an application to by hand. */
+export const PICKABLE_STATUSES = APPLICATION_STATUSES.filter((status) => status !== DELETED_STATUS)
+
 /** Closing statuses that record the stage they happened at (closedAtStage). */
 export const STAGE_RECORDING_STATUSES = ["REJECTED", "WITHDRAWN"] as const
 
 /** "nowarola" means the web app. Stored rows carry it, so it keeps the name from before newrole.it. */
-export const APPLICATION_SOURCES = ["nowarola", "extension", "manual", "mcp", "gmail"] as const
+export const APPLICATION_SOURCES = [
+  "nowarola",
+  "extension",
+  "manual",
+  "mcp",
+  "gmail",
+  "sheet",
+  "csv",
+] as const
 export type ApplicationSource = (typeof APPLICATION_SOURCES)[number]
 
-export const CHANNELS = ["web", "mcp", "extension", "gmail"] as const
+export const CHANNELS = ["web", "mcp", "extension", "gmail", "sheet"] as const
 export type Channel = (typeof CHANNELS)[number]
 
 export function isApplicationStatus(value: unknown): value is ApplicationStatus {
@@ -67,6 +85,7 @@ const LABELS: Record<"pl" | "en", Record<ApplicationStatus, string>> = {
     REJECTED: "Odrzucono",
     WITHDRAWN: "Wycofałem się",
     GHOSTED: "Brak odpowiedzi",
+    DELETED: "Usunięte",
   },
   en: {
     APPLIED: "Applied",
@@ -79,6 +98,7 @@ const LABELS: Record<"pl" | "en", Record<ApplicationStatus, string>> = {
     REJECTED: "Rejected",
     WITHDRAWN: "Withdrew",
     GHOSTED: "No response",
+    DELETED: "Deleted",
   },
 }
 
@@ -104,6 +124,7 @@ export function statusTone(
       return "danger"
     case "WITHDRAWN":
     case "GHOSTED":
+    case "DELETED":
       return "muted"
     default:
       return "neutral"
