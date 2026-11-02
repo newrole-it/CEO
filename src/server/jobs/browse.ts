@@ -364,16 +364,29 @@ function listWhere(filters: ResolvedBrowse, cursor: BrowseCursor | null): Prisma
   }
 }
 
+/**
+ * The card for a row. With a country in view, an offer that names several countries shows that one
+ * (and a city there), so a list for Poland does not show "Remote · Canada" for an offer open to Poland.
+ */
 function toOfferView(
   job: JobRow,
-  locale: "pl" | "en"
+  locale: "pl" | "en",
+  country: string | null = null
 ): { view: FeedOffer; place: PlaceFacts; pay: MonthlyPay } {
   const description = (job.descriptionText || job.summary || "").replace(/\s+/g, " ").trim()
-  const place = placeFacts({
+  const parsed = placeFacts({
     locationText: job.locationText,
     countryCode: job.countryCode,
     workplaceType: job.workplaceType,
   })
+  const place: PlaceFacts =
+    country && parsed.countries.includes(country)
+      ? {
+          ...parsed,
+          countryCode: country,
+          city: parsed.location.cities.find((item) => item.country === country)?.city ?? null,
+        }
+      : parsed
   const { monthly: pay, card } = offerPayFields(
     {
       salaryMin: job.salaryMin,
@@ -438,7 +451,7 @@ export async function listOfferPage(input: BrowseInput, locale: "pl" | "en"): Pr
     accept: (row) => rowAccepted(row, filters),
   })
   return {
-    offers: scanned.kept.map((row) => toOfferView(row, locale).view),
+    offers: scanned.kept.map((row) => toOfferView(row, locale, filters.country).view),
     nextCursor: scanned.next ? encodeCursor(scanned.next.at, scanned.next.id) : null,
   }
 }
@@ -492,9 +505,10 @@ export function scoreRow(
     model: PreferenceModel | null
     locale: "pl" | "en"
     now: Date
+    country?: string | null
   }
 ): { view: FeedOffer; score: FeedScore } {
-  const { view } = toOfferView(row, ctx.locale)
+  const { view } = toOfferView(row, ctx.locale, ctx.country ?? null)
   const score = scoreForFeed({
     offer: rowOffer(row),
     signals: ctx.signals,
@@ -559,6 +573,7 @@ export async function listForYou(
     model: hasFeedback ? model : null,
     locale,
     now: new Date(),
+    country: filters.country,
   }
   const ranked = scanned.kept
     .map((row) => scoreRow(row, ctx))

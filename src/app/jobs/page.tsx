@@ -6,7 +6,12 @@ import { COMPANIES_SEEN_COOKIE } from "src/app/components/site/links"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { countOpenOffers, listBrowseCities, listBrowseCountries } from "src/server/jobs/browse"
+import {
+  countOpenOffers,
+  listBrowseCities,
+  listBrowseCountries,
+  resolveBrowse,
+} from "src/server/jobs/browse"
 import { defaultCountry } from "src/server/jobs/country"
 import { getPreferenceSummary, type PreferenceSummary } from "src/server/preferences/model"
 import { findSimilarOffers } from "src/server/preferences/similar"
@@ -34,8 +39,13 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const filters = parseFilters(params)
   const userId = user?.id ?? null
   const ownCountry = await defaultCountry(userId, (await headers()).get("accept-language"))
-  // The country the list covers: the one picked, else the person's own; null is every country.
-  const country = filters.country === "any" ? null : filters.country || ownCountry
+  // The country the list covers, decided as the list decides it: picked, else the city's, else
+  // the person's own; null is every country.
+  const country = resolveBrowse({
+    country: filters.country || undefined,
+    city: filters.city,
+    defaultCountry: ownCountry,
+  }).country
 
   const hasProfile = userId
     ? Boolean(await db.candidateProfile.findUnique({ where: { userId }, select: { id: true } }))
