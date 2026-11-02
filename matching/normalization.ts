@@ -4,6 +4,7 @@
  */
 import { DEFAULT_CONFIG, type MatchingConfig } from "./config";
 import { canonicalizeUrl, computeFingerprint, extractAtsKey } from "./dedupe";
+import { CITY_ALIASES, matchPlaces } from "./places";
 import { collapseSpaces, fold, tokens } from "./text";
 import type {
   ContractType,
@@ -160,39 +161,21 @@ export function normalizeCompany(raw: string): string {
 /* Location & work mode                                                */
 /* ------------------------------------------------------------------ */
 
-/** folded alias → [canonical city with diacritics, ISO country]. Extend as needed. */
-export const CITY_ALIASES: Record<string, [string, string]> = {
-  warszawa: ["Warszawa", "PL"], warsaw: ["Warszawa", "PL"], warschau: ["Warszawa", "PL"], varsovie: ["Warszawa", "PL"], wwa: ["Warszawa", "PL"],
-  krakow: ["Kraków", "PL"], cracow: ["Kraków", "PL"], krakau: ["Kraków", "PL"],
-  wroclaw: ["Wrocław", "PL"], breslau: ["Wrocław", "PL"],
-  poznan: ["Poznań", "PL"], gdansk: ["Gdańsk", "PL"], gdynia: ["Gdynia", "PL"], sopot: ["Sopot", "PL"],
-  trojmiasto: ["Gdańsk", "PL"], tricity: ["Gdańsk", "PL"],
-  lodz: ["Łódź", "PL"], katowice: ["Katowice", "PL"], szczecin: ["Szczecin", "PL"], lublin: ["Lublin", "PL"],
-  bydgoszcz: ["Bydgoszcz", "PL"], bialystok: ["Białystok", "PL"], rzeszow: ["Rzeszów", "PL"], gliwice: ["Gliwice", "PL"],
-  torun: ["Toruń", "PL"], kielce: ["Kielce", "PL"], olsztyn: ["Olsztyn", "PL"], opole: ["Opole", "PL"],
-  "bielsko-biala": ["Bielsko-Biała", "PL"], czestochowa: ["Częstochowa", "PL"], radom: ["Radom", "PL"],
-  berlin: ["Berlin", "DE"], munich: ["München", "DE"], munchen: ["München", "DE"], monachium: ["München", "DE"],
-  hamburg: ["Hamburg", "DE"], amsterdam: ["Amsterdam", "NL"], london: ["London", "GB"], londyn: ["London", "GB"],
-  dublin: ["Dublin", "IE"], prague: ["Praha", "CZ"], praha: ["Praha", "CZ"], praga: ["Praha", "CZ"],
-  vienna: ["Wien", "AT"], wien: ["Wien", "AT"], wieden: ["Wien", "AT"], lisbon: ["Lisboa", "PT"], lisbona: ["Lisboa", "PT"],
-  barcelona: ["Barcelona", "ES"], madrid: ["Madrid", "ES"], paris: ["Paris", "FR"], paryz: ["Paris", "FR"],
-  zurich: ["Zürich", "CH"], stockholm: ["Stockholm", "SE"], sztokholm: ["Stockholm", "SE"],
-  "new york": ["New York", "US"], "san francisco": ["San Francisco", "US"],
-};
+// Country names, subdivisions, cities and remote regions live in places.ts; re-exported so
+// existing imports from "matching/normalization" keep working.
+export {
+  CITY_ALIASES,
+  COUNTRY_ALIASES,
+  COUNTRY_CODES,
+  COUNTRY_NAMES,
+  EU_COUNTRIES,
+  countryFromText,
+  countryName,
+  m49Region,
+  regionCovers,
+  remoteOpenTo,
+} from "./places";
 for (const k of Object.keys(CITY_ALIASES)) if (!k.includes(" ")) CITY_TOKENS.add(k);
-
-export const COUNTRY_ALIASES: Record<string, string> = {
-  poland: "PL", polska: "PL", germany: "DE", deutschland: "DE", niemcy: "DE", netherlands: "NL", holandia: "NL",
-  "united kingdom": "GB", uk: "GB", "wielka brytania": "GB", ireland: "IE", irlandia: "IE", czechia: "CZ",
-  "czech republic": "CZ", czechy: "CZ", austria: "AT", portugal: "PT", portugalia: "PT", spain: "ES", hiszpania: "ES",
-  france: "FR", francja: "FR", switzerland: "CH", szwajcaria: "CH", sweden: "SE", szwecja: "SE",
-  "united states": "US", usa: "US",
-};
-
-export const EU_COUNTRIES = new Set([
-  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT",
-  "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
-]);
 
 const RE_REMOTE = /\b(remote|zdaln\w*|work from home|wfh|home office|anywhere|telepraca|distributed|fully remote)\b/;
 const RE_HYBRID_SRC = String.raw`\b(hybrid\w*|hybrydow\w*|\d+\s*(days?|dni)\s*(a week |w tygodniu )?(in|w)\s*(the\s*)?(office|biurze))\b`;
@@ -205,30 +188,27 @@ const REGION_PATTERNS: Array<[Region, RegExp]> = [
   ["EMEA", /\bemea\b/],
   ["EU", /\b(eu|europe|european|europa|eea|cet|cest|utc\s*\+\s*[0-3]|gmt\s*\+\s*[0-3])\b/],
   ["PL", /\b(poland|polska|pl|polsce)\b/],
-  ["US", /\b(us|usa|united states|north america|est|pst|us-only)\b/],
+  // Bare "us" is matched by matchPlaces only where it stands as a location, never as the pronoun.
+  ["US", /\b(usa|united states|north america|est|pst)\b/],
   ["AMERICAS", /\b(americas|latam|south america)\b/],
   ["APAC", /\b(apac|asia)\b/],
 ];
 
 /**
  * Parse free-text location + optional structured hint.
- * Rules (see normalization.md): city aliases → canonical PL spelling; remote/hybrid/onsite from PL+EN terms;
- * a bare city with no mode word gives workMode "unknown" (we do not assume onsite).
+ * Rules (see normalization.md): city aliases → canonical PL spelling; countries and US/CA/AU subdivisions from
+ * places.ts; remote/hybrid/onsite from PL+EN terms; a bare city with no mode word gives workMode "unknown"
+ * (we do not assume onsite).
  */
 export function normalizeLocation(location = "", workModeHint = "", descriptionFallback = ""): NormalizedLocation {
   const text = fold(`${location} ${workModeHint}`);
-  const cities: Array<{ city: string; country: string }> = [];
-  const countries = new Set<string>();
-  for (const [alias, [city, country]] of Object.entries(CITY_ALIASES)) {
-    const re = new RegExp(`(^|[^a-z])${alias.replace(/[-]/g, "\\-")}([^a-z]|$)`);
-    if (re.test(text) && !cities.some((c) => c.city === city)) {
-      cities.push({ city, country });
-      countries.add(country);
-    }
-  }
-  for (const [alias, code] of Object.entries(COUNTRY_ALIASES)) {
-    if (new RegExp(`(^|[^a-z])${alias}([^a-z]|$)`).test(text)) countries.add(code);
-  }
+  // Location and hint are read apart so a hint word never joins the last "City, ST" part.
+  const fromLocation = matchPlaces(location);
+  const fromHint = matchPlaces(workModeHint);
+  const cities = [...fromLocation.cities];
+  for (const c of fromHint.cities) if (!cities.some((x) => x.city === c.city)) cities.push(c);
+  const countries = new Set([...fromLocation.countries, ...fromHint.countries]);
+  const usNamed = fromLocation.usNamed || fromHint.usNamed;
 
   const modes = detectWorkModes(text);
   if (modes.length === 0 && descriptionFallback) {
@@ -239,7 +219,9 @@ export function normalizeLocation(location = "", workModeHint = "", descriptionF
 
   const remoteRegions: Region[] = [];
   if (modes.includes("remote")) {
-    for (const [region, re] of REGION_PATTERNS) if (re.test(text)) remoteRegions.push(region);
+    for (const [region, re] of REGION_PATTERNS) {
+      if (re.test(text) || (region === "US" && usNamed)) remoteRegions.push(region);
+    }
     if (remoteRegions.length === 0) remoteRegions.push(countries.has("PL") ? "PL" : "UNKNOWN");
   }
 

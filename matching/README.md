@@ -15,6 +15,7 @@ Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → no
 | `query-expansion.schema.ts` | Zod schemas (`QueryExpansionInputSchema`, `ExpansionLLMOutputSchema`, `QueryExpansionSchema`), message builder, deterministic `site:` query builder, `finalizeExpansion()` |
 | `query-expansion.examples.json` | 5 worked examples: Head of Engineering, CTO, Engineering Manager, Kierownik działu IT, VP Engineering (generated + validated by `scripts/gen-examples.ts`) |
 | `normalization.md` / `normalization.ts` | Title, seniority ladder, company, PL cities/countries, work mode (zdalnie/hybrydowo/stacjonarnie), salary parsing & conversion (PLN/EUR/USD, B2B/UoP/UZ/UoD, net/gross, h/day/month/year), injection heuristic |
+| `places.ts` | Countries (249 ISO codes, Intl names in 8 languages + cited aliases), US/CA/AU subdivisions, city aliases, UN M49 remote regions (`regionCovers`, `remoteOpenTo`), the location matcher used by `normalizeLocation` |
 | `config.ts` | FX placeholders, 168 h/month, 21 days, 12 months, contract→B2B-equivalent factors (all config) |
 | `dedupe.md` / `dedupe.ts` | ATS keys, canonical URLs, fingerprints, near-duplicate thresholds, merge winner rules |
 | `scoring.md` / `scoring.ts` | Explainable 0–100 score: weights, gate, penalties, bands, worked examples |
@@ -25,6 +26,7 @@ Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → no
 | `fixtures/postings.json` | 24 fictional postings (EN/PL, 11 sources, PLN/EUR/USD, B2B/UoP/UZ, h/day/month/year, 3 duplicates, 1 injection, irrelevant roles) with expected score ranges, bands and reasons |
 | `fixtures/scored-output.txt` | Current full score breakdown for all fixtures |
 | `test/matching.test.ts` | 46 tests: fixture ranges/bands/reasons, dedupe, injection invariance, explanation invariants, normalization units, example validation |
+| `test/places.test.ts` | Countries, subdivisions, cities, false-positive guards, remote regions and `remoteOpenTo` |
 | `scripts/score-fixtures.ts` | Print ranked fixtures with breakdown (`--verbose`) |
 
 ## Use

@@ -58,10 +58,24 @@ strip trailing `Polska`/`Poland` (local subsidiaries), punctuation → space. `B
   Warszawa (warsaw, warschau, varsovie, wwa), Kraków (krakow, cracow, krakau), Wrocław (wroclaw, breslau), Poznań, Gdańsk (incl. trójmiasto/tricity),
   Gdynia, Sopot, Łódź (lodz), Katowice, Szczecin, Lublin, Bydgoszcz, Białystok, Rzeszów, Gliwice, Toruń, Kielce, Olsztyn, Opole, Bielsko-Biała,
   Częstochowa, Radom; plus common foreign hubs (Berlin, München/Monachium, Hamburg, Amsterdam, London/Londyn, Dublin, Praha/Praga, Wien/Wiedeń,
-  Lisboa, Barcelona, Madrid, Paris/Paryż, Zürich, Stockholm/Sztokholm, New York, San Francisco). Extend the table rather than adding regexes.
-- **Countries**: EN + PL names (`Poland/Polska`, `Germany/Deutschland/Niemcy`, …) → ISO codes. Bare two-letter codes are not matched in free text (too ambiguous), only via regions.
+  Lisboa, Barcelona, Madrid, Paris/Paryż, Zürich, Stockholm/Sztokholm, New York, San Francisco), and world cities from GeoNames
+  (cited per entry in `places.ts`; a bare name only when one country's place outweighs the others 3×, so no "Valencia").
+  Extend the table rather than adding regexes. The tables and the matcher live in `places.ts`.
+- **Countries**: all 249 ISO 3166-1 codes, named from `Intl.DisplayNames` in EN, PL, DE, FR, ES, IT, PT, NL plus a short cited alias list
+  (USA, UK, UAE, Holland, Czech Republic, Turkey, England/Scotland/Wales/Northern Ireland, …). Matching is by whole words, longest
+  phrase first, so "New Jersey" is not Jersey and "Papua New Guinea" is not Guinea. Words that are also ordinary words or names
+  (us, uk, Chad, Jordan, Jersey, Georgia, Mali, …) count only when nothing but work-mode/region words stands in the same comma part.
+  "Georgia" is the US state when anything else points at the US, the country otherwise.
+- **Subdivisions**: US states + DC, Canadian provinces/territories, Australian states/territories (names and codes, ISO 3166-2).
+  A two/three-letter code counts only as a whole comma part after the first ("Salt Lake City, UT", "Vancouver, BC", "Zielona Gora, PL"),
+  never as a word in prose. A city in front confirms a matching country code ("Berlin, DE"); otherwise a US/CA/AU code wins over the
+  city ("Athens, GA" → US, no city).
 - **Remote regions** (only when remote): `WORLD` (anywhere, worldwide, global), `EMEA`, `EU` (EU, Europe, EEA, CET/CEST, UTC/GMT+0..3),
-  `PL` (Poland, Polska, w Polsce), `US` (US, USA, EST/PST), `AMERICAS`, `APAC`. Remote with no region → `PL` if the location names Poland, else `UNKNOWN`.
+  `PL` (Poland, Polska, w Polsce), `US` (USA, EST/PST, or "US" standing as a place), `AMERICAS`, `APAC`. Remote with no region → `PL` if the
+  location names Poland, else `UNKNOWN`. A remote offer that names a country also carries it in `countries`.
+- **Who can take a remote offer**: `remoteOpenTo(location, country)` — `WORLD`, a region that covers the country, or the named country;
+  `UNKNOWN` only when no country is named. Regions follow UN M49: EMEA = Europe + Africa + Western Asia, AMERICAS = Americas,
+  APAC = Asia without Western Asia + Oceania, EU = `EU_COUNTRIES`.
 
 ## 5. Work mode
 
