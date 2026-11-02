@@ -64,7 +64,9 @@ test("a new account gets companies from the index, from likes down to the bigges
   const kafka = await company("Kafkaco", "Kafka Engineer")
   const big = await company("Bigco", "Frontend Developer", 3)
   const watched = await company("Watchedco", "Kafka Engineer")
-  await db.watchedCompany.create({ data: { userId: user.id, companyId: watched.id, source: "user" } })
+  await db.watchedCompany.create({
+    data: { userId: user.id, companyId: watched.id, source: "user" },
+  })
 
   const hiring = await companySuggestions(user.id, LIMIT)
   assert.equal(hiring.status, "ok")
@@ -94,11 +96,16 @@ test("a new account gets companies from the index, from likes down to the bigges
   const fromLikes = await companySuggestions(user.id, LIMIT)
   assert.equal(fromLikes.basis, undefined, "likes come first")
   assert.ok(fromLikes.suggestions.length > 0)
-  assert.equal(fromLikes.suggestions.some((item) => item.companyId === kafka.id), false)
+  assert.equal(
+    fromLikes.suggestions.some((item) => item.companyId === kafka.id),
+    false
+  )
 })
 
-test("the index fallback leaves out what the person liked and what is not in Poland", async () => {
+test("the index fallback leaves out what the person liked and what is not in their country", async () => {
   const user = await db.user.create({ data: { email: `liked-${stamp}@example.com`, role: "USER" } })
+  // Where they look for work, and nothing the profile ranking could use, so the basis stays "hiring".
+  await db.candidateProfile.create({ data: { userId: user.id, homeCity: "Warszawa" } })
   // A liked company nothing in the index resembles, so the likes give no suggestion of their own.
   const liked = await company("Likedco", `Qzx${stamp} Wrangler`, 5)
   const both = await company("Bothco", `Vbn${stamp} Herder`, 5)
@@ -125,4 +132,17 @@ test("the index fallback leaves out what the person liked and what is not in Pol
   assert.ok(!ids.includes(liked.id), "a liked company is not suggested back")
   assert.ok(!ids.includes(both.id), "a company both liked and disliked is not suggested")
   assert.ok(!ids.includes(berlin.id), "an office abroad is not hiring in Poland")
+  assert.deepEqual(result.suggestions.find((item) => item.companyId === polish.id)?.why, {
+    kind: "hiring",
+    country: "PL",
+  })
+
+  // Without a place in the profile, every country counts.
+  const anywhere = await db.user.create({
+    data: { email: `anywhere-${stamp}@example.com`, role: "USER" },
+  })
+  const open = await companySuggestions(anywhere.id, 50)
+  const openIds = open.suggestions.map((item) => item.companyId)
+  assert.ok(openIds.includes(berlin.id), "with no country, an office in Berlin counts")
+  assert.equal(open.message, "Hiring the most.")
 })
