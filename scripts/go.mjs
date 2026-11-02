@@ -40,7 +40,8 @@ function run(command, args, { cwd = ROOT, env = process.env, title } = {}) {
   if (result.error?.code === "ENOENT") fail(`${title}: "${command}" was not found.`)
   // Could not start at all (permissions, a broken node_modules/.bin link): the error is the clue.
   if (result.error) fail(`${title} failed.`, result.error.message)
-  if (result.signal) fail(`${title} was stopped by ${result.signal}.`, ...output.split("\n").slice(-25))
+  if (result.signal)
+    fail(`${title} was stopped by ${result.signal}.`, ...output.split("\n").slice(-25))
   fail(`${title} failed.`, ...output.split("\n").slice(-25))
 }
 
@@ -311,7 +312,8 @@ async function start(env) {
       "web,worker",
       "-c",
       "cyan,magenta",
-      `npx blitz dev -p ${port} -H 127.0.0.1`,
+      // Turbopack breaks Blitz RPC resolvers on Next 16, so this matches `npm run dev`.
+      `npx blitz dev --webpack -p ${port} -H 127.0.0.1`,
       "npx tsx src/worker.ts",
     ],
     { cwd: ROOT, env, stdio: "inherit" }
