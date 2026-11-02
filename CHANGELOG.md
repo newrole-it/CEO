@@ -15,6 +15,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Changed
 
+- The interface opens in your browser's language: Polish for a Polish browser, English for any other. The switch in the header still overrides it.
 - Gmail is no longer searched in the background. Open a company's reply in Gmail, click the extension and pick "Użyj tego maila w aplikacji" to move that application to the next stage. A mailbox connected earlier can be disconnected in Settings to revoke its token.
 - The SmartRecruiters Posting API is off by default, because its robots.txt disallows other crawlers.
 - On a public address, a new email has to confirm a sign-in link before it can use an account.

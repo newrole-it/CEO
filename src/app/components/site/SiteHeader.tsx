@@ -30,6 +30,7 @@ import logout from "src/app/(auth)/mutations/logout"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { Modal } from "src/app/components/ds/interactive"
+import { LOCALE_COOKIE } from "src/shared/locale"
 import { LogoLockup } from "./Brand"
 import type { ShellUser } from "./links"
 
@@ -43,8 +44,7 @@ export function useThemeToggle() {
     const read = () => {
       const theme = document.documentElement.dataset.theme
       setDark(
-        theme === "dark" ||
-          (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
       )
     }
     read()
@@ -71,7 +71,7 @@ export function useLocaleToggle() {
   const router = useRouter()
   return (next?: "pl" | "en") => {
     const target = next ?? (locale === "pl" ? "en" : "pl")
-    document.cookie = `js-lang=${target}; path=/; max-age=31536000; samesite=lax`
+    document.cookie = `${LOCALE_COOKIE}=${target}; path=/; max-age=31536000; samesite=lax`
     document.documentElement.lang = target
     router.refresh()
   }
@@ -125,7 +125,8 @@ export function SiteHeader({
         event.preventDefault()
         const items = [...(node?.querySelectorAll<HTMLElement>("a, button") ?? [])]
         const at = items.indexOf(document.activeElement as HTMLElement)
-        const next = items[(at + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]
+        const next =
+          items[(at + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]
         next?.focus()
       }
     }
@@ -148,7 +149,8 @@ export function SiteHeader({
     (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`))
       ? ("page" as const)
       : undefined
-  const forYouCurrent = pathname === "/jobs" || (pathname.startsWith("/jobs/") && !pathname.startsWith("/jobs/saved"))
+  const forYouCurrent =
+    pathname === "/jobs" || (pathname.startsWith("/jobs/") && !pathname.startsWith("/jobs/saved"))
 
   const themeButton = (
     <Button
@@ -409,7 +411,13 @@ export function SiteHeader({
         </div>
       </header>
 
-      <Modal open={drawer} onClose={() => setDrawer(false)} kind="drawer" label={t("nav.menu")} className="nav-drawer">
+      <Modal
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        kind="drawer"
+        label={t("nav.menu")}
+        className="nav-drawer"
+      >
         <div className="nav-drawer__head">
           <LogoLockup />
           <Button
@@ -442,7 +450,12 @@ export function SiteHeader({
           <Heart aria-hidden /> {t("nav.saved")}
         </Link>
         <div className="nav-drawer__foot">
-          <Button variant="outline" size="sm" onClick={() => switchLocale()} aria-label={t("lang.switch")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => switchLocale()}
+            aria-label={t("lang.switch")}
+          >
             {t("lang.code")}
           </Button>
           <Button

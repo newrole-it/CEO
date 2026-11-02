@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { copy, type Locale } from "src/app/i18n/copy"
+import { LOCALE_COOKIE, localeFromLanguages } from "src/shared/locale"
 
 // The colours of src/app/styles/app.css, which this page cannot load.
 const CSS = `
@@ -23,13 +24,15 @@ button { font: inherit; padding: 10px 18px; border: 0; border-radius: 8px; curso
 
 /**
  * Replaces the root layout when it fails, so it brings its own <html> and <body> and uses no
- * server data, providers or app styles. The language comes from the cookie the server reads.
+ * server data, providers or app styles. The language follows the same rule as the server's:
+ * the cookie the person set, or else the browser's languages.
  */
 export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
-  const [locale, setLocale] = useState<Locale>("pl")
+  const [locale, setLocale] = useState<Locale>("en")
   useEffect(() => {
     console.error(error)
-    if (/(?:^|;\s*)js-lang=en(?:;|$)/.test(document.cookie)) setLocale("en")
+    const chosen = document.cookie.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=(pl|en)(?:;|$)`))
+    setLocale(chosen ? (chosen[1] as Locale) : localeFromLanguages(navigator.languages ?? []))
   }, [error])
   const t = copy(locale)
   return (

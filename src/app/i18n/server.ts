@@ -1,7 +1,8 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
+import { LOCALE_COOKIE, resolveLocale } from "src/shared/locale"
 import type { Locale } from "./copy"
 
 export async function getLocale(): Promise<Locale> {
-  const jar = await cookies()
-  return jar.get("js-lang")?.value === "en" ? "en" : "pl"
+  const [jar, sent] = await Promise.all([cookies(), headers()])
+  return resolveLocale(jar.get(LOCALE_COOKIE)?.value, sent.get("accept-language"))
 }
