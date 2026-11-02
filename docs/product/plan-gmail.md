@@ -40,14 +40,10 @@ Sygnał „kolejny etap” proponuje `APPLIED → SCREENING`, `SCREENING → INT
 - `GmailLink` zostaje tylko dla skrzynek połączonych wcześniej. Nic ich nie czyta: worker nie planuje przeszukiwania, a zadania `GMAIL_SYNC` z kolejki kończą się bez działania. Ustawienia → Gmail pokazują taką skrzynkę z przyciskiem „Odłącz i odwołaj dostęp”, który odwołuje token w Google i usuwa token oraz dziennik. Usunięcie konta też go odwołuje.
 - Stare adresy `/api/auth/gmail/start` i `/api/auth/gmail/callback` tylko przekierowują do ustawień. Callback nie wymienia kodu na token.
 
-## 6. Kod do usunięcia
+## 6. Usunięty kod
 
-Po zmianie nieużywane w działającej aplikacji, zostawione, bo sesja agenta nie może usuwać plików w repozytorium:
+Kod przeszukiwania skrzynki usunięto razem z jego testami: `sync.ts`, `reader.ts`, `enqueueGmailSync`, w `oauth.ts` wszystko poza `revokeGoogleToken`, w `gate.ts` wszystko poza `parseFrom`, zapytania do Gmaila z `allowlist.ts` i funkcje, których używało tylko przeszukiwanie albo dawne łączenie skrzynki (`saveGmailSettings`, `saveGmailGrant`, `decide`, `factsFromMail`, `messageText`).
 
-- `src/server/gmail/sync.ts`, `src/server/gmail/reader.ts` i testy przeszukiwania w `test/gmail.test.ts` (wpis w `test:flow`) oraz części `src/server/gmail/gmail.test.ts` o `sync`, `reader` i `gate`,
-- `src/app/settings/gmail/mutations/syncGmailNow.ts`, `saveGmailSettings.ts` i `saveGmailSettings` w `service.ts`,
-- w `oauth.ts` wszystko poza `revokeGoogleToken`; w `gate.ts` wszystko poza `parseFrom`,
-- `enqueueGmailSync` w `src/server/queue/enqueue.ts`,
-- kolumny `GmailLink` o synchronizacji (`autoApply`, `useModel`, `cursorAt`, `nextSyncAt`, `syncingAt`, `lastSyncedAt`, `lastStats`, `lastErrorCode`): to zmiana schematu, więc decyzja właściciela.
+Zostały kolumny `GmailLink` o synchronizacji (`autoApply`, `useModel`, `cursorAt`, `nextSyncAt`, `syncingAt`, `lastSyncedAt`, `lastStats`, `lastErrorCode`): to zmiana schematu, więc decyzja właściciela.
 
 `allowlist.ts` zostaje: `companyKey` i `companyWords` używają `src/server/companies/`, a `opened.ts` korzysta z `systemTier` i `toScopedApp`.

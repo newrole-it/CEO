@@ -11,12 +11,11 @@ import { ACTIVE_STATUSES, isApplicationStatus } from "src/shared/applications"
 import { isMailOutcome, isMailSignal, type MailOutcome, type MailSignal } from "src/shared/gmail"
 import { revokeGoogleToken, type FetchLike } from "./oauth"
 import { targetStatus } from "./policy"
-import { openToken, sealToken } from "./token-crypto"
-import { GmailError, isGmailErrorCode, type GmailErrorCode } from "./types"
+import { openToken } from "./token-crypto"
+import { isGmailErrorCode, type GmailErrorCode } from "./types"
 
 /** The Gmail link and the log of read messages: everything the screens and MCP call. */
 
-export const GMAIL_SYNC_INTERVAL_MS = 15 * 60_000
 /** How long suggestions and the log of read messages are kept. */
 export const MAIL_RETENTION_MS = 90 * 86_400_000
 const RECENT_MS = 7 * 86_400_000
@@ -63,46 +62,6 @@ export async function gmailStatus(userId: number): Promise<GmailStatus> {
     lastStats: parseGmailStats(link?.lastStats),
     nextSyncAt: link?.nextSyncAt ?? null,
   }
-}
-
-/** Saves the grant, sealed. Replacing another mailbox's grant revokes it, so no token is left live. */
-export async function saveGmailGrant(
-  input: { userId: number; email: string; refreshToken: string },
-  fetchImpl: FetchLike = fetch
-): Promise<void> {
-  const sealed = sealToken(input.refreshToken, input.userId)
-  if (!sealed) throw new GmailError("key", "SESSION_SECRET_KEY is missing or too short.")
-  const previous = await db.gmailLink.findUnique({ where: { userId: input.userId } })
-  const sameMailbox = previous?.email === input.email
-  if (previous && !sameMailbox) await revokeStoredToken(previous, fetchImpl)
-  await db.gmailLink.upsert({
-    where: { userId: input.userId },
-    create: {
-      userId: input.userId,
-      email: input.email,
-      refreshToken: sealed,
-      nextSyncAt: new Date(),
-    },
-    update: {
-      email: input.email,
-      refreshToken: sealed,
-      lastErrorCode: null,
-      nextSyncAt: new Date(),
-      syncingAt: null,
-      ...(sameMailbox ? {} : { cursorAt: null, lastSyncedAt: null, lastStats: Prisma.DbNull }),
-    },
-  })
-}
-
-export async function saveGmailSettings(
-  userId: number,
-  patch: { autoApply?: boolean; useModel?: boolean }
-): Promise<GmailStatus> {
-  const data: { autoApply?: boolean; useModel?: boolean } = {}
-  if (patch.autoApply !== undefined) data.autoApply = patch.autoApply
-  if (patch.useModel !== undefined) data.useModel = patch.useModel
-  if (Object.keys(data).length) await db.gmailLink.updateMany({ where: { userId }, data })
-  return gmailStatus(userId)
 }
 
 async function revokeStoredToken(
@@ -187,7 +146,7 @@ const withApplication = {
   application: { select: { id: true, company: true, title: true, status: true } },
 } satisfies Prisma.MailEventInclude
 
-/** Every message whose body was read, newest first. Messages the gate stopped are not in here. */
+/** Every message in the log, newest first. No body is stored. */
 export async function mailLog(userId: number, limit = 50): Promise<MailEventView[]> {
   const rows = await db.mailEvent.findMany({
     where: { userId },

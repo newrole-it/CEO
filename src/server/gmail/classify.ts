@@ -204,52 +204,6 @@ export function classifyByRules(subject: string, text: string): Reading {
   return reading("OTHER", false, null)
 }
 
-const SYSTEM_NAMES =
-  /^(greenhouse|lever|ashby|workable|smartrecruiters|teamtailor|recruitee|personio|bamboohr|workday|breezy|pinpoint|jobvite|icims|traffit|erecruiter|linkedin|pracuj|indeed|no-?reply)\b/i
-
-/** "Acme Hiring Team" → "Acme"; a recruiting system's own name is not a company. */
-export function companyFromSenderName(name: string): string | null {
-  const clean = name
-    .replace(/\s+(via|przez)\s+.*$/i, "")
-    .replace(
-      /\b(hiring team|recruiting team|recruitment team|talent acquisition|talent team|recruiting|recruitment|careers?|talent|people team|hr team|hr|team|rekrutacja|kariera|zespół rekrutacji|no-?reply|notifications?)\b/gi,
-      " "
-    )
-    .replace(/[-–—|,:]+\s*$/, "")
-    .replace(/\s+/g, " ")
-    .trim()
-  return clean.length >= 2 && !SYSTEM_NAMES.test(clean) ? clean.slice(0, 160) : null
-}
-
-/** Company and role from a confirmation's subject and sender, when they are spelled out. */
-export function factsFromMail(
-  subject: string,
-  senderName: string
-): { company: string | null; title: string | null } {
-  const clean = subject.replace(/^(\s*(re|fw|fwd|odp)\s*:\s*)+/i, "").trim()
-  const fromName = companyFromSenderName(senderName)
-  const shorten = (value: string | undefined, max: number) => value?.trim().slice(0, max) || null
-  // "Application for Senior Engineer at Acme", "Aplikacja na stanowisko Tester w Acme"
-  const roleAtCompany =
-    /(?:application|applying|apply|applied|aplikacj\w+)\s+(?:for|on|na)\s+(?:the\s+|stanowisko:?\s+)?(.+?)\s+(?:position\s+|role\s+)?(?:at|@|w firmie|w)\s+(.+)$/i.exec(
-      clean
-    )
-  if (roleAtCompany) {
-    return { title: shorten(roleAtCompany[1], 200), company: shorten(roleAtCompany[2], 160) }
-  }
-  // "Thank you for applying to Acme", "Your application to Acme for Senior Engineer"
-  const atCompany =
-    /(?:applying|application|applied|aplikacj\w+)\s+(?:to|at|do)\s+(.+?)(?:\s+(?:for|na)\s+(?:the\s+|stanowisko:?\s+)?(.+))?$/i.exec(
-      clean
-    )
-  if (atCompany) {
-    return { company: shorten(atCompany[1], 160), title: shorten(atCompany[2], 200) }
-  }
-  // "Application for Senior Engineer": the company is in the sender's name, if anywhere.
-  const role = /(?:stanowisko:?\s+|position:?\s+|application for\s+(?:the\s+)?)(.+)$/i.exec(clean)
-  return { company: fromName, title: shorten(role?.[1], 200) }
-}
-
 const ModelReply = z.object({
   signal: z.enum(MAIL_SIGNALS),
   confidence: z.enum(["high", "low"]),

@@ -3,8 +3,8 @@ import { atsCompanySlug } from "src/server/autofill/job-extract"
 import type { ScopedApp, Tier } from "./types"
 
 /**
- * Which mail may be looked at. Gmail is searched only with these lists, so anything else never
- * leaves Google, and gate.ts checks the same lists again on the headers that come back.
+ * Recruiting systems, job boards and employers: which kind of sender a message comes from, which
+ * domains belong to the company applied to, and a company's name in a form to compare with them.
  */
 
 /** Recruiting systems, by the name a posting is on. They send mail about applications only. */
@@ -273,106 +273,4 @@ export function startsWithName(foldedName: string, name: string): boolean {
   const words = companyWords(name)
   if (companyKey(name).length < 3) return false
   return new RegExp(`^${escapeRegex(words)}(?![\\p{L}\\p{N}])`, "u").test(foldedName)
-}
-
-/**
- * Subject words the search asks for. Gmail matches whole words, so forms are spelled out. gate.ts
- * asks for more than this: these only keep the bulk of other mail from coming back at all.
- */
-const SUBJECT_TERMS = [
-  "application",
-  "applying",
-  "candidate",
-  "candidacy",
-  "interview",
-  "recruitment",
-  "recruiting",
-  "recruiter",
-  "hiring",
-  "offer letter",
-  "job offer",
-  "aplikacja",
-  "aplikacji",
-  "aplikację",
-  "aplikacje",
-  "aplikowanie",
-  "kandydat",
-  "kandydatura",
-  "kandydaturę",
-  "kandydatury",
-  "rekrutacja",
-  "rekrutacji",
-  "rekrutację",
-  "rekrutacyjny",
-  "rekrutacyjne",
-  "rekrutacyjna",
-  "rozmowa",
-  "rozmowę",
-  "rozmowy",
-  "stanowisko",
-  "stanowiska",
-  "oferta pracy",
-  "oferty pracy",
-  "zgłoszenie",
-  "zatrudnienie",
-]
-
-/**
- * A value from the tracker (or a scraped posting) inside a Gmail search, as a quoted phrase. Only
- * letters, digits and a few joiners survive, so a company called `x} OR in:anywhere` cannot widen
- * the search.
- */
-export function searchPhrase(value: string): string | null {
-  const clean = value
-    .replace(/[^\p{L}\p{N} .&+-]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 60)
-    .trim()
-  return companyKey(clean).length >= 3 ? `"${clean}"` : null
-}
-
-function subjectClause(extra: string[] = []): string {
-  const terms = SUBJECT_TERMS.map((term) => (term.includes(" ") ? `"${term}"` : term))
-  return `{${[...terms, ...extra].map((term) => `subject:${term}`).join(" ")}}`
-}
-
-const MAX_QUERY = 1800
-
-/**
- * Every search one sync may run. Each has a `from:` list; there is no way to search the mailbox
- * in general. Sent mail, drafts and chats are out, and Gmail leaves out spam and trash by itself.
- * A company's name is in the list because its domain is often unknown. The gate will not accept
- * a sender on a name alone, so this can bring back headers, never a body.
- */
-export function buildQueries(apps: ScopedApp[], after: Date): string[] {
-  const base = `after:${Math.floor(after.getTime() / 1000)} -in:chats -in:drafts -in:sent -from:me`
-  const from = (senders: readonly string[]) =>
-    `{${senders.map((sender) => `from:${sender}`).join(" ")}}`
-  const queries = [
-    `${from([...ATS_DOMAINS, ...ATS_ADDRESSES])} ${base}`,
-    `${from(MIXED_DOMAINS)} ${subjectClause()} ${base}`,
-  ]
-  const company = `${base} -category:promotions -category:social`
-  const room = MAX_QUERY - subjectClause().length - company.length - 8
-  let senders: string[] = []
-  let roles: string[] = []
-  const flush = () => {
-    if (senders.length) queries.push(`${from(senders)} ${subjectClause(roles)} ${company}`)
-    senders = []
-    roles = []
-  }
-  for (const app of apps) {
-    const name = searchPhrase(app.company)
-    const appSenders = [...app.domains, ...(name ? [name] : [])]
-    if (!appSenders.length) continue
-    const role = searchPhrase(app.title)
-    const appRoles = role ? [role] : []
-    const size = [...senders, ...roles, ...appSenders, ...appRoles].join(" from:subject:").length
-    if (size > room) flush()
-    senders.push(...appSenders)
-    roles.push(...appRoles)
-  }
-  flush()
-  return queries
 }

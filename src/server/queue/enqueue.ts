@@ -5,31 +5,10 @@ type Writer = Prisma.TransactionClient | typeof db
 
 export const INDEX_WATCHED = "INDEX_WATCHED"
 export const SHEET_SYNC = "SHEET_SYNC"
+/** No longer queued. The worker finishes a task left from before, and erasing removes it. */
 export const GMAIL_SYNC = "GMAIL_SYNC"
 /** Waits this long after a change so a burst of edits becomes one Google Sheet write. */
 export const SHEET_SYNC_DELAY_MS = 20_000
-
-/** Check the person's Gmail now. A failed pass is not retried here: the next interval does that. */
-export async function enqueueGmailSync(userId: number, client: Writer = db) {
-  const pending = await client.backgroundTask.findFirst({
-    where: {
-      type: GMAIL_SYNC,
-      status: { in: ["PENDING", "RUNNING"] },
-      payload: { path: ["userId"], equals: userId },
-    },
-    select: { id: true },
-  })
-  if (pending) return
-  await client.backgroundTask.create({
-    data: {
-      type: GMAIL_SYNC,
-      payload: { userId },
-      status: "PENDING",
-      maxAttempts: 1,
-      runAt: new Date(),
-    },
-  })
-}
 
 /** Mirror the person's applications to their Google Sheet soon. A pending task is reused. */
 export async function enqueueSheetSync(userId: number, client: Writer = db) {

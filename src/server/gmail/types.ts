@@ -8,43 +8,11 @@ export function isGmailErrorCode(value: unknown): value is GmailErrorCode {
   return typeof value === "string" && (GMAIL_ERROR_CODES as readonly string[]).includes(value)
 }
 
-export class GmailError extends Error {
-  code: GmailErrorCode
-  constructor(code: GmailErrorCode, message: string) {
-    super(message)
-    this.name = "GmailError"
-    this.code = code
-  }
-}
-
 export type Sender = {
   address: string
   domain: string
   /** Display name; empty when it is missing or looks like a forged address */
   name: string
-}
-
-/** The headers read before anything else. A body is fetched only when these pass the gate. */
-export type MailHeaders = {
-  id: string
-  receivedAt: Date
-  labelIds: string[]
-  from: string
-  subject: string
-  /** In message order, top first: Gmail adds its own result above anything the sender wrote */
-  authResults: string[]
-  /** To and Cc as written */
-  recipients: string[]
-  listUnsubscribe: boolean
-  precedence: string | null
-}
-
-export type MailPart = {
-  mimeType?: string
-  filename?: string
-  headers?: { name: string; value: string }[]
-  body?: { data?: string }
-  parts?: MailPart[]
 }
 
 /**
@@ -53,7 +21,7 @@ export type MailPart = {
  */
 export type Tier = "ats" | "mixed" | "company"
 
-/** An open application: what the search, the gate and the matching are allowed to look for. */
+/** An open application: what the matching is allowed to look for. */
 export type ScopedApp = {
   id: string
   company: string
