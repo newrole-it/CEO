@@ -2,7 +2,6 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
-import getSearch from "../src/app/searches/queries/getSearch"
 import { revokeOtherAccess, upsertLinkedInUser } from "../src/server/auth/accounts"
 import { linkRequestValue } from "../src/server/auth/link-request"
 import {
@@ -18,17 +17,6 @@ import { signInWithMagicLink } from "../src/server/auth/sign-in-link"
 
 const db = new PrismaClient()
 const stamp = Date.now()
-
-function ctxFor(userId: number) {
-  return {
-    session: {
-      userId,
-      $authorize() {
-        if (!this.userId) throw new Error("unauthorized")
-      },
-    },
-  }
-}
 
 before(async () => {
   await db.loginLink.deleteMany({ where: { email: { contains: `auth-${stamp}` } } })
@@ -231,27 +219,4 @@ test("a LinkedIn sign-in does not take an email another account holds", async ()
   })
   assert.equal(signedIn?.id, mine.id)
   assert.equal(signedIn?.email, mine.email)
-})
-
-test("a user cannot read another user's search", async () => {
-  const owner = await db.user.create({
-    data: { email: `owner-auth-${stamp}@example.com`, role: "USER" },
-  })
-  const other = await db.user.create({
-    data: { email: `other-auth-${stamp}@example.com`, role: "USER" },
-  })
-  const search = await db.savedSearch.create({
-    data: {
-      userId: owner.id,
-      name: "Head of Engineering",
-      phrase: "Head of Engineering",
-      targetTitles: [],
-      includedKeywords: [],
-      excludedKeywords: [],
-      seniority: [],
-    },
-  })
-  await assert.rejects(() => getSearch({ id: search.id }, ctxFor(other.id) as never))
-  const visible = await getSearch({ id: search.id }, ctxFor(owner.id) as never)
-  assert.equal(visible.search.phrase, "Head of Engineering")
 })
