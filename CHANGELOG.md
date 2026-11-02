@@ -33,6 +33,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Fixed
 
+- Importing a CV or a pasted profile reads the expected salary: the minimum, the target, the currency and the contract. A yearly amount is saved as a monthly one, also when you confirm a draft that came in yearly.
 - npm run go works on a fresh clone again: packages install from package-lock.json, the site starts with webpack, and sign-in no longer fails on a package that was removed.
 - A career site whose sitemap fails to load (an error, a reset connection, a not-modified answer or one broken child sitemap) no longer has its offers marked as possibly closed or closed.
 - A board that answers "not modified" after an unfinished crawl is read in full instead of being parked for a day.

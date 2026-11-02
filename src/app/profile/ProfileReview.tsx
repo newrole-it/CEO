@@ -57,7 +57,11 @@ function fromK(text: string): number | null {
 }
 
 export function salaryError(draft: ProfileDraft): boolean {
-  return draft.salaryFloor != null && draft.salaryTarget != null && draft.salaryFloor > draft.salaryTarget
+  return (
+    draft.salaryFloor != null &&
+    draft.salaryTarget != null &&
+    draft.salaryFloor > draft.salaryTarget
+  )
 }
 
 /** Normalise a draft before saving: monthly period, home city first in cities. */
@@ -65,8 +69,12 @@ export function cleanDraft(draft: ProfileDraft): ProfileDraft {
   const locations = draft.homeCity
     ? [draft.homeCity, ...draft.locations.filter((city) => city !== draft.homeCity)]
     : draft.locations
+  const monthly = (value: number | null) =>
+    value != null && draft.salaryPeriod === "year" ? Math.round(value / 12) : value
   return {
     ...draft,
+    salaryFloor: monthly(draft.salaryFloor),
+    salaryTarget: monthly(draft.salaryTarget),
     salaryPeriod: "month",
     salaryCurrency: draft.salaryCurrency ?? "PLN",
     locations: locations.slice(0, 8),
@@ -101,9 +109,10 @@ export function ProfileReview({
   const cities = draft.homeCity
     ? [draft.homeCity, ...draft.locations.filter((city) => city !== draft.homeCity)]
     : draft.locations
-  const unit = draft.salaryCurrency && draft.salaryCurrency !== "PLN"
-    ? t("f.salaryUnitCur", { cur: draft.salaryCurrency })
-    : t("f.salaryUnit")
+  const unit =
+    draft.salaryCurrency && draft.salaryCurrency !== "PLN"
+      ? t("f.salaryUnitCur", { cur: draft.salaryCurrency })
+      : t("f.salaryUnit")
 
   if (skeleton) return <ReviewSkeleton />
 
@@ -138,7 +147,9 @@ export function ProfileReview({
         <div className="row" style={{ gap: 12 }}>
           <Segmented<Seniority>
             label={t("f.seniority")}
-            value={draft.seniority && MAIN_LEVELS.includes(draft.seniority) ? draft.seniority : null}
+            value={
+              draft.seniority && MAIN_LEVELS.includes(draft.seniority) ? draft.seniority : null
+            }
             options={MAIN_LEVELS.map((value) => ({ value, label: t(`sen.${value}` as CopyKey) }))}
             onChange={(seniority) => patch({ seniority })}
           />
@@ -147,7 +158,9 @@ export function ProfileReview({
               className="select select--sm"
               aria-label={t("f.seniority")}
               value={draft.seniority ?? ""}
-              onChange={(event) => patch({ seniority: (event.target.value || null) as Seniority | null })}
+              onChange={(event) =>
+                patch({ seniority: (event.target.value || null) as Seniority | null })
+              }
             >
               <option value="">{t("sen.none")}</option>
               {seniorityValues.map((value) => (
@@ -173,7 +186,9 @@ export function ProfileReview({
                 const n = Number(event.target.value)
                 patch({
                   yearsExperience:
-                    event.target.value === "" || !Number.isFinite(n) ? null : Math.max(0, Math.min(60, Math.round(n))),
+                    event.target.value === "" || !Number.isFinite(n)
+                      ? null
+                      : Math.max(0, Math.min(60, Math.round(n))),
                 })
               }}
             />
@@ -249,7 +264,9 @@ export function ProfileReview({
             className="select select--sm"
             aria-label={t("f.currency")}
             value={draft.salaryCurrency ?? "PLN"}
-            onChange={(event) => patch({ salaryCurrency: event.target.value as ProfileDraft["salaryCurrency"] })}
+            onChange={(event) =>
+              patch({ salaryCurrency: event.target.value as ProfileDraft["salaryCurrency"] })
+            }
           >
             {CURRENCIES.map((cur) => (
               <option key={cur} value={cur}>
@@ -271,7 +288,13 @@ export function ProfileReview({
                 pressed={on}
                 onClick={() => {
                   const rest = draft.contracts.filter((item) => item.toLowerCase() !== value)
-                  patch({ contracts: on ? rest : value === "any" ? ["any"] : [...rest.filter((item) => item !== "any"), value] })
+                  patch({
+                    contracts: on
+                      ? rest
+                      : value === "any"
+                      ? ["any"]
+                      : [...rest.filter((item) => item !== "any"), value],
+                  })
                 }}
               >
                 {t(`f.contract.${value}`)}
@@ -297,7 +320,8 @@ export function ProfileReview({
         <ChipInput
           values={cities}
           onChange={(next) => {
-            const home = draft.homeCity && next.includes(draft.homeCity) ? draft.homeCity : next[0] ?? null
+            const home =
+              draft.homeCity && next.includes(draft.homeCity) ? draft.homeCity : next[0] ?? null
             patch({ locations: next.slice(0, 8), homeCity: home })
           }}
           max={8}
@@ -336,7 +360,9 @@ export function ProfileReview({
             style={{ width: "auto", height: 44 }}
             aria-label={t("f.industries")}
             value={draft.industryMode}
-            onChange={(event) => patch({ industryMode: event.target.value as ProfileDraft["industryMode"] })}
+            onChange={(event) =>
+              patch({ industryMode: event.target.value as ProfileDraft["industryMode"] })
+            }
           >
             <option value="stick">{t("f.ind.stick")}</option>
             <option value="prefer">{t("f.ind.prefer")}</option>
@@ -346,7 +372,11 @@ export function ProfileReview({
       </Section>
 
       <div className="review-sec">
-        <details className="disclosure" open={more} onToggle={(event) => setMore((event.target as HTMLDetailsElement).open)}>
+        <details
+          className="disclosure"
+          open={more}
+          onToggle={(event) => setMore((event.target as HTMLDetailsElement).open)}
+        >
           <summary>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="m9 18 6-6-6-6" />
@@ -417,7 +447,11 @@ export function ReviewSkeleton() {
           {index === 2 ? (
             <div className="row">
               {[64, 52, 70, 84, 58].map((w) => (
-                <span key={w} className="skel" style={{ width: w, height: 28, borderRadius: 999 }} />
+                <span
+                  key={w}
+                  className="skel"
+                  style={{ width: w, height: 28, borderRadius: 999 }}
+                />
               ))}
             </div>
           ) : null}
