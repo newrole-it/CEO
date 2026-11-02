@@ -8,7 +8,7 @@ const ERRORS = {
   restricted: "Na tej stronie Chrome nie pozwala działać rozszerzeniom.",
   "no-form": "Nie widzę tu formularza.",
   "no-fields": "Nie widzę tu pól do wypełnienia.",
-  offline: "Nie mogę połączyć się z aplikacją. Czy Nowa Rola jest uruchomiona?",
+  offline: "Nie mogę połączyć się z aplikacją. Czy newrole.it działa?",
   disconnected: "Odśwież tę stronę i spróbuj ponownie.",
   busy: "Już nad tym pracuję.",
   "not-profile": "Otwórz swój profil LinkedIn (linkedin.com/in/…) i spróbuj ponownie.",

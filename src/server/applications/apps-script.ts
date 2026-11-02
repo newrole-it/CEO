@@ -27,10 +27,10 @@ export function statusColors(): Record<string, [string, string]> {
  */
 export function appsScriptSource(secret = "WKLEJ_TU_SEKRET"): string {
   return `/**
- * Nowa Rola → Arkusz Google (synchronizacja jednostronna: aplikacja → arkusz).
+ * newrole.it → Arkusz Google (synchronizacja jednostronna: aplikacja → arkusz).
  * 1. Wklej ten skrypt w Rozszerzenia → Apps Script i zapisz.
  * 2. Wdróż → Nowe wdrożenie → Aplikacja internetowa. Wykonaj jako: Ja. Kto ma dostęp: Każdy.
- * 3. Skopiuj adres URL kończący się na /exec i wklej go w Nowa Rola → Ustawienia → Arkusz Google.
+ * 3. Skopiuj adres URL kończący się na /exec i wklej go w newrole.it → Ustawienia → Arkusz Google.
  * Sekret poniżej chroni arkusz przed obcymi zapisami. Nie udostępniaj go.
  */
 var SECRET = ${JSON.stringify(secret)};
@@ -90,7 +90,7 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok: true, app: "nowarola" });
+  return json_({ ok: true, app: "newrole" });
 }
 
 function json_(value) {

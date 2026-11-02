@@ -2,9 +2,10 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Nowa Rola",
-    short_name: "Nowa Rola",
-    description: "Nowa rola w tech, dopasowana do Ciebie.",
+    name: "newrole.it",
+    short_name: "newrole.it",
+    description:
+      "Oferty z całego świata, wyniki z Twojego kraju. Prosto od pracodawców, dopasowane do Ciebie.",
     lang: "pl",
     start_url: "/",
     display: "standalone",

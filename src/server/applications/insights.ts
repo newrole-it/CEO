@@ -35,7 +35,7 @@ export type InsightApplication = {
   nextStep: string | null
   nextStepAt: string | null
   source: string
-  /** Set when the offer is in the Nowa Rola index */
+  /** Set when the offer is in the newrole.it index */
   jobId: string | null
   /** Oldest first */
   events: InsightEvent[]

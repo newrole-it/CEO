@@ -44,14 +44,14 @@ function useExtensionHello() {
     function onMessage(event: MessageEvent) {
       if (event.source !== window || event.origin !== window.location.origin) return
       const data = event.data as { type?: unknown; connected?: unknown; version?: unknown } | null
-      if (data?.type !== "nowarola:hello") return
+      if (data?.type !== "newrole:hello") return
       setHello({
         connected: data.connected === true,
         version: typeof data.version === "string" ? data.version : null,
       })
     }
     window.addEventListener("message", onMessage)
-    const ping = () => window.postMessage({ type: "nowarola:ping" }, window.location.origin)
+    const ping = () => window.postMessage({ type: "newrole:ping" }, window.location.origin)
     ping()
     window.addEventListener("focus", ping)
     return () => {
@@ -307,11 +307,11 @@ function ExtensionInstall({
   const [state, setState] = useState<"idle" | "working" | "failed">("idle")
   const token = useRef<string | null>(null)
 
-  // nowarola:paired comes from the content script: prove the token works, then refresh the list.
+  // newrole:paired comes from the content script: prove the token works, then refresh the list.
   useEffect(() => {
     async function onMessage(event: MessageEvent) {
       if (event.source !== window || event.origin !== window.location.origin) return
-      if ((event.data as { type?: unknown } | null)?.type !== "nowarola:paired") return
+      if ((event.data as { type?: unknown } | null)?.type !== "newrole:paired") return
       if (token.current) {
         await fetch("/api/ext/me", { headers: { Authorization: `Bearer ${token.current}` } }).catch(
           () => undefined
@@ -337,7 +337,7 @@ function ExtensionInstall({
       const data = (await response.json()) as { token: string }
       token.current = data.token
       window.postMessage(
-        { type: "nowarola:pair", token: data.token, origin: window.location.origin },
+        { type: "newrole:pair", token: data.token, origin: window.location.origin },
         window.location.origin
       )
       window.setTimeout(

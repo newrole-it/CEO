@@ -5,7 +5,7 @@
 export const setupPl = {
   "nav.setup": "Konfiguracja",
 
-  "setup.title": "Uruchom Nową Rolę krok po kroku",
+  "setup.title": "Uruchom newrole.it krok po kroku",
   "setup.sub": "Oto wszystko, co jest potrzebne, i co już działa. Status odświeża się sam.",
   "setup.progress": "Gotowe: {done} z {total}",
   "setup.progressLabel": "Postęp konfiguracji",
@@ -18,7 +18,7 @@ export const setupPl = {
   "setup.group.run": "Uruchomienie",
   "setup.group.run.sub": "To robi samo polecenie npm run go.",
   "setup.group.you": "Twoje dane",
-  "setup.group.you.sub": "Na ich podstawie Nowa Rola dobiera oferty i wypełnia formularze.",
+  "setup.group.you.sub": "Na ich podstawie newrole.it dobiera oferty i wypełnia formularze.",
   "setup.group.connect": "Integracje",
   "setup.group.connect.sub": "Żeby aplikowanie i śledzenie działały same.",
 
@@ -107,9 +107,9 @@ export const setupPl = {
 
   "setup.mcp.title": "Claude Code: serwer MCP",
   "setup.mcp.why": "Pytasz Claude: „na jakim etapie jestem z Allegro?”, „popraw CV pod tę ofertę”.",
-  "setup.mcp.ok": "Claude Code łączy się z Nową Rolą.",
+  "setup.mcp.ok": "Claude Code łączy się z newrole.it.",
   "setup.mcp.add":
-    "Dodaj serwer jednym poleceniem, potem uruchom claude. W folderze projektu wystarczy zatwierdzić „nowarola”.",
+    "Dodaj serwer jednym poleceniem, potem uruchom claude. W folderze projektu wystarczy zatwierdzić „newrole”.",
   "setup.mcp.cta": "Co można pytać",
 
   "setup.sheet.title": "Arkusz Google",
@@ -123,7 +123,7 @@ export const setupPl = {
 export const setupEn: Record<keyof typeof setupPl, string> = {
   "nav.setup": "Setup",
 
-  "setup.title": "Get Nowa Rola running, step by step",
+  "setup.title": "Get newrole.it running, step by step",
   "setup.sub": "Everything you need, and what already works. The status updates by itself.",
   "setup.progress": "Done: {done} of {total}",
   "setup.progressLabel": "Setup progress",
@@ -136,7 +136,7 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.group.run": "Running",
   "setup.group.run.sub": "npm run go does this for you.",
   "setup.group.you": "Your details",
-  "setup.group.you.sub": "Nowa Rola uses them to pick offers and fill in forms.",
+  "setup.group.you.sub": "newrole.it uses them to pick offers and fill in forms.",
   "setup.group.connect": "Integrations",
   "setup.group.connect.sub": "So applying and tracking work by themselves.",
 
@@ -225,9 +225,9 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.mcp.title": "Claude Code: MCP server",
   "setup.mcp.why":
     "Ask Claude things like “where am I with Allegro?” or “tailor my CV to this offer”.",
-  "setup.mcp.ok": "Claude Code connects to Nowa Rola.",
+  "setup.mcp.ok": "Claude Code connects to newrole.it.",
   "setup.mcp.add":
-    "Add the server with one command, then run claude. In the project folder, just approve “nowarola”.",
+    "Add the server with one command, then run claude. In the project folder, just approve “newrole”.",
   "setup.mcp.cta": "What you can ask",
 
   "setup.sheet.title": "Google Sheet",

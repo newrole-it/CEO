@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/screenshots/banner.svg" alt="nowarola.it: a local-first job finder for the Polish tech market" width="900">
+  <img src="docs/screenshots/banner.svg" alt="newrole.it: global offers, local search" width="900">
 </p>
 
-# Nowa Rola — tech jobs straight from employers, ranked for you.
+# newrole.it: global offers, local search
 
-A local-first job finder for the Polish tech market. It reads public career pages and ATS boards (not aggregators), keeps its own index, ranks every open offer against your profile, tracks your applications, tailors your CV, and lets Claude Code do all of it for you through MCP.
+newrole.it is a job finder that runs on your machine. It reads the public career pages and ATS boards of employers worldwide (not aggregators) and keeps its own index. When you search in a country, you get offers from that country plus remote roles you can do from there: someone looking in Poland gets Polish offers and is not buried under the rest of the world, someone searching in the US gets US offers. Your profile's country is the default, and you can switch it in the filter or in the search phrase ("w USA", "in Germany"). It ranks every offer against your profile, tracks your applications, tailors your CV, and Claude Code can drive all of it through MCP.
 
 [![Node 22+](https://img.shields.io/badge/node-22%2B-339933?style=flat-square&labelColor=15161d&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-5b3df5?style=flat-square&labelColor=15161d&logo=next.js&logoColor=white)](https://nextjs.org)
@@ -13,7 +13,7 @@ A local-first job finder for the Polish tech market. It reads public career page
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-2ea043?style=flat-square&labelColor=15161d)](#contributing)
 
 <p align="center">
-  <a href="docs/screenshots/demo.mp4"><img src="docs/screenshots/demo.webp" alt="A 13-second tour of Nowa Rola in the dark theme: the ranked feed, one offer's score breakdown, the application tracker and one application's timeline, the answer bank, watched and suggested companies, and the source list" width="900"></a>
+  <a href="docs/screenshots/demo.mp4"><img src="docs/screenshots/demo.webp" alt="A 13-second tour of newrole.it in the dark theme: the ranked feed, one offer's score breakdown, the application tracker and one application's timeline, the answer bank, watched and suggested companies, and the source list" width="900"></a>
 </p>
 
 <p align="center"><em>A 13-second tour, on a local install with a fictional profile. The offers and companies are real public postings. Click for the MP4.</em></p>
@@ -23,9 +23,10 @@ A local-first job finder for the Polish tech market. It reads public career page
 ## Features
 
 - 💻 **Runs on your machine.** Postgres in Docker, Node, and that is it. No billing, no API keys required.
+- 🌍 **Global index, local results.** Search in a country and you get its offers plus remote roles open to people there. Your profile's country is the default; write another one in the phrase or pick it in the filter.
 - 🏢 **Offers from the source, not aggregators.** Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Teamtailor, Recruitee, Personio, Traffit, Pinpoint, Workday and SuccessFactors employer sites, plus schema.org JobPosting on company career pages. Every result links to the original posting. [Every source and its policy](docs/sources.md) is public in the app.
-- 👀 **Watch the companies you care about.** Name a company or paste its careers URL and Nowa Rola keeps reading it. Suggestions work from the first minute: companies like the ones you liked, companies that fit your profile, or the biggest employers in Poland.
-- 🎯 **A deterministic match score with reasons.** Role, seniority, location, salary (monthly PLN, UoP and B2B normalised), freshness and source. The model may explain a score; it cannot change it.
+- 👀 **Watch the companies you care about.** Name a company or paste its careers URL and newrole.it keeps reading it. Suggestions work from the first minute: companies like the ones you liked, and until likes give enough to go on, companies with offers in Poland that fit your profile or hire the most. That fallback looks at Poland only for now.
+- 🎯 **A deterministic match score with reasons.** Role, seniority, location, salary (compared in monthly PLN, with the Polish UoP and B2B contracts normalised), freshness and source. The model may explain a score; it cannot change it.
 - 🧠 **Learns your taste.** Reject or like with one key (J/K), swipe on the phone, tell it what you liked about an offer. Decided offers move out of the way; similar titles move with them.
 - 🔍 **Search in Polish or English.** A phrase is expanded into related titles, seniority, synonyms and exclusions, then scored against the local index first, so results show before any crawl.
 - 👤 **Your profile without a LinkedIn app.** Import from a CV PDF, LinkedIn's data export ZIP, pasted text, or let Claude read your own profile in your own Chrome.
@@ -75,7 +76,7 @@ You need [Node 22+](https://nodejs.org) and [Docker Desktop](https://www.docker.
 
 ```bash
 git clone https://github.com/newrole-it/CEO.git
-cd nowarola.it
+cd newrole.it
 npm run go
 ```
 
@@ -107,13 +108,15 @@ Postgres, the web app and a worker, published on 127.0.0.1 only. Claude Code and
 
 ## Use it from Claude Code
 
-Nowa Rola ships an MCP server that talks to the same Postgres as the app. Inside this repo Claude Code offers it from `.mcp.json`; approve `nowarola` once. From anywhere else:
+newrole.it ships an MCP server that talks to the same Postgres as the app. Inside this repo Claude Code offers it from `.mcp.json`; approve `newrole` once. From anywhere else:
 
 ```bash
-claude mcp add nowarola -s user -- npm --prefix /path/to/nowarola.it run --silent mcp
+claude mcp add newrole -s user -- npm --prefix /path/to/newrole.it run --silent mcp
 ```
 
-Add `-e NOWAROLA_USER_EMAIL=you@example.com` when the database has more than one account. Keep the worker running (`npm run worker`) so watched companies get indexed; the web app does not need to be running.
+Added the server before the rename, under the name `nowarola`? Run `claude mcp remove nowarola -s user`, then the command above.
+
+Add `-e NEWROLE_USER_EMAIL=you@example.com` when the database has more than one account (the old `NOWAROLA_USER_EMAIL` still works). Keep the worker running (`npm run worker`) so watched companies get indexed; the web app does not need to be running.
 
 Things to ask:
 
@@ -121,7 +124,7 @@ Things to ask:
 - „Pokaż nowe oferty dla mnie z tego tygodnia”
 - „Szukaj senior backend, zdalnie, od 25 tys.”
 - „Ta oferta z Allegro mi się podoba” (Claude asks what you like about it and records it)
-- „Znajdź mi oferty spoza agregatorów, jak ta z Allegro” (or the `/mcp__nowarola__hunt` prompt)
+- „Znajdź mi oferty spoza agregatorów, jak ta z Allegro” (or the `/mcp__newrole__hunt` prompt)
 - „Na jakim etapie jestem z Acme?”, „Odrzucili mnie w Beta po rozmowach”, „Mam rozmowę finałową w czwartek”
 - „Pomóż mi zaaplikować na tę ofertę” (the `apply` prompt: CV, answers, tracking)
 - „Przejrzyj moje aplikacje i zaktualizuj arkusz” (the `pipeline` prompt)
@@ -135,7 +138,7 @@ Things to ask:
 | CV and answers | `cv_list`, `cv_get`, `cv_update`, `cv_export_pdf`, `answers_search`, `answer_save`, `answer_draft` |
 | Prompts | `hunt`, `review`, `onboard`, `apply`, `pipeline` |
 
-Claude never fetches LinkedIn or the Polish boards. Offers Claude adds go through the same URL checks and source policy as the crawler. The skill in `.claude/skills/nowarola` describes the same workflows.
+Claude never fetches LinkedIn or the Polish boards. Offers Claude adds go through the same URL checks and source policy as the crawler. The skill in `.claude/skills/newrole` describes the same workflows.
 
 ## How it works
 
@@ -198,7 +201,7 @@ The tests use a database next to the one in `.env`, with `_test` added to its na
 
 ## Status and licence
 
-Nowa Rola is in active development and runs locally first. Privacy and terms are drafts pending legal review, and the source policy is documented, not legal advice.
+newrole.it is in active development and runs locally first. Privacy and terms are drafts pending legal review, and the source policy is documented, not legal advice.
 
 Licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`). If you change it and let other people use it over a network, you have to offer them your source.
 

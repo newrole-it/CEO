@@ -9,7 +9,7 @@ import type { McpUser } from "./user"
 export type McpHost = {
   /** False on a server several people share: only SHARED_SERVER_TOOLS exist, none touches its disk. */
   localInstall: boolean
-  /** Who a call acts for. Unset: NOWAROLA_USER_EMAIL, else the only account, else the owner. */
+  /** Who a call acts for. Unset: NEWROLE_USER_EMAIL, else the only account, else the owner. */
   currentUser?: () => Promise<McpUser>
   /** Replaces INSTRUCTIONS, which describe the local install. */
   instructions?: string

@@ -10,11 +10,11 @@ export const gmailPl = {
 
   "gm.title": "Gmail",
   "gm.lead":
-    "Nowa Rola nie przeszukuje Twojej skrzynki. Gdy firma odpisze, wskazujesz ten jeden mail w rozszerzeniu, a status aplikacji i oś czasu zmieniają się po Twoim potwierdzeniu.",
+    "newrole.it nie przeszukuje Twojej skrzynki. Gdy firma odpisze, wskazujesz ten jeden mail w rozszerzeniu, a status aplikacji i oś czasu zmieniają się po Twoim potwierdzeniu.",
   "gm.how.1.title": "Otwórz mail od firmy",
   "gm.how.1.body":
     "W Gmailu otwórz wiadomość, np. zaproszenie na kolejny etap albo odmowę. W długim wątku możesz zaznaczyć fragment, o który chodzi.",
-  "gm.how.2.title": "Kliknij rozszerzenie Nowa Rola",
+  "gm.how.2.title": "Kliknij rozszerzenie newrole.it",
   "gm.how.2.body":
     "Wybierz „Użyj tego maila w aplikacji”. Rozszerzenie podpowie aplikację i nowy status na podstawie nadawcy i treści.",
   "gm.how.3.title": "Potwierdź",
@@ -29,7 +29,7 @@ export const gmailPl = {
   "gm.reads.3": "Wpisy w dzienniku poniżej znikają po 90 dniach.",
 
   "gm.legacy":
-    "Skrzynka {email} została połączona we wcześniejszej wersji. Nowa Rola już jej nie czyta, ale token dostępu wciąż jest zapisany. Odłącz ją, żeby go odwołać.",
+    "Skrzynka {email} została połączona we wcześniejszej wersji. newrole.it już jej nie czyta, ale token dostępu wciąż jest zapisany. Odłącz ją, żeby go odwołać.",
   "gm.disconnect": "Odłącz i odwołaj dostęp",
   "gm.disconnected": "Odłączono Gmail. Dostęp odwołany, dziennik usunięty.",
   "gm.disconnectedManual":
@@ -88,11 +88,11 @@ export const gmailEn: Record<keyof typeof gmailPl, string> = {
 
   "gm.title": "Gmail",
   "gm.lead":
-    "Nowa Rola does not search your mailbox. When a company replies, you point the extension at that one message, and the application's status and timeline change once you confirm.",
+    "newrole.it does not search your mailbox. When a company replies, you point the extension at that one message, and the application's status and timeline change once you confirm.",
   "gm.how.1.title": "Open the company's mail",
   "gm.how.1.body":
     "Open the message in Gmail, e.g. an invitation to the next stage or a rejection. In a long thread you can select the part that matters.",
-  "gm.how.2.title": "Click the Nowa Rola extension",
+  "gm.how.2.title": "Click the newrole.it extension",
   "gm.how.2.body":
     "Choose “Użyj tego maila w aplikacji”. The extension suggests the application and the new status from the sender and the text.",
   "gm.how.3.title": "Confirm",
@@ -107,7 +107,7 @@ export const gmailEn: Record<keyof typeof gmailPl, string> = {
   "gm.reads.3": "Entries in the log below disappear after 90 days.",
 
   "gm.legacy":
-    "The mailbox {email} was connected in an earlier version. Nowa Rola no longer reads it, but its access token is still stored. Disconnect it to revoke the token.",
+    "The mailbox {email} was connected in an earlier version. newrole.it no longer reads it, but its access token is still stored. Disconnect it to revoke the token.",
   "gm.disconnect": "Disconnect and revoke access",
   "gm.disconnected": "Gmail disconnected. Access revoked, log deleted.",
   "gm.disconnectedManual":

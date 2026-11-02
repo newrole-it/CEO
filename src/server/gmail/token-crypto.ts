@@ -15,6 +15,7 @@ function tokenKey(env: Env): Uint8Array | null {
   const secret = env.GMAIL_TOKEN_KEY?.trim() || env.SESSION_SECRET_KEY?.trim()
   // The placeholder from .env.example is long enough and public, so it protects nothing.
   if (!secret || secret.length < MIN_SECRET || /^replace-with/i.test(secret)) return null
+  // The salt keeps the project's old name: changing it would make every stored token undecryptable.
   return new Uint8Array(hkdfSync("sha256", secret, "nowarola", "gmail-refresh-token", 32))
 }
 

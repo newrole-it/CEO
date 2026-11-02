@@ -24,7 +24,7 @@ export function servicePrivacy(locale: Locale, who: Operator): ServiceSection[] 
           title: "Twój Claude",
           lines: [
             "Ten serwer przechowuje dane, ale nie wywołuje żadnego modelu językowego i nie szuka ofert. Robi to Twój Claude, na Twoim koncie.",
-            "Gdy Claude wywołuje narzędzie Nowej Roli, dostaje jego wynik, w tym dane z Twojego profilu, CV i aplikacji. Od tej chwili przetwarza je Anthropic na warunkach Twojego konta Claude. Dostęp cofniesz, usuwając connector w Claude i token w Ustawieniach.",
+            "Gdy Claude wywołuje narzędzie newrole.it, dostaje jego wynik, w tym dane z Twojego profilu, CV i aplikacji. Od tej chwili przetwarza je Anthropic na warunkach Twojego konta Claude. Dostęp cofniesz, usuwając connector w Claude i token w Ustawieniach.",
           ],
         },
         {
@@ -69,7 +69,7 @@ export function servicePrivacy(locale: Locale, who: Operator): ServiceSection[] 
           title: "Your Claude",
           lines: [
             "This server stores data. It calls no language model and looks for no offers. Your Claude does that, on your account.",
-            "When Claude calls a Nowa Rola tool, it receives the result, including data from your profile, CV and applications. From then on Anthropic processes it under the terms of your Claude account. To withdraw access, remove the connector in Claude and the token in Settings.",
+            "When Claude calls a newrole.it tool, it receives the result, including data from your profile, CV and applications. From then on Anthropic processes it under the terms of your Claude account. To withdraw access, remove the connector in Claude and the token in Settings.",
           ],
         },
         {

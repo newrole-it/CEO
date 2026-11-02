@@ -28,7 +28,7 @@ const en = {
   ],
   whoTitle: "Who else receives data",
   hostTitle: "Hosting and database",
-  host: "The server that runs Nowa Rola and its PostgreSQL database. That is where the account, profile, searches, decisions, and audits are stored. This draft does not name a separate hosting company, because the database runs on the machine you deploy.",
+  host: "The server that runs newrole.it and its PostgreSQL database. That is where the account, profile, searches, decisions, and audits are stored. This draft does not name a separate hosting company, because the database runs on the machine you deploy.",
   emailTitle: "Email",
   email:
     "Resend (api.resend.com) when the deployment uses it, otherwise the SMTP server configured for this deployment. They receive your email address and a one-time sign-in link. They do not receive your CV or searches. With the local console setting, the link is printed in the server log instead of being sent to an email company.",
@@ -39,10 +39,10 @@ const en = {
     "Brave Search, then Serper if Brave is unset or the call fails. When neither key is set and the deployment uses Claude Code (as the model, or chosen for search), the query goes to Claude Code's web search on your Claude subscription instead, at most 40 times a day unless the deployment sets another limit. They receive web queries built from the role you typed, such as a site: query plus that phrase. They do not receive your CV. The query is stored with the search and deleted with it. Pages returned by the search API are not stored.",
   linkedinTitle: "LinkedIn sign-in",
   linkedin:
-    "Optional. LinkedIn's OpenID Connect flow returns your name, email, and picture. Nowa Rola does not send your CV to LinkedIn.",
+    "Optional. LinkedIn's OpenID Connect flow returns your name, email, and picture. newrole.it does not send your CV to LinkedIn.",
   gmailTitle: "Gmail",
   gmail:
-    "Nowa Rola does not connect to your Gmail account and receives nothing from Google's API. Only when you click “Użyj tego maila w aplikacji” in the extension does it read the one message open in that tab (sender, subject, date and text, or only the part you selected) and send it to this app. Attachments and links are not opened, and nothing in your mailbox is sent, changed or deleted. When the rules cannot read the message, the language model above receives its subject and up to 3,000 characters of its text, without links, addresses or phone numbers. Disconnecting a mailbox connected in an earlier version revokes its access at Google and deletes the token and the log.",
+    "newrole.it does not connect to your Gmail account and receives nothing from Google's API. Only when you click “Użyj tego maila w aplikacji” in the extension does it read the one message open in that tab (sender, subject, date and text, or only the part you selected) and send it to this app. Attachments and links are not opened, and nothing in your mailbox is sent, changed or deleted. When the rules cannot read the message, the language model above receives its subject and up to 3,000 characters of its text, without links, addresses or phone numbers. Disconnecting a mailbox connected in an earlier version revokes its access at Google and deletes the token and the log.",
   controlTitle: "Export and deletion",
   control:
     "Settings lets you download a JSON file of your own data, delete the CV and profile, or delete the account. Deleting the profile removes the CV text, audits, and model replies from that CV. Documents under My CV, with their audits, are deleted separately on that page. Deleting the account also removes saved searches, decisions, applications, CV documents, the answer bank, extension tokens, the sheet connection, sessions, magic-link tokens, the LinkedIn connection, and queued work for those searches. Audit-log rows then keep the action name only.",
@@ -64,7 +64,7 @@ const pl = {
   ],
   whoTitle: "Kto jeszcze dostaje dane",
   hostTitle: "Hosting i baza",
-  host: "Serwer, na którym działa Nowa Rola, i jego baza PostgreSQL. Tam leżą konto, profil, wyszukiwania, decyzje i audyty. Ten szkic nie wymienia osobnej firmy hostingowej, bo baza działa na maszynie, na której wdrażasz aplikację.",
+  host: "Serwer, na którym działa newrole.it, i jego baza PostgreSQL. Tam leżą konto, profil, wyszukiwania, decyzje i audyty. Ten szkic nie wymienia osobnej firmy hostingowej, bo baza działa na maszynie, na której wdrażasz aplikację.",
   emailTitle: "Poczta",
   email:
     "Resend (api.resend.com), gdy wdrożenie go używa, a w przeciwnym razie serwer SMTP ustawiony dla tego wdrożenia. Dostają adres e-mail i jednorazowy link do logowania. Nie dostają CV ani wyszukiwań. Przy lokalnym ustawieniu konsoli link trafia do logu serwera, a nie do firmy pocztowej.",
@@ -75,10 +75,10 @@ const pl = {
     "Brave Search, a gdy Brave nie jest ustawiony albo wywołanie się nie uda, Serper. Gdy nie ma żadnego z tych kluczy, a wdrożenie korzysta z Claude Code (jako modelu albo wybranego do wyszukiwania), zapytanie trafia do wyszukiwarki Claude Code na Twojej subskrypcji Claude, najwyżej 40 razy dziennie, chyba że wdrożenie ustawi inny limit. Dostają zapytania WWW zbudowane z wpisanej roli, na przykład zapytanie site: i tę frazę. Nie dostają CV. Zapytanie jest zapisane przy wyszukiwaniu i usuwane razem z nim. Stron zwróconych przez API wyszukiwania nie zapisujemy.",
   linkedinTitle: "Logowanie LinkedIn",
   linkedin:
-    "Opcjonalne. OpenID Connect LinkedIn zwraca imię, e-mail i zdjęcie. Nowa Rola nie wysyła CV do LinkedIn.",
+    "Opcjonalne. OpenID Connect LinkedIn zwraca imię, e-mail i zdjęcie. newrole.it nie wysyła CV do LinkedIn.",
   gmailTitle: "Gmail",
   gmail:
-    "Nowa Rola nie łączy się z Twoim kontem Gmail i nie dostaje niczego z API Google. Dopiero gdy klikniesz w rozszerzeniu „Użyj tego maila w aplikacji”, czyta ono jedną wiadomość otwartą w tej karcie (nadawcę, temat, datę i tekst albo tylko zaznaczony fragment) i wysyła ją do tej aplikacji. Załączniki i linki nie są otwierane, a w Twojej skrzynce niczego nie wysyła, nie zmienia i nie usuwa. Gdy reguły nie potrafią odczytać maila, model językowy opisany wyżej dostaje jego temat i do 3000 znaków tekstu, bez linków, adresów i telefonów. Odłączenie skrzynki połączonej we wcześniejszej wersji odwołuje jej dostęp w Google i usuwa token oraz dziennik.",
+    "newrole.it nie łączy się z Twoim kontem Gmail i nie dostaje niczego z API Google. Dopiero gdy klikniesz w rozszerzeniu „Użyj tego maila w aplikacji”, czyta ono jedną wiadomość otwartą w tej karcie (nadawcę, temat, datę i tekst albo tylko zaznaczony fragment) i wysyła ją do tej aplikacji. Załączniki i linki nie są otwierane, a w Twojej skrzynce niczego nie wysyła, nie zmienia i nie usuwa. Gdy reguły nie potrafią odczytać maila, model językowy opisany wyżej dostaje jego temat i do 3000 znaków tekstu, bez linków, adresów i telefonów. Odłączenie skrzynki połączonej we wcześniejszej wersji odwołuje jej dostęp w Google i usuwa token oraz dziennik.",
   controlTitle: "Eksport i usuwanie",
   control:
     "W ustawieniach pobierzesz JSON ze swoimi danymi, usuniesz CV i profil albo usuniesz konto. Usunięcie profilu kasuje tekst CV, audyty i odpowiedzi modelu z tego CV. Dokumenty z Moje CV, razem z ich audytami, usuwasz osobno na tej stronie. Usunięcie konta kasuje także zapisane wyszukiwania, decyzje, aplikacje, dokumenty CV, bazę odpowiedzi, tokeny rozszerzenia, połączenie z arkuszem, sesje, tokeny linków do logowania, połączenie z LinkedIn i kolejkową pracę dla tych wyszukiwań. W dzienniku zostaje wtedy tylko nazwa czynności.",

@@ -2,13 +2,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
 import { mcpHost } from "./host"
 
-/** Server instructions and the three playbooks Claude Code shows as /mcp__nowarola__* commands. */
+/** Server instructions and the playbooks Claude Code shows as /mcp__newrole__* commands. */
 
-export const INSTRUCTIONS = `Nowa Rola is the person's local tech job finder. Its index holds offers read straight from company career pages and ATS boards (not from aggregators), ranked against their profile.
+export const INSTRUCTIONS = `newrole.it is the person's job finder, running on their own machine. Its index holds offers read straight from employers' career pages and ATS boards (not from aggregators), ranked against their profile.
 Workflow: profile_get first. No profile -> profile_import (CV PDF path, pasted CV, or their LinkedIn page text read via Claude in Chrome). Then jobs_for_me or jobs_search.
 Learning: when the person likes an offer and has not said why, call job_get and ask "Co Ci się w niej podoba?" offering its suggested tags; then job_feedback with aspects/tags. Offer jobs_similar afterwards.
 Hidden offers: discovery_brief, then web-search company career pages for the target roles, then companies_watch (whole company) or offer_ingest (one offer). Never scrape LinkedIn, justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it or bulldogjob; links only.
-Gmail: the mailbox is never searched. The person opens a company's mail in Gmail and picks it in the Nowa Rola extension; gmail_status explains this and shows what an earlier check left waiting.
+Gmail: the mailbox is never searched. The person opens a company's mail in Gmail and picks it in the newrole.it extension; gmail_status explains this and shows what an earlier check left waiting.
 
 Applications: applications_list / application_get answer "where am I with X"; record changes with application_update (status, stage label, next step and date). After changes, sheet_sync mirrors the table into the person's Google Sheet when it is connected.
 CV and answers: cv_get / cv_update / cv_export_pdf edit and print their CV (never invent experience); answers_search before answer_draft, and save the final wording with answer_save. Prompts: apply (one offer end to end), pipeline (weekly review).
@@ -40,7 +40,9 @@ export function registerPrompts(server: McpServer) {
     },
     ({ focus }) =>
       !localInstall
-        ? user(`Znajdź mi oferty pracy spoza agregatorów${focus ? `, z naciskiem na: ${focus}` : ""}.
+        ? user(`Znajdź mi oferty pracy spoza agregatorów${
+            focus ? `, z naciskiem na: ${focus}` : ""
+          }.
 
 Plan:
 1. Wywołaj discovery_brief. Zapamiętaj role docelowe, stack, to co lubię i zasady.
@@ -49,7 +51,9 @@ Plan:
 4. Otwórz tylko stronę kariery lub ATS danej firmy i przeczytaj oferty. Mało zapytań na domenę.
 5. Pokaż mi pasujące oferty: stanowisko, firma, pensja, tryb, link i powód.
 6. Gdy powiem, że zaaplikowałem, zapisz to przez application_add.`)
-        : user(`Znajdź mi oferty pracy spoza agregatorów${focus ? `, z naciskiem na: ${focus}` : ""}.
+        : user(`Znajdź mi oferty pracy spoza agregatorów${
+            focus ? `, z naciskiem na: ${focus}` : ""
+          }.
 
 Plan:
 1. Wywołaj discovery_brief. Zapamiętaj role docelowe, stack, to co lubię, obserwowane firmy, knownDomains i zasady.
@@ -92,7 +96,7 @@ Plan:
       argsSchema: localInstall ? onboardFile : ({} as typeof onboardFile),
     },
     ({ pdfPath }) =>
-      user(`Załóżmy mój profil w Nowej Roli.
+      user(`Załóżmy mój profil w newrole.it.
 
 ${
   !localInstall
@@ -120,9 +124,7 @@ ${
       description:
         "Prepare an application: pick and tailor the CV, draft answers from the answer bank, then record the application.",
       argsSchema: {
-        offer: z
-          .string()
-          .describe("Offer URL, Nowa Rola job id, or 'Stanowisko @ Firma'"),
+        offer: z.string().describe("Offer URL, newrole.it job id, or 'Stanowisko @ Firma'"),
         questions: z
           .string()
           .optional()

@@ -16,8 +16,8 @@ function say(id, text, tone) {
 function connectionError(result) {
   if (result?.status === 401) return "Token jest nieważny albo został unieważniony."
   if (result?.error === "offline")
-    return "Nie mogę połączyć się z aplikacją. Czy Nowa Rola jest uruchomiona?"
-  if (result?.error === "invalid-token") return "To nie wygląda na token Nowa Rola (nr_…)."
+    return "Nie mogę połączyć się z aplikacją. Czy newrole.it działa?"
+  if (result?.error === "invalid-token") return "To nie wygląda na token newrole.it (nr_…)."
   return result?.error || "Coś poszło nie tak."
 }
 

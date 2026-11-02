@@ -7,13 +7,13 @@ import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { offerIndexEnabled } from "src/server/offer-index"
 import { operator } from "src/server/operator"
 
-export const metadata = { title: "NowaRolaBot" }
+export const metadata = { title: "NewRoleBot" }
 
 const en = {
-  lede: "NowaRolaBot reads public job postings on employers' career pages and ATS boards, so that people can find them and apply on the employer's own site. The software is open source and runs on people's own computers, for their own job search, unless its User-Agent says otherwise.",
+  lede: "NewRoleBot reads public job postings on employers' career pages and ATS boards, so that people can find them and apply on the employer's own site. The software is open source and runs on people's own computers, for their own job search, unless its User-Agent says otherwise.",
   rulesTitle: "How it behaves",
   rules: [
-    "On career pages it reads robots.txt first and obeys it, for * and for NowaRolaBot.",
+    "On career pages it reads robots.txt first and obeys it, for * and for NewRoleBot. Rules written for its earlier names, NowaRolaBot and JobscannerBot, still apply.",
     "Boards with a documented public API are read through that API.",
     "It waits at least 5 seconds between requests to a host and reads at most 200 job pages per host per day.",
     "It does not log in, get around bot walls, or read LinkedIn or the Polish job boards.",
@@ -29,10 +29,10 @@ const en = {
 }
 
 const pl: typeof en = {
-  lede: "NowaRolaBot czyta publiczne ogłoszenia na stronach kariery pracodawców i w systemach ATS, żeby ludzie mogli je znaleźć i aplikować na stronie pracodawcy. To otwarte oprogramowanie, które działa na komputerach ludzi, na potrzeby ich własnego szukania pracy, chyba że jego User-Agent mówi inaczej.",
+  lede: "NewRoleBot czyta publiczne ogłoszenia na stronach kariery pracodawców i w systemach ATS, żeby ludzie mogli je znaleźć i aplikować na stronie pracodawcy. To otwarte oprogramowanie, które działa na komputerach ludzi, na potrzeby ich własnego szukania pracy, chyba że jego User-Agent mówi inaczej.",
   rulesTitle: "Jak działa",
   rules: [
-    "Na stronach kariery najpierw czyta robots.txt i go przestrzega, dla * i dla NowaRolaBot.",
+    "Na stronach kariery najpierw czyta robots.txt i go przestrzega, dla * i dla NewRoleBot. Reguły zapisane dla jego wcześniejszych nazw, NowaRolaBot i JobscannerBot, nadal obowiązują.",
     "Tablice z udokumentowanym publicznym API czyta przez to API.",
     "Czeka co najmniej 5 sekund między żądaniami do hosta i czyta najwyżej 200 stron ofert na host dziennie.",
     "Nie loguje się, nie obchodzi zabezpieczeń przed botami, nie czyta LinkedIn ani polskich agregatorów.",
@@ -59,8 +59,8 @@ export default async function BotPage() {
   return (
     <SiteFrame user={user} locale={locale} width="narrow">
       <article className="prose">
-        <p className="eyebrow">NowaRolaBot</p>
-        <h1>NowaRolaBot</h1>
+        <p className="eyebrow">NewRoleBot</p>
+        <h1>NewRoleBot</h1>
         <p className="lede">{page.lede}</p>
         {offerIndexEnabled() ? null : <p>{page.noCrawl}</p>}
         <h2>{page.rulesTitle}</h2>
@@ -71,7 +71,7 @@ export default async function BotPage() {
         </ul>
         <h2>{page.stopTitle}</h2>
         <p>{page.robots}</p>
-        <pre>{"User-agent: NowaRolaBot\nDisallow: /"}</pre>
+        <pre>{"User-agent: NewRoleBot\nDisallow: /"}</pre>
         <p>
           {page.report}{" "}
           {contact ? (

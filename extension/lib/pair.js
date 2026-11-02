@@ -24,7 +24,7 @@ async function sayHello(origin) {
   if (!config?.ok || !isApp(origin, config)) return
   window.postMessage(
     {
-      type: "nowarola:hello",
+      type: "newrole:hello",
       connected: Boolean(config.data.connected),
       version: chrome.runtime.getManifest().version,
     },
@@ -36,18 +36,18 @@ export function startPair() {
   window.addEventListener("message", async (event) => {
     if (event.source !== window) return
     const data = event.data
-    if (data?.type === "nowarola:ping") return sayHello(event.origin)
-    if (!data || data.type !== "nowarola:pair" || typeof data.token !== "string") return
+    if (data?.type === "newrole:ping") return sayHello(event.origin)
+    if (!data || data.type !== "newrole:pair" || typeof data.token !== "string") return
     if (data.origin !== event.origin) return
     const config = await ask({ type: "config" })
     if (!config?.ok) return
     if (!isApp(event.origin, config)) return
     const result = await ask({ type: "setToken", token: data.token, origin: event.origin })
     if (!result?.ok) return
-    window.postMessage({ type: "nowarola:paired" }, event.origin)
+    window.postMessage({ type: "newrole:paired" }, event.origin)
     await sayHello(event.origin)
   })
 
-  // The page may not be listening yet at document_start; it can always ask with nowarola:ping.
+  // The page may not be listening yet at document_start; it can always ask with newrole:ping.
   void sayHello(location.origin)
 }

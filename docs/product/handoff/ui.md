@@ -8,17 +8,7 @@ Changes the UI agent needs in files it does not own, plus cleanup it could not d
 
 ## Owner / integration
 
-1. **Delete the dead files** (the sandbox would not let the UI agent `rm`; each now holds a one-line stub):
-   ```
-   git rm src/app/styles/design.css src/app/styles/globals.css src/app/styles/tokens.css src/app/styles/Home.module.css \
-     src/app/jobs/OfferCard.tsx src/app/jobs/OfferFeed.tsx src/app/components/landing/HeroSearch.tsx \
-     src/app/components/match/ConnectProfileCard.tsx src/app/components/match/MatchWhy.tsx src/app/components/match/ProfileBanner.tsx \
-     src/app/components/Shell.tsx src/app/components/SearchForm.tsx src/app/components/ui/button.tsx src/app/components/ui/input.tsx \
-     src/app/searches/LibraryScreen.tsx src/app/searches/TriageButtons.tsx src/app/searches/UndoToast.tsx src/app/searches/useOfferDecisions.ts \
-     "src/app/searches/[id]/SearchScreen.tsx" "src/app/searches/[id]/SwipeStack.tsx" "src/app/searches/[id]/OfferDialog.tsx" \
-     "src/app/searches/[id]/triage/TriageScreen.tsx" "src/app/(auth)/components/SignupForm.tsx" "src/app/(auth)/components/LogoutButton.tsx"
-   ```
-   `src/lib/utils.ts` (`cn`) has no users left either. `src/app/searches/queries/listLibrary.ts` is unused by the UI (kept in case tests call it).
+1. ~~Delete the dead files~~: done. Every file this item listed, plus `src/lib/utils.ts` and `src/app/searches/queries/listLibrary.ts`, is deleted.
 2. **`src/app/(auth)/mutations/requestMagicLink.ts:51`** fails `tsc`: `clientIp(ctx.session)` no longer matches the `clientIp` signature in `src/server/auth/*`. Not a UI change; runtime is unaffected as far as the UI can tell.
 3. **Fixed a real bug in UI code**: `/login/verify` imported `../mutations/consumeLoginToken` (wrong path), so magic links could not be consumed. Now `../../mutations/consumeLoginToken`.
 4. `/start?step=profile&via=linkedin` (LinkedIn callback for a first sign-in) is handled as the "LinkedIn next" step (§2.6 A). The UI's LinkedIn buttons use `returnTo=/start?step=linkedin-next`. First name and photo come from `User.name` / `User.imageUrl`.

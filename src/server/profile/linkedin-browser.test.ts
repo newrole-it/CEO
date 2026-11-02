@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ClaudeRunArgs } from "src/server/llm/claude-cli"
+import { hasBrowserImportHeader } from "src/shared/linkedin-import"
 import {
   createStageTracker,
   LINKEDIN_BROWSER_TOOLS,
@@ -19,7 +20,12 @@ const OK = JSON.stringify({
   location: "Warsaw, Poland",
   about: "Builds payment systems.",
   experience: [
-    { title: "Senior Backend Engineer", company: "Allegro", dates: "Jan 2021 - Present", description: "Kotlin" },
+    {
+      title: "Senior Backend Engineer",
+      company: "Allegro",
+      dates: "Jan 2021 - Present",
+      description: "Kotlin",
+    },
   ],
   skills: ["Kotlin", "Kafka"],
   education: [{ school: "Example University", degree: "MSc", dates: "2010 - 2015" }],
@@ -67,7 +73,11 @@ describe("stages", () => {
 
   it("notices a missing extension from the tool result", () => {
     const tracker = createStageTracker()
-    tracker.onEvent({ kind: "tool_use", name: "mcp__claude-in-chrome__tabs_context_mcp", input: {} })
+    tracker.onEvent({
+      kind: "tool_use",
+      name: "mcp__claude-in-chrome__tabs_context_mcp",
+      input: {},
+    })
     tracker.onEvent({
       kind: "tool_result",
       text: "Browser extension is not connected. Please ensure the Claude browser extension is installed",
@@ -99,7 +109,18 @@ describe("readLinkedInViaClaude", () => {
   })
 
   it("is offered only for a local install unless switched on", () => {
-    expect(linkedInBrowserAvailable({ APP_ORIGIN: "https://nowarola.it" })).toBe(false)
-    expect(linkedInBrowserAvailable({ APP_ORIGIN: "https://nowarola.it", LINKEDIN_BROWSER_IMPORT: "off" })).toBe(false)
+    expect(linkedInBrowserAvailable({ APP_ORIGIN: "https://newrole.it" })).toBe(false)
+    expect(
+      linkedInBrowserAvailable({ APP_ORIGIN: "https://newrole.it", LINKEDIN_BROWSER_IMPORT: "off" })
+    ).toBe(false)
+  })
+})
+
+describe("browser import header", () => {
+  it("accepts the new name and the one from before the rename", () => {
+    expect(hasBrowserImportHeader(new Headers({ "x-newrole-import": "1" }))).toBe(true)
+    expect(hasBrowserImportHeader(new Headers({ "x-nowarola-import": "1" }))).toBe(true)
+    expect(hasBrowserImportHeader(new Headers({ "x-newrole-import": "0" }))).toBe(false)
+    expect(hasBrowserImportHeader(new Headers())).toBe(false)
   })
 })

@@ -1,5 +1,5 @@
 /**
- * Watched companies: a person names a company (URL or name) and Nowa Rola keeps
+ * Watched companies: a person names a company (URL or name) and newrole.it keeps
  * reading its own careers page or ATS board, even when it never posts on aggregators.
  */
 import type { SourceType } from "@prisma/client"
@@ -57,7 +57,7 @@ export type WatchedRow = {
   lastFetchedAt: Date | null
 }
 
-/** Board ids for pages Nowa Rola reads itself (JSON-LD) or only links to. */
+/** Board ids for pages newrole.it reads itself (JSON-LD) or only links to. */
 export function siteBoardId(url: string): string {
   return `site:${hostOf(url) ?? url}`.slice(0, 180)
 }
@@ -70,7 +70,9 @@ export function linkBoardId(url: string): string {
 async function upsertCompany(name: string, domain: string | null, byDomainFirst: boolean) {
   const companyName = normalizeWhitespace(name) || domain || "Unknown company"
   const normalizedName = normalizeCompanyName(companyName) || companyName.toLowerCase()
-  const byDomain = domain ? await db.company.findUnique({ where: { canonicalDomain: domain } }) : null
+  const byDomain = domain
+    ? await db.company.findUnique({ where: { canonicalDomain: domain } })
+    : null
   if (byDomain && byDomainFirst) return byDomain
   const byName = await db.company.findUnique({ where: { normalizedName } })
   if (byName) {
@@ -131,7 +133,9 @@ async function upsertPage(args: {
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
     const again = await db.careerPage.findUnique({
-      where: { provider_providerBoardId: { provider: args.provider, providerBoardId: args.boardId } },
+      where: {
+        provider_providerBoardId: { provider: args.provider, providerBoardId: args.boardId },
+      },
     })
     if (!again) throw error
     return again
@@ -257,7 +261,9 @@ export async function persistResolution(
       companyId: company.id,
       careerPageUrl: page.url,
       provider: resolution.provider,
-      message: `${company.name} publishes on ${resolution.provider.toLowerCase()} (${resolution.openJobs} open offers). Indexing now.`,
+      message: `${company.name} publishes on ${resolution.provider.toLowerCase()} (${
+        resolution.openJobs
+      } open offers). Indexing now.`,
     }
   }
 
@@ -301,7 +307,8 @@ export async function persistResolution(
     }
   }
 
-  const label = resolution.companyName || resolution.domain || hostOf(resolution.careersUrl) || "Company"
+  const label =
+    resolution.companyName || resolution.domain || hostOf(resolution.careersUrl) || "Company"
   const company = await upsertCompany(label, resolution.domain, true)
   const page = await upsertPage({
     companyId: company.id,
@@ -329,7 +336,7 @@ export async function unwatchCompany(userId: number, companyId: string): Promise
 
 /** The page shown for a company: a read source first, then the newest fetch. */
 export function primaryPage<
-  T extends { enabled: boolean; url: string; lastSuccessfulFetchAt: Date | null },
+  T extends { enabled: boolean; url: string; lastSuccessfulFetchAt: Date | null }
 >(pages: T[]): T | null {
   const sorted = [...pages].sort((a, b) => {
     if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
@@ -392,7 +399,13 @@ export async function listWatched(
       openJobs: open.get(row.companyId) ?? 0,
       newJobs: newer.get(row.companyId) ?? 0,
       provider: page?.provider ?? null,
-      readMode: !page ? null : !page.enabled ? "link-only" : page.provider === "GENERIC_HTML" ? "career-site" : "ats",
+      readMode: !page
+        ? null
+        : !page.enabled
+        ? "link-only"
+        : page.provider === "GENERIC_HTML"
+        ? "career-site"
+        : "ats",
       careerPageUrl: page?.url ?? null,
       lastFetchedAt: page?.lastSuccessfulFetchAt ?? null,
     }

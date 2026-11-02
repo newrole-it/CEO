@@ -19,7 +19,8 @@ import {
 } from "./steps"
 
 export type SetupStatus = {
-  app: "nowarola"
+  /** scripts/go.mjs looks for this to tell the app from another program on the port. */
+  app: "newrole"
   steps: SetupStep[]
   next: StepId | null
   progress: { done: number; total: number }
@@ -223,7 +224,7 @@ export async function setupStatus(userId: number | null): Promise<SetupStatus> {
   const facts = await collectFacts(userId)
   const steps = buildSteps(facts)
   return {
-    app: "nowarola",
+    app: "newrole",
     steps,
     next: nextStep(steps)?.id ?? null,
     progress: progress(steps),

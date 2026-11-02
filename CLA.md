@@ -1,8 +1,8 @@
 # Contributor licence agreement
 
-Draft, waiting for legal review. It applies to every contribution you submit to Nowa Rola. "We" means whoever owns the GitHub repository the contribution is submitted to, and anyone they transfer the project to.
+Draft, waiting for legal review. It applies to every contribution you submit to newrole.it. "We" means whoever owns the GitHub repository the contribution is submitted to, and anyone they transfer the project to.
 
-**Why this exists.** Nowa Rola is licensed under the [GNU AGPL-3.0](LICENSE). The people who run the project also need to be able to use the code under other terms, for example to run it as a service alongside code that is not public. This agreement lets them. Your contribution stays available to everyone under the AGPL in this repository.
+**Why this exists.** newrole.it is licensed under the [GNU AGPL-3.0](LICENSE). The people who run the project also need to be able to use the code under other terms, for example to run it as a service alongside code that is not public. This agreement lets them. Your contribution stays available to everyone under the AGPL in this repository.
 
 1. **You keep your copyright.** Nothing here transfers ownership of your work.
 2. **Copyright licence.** You give us a perpetual, worldwide, non-exclusive, royalty-free, irrevocable licence to use, copy, modify, publish and distribute your contribution, and to license it to others under any terms, including terms that are not open source.

@@ -9,8 +9,8 @@ export function magicLinkUrl(token: string): string {
 export function sendMagicLinkEmail(email: string, url: string) {
   return sendTextEmail(
     email,
-    "Your Nowa Rola sign-in link",
-    `Sign in to Nowa Rola. This link works once and expires in 15 minutes.\n\n${url}\n`
+    "Your newrole.it sign-in link",
+    `Sign in to newrole.it. This link works once and expires in 15 minutes.\n\n${url}\n`
   )
 }
 
@@ -21,7 +21,7 @@ export async function sendTextEmail(
   text: string
 ): Promise<"console" | "resend" | "smtp"> {
   const provider = (process.env.EMAIL_PROVIDER || "console").trim().toLowerCase()
-  const from = process.env.EMAIL_FROM || "Nowa Rola <login@jobscanner.local>"
+  const from = process.env.EMAIL_FROM || '"newrole.it" <login@jobscanner.local>'
   if (provider === "resend" && process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",

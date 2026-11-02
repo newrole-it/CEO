@@ -1,4 +1,4 @@
-/* Nowa Rola design system (October 2026 redesign).
+/* newrole.it design system (October 2026 redesign).
  * Deep ink neutrals, one violet for action and "match", lime only for "new".
  * Tokens follow docs/product/ux-spec.md §8. Light is the default; dark applies via
  * prefers-color-scheme unless the person picked a theme ([data-theme] on <html> wins). */
@@ -42,8 +42,8 @@
   --e2: 0 8px 24px rgb(20 20 31 / 0.12);
   --e3: 0 16px 48px rgb(20 20 31 / 0.18);
 
-  --font-sans: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    Arial, sans-serif;
+  --font-sans: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
+    sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --r-sm: 6px;

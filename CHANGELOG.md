@@ -1,6 +1,6 @@
 # Changelog
 
-Every change people can notice, newest first. Nowa Rola has no tagged releases yet, so entries are grouped by the date they reached the main branch. The app shows this file at /changelog.
+Every change people can notice, newest first. newrole.it has no tagged releases yet, so entries are grouped by the date they reached the main branch. The app shows this file at /changelog.
 
 When you change something people can notice, add a line under Unreleased in the same pull request. Keep to the format below, because the page reads it: `##` for a date, `###` for a group, `-` for one line of plain text.
 
@@ -11,10 +11,11 @@ When you change something people can notice, add a line under Unreleased in the 
 - A public changelog: CHANGELOG.md and the /changelog page, linked from the footer.
 - The project is now licensed under AGPL-3.0, with a contributor licence agreement for pull requests.
 - A /bot page that says what the crawler does and how a site can make it stop.
-- OFFER_INDEX=off runs Nowa Rola without an index of offers, for a service run for other people.
+- OFFER_INDEX=off runs newrole.it without an index of offers, for a service run for other people.
 
 ### Changed
 
+- The product is now called newrole.it, and the repository is github.com/newrole-it/CEO. The MCP server is now called newrole: if you added it as nowarola, run claude mcp remove nowarola -s user, then claude mcp add newrole -s user -- npm --prefix /path/to/newrole.it run --silent mcp (inside the repo, approve newrole once). NOWAROLA_USER_EMAIL still works; the new name is NEWROLE_USER_EMAIL. Reload the Chrome extension at chrome://extensions after npm run go rebuilds it. The crawler now sends NewRoleBot, and robots.txt rules for NowaRolaBot still apply.
 - The interface opens in your browser's language: Polish for a Polish browser, English for any other. The switch in the header still overrides it.
 - Gmail is no longer searched in the background. Open a company's reply in Gmail, click the extension and pick "Użyj tego maila w aplikacji" to move that application to the next stage. A mailbox connected earlier can be disconnected in Settings to revoke its token.
 - The SmartRecruiters Posting API is off by default, because its robots.txt disallows other crawlers.

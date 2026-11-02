@@ -112,7 +112,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 /** Real timers, short: the page counts as settled after 30 ms instead of 2.5 s. */
 async function load(path: string) {
   history.replaceState({}, "", path)
-  delete (globalThis as unknown as { __nowaRolaLinkedIn?: boolean }).__nowaRolaLinkedIn
+  delete (globalThis as unknown as { __newRoleLinkedIn?: boolean }).__newRoleLinkedIn
   startLinkedIn({ settleMs: 30, minGapMs: 0 })
   // The config round trip, then the first scan.
   await wait(10)
@@ -157,7 +157,7 @@ beforeEach(() => {
 afterEach(async () => {
   // A scan the old instance still has scheduled must fire against this test's stub, not the next.
   await wait(80)
-  document.querySelectorAll("[data-nowarola]").forEach((node) => node.remove())
+  document.querySelectorAll("[data-newrole]").forEach((node) => node.remove())
   vi.restoreAllMocks()
 })
 
@@ -259,7 +259,7 @@ describe("lib/profile-panel.js", () => {
     })
     await load("/in/jan-kowalski/")
     await settled()
-    expect(panelText()).toContain("Czy Nowa Rola jest uruchomiona?")
+    expect(panelText()).toContain("Czy newrole.it działa?")
     fail = false
     panelButton("Spróbuj ponownie").click()
     await wait(20)

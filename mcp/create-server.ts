@@ -46,7 +46,7 @@ function sharedOnly(server: McpServer): McpServer {
 /** Every tool and prompt over the services in src/server, on no transport. Importing starts nothing. */
 export function createServer() {
   const server = new McpServer(
-    { name: "nowarola", title: "Nowa Rola", version: "1.0.0" },
+    { name: "newrole", title: "newrole.it", version: "1.0.0" },
     { instructions: mcpHost().instructions ?? INSTRUCTIONS }
   )
   const target = mcpHost().localInstall ? server : sharedOnly(server)

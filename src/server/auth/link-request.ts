@@ -7,6 +7,7 @@ import { MAGIC_LINK_TTL_MS } from "src/server/auth/magic-link"
  * account: a link someone else requested and sent you must not move your CVs onto their account.
  */
 
+// The old project name stays: a renamed cookie would orphan link requests already sent.
 export const LINK_REQUEST_COOKIE = "nowarola_link_request"
 
 export function linkRequestValue(email: string): string {

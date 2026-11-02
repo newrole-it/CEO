@@ -1,4 +1,4 @@
-# Nowa Rola — plan przebudowy (październik 2026)
+# newrole.it — plan przebudowy (październik 2026)
 
 Dokument jest kontraktem dla wszystkich agentów pracujących równolegle.
 
@@ -6,11 +6,11 @@ Dokument jest kontraktem dla wszystkich agentów pracujących równolegle.
 
 Większość firm nie publikuje ofert na płatnych agregatorach (justjoin.it, LinkedIn, pracuj.pl). Wystawia je tylko na własnej stronie kariery albo w ATS (Greenhouse, Lever, Teamtailor, Recruitee...). Kandydat, który patrzy tylko na agregatory, nie widzi dużej części rynku.
 
-Nowa Rola ma sprawić, żeby **żadna pasująca oferta nie umknęła**, i ma się **uczyć gustu kandydata**: nie tylko tego, *że* oferta się podoba, ale *co* się w niej podoba.
+newrole.it ma sprawić, żeby **żadna pasująca oferta nie umknęła**, i ma się **uczyć gustu kandydata**: nie tylko tego, _że_ oferta się podoba, ale _co_ się w niej podoba.
 
 ## 2. Wizja w jednym zdaniu
 
-Podłączasz LinkedIn albo wrzucasz CV, a Nowa Rola (w przeglądarce albo w Twoim Claude Code przez MCP) codziennie przynosi oferty prosto ze stron firm, pyta, co Ci się w nich podoba, i na tej podstawie szuka podobnych, także w firmach, których jeszcze nie znasz.
+Podłączasz LinkedIn albo wrzucasz CV, a newrole.it (w przeglądarce albo w Twoim Claude Code przez MCP) codziennie przynosi oferty prosto ze stron firm, pyta, co Ci się w nich podoba, i na tej podstawie szuka podobnych, także w firmach, których jeszcze nie znasz.
 
 ## 3. Zasady
 
@@ -38,14 +38,14 @@ Migracja: `db/migrations/20261028120000_feedback_watchlist`. Kolejne zmiany sche
 
 ## 6. Strumienie pracy i własność plików
 
-| Agent | Odpowiada za | Pliki (wyłączna własność) |
-|---|---|---|
-| **UX** | Architektura informacji, przepływy, makiety, copy PL/EN | `docs/product/ux-spec.md` (tylko czyta kod) |
-| **UI** | Nowy design system i wszystkie ekrany według UX spec | `src/app/**` z wyjątkiem folderów niżej, `src/app/styles/**`, `src/app/i18n/**`, `tailwind.config.js`, `public/**` |
-| **Dopasowanie** | Feedback, model preferencji, podobne oferty, ranking feedu | `src/server/preferences/**`, `src/app/feedback/**` (Blitz queries/mutations), `src/server/search/feedback.ts`, `src/server/jobs/browse.ts`, `src/server/profile/rank.ts`, `src/server/privacy/**`, `src/app/searches/mutations/markMatch.ts` |
-| **Discovery / agregacja** | Watchlista firm, wykrywanie stron kariery, ingest pojedynczej oferty, podobne firmy, wyszukiwarka sieciowa przez Claude | `src/server/discovery/**` (nowe pliki + `web-search.ts`), `src/server/watchlist/**`, `src/server/queue/**`, `src/worker.ts`, `src/server/index/schedule.ts` |
-| **Claude / MCP** | Serwer MCP, provider `claude-cli`, `.mcp.json`, skill dla Claude Code, README | `mcp/**`, `.mcp.json`, `.claude/skills/**`, `src/server/llm/**`, `package.json`, `README.md`, `.env.example` |
-| **Właściciel produktu** | Schemat, LinkedIn lokalnie, integracja, QA | `db/**`, `src/app/api/auth/**`, `src/server/auth/**` |
+| Agent                     | Odpowiada za                                                                                                            | Pliki (wyłączna własność)                                                                                                                                                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **UX**                    | Architektura informacji, przepływy, makiety, copy PL/EN                                                                 | `docs/product/ux-spec.md` (tylko czyta kod)                                                                                                                                                                                                  |
+| **UI**                    | Nowy design system i wszystkie ekrany według UX spec                                                                    | `src/app/**` z wyjątkiem folderów niżej, `src/app/styles/**`, `src/app/i18n/**`, `tailwind.config.js`, `public/**`                                                                                                                           |
+| **Dopasowanie**           | Feedback, model preferencji, podobne oferty, ranking feedu                                                              | `src/server/preferences/**`, `src/app/feedback/**` (Blitz queries/mutations), `src/server/search/feedback.ts`, `src/server/jobs/browse.ts`, `src/server/profile/rank.ts`, `src/server/privacy/**`, `src/app/searches/mutations/markMatch.ts` |
+| **Discovery / agregacja** | Watchlista firm, wykrywanie stron kariery, ingest pojedynczej oferty, podobne firmy, wyszukiwarka sieciowa przez Claude | `src/server/discovery/**` (nowe pliki + `web-search.ts`), `src/server/watchlist/**`, `src/server/queue/**`, `src/worker.ts`, `src/server/index/schedule.ts`                                                                                  |
+| **Claude / MCP**          | Serwer MCP, provider `claude-cli`, `.mcp.json`, skill dla Claude Code, README                                           | `mcp/**`, `.mcp.json`, `.claude/skills/**`, `src/server/llm/**`, `package.json`, `README.md`, `.env.example`                                                                                                                                 |
+| **Właściciel produktu**   | Schemat, LinkedIn lokalnie, integracja, QA                                                                              | `db/**`, `src/app/api/auth/**`, `src/server/auth/**`                                                                                                                                                                                         |
 
 Jeśli potrzebujesz zmiany w cudzym pliku, opisz ją w `docs/product/handoff/<twój-agent>.md` (ścieżka, co i dlaczego). Właściciel produktu ją scali.
 
@@ -123,7 +123,7 @@ runClaudePrompt(args: { prompt: string; system?: string; model?: string; allowed
 2. **Feed „Dla Ciebie”:** karty z wynikiem 0–100, 2–3 powodami, pensją, trybem pracy i źródłem („strona firmy”). Akcje: Podoba mi się / Nie dla mnie / Zapisz jako aplikowano. Skróty klawiszowe J/K/Z zostają.
 3. **„Co Ci się podoba?”:** po „Podoba mi się” wysuwa się panel z chipsami (aspekty plus tagi z oferty, np. „Kotlin”, „100% zdalnie”, „fintech”, „25–30k B2B”) i polem notatki. Zapis → toast „Szukam podobnych…” → sekcja „Podobne do …”.
 4. **Firmy:** „Obserwowane firmy” (dodaj URL strony firmy albo nazwę) i „Podobne firmy” (z polubionych). Każda firma pokazuje, skąd czytamy oferty (ATS, strona kariery, tylko link).
-5. **Claude Code:** strona „Połącz z Claude Code”: jedno polecenie do skopiowania (`claude mcp add nowarola ...`), lista narzędzi i przykładowe prompty („Znajdź mi oferty spoza agregatorów jak ta z Allegro”).
+5. **Claude Code:** strona „Połącz z Claude Code”: jedno polecenie do skopiowania (`claude mcp add newrole ...`), lista narzędzi i przykładowe prompty („Znajdź mi oferty spoza agregatorów jak ta z Allegro”).
 6. **LinkedIn lokalnie:** jeśli brak kluczy, zamiast błędu kreator „Skonfiguruj LinkedIn w 2 minuty” (link do panelu deweloperskiego, dokładny redirect URL, gdzie wkleić klucze), a obok zawsze działa PDF. Pełny profil z LinkedIn: LinkedIn API go nie udostępnia, więc (a) „Zapisz jako PDF” z instrukcją jednym kliknięciem, (b) Claude Code z rozszerzeniem Chrome czyta Twój profil i woła `profile_import`.
 
 ## 9. Kolejność

@@ -1,10 +1,10 @@
 {
-  "name": "@nowarola/extension",
+  "name": "@newrole/extension",
   "version": "1.0.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
-  "description": "Nowa Rola: Chrome extension that fills application forms and records what was sent.",
+  "description": "newrole.it: Chrome extension that fills application forms and records what was sent.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",

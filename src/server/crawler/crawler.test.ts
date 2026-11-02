@@ -34,11 +34,19 @@ describe("source policy", () => {
     )
     expect(decideFetch(new URL("https://careers.phenom.com/us/en/job/1")).allow).toBe(false)
     expect(decideFetch(new URL("https://codility.careers.hibob.com/jobs/1")).allow).toBe(false)
-    expect(decideFetch(new URL("https://skk.erecruiter.pl/Offer.aspx?oid=1&cfg=abc")).allow).toBe(true)
-    expect(decideFetch(new URL("https://skk.erecruiter.pl/GetHtml.ashx?cfg=abc&grid=rows&pn=1")).allow).toBe(true)
-    expect(decideFetch(new URL("https://offers.erecruiter.pl/skk/company/1/offers.json?hash=a")).allow).toBe(true)
+    expect(decideFetch(new URL("https://skk.erecruiter.pl/Offer.aspx?oid=1&cfg=abc")).allow).toBe(
+      true
+    )
     expect(
-      decideFetch(new URL("https://system.erecruiter.pl/FormTemplates/RecruitmentForm.aspx?WebID=1")).allow
+      decideFetch(new URL("https://skk.erecruiter.pl/GetHtml.ashx?cfg=abc&grid=rows&pn=1")).allow
+    ).toBe(true)
+    expect(
+      decideFetch(new URL("https://offers.erecruiter.pl/skk/company/1/offers.json?hash=a")).allow
+    ).toBe(true)
+    expect(
+      decideFetch(
+        new URL("https://system.erecruiter.pl/FormTemplates/RecruitmentForm.aspx?WebID=1")
+      ).allow
     ).toBe(false)
     expect(decideFetch(new URL("https://jobs.jobvite.com/acme/jobs")).allow).toBe(true)
     expect(decideFetch(new URL("https://careers.mastercard.com/widgets")).allow).toBe(true)
@@ -153,9 +161,11 @@ describe("robots and sitemaps", () => {
   it("obeys crawl-delay on the specific agent", () => {
     const rules = parseRobots("User-agent: JobscannerBot\nCrawl-delay: 5\nDisallow:\n")
     expect(rules.crawlDelaySec).toBe(5)
-    const renamed = parseRobots("User-agent: NowaRolaBot\nCrawl-delay: 7\nDisallow: /private\n")
+    const renamed = parseRobots("User-agent: NewRoleBot\nCrawl-delay: 7\nDisallow: /private\n")
     expect(renamed.crawlDelaySec).toBe(7)
     expect(renamed.disallow).toEqual(["/private"])
+    const before = parseRobots("User-agent: NowaRolaBot\nDisallow: /old\n")
+    expect(before.disallow).toEqual(["/old"])
   })
 })
 

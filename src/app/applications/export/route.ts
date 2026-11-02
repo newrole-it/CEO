@@ -10,7 +10,7 @@ export async function GET() {
   if (!userId) return Response.json({ error: "Sign in required." }, { status: 401 })
   const locale = await getLocale()
   const csv = toCsv(await sheetTable(userId, locale))
-  const name = `nowarola-${locale === "en" ? "applications" : "aplikacje"}-${sheetDate(
+  const name = `newrole-${locale === "en" ? "applications" : "aplikacje"}-${sheetDate(
     new Date()
   )}.csv`
   // The BOM makes Excel read Polish characters as UTF-8.

@@ -1,9 +1,12 @@
 import { getBlitzContext } from "src/app/blitz-server"
 import { draftFromProfileText } from "src/server/profile/import"
-import { linkedInBrowserAvailable, readLinkedInViaClaude } from "src/server/profile/linkedin-browser"
+import {
+  linkedInBrowserAvailable,
+  readLinkedInViaClaude,
+} from "src/server/profile/linkedin-browser"
 import { linkedInJobs } from "src/server/profile/linkedin-jobs"
 import { isAppHostRequest, isSameAppRequest } from "src/server/security/origin"
-import { BROWSER_IMPORT_HEADER } from "src/shared/linkedin-import"
+import { hasBrowserImportHeader } from "src/shared/linkedin-import"
 
 /**
  * The import reads the person's own LinkedIn in their Chrome, so only they may start it or see the
@@ -19,13 +22,13 @@ async function owner(): Promise<{ key: string; userId: number } | null> {
   return null
 }
 
-const refused = () => Response.json({ error: "Start the import from Nowa Rola." }, { status: 403 })
+const refused = () => Response.json({ error: "Start the import from newrole.it." }, { status: 403 })
 const signInFirst = () =>
   Response.json({ error: "Sign in required.", code: "auth" }, { status: 401 })
 
 export async function POST(request: Request) {
   // A DNS-rebinding page is same-origin with the name it chose, so the Host must be this app's.
-  if (!isSameAppRequest(request) || request.headers.get(BROWSER_IMPORT_HEADER) !== "1") {
+  if (!isSameAppRequest(request) || !hasBrowserImportHeader(request.headers)) {
     return refused()
   }
   if (!linkedInBrowserAvailable()) {

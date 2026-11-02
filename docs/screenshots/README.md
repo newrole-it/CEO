@@ -4,7 +4,7 @@ Screenshots used by the root README. They come from a local install signed in as
 
 | File | Page |
 |---|---|
-| `demo.gif` | The 30-second tour at the top of the root README (`demo.mp4` is the same recording, for uploads) |
+| `demo.webp`, `demo.mp4` | The 13-second tour at the top of the root README: the animated WebP is shown inline and links to the MP4 |
 | `feed.png` | `/jobs?where=pl` — "Dla Ciebie", ranked offers with the match score and reasons |
 | `offer.png` | `/jobs/[id]` — one offer with the score breakdown |
 | `applications.png` | `/applications` — the tracker |
@@ -15,4 +15,4 @@ Screenshots used by the root README. They come from a local install signed in as
 | `settings.png` | `/settings` — account, extension, Google Sheet, Gmail |
 | `mobile-feed.png`, `mobile-applications.png` | the same on a phone |
 
-To retake them, create a demo account in a headless Chrome and capture each page; keep the Next.js dev badge (`nextjs-portal`) out of the frame. Delete the account afterwards: a second regular account changes which account the MCP server acts for unless `NOWAROLA_USER_EMAIL` is set.
+To retake them, create a demo account in a headless Chrome and capture each page; keep the Next.js dev badge (`nextjs-portal`) out of the frame. Delete the account afterwards: a second regular account changes which account the MCP server acts for unless `NEWROLE_USER_EMAIL` is set.

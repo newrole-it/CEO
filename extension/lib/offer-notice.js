@@ -7,8 +7,8 @@ import { offerKey, readOffer } from "./offer.js"
 import { element, formatDate, send, session } from "./page.js"
 
 export function startOffer(options = {}) {
-  if (globalThis.__nowaRolaOffer) return
-  globalThis.__nowaRolaOffer = true
+  if (globalThis.__newRoleOffer) return
+  globalThis.__newRoleOffer = true
   if (window.top !== window) return
 
   const PURPLE = "#5b3df5"
@@ -77,7 +77,7 @@ export function startOffer(options = {}) {
   function ensurePanel() {
     if (ui.host) return
     const host = document.createElement("div")
-    host.setAttribute("data-nowarola", "offer")
+    host.setAttribute("data-newrole", "offer")
     const shadow = host.attachShadow({ mode: "closed" })
     try {
       const sheet = new CSSStyleSheet()
@@ -88,7 +88,7 @@ export function startOffer(options = {}) {
     }
     const panel = element("div", "panel")
     panel.setAttribute("role", "status")
-    panel.setAttribute("aria-label", "Nowa Rola")
+    panel.setAttribute("aria-label", "newrole.it")
     const head = element("div", "head")
     const close = element("button", "x", "×")
     close.type = "button"
@@ -97,7 +97,7 @@ export function startOffer(options = {}) {
       session("set", dismissKey())
       host.style.display = "none"
     })
-    head.append(element("span", "brand", "Nowa Rola"), close)
+    head.append(element("span", "brand", "newrole.it"), close)
     ui.body = element("div", "list")
     panel.append(head, ui.body)
     shadow.append(panel)

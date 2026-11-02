@@ -22,7 +22,7 @@ export function PairExtension() {
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.source !== window || event.origin !== window.location.origin) return
-      if ((event.data as { type?: unknown } | null)?.type !== "nowarola:paired") return
+      if ((event.data as { type?: unknown } | null)?.type !== "newrole:paired") return
       if (timer.current) window.clearTimeout(timer.current)
       timer.current = null
       setToken(null)
@@ -49,7 +49,7 @@ export function PairExtension() {
       setToken(data.token)
       // Only this exact origin receives the message; pair.js checks the same on its side.
       window.postMessage(
-        { type: "nowarola:pair", token: data.token, origin: window.location.origin },
+        { type: "newrole:pair", token: data.token, origin: window.location.origin },
         window.location.origin
       )
       timer.current = window.setTimeout(() => setState("manual"), ANSWER_TIMEOUT_MS)

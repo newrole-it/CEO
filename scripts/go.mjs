@@ -49,12 +49,15 @@ const npm = "npm"
 
 function checkNode() {
   if (process.platform === "win32") {
-    fail("On Windows, run Nowa Rola inside WSL.", "https://learn.microsoft.com/windows/wsl/install")
+    fail(
+      "On Windows, run newrole.it inside WSL.",
+      "https://learn.microsoft.com/windows/wsl/install"
+    )
   }
   const major = Number(process.versions.node.split(".")[0])
   if (major < MIN_NODE) {
     fail(
-      `Nowa Rola needs Node ${MIN_NODE} or newer. You have ${process.versions.node}.`,
+      `newrole.it needs Node ${MIN_NODE} or newer. You have ${process.versions.node}.`,
       `With nvm: nvm install ${MIN_NODE} && nvm use ${MIN_NODE}`,
       "Or download it from https://nodejs.org"
     )
@@ -114,6 +117,7 @@ async function ensureEnv() {
     `postgresql://jobscanner:${password}@127.0.0.1:${port}/jobscanner`
   )
   if (port !== DEFAULT_PORT) text = setLine(text, "POSTGRES_PORT", String(port))
+  // The old project name stays in this default: a new one would add a second owner to existing installs.
   text = setLine(text, "OWNER_EMAIL", "owner@nowarola.local")
   text = setLine(text, "OWNER_NAME", "Owner")
   text = setLine(text, "OWNER_PASSWORD", randomBytes(18).toString("hex"))
@@ -273,7 +277,8 @@ async function isOurApp(origin) {
       signal: AbortSignal.timeout(4000),
     })
     const data = await response.json()
-    return data?.app === "nowarola"
+    // "nowarola" is what an app started before the rename to newrole.it answers.
+    return data?.app === "newrole" || data?.app === "nowarola"
   } catch {
     return false
   }
@@ -333,7 +338,7 @@ async function start(env) {
 }
 
 async function main() {
-  console.log("\n  Nowa Rola\n")
+  console.log("\n  newrole.it\n")
   checkNode()
   if (process.argv.includes("--extension")) {
     installExtension()

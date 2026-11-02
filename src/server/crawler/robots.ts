@@ -33,7 +33,8 @@ export function parseRobots(text: string): RobotsRules {
     if (key === "user-agent") {
       const agent = value.toLowerCase()
       if (agent === "*") current = "star"
-      else if (agent.includes("jobscanner") || agent.includes("nowarola")) {
+      // The crawler's earlier names (JobscannerBot, NowaRolaBot) keep the rules sites wrote for them.
+      else if (["newrole", "nowarola", "jobscanner"].some((name) => agent.includes(name))) {
         current = "specific"
         specificMatched = true
       } else current = "other"

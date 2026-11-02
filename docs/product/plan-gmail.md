@@ -1,4 +1,4 @@
-# Nowa Rola: statusy aplikacji z maila otwartego w Gmailu (2.11.2026)
+# newrole.it: statusy aplikacji z maila otwartego w Gmailu (2.11.2026)
 
 Dokument dla osób i agentów, którzy zmieniają `src/server/gmail/` albo odczyt maila w rozszerzeniu. Opisuje decyzje i powody. Wymagania z `docs/product/plan-aplikacje.md` obowiązują dalej.
 

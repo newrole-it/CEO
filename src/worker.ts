@@ -11,12 +11,12 @@ const signal = { stopped: false }
 function stop(kind: NodeJS.Signals) {
   if (signal.stopped) return
   signal.stopped = true
-  console.log(`Nowa Rola worker received ${kind}`)
+  console.log(`newrole.it worker received ${kind}`)
   setTimeout(() => {
     void requeueInFlight(currentTaskId())
       .catch((error) => console.error("Could not requeue in-flight work", error))
       .finally(() => {
-        console.log("Nowa Rola worker stopped")
+        console.log("newrole.it worker stopped")
         process.exit(0)
       })
   }, STOP_GRACE_MS).unref()
@@ -25,10 +25,10 @@ function stop(kind: NodeJS.Signals) {
 process.on("SIGINT", () => stop("SIGINT"))
 process.on("SIGTERM", () => stop("SIGTERM"))
 
-console.log("Nowa Rola worker listening for searches and index crawls")
+console.log("newrole.it worker listening for searches and index crawls")
 workerLoop(signal)
   .then(() => {
-    console.log("Nowa Rola worker stopped")
+    console.log("newrole.it worker stopped")
     process.exit(0)
   })
   .catch((error) => {

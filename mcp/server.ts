@@ -5,7 +5,7 @@ import { beat } from "src/server/setup/heartbeat"
 import { createServer } from "./create-server"
 
 /**
- * Nowa Rola MCP server over stdio. Claude Code starts it with `npx tsx mcp/server.ts`;
+ * newrole.it MCP server over stdio. Claude Code starts it with `npx tsx mcp/server.ts`;
  * it talks to the same Postgres as the web app and worker.
  */
 async function main() {
@@ -23,6 +23,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("Nowa Rola MCP server failed", error)
+  console.error("newrole.it MCP server failed", error)
   process.exit(1)
 })

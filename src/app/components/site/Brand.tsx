@@ -1,4 +1,4 @@
-import { WORDMARK_NOWAROLA, WORDMARK_TLD } from "./wordmark-paths"
+import { WORDMARK_NAME, WORDMARK_TLD } from "./wordmark-paths"
 
 export function LogoMark() {
   return (
@@ -19,8 +19,8 @@ export function LogoMark() {
 
 export function Wordmark() {
   return (
-    <svg className="brand-wordmark" aria-hidden="true" viewBox="0 0 498.8 72.8">
-      <path fill="currentColor" d={WORDMARK_NOWAROLA} />
+    <svg className="brand-wordmark" aria-hidden="true" viewBox="0 0 443.8 72.8">
+      <path fill="currentColor" d={WORDMARK_NAME} />
       <path fill="var(--primary)" d={WORDMARK_TLD} />
     </svg>
   )
@@ -39,7 +39,16 @@ export function LogoLockup() {
 export function LinkedInMark({ size = 18 }: { size?: number }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" width={size} height={size}>
-      <rect x="1" y="1" width="22" height="22" rx="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <rect
+        x="1"
+        y="1"
+        width="22"
+        height="22"
+        rx="4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
       <path
         fill="currentColor"
         d="M7.6 10H5.4v8.2h2.2V10zM6.5 5.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM18.6 18.2h-2.2v-4.1c0-1.2-.4-1.9-1.4-1.9-1.1 0-1.7.7-1.7 1.9v4.1h-2.2V10h2.1v1.1c.4-.6 1.2-1.4 2.6-1.4 1.9 0 2.8 1.2 2.8 3.6v4.9z"

@@ -8,8 +8,8 @@ import { connectionError, element, formatDate, send, session } from "./page.js"
 
 export function startContent() {
   // Injected again from the popup, or by both the manifest and the all-sites script.
-  if (globalThis.__nowaRolaContent) return
-  globalThis.__nowaRolaContent = true
+  if (globalThis.__newRoleContent) return
+  globalThis.__newRoleContent = true
 
   const PURPLE = "#5b3df5"
   const YELLOW = "#e6a700"
@@ -85,7 +85,7 @@ export function startContent() {
       return
     }
     const host = document.createElement("div")
-    host.setAttribute("data-nowarola", "panel")
+    host.setAttribute("data-newrole", "panel")
     const shadow = host.attachShadow({ mode: "closed" })
     try {
       const sheet = new CSSStyleSheet()
@@ -96,9 +96,9 @@ export function startContent() {
     }
     const panel = element("div", "panel")
     panel.setAttribute("role", "region")
-    panel.setAttribute("aria-label", "Nowa Rola")
+    panel.setAttribute("aria-label", "newrole.it")
     const head = element("div", "head")
-    ui.title = element("span", "", "Nowa Rola")
+    ui.title = element("span", "", "newrole.it")
     const close = element("button", "x", "×")
     close.type = "button"
     close.setAttribute("aria-label", "Ukryj")
@@ -107,7 +107,7 @@ export function startContent() {
       host.style.display = "none"
     })
     head.append(ui.title, close)
-    ui.main = element("button", "btn", "Wypełnij z Nowa Rola")
+    ui.main = element("button", "btn", "Wypełnij z newrole.it")
     ui.main.type = "button"
     ui.main.addEventListener("click", () => void onMainClick())
     ui.save = element("button", "btn alt", "Zapisz jako aplikację")
@@ -133,7 +133,7 @@ export function startContent() {
 
   function refreshPanel() {
     if (!ui.main) return
-    ui.main.textContent = state.config.connected ? "Wypełnij z Nowa Rola" : "Połącz rozszerzenie"
+    ui.main.textContent = state.config.connected ? "Wypełnij z newrole.it" : "Połącz rozszerzenie"
     ui.main.disabled = state.busy
     ui.save.className = state.config.connected ? "btn alt" : "btn alt hidden"
     ui.save.disabled = state.busy
@@ -190,7 +190,7 @@ export function startContent() {
     target.style.setProperty("outline", `2px solid ${color}`, "important")
     target.style.setProperty("outline-offset", "1px", "important")
     target.title =
-      source === "ai" ? "Nowa Rola: szkic AI, sprawdź przed wysłaniem" : "Nowa Rola: uzupełnione"
+      source === "ai" ? "newrole.it: szkic AI, sprawdź przed wysłaniem" : "newrole.it: uzupełnione"
     return target
   }
 

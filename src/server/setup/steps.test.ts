@@ -21,7 +21,7 @@ function fresh(overrides: Partial<SetupFacts> = {}): SetupFacts {
       tokens: 0,
       lastUsedAt: null,
     },
-    mcp: { lastSeenAt: null, command: "claude mcp add nowarola -s user -- npm run mcp" },
+    mcp: { lastSeenAt: null, command: "claude mcp add newrole -s user -- npm run mcp" },
     sheet: { connected: false, lastSyncedAt: null, lastError: null },
     now,
     ...overrides,

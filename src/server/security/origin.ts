@@ -48,5 +48,5 @@ export function isSameAppRequest(request: Request): boolean {
 }
 
 export function crossSiteRefused(): Response {
-  return Response.json({ error: "Start this from Nowa Rola.", code: "origin" }, { status: 403 })
+  return Response.json({ error: "Start this from newrole.it.", code: "origin" }, { status: 403 })
 }

@@ -20,7 +20,7 @@ Settings → Arkusz Google gives you an Apps Script to paste into your own sheet
 
 ## Gmail
 
-Nowa Rola does not connect to your mailbox. When a company replies, open that message in Gmail, click the extension and choose "Użyj tego maila w aplikacji". The extension reads only that one message (or only the part you selected) and the app suggests the application, from the sender and the text, and the new status: an invitation moves `APPLIED → SCREENING → INTERVIEW`, a rejection to `REJECTED`. You can change both before saving. The subject goes on the timeline; a status change shows under "Zmienione z maila" on `/applications` for a week and can be undone there. Message bodies are not stored; Settings → Gmail lists the messages used. A mailbox connected in an earlier version is no longer read: disconnect it there to revoke its token. Details in [product/plan-gmail.md](product/plan-gmail.md).
+newrole.it does not connect to your mailbox. When a company replies, open that message in Gmail, click the extension and choose "Użyj tego maila w aplikacji". The extension reads only that one message (or only the part you selected) and the app suggests the application, from the sender and the text, and the new status: an invitation moves `APPLIED → SCREENING → INTERVIEW`, a rejection to `REJECTED`. You can change both before saving. The subject goes on the timeline; a status change shows under "Zmienione z maila" on `/applications` for a week and can be undone there. Message bodies are not stored; Settings → Gmail lists the messages used. A mailbox connected in an earlier version is no longer read: disconnect it there to revoke its token. Details in [product/plan-gmail.md](product/plan-gmail.md).
 
 ## CV (`/cv`)
 

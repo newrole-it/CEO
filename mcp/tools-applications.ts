@@ -168,9 +168,7 @@ function describe(detail: ApplicationDetail): string {
               ? `dodano (${statusLabel(event.toStatus ?? "APPLIED")})`
               : event.type
           const note = timelineNote(event)
-          return `- ${sheetDate(event.at)} ${what}${note ? `: ${note}` : ""} [${
-            event.channel
-          }]`
+          return `- ${sheetDate(event.at)} ${what}${note ? `: ${note}` : ""} [${event.channel}]`
         })
     )
   }
@@ -254,7 +252,7 @@ export function registerApplicationTools(server: McpServer) {
     {
       title: "Moje aplikacje",
       description:
-        "List the person's job applications from the Nowa Rola tracker: company, role, status (funnel stage), how long in the stage, next step and id. `group`: active (default), closed, rejected, all. `q` filters by company or role. Use it for 'co mam w tym tygodniu', 'jak idzie rekrutacja', before application_update.",
+        "List the person's job applications from the newrole.it tracker: company, role, status (funnel stage), how long in the stage, next step and id. `group`: active (default), closed, rejected, all. `q` filters by company or role. Use it for 'co mam w tym tygodniu', 'jak idzie rekrutacja', before application_update.",
       inputSchema: {
         group: groupSchema.optional(),
         q: z.string().max(160).optional(),
@@ -479,7 +477,7 @@ export function registerApplicationTools(server: McpServer) {
       const user = await currentUser()
       const table = await sheetTable(user.id, args.locale ?? "pl")
       const csv = toCsv(table)
-      const filename = `nowarola-aplikacje-${sheetDate(new Date())}.csv`
+      const filename = `newrole-aplikacje-${sheetDate(new Date())}.csv`
       return reply(`${filename} (${table.rows.length} wierszy):\n\n${csv}`, {
         filename,
         contentMimeType: "text/csv",
@@ -544,7 +542,7 @@ export function registerApplicationTools(server: McpServer) {
     {
       title: "Synchronizuj arkusz",
       description:
-        "Send the whole application tracker to the connected Google Sheet now (one-way: Nowa Rola → sheet, the 'Aplikacje' tab is rewritten). Without a connected sheet it says so; then offer applications_export.",
+        "Send the whole application tracker to the connected Google Sheet now (one-way: newrole.it → sheet, the 'Aplikacje' tab is rewritten). Without a connected sheet it says so; then offer applications_export.",
       inputSchema: {},
       annotations: { destructiveHint: true },
     },
@@ -563,7 +561,7 @@ export function registerApplicationTools(server: McpServer) {
     {
       title: "Maile w trackerze",
       description:
-        "How mail from companies reaches the tracker, and what still waits. Nowa Rola never searches the person's mailbox: they open a message in Gmail, click the Nowa Rola extension and pick the application and the status („Użyj tego maila w aplikacji”). Also lists messages an earlier mailbox check left waiting for confirmation on /applications (company, role, proposed status; never the mail's text), and whether a mailbox connected in an earlier version still holds a token to revoke. To change a status yourself use application_update.",
+        "How mail from companies reaches the tracker, and what still waits. newrole.it never searches the person's mailbox: they open a message in Gmail, click the newrole.it extension and pick the application and the status („Użyj tego maila w aplikacji”). Also lists messages an earlier mailbox check left waiting for confirmation on /applications (company, role, proposed status; never the mail's text), and whether a mailbox connected in an earlier version still holds a token to revoke. To change a status yourself use application_update.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
@@ -580,7 +578,7 @@ export function registerApplicationTools(server: McpServer) {
       })
       const settings = appLink("/settings#st-gmail")
       const text = [
-        "Nowa Rola nie przeszukuje skrzynki. Mail od firmy otwierasz w Gmailu, klikasz rozszerzenie Nowa Rola → „Użyj tego maila w aplikacji” i wybierasz aplikację oraz status.",
+        "newrole.it nie przeszukuje skrzynki. Mail od firmy otwierasz w Gmailu, klikasz rozszerzenie newrole.it → „Użyj tego maila w aplikacji” i wybierasz aplikację oraz status.",
         ...(status.connected
           ? [
               `Skrzynka ${status.email} została połączona we wcześniejszej wersji i nie jest już czytana.`,
@@ -686,7 +684,7 @@ export function insightsText(insights: Insights, weeks: number | null): string {
         .map(
           (row) => `${sourceLabel(row.source)} ${row.sent} (odpowiedzi ${pct(row.responseRate)})`
         )
-        .join(", ")}. Z indeksu Nowej Roli: ${insights.fromIndex}.`
+        .join(", ")}. Z indeksu newrole.it: ${insights.fromIndex}.`
     )
   }
   const recent = insights.weekly.slice(-8)

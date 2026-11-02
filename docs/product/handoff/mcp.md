@@ -8,19 +8,20 @@ Changes the Claude/MCP agent needs in files it does not own, plus operational no
 2. **Dev server on 127.0.0.1:43123 stopped answering** around 12:41 (TCP connect works, no response, 0% CPU) right after `pnpm add` swapped `node_modules/zod` (3.23.8 → 3.25.76) and added `@modelcontextprotocol/sdk`. I could not check whether it answered before that. A restart of `npm run dev` should clear it. The MCP server and tsx scripts are not affected.
 3. **Lockfiles.** `node_modules` is installed by pnpm (`node_modules/.pnpm`), so I used `pnpm add` (updates the untracked `pnpm-lock.yaml`) and then `npm install --package-lock-only --ignore-scripts` so the tracked `package-lock.json` matches `package.json` too. Decide which one to keep; running a plain `npm install` on top of the pnpm tree would rebuild `node_modules`.
 4. **zod 3.25.76.** The MCP SDK needs zod `^3.25 || ^4` (peer). 3.25 keeps the v3 API at `import "zod"`; `react-hook-form@7.89` already required `^3.25.76`. `matching/query-expansion.schema.ts(70)` (`z.toJSONSchema`) fails `tsc` because `matching/` has no own `node_modules` (it wants zod 4). The same error existed with 3.23.8. Fix: `npm install --prefix matching`.
-5. **`vitest.config.ts`**: add `"mcp/**/*.test.ts"` to `test.include`, so `npx vitest run mcp` (and `npm test`) runs the MCP tests. Until then: `npx vitest run -c mcp/vitest.config.ts`.
+5. ~~`vitest.config.ts`~~: done. The root config includes `mcp/**/*.test.ts`, so `npx vitest run` (and `npm test`) runs the MCP tests. `mcp/vitest.config.ts` no longer exists.
 
 ## UI (`/connect`, "Połącz z Claude Code")
 
 6. Command to copy (replace the path with the repo path; `process.cwd()` on the server is fine for a local install):
 
    ```
-   claude mcp add nowarola -s user -- npm --prefix /path/to/nowarola.it run --silent mcp
+   claude mcp add newrole -s user -- npm --prefix /path/to/newrole.it run --silent mcp
    ```
 
-   Inside the repo nothing is needed: `.mcp.json` is picked up, Claude Code asks once to approve `nowarola`.
-   Optional: `-e NOWAROLA_USER_EMAIL=<email>` when there are several accounts.
-7. Tool names for the list: `profile_get`, `profile_import`, `jobs_search`, `jobs_for_me`, `job_get`, `job_feedback`, `jobs_similar`, `companies_watch`, `companies_watched`, `companies_unwatch`, `companies_similar_context`, `offer_ingest`, `discovery_brief`, `index_refresh`. Prompts: `/mcp__nowarola__hunt`, `/mcp__nowarola__review`, `/mcp__nowarola__onboard`.
+   Inside the repo nothing is needed: `.mcp.json` is picked up, Claude Code asks once to approve `newrole`.
+   Optional: `-e NEWROLE_USER_EMAIL=<email>` when there are several accounts.
+
+7. Tool names for the list: `profile_get`, `profile_import`, `jobs_search`, `jobs_for_me`, `job_get`, `job_feedback`, `jobs_similar`, `companies_watch`, `companies_watched`, `companies_unwatch`, `companies_similar_context`, `offer_ingest`, `discovery_brief`, `index_refresh`. Prompts: `/mcp__newrole__hunt`, `/mcp__newrole__review`, `/mcp__newrole__onboard`.
 8. Example prompts: „Pokaż nowe oferty dla mnie z tego tygodnia”, „Znajdź mi oferty spoza agregatorów jak ta z Allegro”, „Przeczytaj mój profil LinkedIn w Chrome i załóż profil”.
 
 ## Discovery

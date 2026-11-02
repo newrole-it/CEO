@@ -318,7 +318,7 @@ export async function renderPdfFromHtml(
   if (!chrome) return null
   let dir: string | null = null
   try {
-    dir = await mkdtemp(join(tmpdir(), "nowarola-cv-"))
+    dir = await mkdtemp(join(tmpdir(), "newrole-cv-"))
     const input = join(dir, "cv.html")
     const output = join(dir, "cv.pdf")
     await writeFile(input, html, "utf8")

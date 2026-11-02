@@ -1,6 +1,7 @@
 x-app-env: &app-env
   DATABASE_URL: postgresql://jobscanner:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/jobscanner
   SESSION_SECRET_KEY: ${SESSION_SECRET_KEY:?Set SESSION_SECRET_KEY}
+  # The default keeps the old project name: changing it would add a second owner to existing installs.
   OWNER_EMAIL: ${OWNER_EMAIL:-owner@nowarola.local}
   OWNER_NAME: ${OWNER_NAME:-Owner}
   OWNER_PASSWORD: ${OWNER_PASSWORD:?Set OWNER_PASSWORD}
@@ -43,7 +44,7 @@ x-app-env: &app-env
   LINKEDIN_REDIRECT_URI: ${LINKEDIN_REDIRECT_URI:-}
   GMAIL_TOKEN_KEY: ${GMAIL_TOKEN_KEY:-}
   EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
-  EMAIL_FROM: ${EMAIL_FROM:-Nowa Rola <login@jobscanner.local>}
+  EMAIL_FROM: ${EMAIL_FROM:-"newrole.it" <login@jobscanner.local>}
   RESEND_API_KEY: ${RESEND_API_KEY:-}
   SMTP_HOST: ${SMTP_HOST:-}
   SMTP_PORT: ${SMTP_PORT:-587}

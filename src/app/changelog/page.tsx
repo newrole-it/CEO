@@ -11,13 +11,13 @@ export const metadata = { title: "Changelog" }
 
 const en = {
   title: "Changelog",
-  lede: "Everything that changed in Nowa Rola, newest first. There are no tagged releases yet, so changes are listed by date.",
+  lede: "Everything that changed in newrole.it, newest first. There are no tagged releases yet, so changes are listed by date.",
   source: "CHANGELOG.md in the repository",
 }
 
 const pl = {
   title: "Historia zmian",
-  lede: "Wszystko, co zmieniło się w Nowej Roli, od najnowszych zmian. Nie ma jeszcze oznaczonych wydań, więc zmiany są ułożone według dat. Wpisy są po angielsku, tak jak reszta dokumentacji projektu.",
+  lede: "Wszystko, co zmieniło się w newrole.it, od najnowszych zmian. Nie ma jeszcze oznaczonych wydań, więc zmiany są ułożone według dat. Wpisy są po angielsku, tak jak reszta dokumentacji projektu.",
   source: "CHANGELOG.md w repozytorium",
 }
 

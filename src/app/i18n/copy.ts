@@ -16,7 +16,7 @@ export type Locale = "pl" | "en"
 const basePl = {
   // global
   skip: "Przejdź do treści",
-  brandHome: "Nowa Rola, strona główna",
+  brandHome: "newrole.it, strona główna",
   "nav.forYou": "Dla Ciebie",
   "nav.offers": "Oferty",
   "nav.saved": "Zapisane",
@@ -66,10 +66,10 @@ const basePl = {
   "common.over30": "> 30 dni",
 
   // landing
-  "hero.title1": "Oferty prosto ze stron firm.",
-  "hero.title2": "Dopasowane do Ciebie.",
+  "hero.title1": "Oferty z całego świata.",
+  "hero.title2": "Wyniki z Twojego kraju.",
   "hero.sub":
-    "Wrzuć CV albo połącz LinkedIn. W minutę pokażemy oferty, które pasują — także te, których nie ma na portalach z ogłoszeniami.",
+    "Czytamy strony kariery pracodawców na całym świecie. Szukasz w swoim kraju i widzisz jego oferty oraz pracę zdalną, którą możesz stamtąd wykonywać. Wrzuć CV albo połącz LinkedIn, a ułożymy je według Twojego profilu.",
   "hero.drop": "Upuść tutaj swoje CV (PDF)",
   "hero.upload": "Wrzuć CV (PDF)",
   "hero.paste": "Wklej tekst CV",
@@ -85,8 +85,8 @@ const basePl = {
   "how.title": "Jak to działa",
   "how.1.t": "Profil z CV",
   "how.1.b": "Rola, stack i widełki w kilkanaście sekund.",
-  "how.2.t": "Oferty ze stron firm",
-  "how.2.b": "Także te, których nie ma na portalach.",
+  "how.2.t": "Oferty z Twojego kraju",
+  "how.2.b": "Prosto ze stron firm, plus praca zdalna, którą możesz stamtąd wykonywać.",
   "how.3.t": "Uczy się, co lubisz",
   "how.3.b": "Polub ofertę i powiedz, co w niej dobre.",
   "land.taste.t": "Powiedz, co Ci się podoba — znajdziemy więcej",
@@ -109,8 +109,7 @@ const basePl = {
   "onb.tile.paste": "Wklej tekst",
   "onb.tile.paste.hint": "CV albo sekcje profilu LinkedIn",
   "onb.paste.label": "Treść CV",
-  "onb.paste.ph":
-    "Wklej treść CV albo sekcje z LinkedIn: O mnie, Doświadczenie, Umiejętności…",
+  "onb.paste.ph": "Wklej treść CV albo sekcje z LinkedIn: O mnie, Doświadczenie, Umiejętności…",
   "onb.paste.short": "Dodaj trochę więcej tekstu",
   "onb.paste.cta": "Przeczytaj profil",
   "onb.claudeHint": "Używasz Claude Code? Może przeczytać Twój profil LinkedIn za Ciebie →",
@@ -192,7 +191,8 @@ const basePl = {
   "sen.vp": "VP",
   "sen.c_level": "C-level",
   "sen.none": "Nie wiem",
-  "onb.deleted": "Pliku nie zapisujemy. Zostają sekcje odczytane z CV i to podsumowanie, gdy je zatwierdzisz.",
+  "onb.deleted":
+    "Pliku nie zapisujemy. Zostają sekcje odczytane z CV i to podsumowanie, gdy je zatwierdzisz.",
   "onb.cta": "Pokaż moje dopasowania",
   "onb.saving": "Zapisuję…",
   "onb.coach": "Polub ofertę, a zapytamy, co Ci się w niej podoba. Tak uczymy się Twojego gustu.",
@@ -219,7 +219,7 @@ const basePl = {
   "li.setup.1": "Utwórz aplikację na LinkedIn Developers",
   "li.setup.1.btn": "Otwórz panel ↗",
   "li.setup.1.hint":
-    "Nazwa dowolna, np. Nowa Rola (lokalnie). LinkedIn wymaga strony firmy — wybierz dowolną, którą administrujesz.",
+    "Nazwa dowolna, np. newrole.it (lokalnie). LinkedIn wymaga strony firmy — wybierz dowolną, którą administrujesz.",
   "li.setup.2": "W zakładce Products dodaj „Sign In with LinkedIn using OpenID Connect”.",
   "li.setup.3": "W zakładce Auth dodaj adres przekierowania:",
   "li.setup.3.note": "Dokładnie ten adres — z 127.0.0.1, nie localhost.",
@@ -231,9 +231,9 @@ const basePl = {
   "li.setup.missing": "Jeszcze nie widzę kluczy. Czy aplikacja została zrestartowana?",
   "li.toast.config": "LinkedIn nie jest jeszcze skonfigurowany.",
   "li.toast.config.act": "Skonfiguruj",
-  "li.toast.failed":
-    "Logowanie przez LinkedIn nie powiodło się. Spróbuj ponownie albo wrzuć PDF.",
-  "li.toast.cancelled": "Logowanie przez LinkedIn przerwane. Możesz spróbować ponownie albo wrzucić PDF.",
+  "li.toast.failed": "Logowanie przez LinkedIn nie powiodło się. Spróbuj ponownie albo wrzuć PDF.",
+  "li.toast.cancelled":
+    "Logowanie przez LinkedIn przerwane. Możesz spróbować ponownie albo wrzucić PDF.",
   "li.toast.denied":
     "LinkedIn odmówił logowania. Sprawdź, czy aplikacja ma produkt „Sign In with LinkedIn using OpenID Connect”.",
   "li.toast.state": "Sesja logowania wygasła. Spróbuj jeszcze raz.",
@@ -536,9 +536,11 @@ const basePl = {
   "co.sim.sub": "Na podstawie ofert, które Ci się podobały.",
   "co.sim.dismiss": "Nie interesuje mnie",
   "co.sim.title.profile": "Firmy pod Twój profil",
-  "co.sim.sub.profile": "Rekrutują w Polsce na role podobne do Twoich. Polub kilka ofert, a podpowiedzi będą trafniejsze.",
+  "co.sim.sub.profile":
+    "Rekrutują w Polsce na role podobne do Twoich. Polub kilka ofert, a podpowiedzi będą trafniejsze.",
   "co.sim.title.hiring": "Firmy z największą liczbą ofert w Polsce",
-  "co.sim.sub.hiring": "Uzupełnij profil albo polub kilka ofert, a podpowiemy firmy dopasowane do Ciebie.",
+  "co.sim.sub.hiring":
+    "Uzupełnij profil albo polub kilka ofert, a podpowiemy firmy dopasowane do Ciebie.",
   "co.why.stack": "Rekrutuje na {terms}, tak jak {company}.",
   "co.why.roles": "Podobne stanowiska jak {company}: {terms}.",
   "co.why.industry": "Ta sama branża co {company}.",
@@ -577,12 +579,12 @@ const basePl = {
   "co.fetch.partial.names": "Niedokończone:",
 
   // connect
-  "cc.title": "Nowa Rola w Twoim Claude Code",
+  "cc.title": "newrole.it w Twoim Claude Code",
   "cc.sub":
     "Claude Code może szukać ofert w sieci, czytać strony kariery, importować Twój profil i uczyć się z Twoich ocen — korzystając z Twojej licencji Claude. Wszystko działa lokalnie, bez kluczy API.",
   "cc.step1": "Uruchom jedno polecenie",
   "cc.step1.note":
-    "Claude Code wczyta .mcp.json z repozytorium i zapyta o zgodę na serwer „nowarola” — zatwierdź.",
+    "Claude Code wczyta .mcp.json z repozytorium i zapyta o zgodę na serwer „newrole” — zatwierdź.",
   "cc.anyDir": "Chcę używać z dowolnego katalogu",
   "cc.prereq": "Potrzebujesz Claude Code i aplikacji uruchomionej lokalnie.",
   "cc.missing": "Serwer MCP nie jest jeszcze dostępny w tej wersji.",
@@ -595,7 +597,7 @@ const basePl = {
   "cc.tool.ingest": "Dodaje ofertę z dowolnego linku",
   "cc.step3": "Wypróbuj",
   "cc.p1": "Znajdź mi oferty spoza agregatorów podobne do tej z Allegro, którą polubiłem.",
-  "cc.p2": "Otwórz mój profil na LinkedIn w Chrome, przeczytaj go i zaimportuj do Nowej Roli.",
+  "cc.p2": "Otwórz mój profil na LinkedIn w Chrome, przeczytaj go i zaimportuj do newrole.it.",
   "cc.p3": "Dodaj do obserwowanych 10 firm fintech z Polski, które mają własną stronę kariery.",
   "cc.p4": "Pokaż 10 najlepszych nowych ofert z tego tygodnia i powiedz, czego brakuje w moim CV.",
   "cc.licence":
@@ -741,7 +743,7 @@ const en: Dict = {
   ...gmailEn,
   ...tailorEn,
   skip: "Skip to content",
-  brandHome: "Nowa Rola, home",
+  brandHome: "newrole.it, home",
   "nav.forYou": "For you",
   "nav.offers": "Offers",
   "nav.saved": "Saved",
@@ -790,10 +792,10 @@ const en: Dict = {
   "common.justNow": "just now",
   "common.over30": "> 30 days",
 
-  "hero.title1": "Jobs straight from company sites.",
-  "hero.title2": "Matched to you.",
+  "hero.title1": "Global offers.",
+  "hero.title2": "Local search.",
   "hero.sub":
-    "Upload your CV or connect LinkedIn. In a minute we'll show the roles that fit — including the ones job boards never see.",
+    "We read employers' career pages worldwide. Search in your country and you see its offers plus remote roles you can do from there. Upload your CV or connect LinkedIn and we rank them against your profile.",
   "hero.drop": "Drop your CV (PDF) here",
   "hero.upload": "Upload CV (PDF)",
   "hero.paste": "Paste CV text",
@@ -809,8 +811,8 @@ const en: Dict = {
   "how.title": "How it works",
   "how.1.t": "Profile from your CV",
   "how.1.b": "Role, stack and salary in seconds.",
-  "how.2.t": "Offers from company sites",
-  "how.2.b": "Including the ones not on job boards.",
+  "how.2.t": "Offers from your country",
+  "how.2.b": "Straight from company sites, plus remote roles you can do from there.",
   "how.3.t": "Learns what you like",
   "how.3.b": "Like an offer and say what's good about it.",
   "land.taste.t": "Tell us what you like — we'll find more",
@@ -915,10 +917,12 @@ const en: Dict = {
   "sen.vp": "VP",
   "sen.c_level": "C-level",
   "sen.none": "Not sure",
-  "onb.deleted": "The file is not saved. We keep the sections read from the CV, and this summary once you confirm it.",
+  "onb.deleted":
+    "The file is not saved. We keep the sections read from the CV, and this summary once you confirm it.",
   "onb.cta": "Show my matches",
   "onb.saving": "Saving…",
-  "onb.coach": "Like an offer and we'll ask what you like about it. That's how we learn your taste.",
+  "onb.coach":
+    "Like an offer and we'll ask what you like about it. That's how we learn your taste.",
   "onb.coach.ok": "Got it",
   "err.pdfSize": "That PDF is larger than 8 MB. Pick a smaller file or paste the text.",
   "err.notPdf": "That is not a PDF. Upload a PDF or paste the text.",
@@ -941,7 +945,7 @@ const en: Dict = {
   "li.setup.1": "Create an app on LinkedIn Developers",
   "li.setup.1.btn": "Open the portal ↗",
   "li.setup.1.hint":
-    "Any name, e.g. Nowa Rola (local). LinkedIn requires a company page — pick any one you manage.",
+    "Any name, e.g. newrole.it (local). LinkedIn requires a company page — pick any one you manage.",
   "li.setup.2": 'Under Products, add "Sign In with LinkedIn using OpenID Connect".',
   "li.setup.3": "Under Auth, add this redirect URL:",
   "li.setup.3.note": "Exactly this URL — 127.0.0.1, not localhost.",
@@ -1001,7 +1005,8 @@ const en: Dict = {
     "On LinkedIn: your profile → More → Save to PDF. Shorter than the export, but ready right away.",
   "lix.pdf.choose": "Choose PDF",
   "lix.signin": "Sign in with LinkedIn (optional)",
-  "err.zipNotZip": "That isn't a LinkedIn ZIP archive. Upload the file with your LinkedIn data copy.",
+  "err.zipNotZip":
+    "That isn't a LinkedIn ZIP archive. Upload the file with your LinkedIn data copy.",
   "err.zipNoProfile":
     "That ZIP has no profile files (Profile.csv, Positions.csv). Request the archive with your profile selected.",
   "err.zipTooLarge": "That ZIP is too large. Request only your profile data from LinkedIn.",
@@ -1249,9 +1254,11 @@ const en: Dict = {
   "co.sim.sub": "Based on offers you liked.",
   "co.sim.dismiss": "Not interested",
   "co.sim.title.profile": "Companies for your profile",
-  "co.sim.sub.profile": "Hiring in Poland for roles like yours. Like a few offers and the suggestions get sharper.",
+  "co.sim.sub.profile":
+    "Hiring in Poland for roles like yours. Like a few offers and the suggestions get sharper.",
   "co.sim.title.hiring": "Companies with the most offers in Poland",
-  "co.sim.sub.hiring": "Fill in your profile or like a few offers and we'll suggest companies that fit you.",
+  "co.sim.sub.hiring":
+    "Fill in your profile or like a few offers and we'll suggest companies that fit you.",
   "co.why.stack": "Hires for {terms}, like {company}.",
   "co.why.roles": "Similar roles to {company}: {terms}.",
   "co.why.industry": "Same industry as {company}.",
@@ -1289,12 +1296,12 @@ const en: Dict = {
   "co.fetch.partial": "Unfinished: {n}",
   "co.fetch.partial.names": "Unfinished:",
 
-  "cc.title": "Nowa Rola in your Claude Code",
+  "cc.title": "newrole.it in your Claude Code",
   "cc.sub":
     "Claude Code can search the web for jobs, read career pages, import your profile and learn from your ratings — using your own Claude licence. Everything runs locally, no API keys.",
   "cc.step1": "Run one command",
   "cc.step1.note":
-    'Claude Code loads .mcp.json from the repo and asks to approve the "nowarola" server — approve it.',
+    'Claude Code loads .mcp.json from the repo and asks to approve the "newrole" server — approve it.',
   "cc.anyDir": "Use it from any folder",
   "cc.prereq": "You need Claude Code and the app running locally.",
   "cc.missing": "The MCP server isn't available in this version yet.",
@@ -1307,7 +1314,7 @@ const en: Dict = {
   "cc.tool.ingest": "Adds an offer from any link",
   "cc.step3": "Try these",
   "cc.p1": "Find me offers outside the job boards similar to the Allegro one I liked.",
-  "cc.p2": "Open my LinkedIn profile in Chrome, read it and import it into Nowa Rola.",
+  "cc.p2": "Open my LinkedIn profile in Chrome, read it and import it into newrole.it.",
   "cc.p3": "Watch 10 Polish fintech companies that have their own career page.",
   "cc.p4": "Show the 10 best new offers from this week and tell me what's missing from my CV.",
   "cc.licence":
@@ -1374,7 +1381,8 @@ const en: Dict = {
   "login.verifying": "Signing in…",
   "login.confirm.title": "Sign in as {email}?",
   "login.confirm.cta": "Sign in",
-  "login.confirm.switch": "You are signed in to another account. This link switches you to the one above.",
+  "login.confirm.switch":
+    "You are signed in to another account. This link switches you to the one above.",
   "login.confirm.notYou": "Not your address? Close this page.",
   "login.tooMany": "Too many sign-in attempts. Wait an hour and try again.",
 

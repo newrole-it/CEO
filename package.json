@@ -1,7 +1,7 @@
 {
-  "name": "nowarola",
+  "name": "newrole",
   "version": "1.0.0",
-  "description": "Nowa Rola: a personal job finder that reads public ATS boards and career pages, with a worker, an MCP server for Claude Code, and a Chrome extension.",
+  "description": "newrole.it: global offers, local search. A job finder that runs on your machine and reads employers' own career pages and ATS boards, with a worker, an MCP server for Claude Code and a Chrome extension.",
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {

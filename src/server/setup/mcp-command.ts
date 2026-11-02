@@ -13,7 +13,8 @@ export async function mcpUserCommand(repo: string): Promise<string | null> {
     const parsed = JSON.parse(await readFile(path.join(repo, ".mcp.json"), "utf8")) as {
       mcpServers?: Record<string, McpEntry>
     }
-    const entry = parsed.mcpServers?.nowarola
+    // "nowarola" is the server's name before the rename, for a .mcp.json not updated yet.
+    const entry = parsed.mcpServers?.newrole ?? parsed.mcpServers?.nowarola
     if (!entry?.command) return null
     const args = entry.args ?? []
     // A repo-relative npm script needs --prefix to work from any folder.
@@ -21,7 +22,7 @@ export async function mcpUserCommand(repo: string): Promise<string | null> {
       entry.command === "npm" && !args.includes("--prefix")
         ? ["npm", "--prefix", repo, ...args]
         : [entry.command, ...args]
-    return `claude mcp add nowarola -s user -- ${parts.map(shellQuote).join(" ")}`
+    return `claude mcp add newrole -s user -- ${parts.map(shellQuote).join(" ")}`
   } catch {
     return null
   }

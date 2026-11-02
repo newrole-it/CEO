@@ -1,4 +1,4 @@
-# Nowa Rola: plan prac P0 (30.10.2026)
+# newrole.it: plan prac P0 (30.10.2026)
 
 Dokument dla osób i agentów, którzy realizują zadania P0 z backlogu. Identyfikatory (OF-1, CV-1…) pochodzą z backlogu.
 
@@ -14,13 +14,13 @@ Baza `jobscanner` to prawdziwe dane właściciela: oferty, aplikacje, decyzje, C
 
 ## 2. Kolejność
 
-| Etap | Zadania | Stan | Kto |
-|---|---|---|---|
-| 0. Dane bezpieczne | Kopia, 4 zaległe migracje, ochrona testów (część DOS-1) | Gotowe | |
-| 1. Model widzi ofertę | OF-1, CV-1 | Kod i testy gotowe, opis w sekcji 3. Ekranu nikt jeszcze nie oglądał | Właściciel restartuje `npm run dev:all` i sprawdza „Dostosuj CV” |
-| 2. Próba na prawdziwych danych | DOS-1 (reszta), ML-1 | Czeka | Właściciel łączy Gmaila, potem ocena decyzji |
-| 3. Pokrycie rynku | OF-3, OF-4, OF-2 | Czeka. OF-3 ma wstępny wynik z audytu z 31.10 | OF-2: odkrywanie firm z FreeHire i katalogów JobSync, po sprawdzeniu warunków API. Treść nadal czyta crawler, bez agregatorów |
-| 4. Przed otwarciem | DOS-3, potem DOS-2 i DOS-4 | Czeka | Właściciel decyduje o commicie, licencji i otwarciu repo |
+| Etap                           | Zadania                                                 | Stan                                                                 | Kto                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 0. Dane bezpieczne             | Kopia, 4 zaległe migracje, ochrona testów (część DOS-1) | Gotowe                                                               |                                                                                                                               |
+| 1. Model widzi ofertę          | OF-1, CV-1                                              | Kod i testy gotowe, opis w sekcji 3. Ekranu nikt jeszcze nie oglądał | Właściciel restartuje `npm run dev:all` i sprawdza „Dostosuj CV”                                                              |
+| 2. Próba na prawdziwych danych | DOS-1 (reszta), ML-1                                    | Czeka                                                                | Właściciel łączy Gmaila, potem ocena decyzji                                                                                  |
+| 3. Pokrycie rynku              | OF-3, OF-4, OF-2                                        | Czeka. OF-3 ma wstępny wynik z audytu z 31.10                        | OF-2: odkrywanie firm z FreeHire i katalogów JobSync, po sprawdzeniu warunków API. Treść nadal czyta crawler, bez agregatorów |
+| 4. Przed otwarciem             | DOS-3, potem DOS-2 i DOS-4                              | Czeka                                                                | Właściciel decyduje o commicie, licencji i otwarciu repo                                                                      |
 
 Otwarcie repozytorium jest na końcu celowo. Dossier wygrywa dokumentami, więc premiera z modelem, który nie zna oferty, zmarnowałaby pierwsze wrażenie.
 

@@ -74,14 +74,14 @@ const HEADERS: Record<SheetLocale, Record<Column, string>> = {
 
 const SOURCES: Record<SheetLocale, Record<ApplicationSource, string>> = {
   pl: {
-    nowarola: "Nowa Rola",
+    nowarola: "newrole.it",
     extension: "Rozszerzenie",
     manual: "Ręcznie",
     mcp: "Claude (MCP)",
     gmail: "Gmail",
   },
   en: {
-    nowarola: "Nowa Rola",
+    nowarola: "newrole.it",
     extension: "Extension",
     manual: "Manual",
     mcp: "Claude (MCP)",

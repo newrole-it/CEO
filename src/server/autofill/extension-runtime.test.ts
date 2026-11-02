@@ -51,7 +51,7 @@ function stubChrome(handler: Handler) {
 
 /** Starts the script fresh; the closed shadow root is captured for the assertions. */
 async function loadContent() {
-  delete (globalThis as unknown as { __nowaRolaContent?: boolean }).__nowaRolaContent
+  delete (globalThis as unknown as { __newRoleContent?: boolean }).__newRoleContent
   startContent()
   await flush()
 }
@@ -129,7 +129,7 @@ beforeEach(() => {
 
 afterEach(() => {
   removers.splice(0).forEach((remove) => remove())
-  document.querySelectorAll("[data-nowarola]").forEach((node) => node.remove())
+  document.querySelectorAll("[data-newrole]").forEach((node) => node.remove())
   vi.restoreAllMocks()
 })
 
@@ -146,7 +146,7 @@ describe("lib/content.js", () => {
     await flush()
     expect(listeners).toHaveLength(1)
     expect(seen.filter((type) => type === "config")).toHaveLength(1)
-    expect(document.querySelectorAll("[data-nowarola]")).toHaveLength(1)
+    expect(document.querySelectorAll("[data-newrole]")).toHaveLength(1)
   })
 
   it("warns when the form shows that this posting was already applied to", async () => {
@@ -197,13 +197,15 @@ describe("lib/content.js", () => {
       if (message.type === "submitted") {
         return {
           ok: true,
-          data: { application: { id: "a1", company: "Acme Robotics S.A.", title: "Staff Engineer" } },
+          data: {
+            application: { id: "a1", company: "Acme Robotics S.A.", title: "Staff Engineer" },
+          },
         }
       }
       return { ok: false, error: "unexpected" }
     })
     await loadContent()
-    panelButton("Wypełnij z Nowa Rola").click()
+    panelButton("Wypełnij z newrole.it").click()
     await flush()
     panelButton("Zapisz jako aplikację").click()
     await flush()
@@ -242,9 +244,9 @@ describe("lib/content.js", () => {
       return { ok: false, error: "unexpected" }
     })
     await loadContent()
-    expect(panelText()).toContain("Wypełnij z Nowa Rola")
+    expect(panelText()).toContain("Wypełnij z newrole.it")
 
-    panelButton("Wypełnij z Nowa Rola").click()
+    panelButton("Wypełnij z newrole.it").click()
     await flush()
 
     const request = seen.find((message) => message.type === "fill")!
@@ -662,24 +664,24 @@ describe("lib/pair.js", () => {
   it("stores a token from the app and answers the page", async () => {
     const seen = await loadPair({ customBase: false, apiBase: "http://localhost:43123" })
     const reply = vi.spyOn(window, "postMessage").mockImplementation(() => undefined)
-    post({ type: "nowarola:pair", token: TOKEN, origin: LOCAL }, LOCAL)
+    post({ type: "newrole:pair", token: TOKEN, origin: LOCAL }, LOCAL)
     await flush()
     expect(seen.find((message) => message.type === "setToken")).toMatchObject({
       token: TOKEN,
       origin: LOCAL,
     })
-    expect(reply).toHaveBeenCalledWith({ type: "nowarola:paired" }, LOCAL)
+    expect(reply).toHaveBeenCalledWith({ type: "newrole:paired" }, LOCAL)
   })
 
   it("ignores other origins, other windows and mismatched claims", async () => {
     const seen = await loadPair({ customBase: true, apiBase: "https://app.example" })
-    post({ type: "nowarola:pair", token: TOKEN, origin: LOCAL }, LOCAL)
+    post({ type: "newrole:pair", token: TOKEN, origin: LOCAL }, LOCAL)
     post(
-      { type: "nowarola:pair", token: TOKEN, origin: "https://evil.example" },
+      { type: "newrole:pair", token: TOKEN, origin: "https://evil.example" },
       "https://app.example"
     )
     post(
-      { type: "nowarola:pair", token: TOKEN, origin: "https://app.example" },
+      { type: "newrole:pair", token: TOKEN, origin: "https://app.example" },
       "https://app.example",
       null
     )
@@ -697,7 +699,7 @@ describe("lib/pair.js", () => {
       connected: false,
       ...extra,
     })
-    const hello = (connected: boolean) => ({ type: "nowarola:hello", connected, version: VERSION })
+    const hello = (connected: boolean) => ({ type: "newrole:hello", connected, version: VERSION })
 
     it("posts to the page on load, with no token even if the config had one", async () => {
       const reply = vi.spyOn(window, "postMessage").mockImplementation(() => undefined)
@@ -720,7 +722,7 @@ describe("lib/pair.js", () => {
       await loadPair(app())
       await flush()
       reply.mockClear()
-      post({ type: "nowarola:ping" }, HERE)
+      post({ type: "newrole:ping" }, HERE)
       await flush()
       expect(reply).toHaveBeenCalledTimes(1)
       expect(reply).toHaveBeenCalledWith(hello(false), HERE)
@@ -731,8 +733,8 @@ describe("lib/pair.js", () => {
       await loadPair(app())
       await flush()
       reply.mockClear()
-      post({ type: "nowarola:ping" }, "https://evil.example")
-      post({ type: "nowarola:ping" }, HERE, null)
+      post({ type: "newrole:ping" }, "https://evil.example")
+      post({ type: "newrole:ping" }, HERE, null)
       await flush()
       expect(reply).not.toHaveBeenCalled()
     })
@@ -742,10 +744,10 @@ describe("lib/pair.js", () => {
       await loadPair(app())
       await flush()
       reply.mockClear()
-      post({ type: "nowarola:pair", token: TOKEN, origin: HERE }, HERE)
+      post({ type: "newrole:pair", token: TOKEN, origin: HERE }, HERE)
       await flush()
       expect(reply.mock.calls).toEqual([
-        [{ type: "nowarola:paired" }, HERE],
+        [{ type: "newrole:paired" }, HERE],
         [hello(true), HERE],
       ])
     })
@@ -758,7 +760,7 @@ describe("lib/pair.js", () => {
         message.type === "config" ? { ok: true, data: app() } : { ok: false, error: "forbidden" }
       )
       reply.mockClear()
-      post({ type: "nowarola:pair", token: TOKEN, origin: HERE }, HERE)
+      post({ type: "newrole:pair", token: TOKEN, origin: HERE }, HERE)
       await flush()
       expect(reply).not.toHaveBeenCalled()
     })
@@ -806,7 +808,9 @@ describe("lib/background.js", () => {
       },
       permissions: { onAdded: event(), onRemoved: event(), contains: vi.fn(async () => allowed) },
       scripting: {
-        getRegisteredContentScripts: vi.fn(async () => []),
+        getRegisteredContentScripts: vi.fn(
+          async (_filter?: { ids: string[] }): Promise<{ id: string }[]> => []
+        ),
         registerContentScripts: vi.fn(async () => undefined),
         unregisterContentScripts: vi.fn(async () => undefined),
         executeScript: vi.fn(async () => []),
@@ -1071,7 +1075,7 @@ describe("lib/background.js", () => {
     await installed("update")
     expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith([
       {
-        id: "nowarola-all-sites",
+        id: "newrole-all-sites",
         matches: ["https://*/*"],
         js: ["content-scripts/content.js"],
         runAt: "document_idle",
@@ -1085,7 +1089,7 @@ describe("lib/background.js", () => {
     await installed("update")
     expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith([
       {
-        id: "nowarola-offer-all-sites",
+        id: "newrole-offer-all-sites",
         matches: ["https://*/*"],
         js: ["content-scripts/offer.js"],
         runAt: "document_idle",
@@ -1101,12 +1105,24 @@ describe("lib/background.js", () => {
     await installed("update")
     expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith([
       {
-        id: "nowarola-pair",
+        id: "newrole-pair",
         matches: ["https://app.example/connect/extension*", "https://app.example/setup*"],
         js: ["content-scripts/pair.js"],
         runAt: "document_start",
       },
     ])
+  })
+
+  it("removes scripts registered under the ids from before the rename", async () => {
+    const { chrome, installed } = await loadBackground()
+    chrome.scripting.getRegisteredContentScripts.mockImplementation(
+      async (filter?: { ids: string[] }) =>
+        filter?.ids.includes("nowarola-all-sites") ? [{ id: "nowarola-all-sites" }] : []
+    )
+    await installed("update")
+    expect(chrome.scripting.unregisterContentScripts).toHaveBeenCalledWith({
+      ids: ["nowarola-all-sites"],
+    })
   })
 
   it("keeps settings changes to its own pages", async () => {

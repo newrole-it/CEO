@@ -1,4 +1,4 @@
-# Nowa Rola: rozszerzenie Chrome
+# newrole.it: rozszerzenie Chrome
 
 Wypełnia formularze aplikacyjne z Twoich danych, CV i bazy odpowiedzi, a wysłane aplikacje zapisuje w trackerze. Formularz zawsze wysyłasz sam. Gdy oglądasz ofertę, mówi, czy już aplikowano i jaki jest status. Na Twoim profilu LinkedIn pokazuje ocenę profilu i co w nim zmienić.
 
@@ -27,11 +27,11 @@ Logika jest w `lib/` (zwykły JavaScript, moduły ES), a `entrypoints/` to cienk
 
 Otwórz `http://127.0.0.1:43123/connect/extension` i kliknij „Połącz rozszerzenie”. Token możesz też utworzyć w Ustawieniach → Rozszerzenie Chrome i wkleić w opcjach rozszerzenia.
 
-Na `/connect/extension` i `/setup` rozszerzenie mówi stronie, że jest zainstalowane: wysyła `nowarola:hello` z polami `connected` i `version`, także w odpowiedzi na `nowarola:ping`. Tokenu nigdy nie przekazuje stronie.
+Na `/connect/extension` i `/setup` rozszerzenie mówi stronie, że jest zainstalowane: wysyła `newrole:hello` z polami `connected` i `version`, także w odpowiedzi na `newrole:ping`. Tokenu nigdy nie przekazuje stronie.
 
 ## Jak działa
 
-- Na znanych ATS (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, SmartRecruiters, Personio, Workday i inne) pokazuje panel „Wypełnij z Nowa Rola”.
+- Na znanych ATS (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, SmartRecruiters, Personio, Workday i inne) pokazuje panel „Wypełnij z newrole.it”.
 - Na innych stronach kliknij „Wypełnij formularz na tej stronie” w popupie albo włącz „Działaj na wszystkich stronach”.
 - Fioletowa ramka: wartość z profilu, CV albo bazy odpowiedzi. Żółta ramka: szkic AI, który trzeba sprawdzić.
 - Po wysłaniu formularza aplikacja zapisuje się w trackerze razem z pytaniami o pracę i Twoimi odpowiedziami, także z wcześniejszych kroków formularza. Podane wynagrodzenie trafia do osobnej kolumny. Automatyczne śledzenie wyłączysz w popupie.

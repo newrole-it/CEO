@@ -44,8 +44,7 @@ export function connectionError(result) {
   if (result.status === 401 || result.error === "not-connected") {
     return "Rozszerzenie nie jest połączone. Połącz je ponownie."
   }
-  if (result.error === "offline")
-    return "Nie mogę połączyć się z aplikacją. Czy Nowa Rola jest uruchomiona?"
+  if (result.error === "offline") return "Nie mogę połączyć się z aplikacją. Czy newrole.it działa?"
   if (result.error === "disconnected")
     return "Rozszerzenie zostało przeładowane. Odśwież tę stronę."
   return null

@@ -107,6 +107,7 @@ const SOURCES = [
 ]
 
 async function main() {
+  // Keeps the old project name: a new default would create a second owner on existing installs.
   const email = (process.env.OWNER_EMAIL || "owner@nowarola.local").toLowerCase()
   const password = process.env.OWNER_PASSWORD || "jobscanner-local"
   // The owner row keeps its first password, so a public server must not create it with the sample.

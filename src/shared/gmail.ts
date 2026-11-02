@@ -1,4 +1,4 @@
-/** What a job-related e-mail says and what Nowa Rola did about it (src/server/gmail). */
+/** What a job-related e-mail says and what newrole.it did about it (src/server/gmail). */
 
 /** Where a person revokes the app's access. Here because the settings screen is a client bundle. */
 export const GOOGLE_PERMISSIONS = "https://myaccount.google.com/permissions"

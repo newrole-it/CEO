@@ -7,8 +7,8 @@ import * as L from "./linkedin.js"
 import { connectionError, element, formatDate, send, session } from "./page.js"
 
 export function startLinkedIn(options = {}) {
-  if (globalThis.__nowaRolaLinkedIn) return
-  globalThis.__nowaRolaLinkedIn = true
+  if (globalThis.__newRoleLinkedIn) return
+  globalThis.__newRoleLinkedIn = true
   if (window.top !== window) return
 
   const PURPLE = "#5b3df5"
@@ -118,7 +118,7 @@ export function startLinkedIn(options = {}) {
       return
     }
     const host = document.createElement("div")
-    host.setAttribute("data-nowarola", "linkedin")
+    host.setAttribute("data-newrole", "linkedin")
     const shadow = host.attachShadow({ mode: "closed" })
     try {
       const sheet = new CSSStyleSheet()
@@ -129,7 +129,7 @@ export function startLinkedIn(options = {}) {
     }
     const panel = element("div", "panel")
     panel.setAttribute("role", "region")
-    panel.setAttribute("aria-label", "Nowa Rola: ocena profilu LinkedIn")
+    panel.setAttribute("aria-label", "newrole.it: ocena profilu LinkedIn")
     const head = element("div", "head")
     const close = element("button", "x", "×")
     close.type = "button"
@@ -138,7 +138,7 @@ export function startLinkedIn(options = {}) {
       session("set", dismissKey())
       host.style.display = "none"
     })
-    head.append(element("span", "", "Nowa Rola · Profil LinkedIn"), close)
+    head.append(element("span", "", "newrole.it · Profil LinkedIn"), close)
     ui.body = element("div", "")
     ui.body.style.display = "grid"
     ui.body.style.gap = "10px"
@@ -308,7 +308,7 @@ export function startLinkedIn(options = {}) {
     const read = readLine(audit.read)
     if (read) body.append(element("div", "msg", read))
     const foot = element("div", "foot")
-    const link = element("a", "link", "Profil w Nowa Rola")
+    const link = element("a", "link", "Profil w newrole.it")
     link.href = appLink("/profile")
     link.target = "_blank"
     link.rel = "noreferrer noopener"
@@ -325,7 +325,7 @@ export function startLinkedIn(options = {}) {
     body.textContent = ""
     if (!state.config.connected) {
       body.append(
-        element("div", "msg", "Połącz rozszerzenie z Nowa Rola, żeby ocenić ten profil."),
+        element("div", "msg", "Połącz rozszerzenie z newrole.it, żeby ocenić ten profil."),
         button("Połącz rozszerzenie", "btn", () => void send("openOptions", {}))
       )
       return

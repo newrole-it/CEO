@@ -28,23 +28,23 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
   const pl = locale === "pl"
   const title = pl
-    ? "Nowa Rola: oferty prosto ze stron firm, dopasowane do Ciebie"
-    : "Nowa Rola: jobs straight from company sites, matched to you"
+    ? "newrole.it: oferty z całego świata, wyniki z Twojego kraju"
+    : "newrole.it: global offers, local search"
   const description = pl
-    ? "Wrzuć CV albo połącz LinkedIn. W minutę pokażemy oferty w tech, które pasują — także te, których nie ma na portalach."
-    : "Upload your CV or connect LinkedIn. In a minute we'll show the tech roles that fit — including the ones job boards never see."
+    ? "Oferty w tech prosto ze stron pracodawców z całego świata. Szukasz w swoim kraju i widzisz jego oferty oraz pracę zdalną dostępną stamtąd, dopasowane do Twojego profilu."
+    : "Tech jobs straight from employers' own sites, worldwide. Search in your country and see its offers plus remote roles open to you there, ranked against your profile."
   const ogAlt = pl
-    ? "Nowa Rola: oferty prosto ze stron firm, dopasowane do Ciebie."
-    : "Nowa Rola: jobs straight from company sites, matched to you."
+    ? "newrole.it: oferty z całego świata, wyniki z Twojego kraju."
+    : "newrole.it: global offers, local search."
   const ogImage = pl ? "/og-image-pl.png" : "/og-image-en.png"
   return {
     metadataBase: new URL(publicAppUrl()),
-    applicationName: "Nowa Rola",
-    title: { default: title, template: "%s · Nowa Rola" },
+    applicationName: "newrole.it",
+    title: { default: title, template: "%s · newrole.it" },
     description,
     openGraph: {
       type: "website",
-      siteName: "Nowa Rola",
+      siteName: "newrole.it",
       locale: pl ? "pl_PL" : "en_US",
       alternateLocale: pl ? ["en_US"] : ["pl_PL"],
       // No url or canonical here: every page inherits them, so each would point at the home page.

@@ -11,9 +11,21 @@ const users = [
 ]
 
 describe("user resolution", () => {
-  it("uses NOWAROLA_USER_EMAIL first", () => {
-    const picked = pickUser(users, { NOWAROLA_USER_EMAIL: "OWNER@local" })
+  it("uses NEWROLE_USER_EMAIL first", () => {
+    const picked = pickUser(users, { NEWROLE_USER_EMAIL: "OWNER@local" })
     expect("user" in picked && picked.user.id).toBe(1)
+    expect("user" in picked && picked.how).toBe("NEWROLE_USER_EMAIL")
+  })
+
+  it("still reads the old NOWAROLA_USER_EMAIL, and the new name wins over it", () => {
+    const old = pickUser(users, { NOWAROLA_USER_EMAIL: "OWNER@local" })
+    expect("user" in old && old.user.id).toBe(1)
+    expect("user" in old && old.how).toBe("NOWAROLA_USER_EMAIL")
+    const both = pickUser(users, {
+      NEWROLE_USER_EMAIL: "anna@example.com",
+      NOWAROLA_USER_EMAIL: "owner@local",
+    })
+    expect("user" in both && both.user.id).toBe(2)
   })
 
   it("falls back to the only regular account, then the owner", () => {
@@ -21,10 +33,11 @@ describe("user resolution", () => {
     expect("user" in one && one.user.id).toBe(2)
     const two = pickUser([...users, { id: 3, email: "b@x", name: null, role: "USER" }], {})
     expect("user" in two && two.user.id).toBe(1)
-    expect("user" in two && two.how).toContain("NOWAROLA_USER_EMAIL")
+    expect("user" in two && two.how).toContain("NEWROLE_USER_EMAIL")
   })
 
   it("explains what to do when nothing matches", () => {
+    expect(pickUser(users, { NEWROLE_USER_EMAIL: "nobody@x" })).toHaveProperty("error")
     expect(pickUser(users, { NOWAROLA_USER_EMAIL: "nobody@x" })).toHaveProperty("error")
     expect(pickUser([], {})).toHaveProperty("error")
   })

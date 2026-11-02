@@ -68,7 +68,7 @@ export function assertSafeProductionEnv(env: Env = process.env): void {
   if (problems.length === 0) return
   throw new Error(
     [
-      `Nowa Rola refuses to start on ${env.APP_ORIGIN} with sample or weak secrets:`,
+      `newrole.it refuses to start on ${env.APP_ORIGIN} with sample or weak secrets:`,
       ...problems.map((problem) => `- ${problem}`),
       "Generate new values (openssl rand -hex 32), put them in .env and start again.",
     ].join("\n")

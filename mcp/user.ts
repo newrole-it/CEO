@@ -6,19 +6,23 @@ export type McpUser = { id: number; email: string; name: string | null; how: str
 type Candidate = { id: number; email: string; name: string | null; role: string }
 
 /**
- * Who the local MCP server acts for: NOWAROLA_USER_EMAIL, else the only regular
- * account, else the owner (OWNER_EMAIL or the admin). Guests never count.
+ * Who the local MCP server acts for: NEWROLE_USER_EMAIL (or the old name NOWAROLA_USER_EMAIL),
+ * else the only regular account, else the owner (OWNER_EMAIL or the admin). Guests never count.
  */
 export function pickUser(
   users: Candidate[],
   env: Record<string, string | undefined>
 ): { user: Candidate; how: string } | { error: string } {
-  const wanted = env.NOWAROLA_USER_EMAIL?.trim().toLowerCase()
+  const fromNew = env.NEWROLE_USER_EMAIL?.trim().toLowerCase()
+  // The variable's name before the rename to newrole.it, still read so existing setups keep working.
+  const fromOld = env.NOWAROLA_USER_EMAIL?.trim().toLowerCase()
+  const wanted = fromNew || fromOld
+  const name = fromNew ? "NEWROLE_USER_EMAIL" : "NOWAROLA_USER_EMAIL"
   if (wanted) {
     const user = users.find((item) => item.email.toLowerCase() === wanted)
-    if (user) return { user, how: "NOWAROLA_USER_EMAIL" }
+    if (user) return { user, how: name }
     return {
-      error: `No account with NOWAROLA_USER_EMAIL=${wanted}. Sign in once at the local site, or fix the variable.`,
+      error: `No account with ${name}=${wanted}. Sign in once at the local site, or fix the variable.`,
     }
   }
   const regular = users.filter((item) => item.role === "USER")
@@ -29,7 +33,7 @@ export function pickUser(
     users.find((item) => item.role === "ADMIN")
   if (owner) {
     const note =
-      regular.length > 1 ? ` (${regular.length} accounts exist; set NOWAROLA_USER_EMAIL)` : ""
+      regular.length > 1 ? ` (${regular.length} accounts exist; set NEWROLE_USER_EMAIL)` : ""
     return { user: owner, how: `the owner account${note}` }
   }
   return {

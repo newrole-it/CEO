@@ -1,6 +1,6 @@
 # Sources, scanning and matching
 
-Nowa Rola reads public, unauthenticated job APIs and employer career pages. It never fetches LinkedIn or the Polish aggregators (justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, bulldogjob); the results page links out to their own search instead. The `/sources` page in the app lists every platform with its policy and the reason.
+newrole.it reads public, unauthenticated job APIs and the career pages of employers worldwide into one index. A search shows the offers from the country you search in plus remote roles you can do from there; your profile's country is the default. It never fetches LinkedIn or the Polish aggregators (justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, bulldogjob), which the source policy blocks by name; the results page links out to their own search instead. The `/sources` page in the app lists every platform with its policy and the reason.
 
 ## What a scan does
 
@@ -16,7 +16,7 @@ Between searches the same worker indexes the full allowed catalog: one request p
 
 ## Crawler rules
 
-The crawler sends `NowaRolaBot/0.1` with a link to [`/bot`](../src/app/bot/page.tsx) on `APP_URL`, which says how a site opts out, waits at least 5 seconds between requests to a host, fetches at most 200 job pages per host per day, refreshes sitemaps daily, and honors robots.txt. Stored text is a short excerpt plus the canonical link. When a person tailors a CV to an offer, or `job_get` is called with `fullText`, the whole text of that one offer is read under the same rules, held in memory for 15 minutes, and not stored ([product/plan-p0.md](product/plan-p0.md)). Recruiter names, emails, and phone numbers are dropped. Pages that opt out of AI input or training, or reserve text-and-data mining, are scored with the rules and are not sent to the model. Logins and bot walls are not bypassed.
+The crawler sends `NewRoleBot/0.1` (robots.txt rules for its earlier names, `NowaRolaBot` and `JobscannerBot`, still apply) with a link to [`/bot`](../src/app/bot/page.tsx) on `APP_URL`, which says how a site opts out, waits at least 5 seconds between requests to a host, fetches at most 200 job pages per host per day, refreshes sitemaps daily, and honors robots.txt. Stored text is a short excerpt plus the canonical link. When a person tailors a CV to an offer, or `job_get` is called with `fullText`, the whole text of that one offer is read under the same rules, held in memory for 15 minutes, and not stored ([product/plan-p0.md](product/plan-p0.md)). Recruiter names, emails, and phone numbers are dropped. Pages that opt out of AI input or training, or reserve text-and-data mining, are scored with the rules and are not sent to the model. Logins and bot walls are not bypassed.
 
 Watched companies (added in the app or by Claude through MCP) follow the same rules: source policy, robots.txt, 5 seconds per host, 200 detail pages per host per day, and no aggregators or LinkedIn. Resolving a new company reads at most 8 pages.
 

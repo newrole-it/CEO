@@ -8,9 +8,11 @@ import { linkedInJobId, statusLine } from "./offer.js"
 const DEFAULT_APP = "http://127.0.0.1:43123"
 const LOCAL_APPS = [DEFAULT_APP, "http://localhost:43123"]
 const ALL_SITES = "https://*/*"
-const ALL_SITES_SCRIPT = "nowarola-all-sites"
-const OFFER_SITES_SCRIPT = "nowarola-offer-all-sites"
-const PAIR_SCRIPT = "nowarola-pair"
+const ALL_SITES_SCRIPT = "newrole-all-sites"
+const OFFER_SITES_SCRIPT = "newrole-offer-all-sites"
+const PAIR_SCRIPT = "newrole-pair"
+/** Ids the same scripts had before the rename to newrole.it, removed in case they are still registered. */
+const LEGACY_SCRIPTS = ["nowarola-all-sites", "nowarola-offer-all-sites", "nowarola-pair"]
 const CONTENT_FILE = "content-scripts/content.js"
 const OFFER_FILE = "content-scripts/offer.js"
 const PAIR_FILE = "content-scripts/pair.js"
@@ -152,7 +154,7 @@ async function setOfferBadge(tabId, data) {
   const applied = data?.applied
   const text = applied ? "✓" : data?.sameCompany?.length ? "•" : ""
   const color = applied ? TONE_COLORS[applied.tone] || TONE_COLORS.neutral : TONE_COLORS.muted
-  const title = text ? `Nowa Rola: ${statusLine(data)}` : ""
+  const title = text ? `newrole.it: ${statusLine(data)}` : ""
   await chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => undefined)
   await chrome.action.setBadgeText({ tabId, text }).catch(() => undefined)
   await chrome.action.setTitle({ tabId, title }).catch(() => undefined)
@@ -213,7 +215,15 @@ async function syncPairScript() {
   }
 }
 
+/** Removes scripts an older version registered under LEGACY_SCRIPTS, so a page does not get both. */
+async function dropLegacyScripts() {
+  const found = await chrome.scripting.getRegisteredContentScripts({ ids: LEGACY_SCRIPTS })
+  if (found.length)
+    await chrome.scripting.unregisterContentScripts({ ids: found.map((script) => script.id) })
+}
+
 async function syncScripts() {
+  await dropLegacyScripts().catch((error) => console.warn("legacy scripts", error))
   await syncAllSites().catch((error) => console.warn("all sites script", error))
   await syncPairScript().catch((error) => console.warn("pair script", error))
 }

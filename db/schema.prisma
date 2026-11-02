@@ -618,7 +618,7 @@ model Application {
   statedSalary    String?
   /// The form as sent: [{ question, answer, kind }]. Answer keeps distinct answers for reuse.
   formAnswers     Json        @default("[]")
-  /// nowarola | extension | manual | mcp | gmail
+  /// nowarola (the web app, named before the rename to newrole.it) | extension | manual | mcp | gmail
   source          String      @default("manual")
   cvDocumentId    String?
   cvDocument      CvDocument? @relation(fields: [cvDocumentId], references: [id], onDelete: SetNull)

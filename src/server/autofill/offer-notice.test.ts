@@ -79,7 +79,7 @@ async function flush() {
 
 async function load(handler: Handler, options: { settleMs?: number } = {}) {
   stubChrome(handler)
-  delete (globalThis as unknown as { __nowaRolaOffer?: boolean }).__nowaRolaOffer
+  delete (globalThis as unknown as { __newRoleOffer?: boolean }).__newRoleOffer
   startOffer(options)
   await flush()
 }
@@ -108,7 +108,7 @@ const posting = (company: string, title: string) =>
   })}</script>`
 
 function panel() {
-  return document.querySelector<HTMLElement>("[data-nowarola='offer']")
+  return document.querySelector<HTMLElement>("[data-newrole='offer']")
 }
 
 function visible() {
@@ -140,7 +140,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  document.querySelectorAll("[data-nowarola]").forEach((node) => node.remove())
+  document.querySelectorAll("[data-newrole]").forEach((node) => node.remove())
   vi.restoreAllMocks()
 })
 
@@ -455,7 +455,7 @@ describe("lib/offer-notice.js", () => {
     startOffer()
     await flush()
     expect(listeners).toHaveLength(1)
-    expect(document.querySelectorAll("[data-nowarola='offer']")).toHaveLength(1)
+    expect(document.querySelectorAll("[data-newrole='offer']")).toHaveLength(1)
   })
 })
 

@@ -1,6 +1,6 @@
 # Accounts, profile and privacy
 
-Search does not require an account. The first time an email is entered, Nowa Rola creates the user and signs that browser in. A later sign-in emails a link that works once and expires after 15 minutes. The token is stored as a hash. Requests are limited to 5 per email and 20 per IP each hour. With `EMAIL_PROVIDER=console`, the sign-in URL is printed in the web server log without the email address. Settings → Hasło sets an optional password for any account; `/login` takes email and password next to the one-time link.
+Search does not require an account. The first time an email is entered, newrole.it creates the user and signs that browser in. A later sign-in emails a link that works once and expires after 15 minutes. The token is stored as a hash. Requests are limited to 5 per email and 20 per IP each hour. With `EMAIL_PROVIDER=console`, the sign-in URL is printed in the web server log without the email address. Settings → Hasło sets an optional password for any account; `/login` takes email and password next to the one-time link.
 
 There is no billing and no email alerts. LinkedIn sign-in uses OpenID Connect and only receives your name, email, and picture. The seeded owner stays the admin.
 
@@ -12,7 +12,7 @@ Getting your profile needs no LinkedIn app and no keys. `/start` → "Pobierz z 
 2. **LinkedIn data export (ZIP).** LinkedIn → Settings → Data privacy → Get a copy of your data. Only `Profile.csv`, `Positions.csv`, `Skills.csv`, `Education.csv`, `Certifications.csv`, and `Languages.csv` are read. From `Profile.csv` only the name, headline, summary, and location are used: address, birth date, and postcode are dropped. Messages, connections, and every other file in the archive are never opened. The ZIP is read in memory and not stored.
 3. **Profile PDF.** Your profile → More → Save to PDF. Any CV PDF or pasted text works the same way.
 
-This reads only your own profile, in your own browser, when you start it. Nowa Rola does not crawl LinkedIn. In Claude Code, the `onboard` MCP prompt follows the same rules, and `profile_import` takes `text`, `pdfPath`, or `zipPath`.
+This reads only your own profile, in your own browser, when you start it. newrole.it does not crawl LinkedIn. In Claude Code, the `onboard` MCP prompt follows the same rules, and `profile_import` takes `text`, `pdfPath`, or `zipPath`.
 
 A PDF is parsed in memory (`src/server/profile/pdf.ts`): it never touches the disk and is not stored. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so a CV can be created from them. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source. Model replies from the CV are cached under the user and removed with the profile.
 
