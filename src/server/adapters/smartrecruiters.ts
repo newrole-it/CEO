@@ -11,21 +11,20 @@ const postingSchema = z
   .object({
     id: z.string(),
     name: z.string(),
-    releasedDate: z.string().optional(),
+    releasedDate: z.string().nullish(),
+    // Unset fields can come as null; optional() alone would drop the posting.
     location: z
       .object({
-        city: z.string().optional(),
-        region: z.string().optional(),
-        country: z.string().optional(),
-        remote: z.boolean().optional(),
-        hybrid: z.boolean().optional(),
-        fullLocation: z.string().optional(),
+        city: z.string().nullish(),
+        region: z.string().nullish(),
+        country: z.string().nullish(),
+        remote: z.boolean().nullish(),
+        hybrid: z.boolean().nullish(),
+        fullLocation: z.string().nullish(),
       })
-      .optional(),
-    typeOfEmployment: z.object({ label: z.string().optional() }).optional(),
-    company: z
-      .object({ identifier: z.string().optional(), name: z.string().optional() })
-      .optional(),
+      .nullish(),
+    typeOfEmployment: z.object({ label: z.string().nullish() }).nullish(),
+    company: z.object({ identifier: z.string().nullish(), name: z.string().nullish() }).nullish(),
   })
   .passthrough()
 
@@ -57,9 +56,9 @@ export function parseSmartRecruiters(payload: unknown, boardId: string): ListedJ
     const listed = buildListedJob({
       externalId: job.id,
       title: job.name,
-      companyName: job.company?.name,
+      companyName: job.company?.name ?? undefined,
       locationText: location || undefined,
-      employmentType: job.typeOfEmployment?.label,
+      employmentType: job.typeOfEmployment?.label ?? undefined,
       workplaceType: workplace,
       publishedAt: asDate(job.releasedDate),
       originalUrl: `https://jobs.smartrecruiters.com/${encodeURIComponent(

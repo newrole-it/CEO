@@ -11,26 +11,27 @@ const jobSchema = z
     title: z.string(),
     shortcode: z.string(),
     url: z.string(),
-    employment_type: z.string().optional(),
-    telecommuting: z.boolean().optional(),
-    department: z.string().optional(),
-    published_on: z.string().optional(),
-    created_at: z.string().optional(),
-    country: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    description: z.string().optional(),
+    // Workable sends null for unset fields, as Ashby does; optional() alone dropped those jobs.
+    employment_type: z.string().nullish(),
+    telecommuting: z.boolean().nullish(),
+    department: z.string().nullish(),
+    published_on: z.string().nullish(),
+    created_at: z.string().nullish(),
+    country: z.string().nullish(),
+    city: z.string().nullish(),
+    state: z.string().nullish(),
+    description: z.string().nullish(),
     locations: z
       .array(
         z
           .object({
-            city: z.string().optional(),
-            country: z.string().optional(),
-            countryCode: z.string().optional(),
+            city: z.string().nullish(),
+            country: z.string().nullish(),
+            countryCode: z.string().nullish(),
           })
           .passthrough()
       )
-      .optional(),
+      .nullish(),
   })
   .passthrough()
 
@@ -57,9 +58,9 @@ export function parseWorkableJobs(
       title: job.title,
       companyName: root.data.name,
       locationText: location || undefined,
-      employmentType: job.employment_type,
+      employmentType: job.employment_type ?? undefined,
       workplaceType: job.telecommuting ? "REMOTE" : undefined,
-      descriptionHtml: job.description,
+      descriptionHtml: job.description ?? undefined,
       publishedAt: asDate(job.published_on) ?? asDate(job.created_at),
       originalUrl: job.url,
       sourceType: "WORKABLE",

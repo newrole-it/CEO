@@ -86,6 +86,43 @@ describe("ATS adapters", () => {
     expect(parseWorkableJobs({ name: "Workable", jobs: [] }, "madeup").jobs).toEqual([])
   })
 
+  it("keeps Workable and SmartRecruiters postings whose unset fields are null", () => {
+    const workable = parseWorkableJobs(
+      {
+        name: "Acme",
+        jobs: [
+          {
+            title: "Backend Engineer",
+            shortcode: "ABC123",
+            url: "https://apply.workable.com/acme/j/ABC123/",
+            department: null,
+            employment_type: null,
+            description: null,
+            locations: [{ city: null, country: "Poland", countryCode: "PL" }],
+          },
+        ],
+      },
+      "acme"
+    )
+    expect(workable.jobs.map((job) => job.locationText)).toEqual(["Poland"])
+    const smart = parseSmartRecruiters(
+      {
+        totalFound: 1,
+        content: [
+          {
+            id: "1",
+            name: "Data Engineer",
+            location: { city: null, country: "pl", remote: null },
+            typeOfEmployment: null,
+            company: { identifier: "acme", name: null },
+          },
+        ],
+      },
+      "acme"
+    )
+    expect(smart).toHaveLength(1)
+  })
+
   it("treats a SmartRecruiters zero page as an empty list", () => {
     expect(parseSmartRecruiters({ totalFound: 0, content: [] }, "madeup")).toEqual([])
   })

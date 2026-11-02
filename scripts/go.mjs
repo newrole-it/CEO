@@ -312,8 +312,8 @@ async function start(env) {
       "web,worker",
       "-c",
       "cyan,magenta",
-      // Turbopack breaks Blitz RPC resolvers on Next 16, so this matches `npm run dev`.
-      `npx blitz dev --webpack -p ${port} -H 127.0.0.1`,
+      // Same as `npm run dev`: webpack, because Turbopack breaks Blitz RPC resolvers on Next 16.
+      `npx next dev --webpack -p ${port} -H 127.0.0.1`,
       "npx tsx src/worker.ts",
     ],
     { cwd: ROOT, env, stdio: "inherit" }
@@ -350,7 +350,7 @@ async function main() {
     ...(existsSync(local) ? parseEnv(readFileSync(local, "utf8")) : {}),
     ...process.env,
   }
-  install(ROOT, join("node_modules", ".bin", "blitz"), "App")
+  install(ROOT, join("node_modules", ".bin", "next"), "App")
   install(join(ROOT, "matching"), join("node_modules", "zod", "package.json"), "Matching")
   installExtension()
   await ensureDatabase(env)
