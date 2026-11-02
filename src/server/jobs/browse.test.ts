@@ -60,11 +60,7 @@ function indexWithLatePaidOffer(): Row[] {
 }
 
 function acceptsMinimum(item: Row, minimum: number): boolean {
-  return offerMatches(
-    placeFacts(item),
-    monthlyBasePln(item),
-    resolveBrowse({ pay: minimum })
-  )
+  return offerMatches(placeFacts(item), monthlyBasePln(item), resolveBrowse({ pay: minimum }))
 }
 
 function load(rows: Row[]) {
@@ -121,19 +117,33 @@ describe("browse query", () => {
 
   it("maps a typed place onto the same filters as the offer list", () => {
     expect(resolveBrowse({ location: "Warsaw" })).toMatchObject({ city: "Warszawa", location: "" })
-    expect(resolveBrowse({ location: "Polska" }).where).toBe("pl")
+    expect(resolveBrowse({ location: "Polska" }).country).toBe("PL")
+    expect(resolveBrowse({ location: "w USA" }).country).toBe("US")
+    expect(resolveBrowse({ location: "Germany" }).country).toBe("DE")
+    expect(resolveBrowse({ location: "Berlin", defaultCountry: "PL" }).country).toBe("DE")
+  })
+
+  it("searches the person's country unless another one is picked", () => {
+    expect(resolveBrowse({ defaultCountry: "PL" }).country).toBe("PL")
+    expect(resolveBrowse({ defaultCountry: "PL", country: "any" }).country).toBeNull()
+    expect(resolveBrowse({ defaultCountry: "PL", country: "US" }).country).toBe("US")
+    expect(resolveBrowse({ where: "pl" }).country).toBe("PL")
+    expect(resolveBrowse({ where: "abroad", defaultCountry: "PL" }).country).toBeNull()
+    expect(resolveBrowse({}).country).toBeNull()
     expect(resolveBrowse({ location: "zdalnie" }).mode).toBe("remote")
   })
 
   it("builds one jobs url for a phrase and a monthly minimum", () => {
-    const href = browseQuery(resolveBrowse({ phrase: "Data Engineer", pay: 30_000, mode: "remote" }))
+    const href = browseQuery(
+      resolveBrowse({ phrase: "Data Engineer", pay: 30_000, mode: "remote" })
+    )
     expect(href).toBe("/jobs?q=Data+Engineer&mode=remote&pay=30000")
   })
 
   it("matches a role when every word is in the title", () => {
-    expect(titleMatchesPhrase("Senior Data Engineer", "Senior Data Engineer", "data engineer")).toBe(
-      true
-    )
+    expect(
+      titleMatchesPhrase("Senior Data Engineer", "Senior Data Engineer", "data engineer")
+    ).toBe(true)
     expect(titleMatchesPhrase("Product Designer", "Product Designer", "data engineer")).toBe(false)
   })
 

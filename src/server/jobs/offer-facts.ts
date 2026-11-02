@@ -4,7 +4,16 @@
  */
 import { DEFAULT_CONFIG } from "matching/config"
 import { CITY_ALIASES, normalizeLocation } from "matching/normalization"
+import {
+  COUNTRY_ALIASES,
+  COUNTRY_NAMES,
+  SUBDIVISIONS,
+  countryFromText,
+  countryName,
+  remoteOpenTo,
+} from "matching/places"
 import { fold } from "matching/text"
+import type { NormalizedLocation } from "matching/types"
 import type { OfferWorkMode, PayNote } from "src/shared/offer-view"
 
 /**
@@ -29,7 +38,11 @@ export type PlaceFacts = {
   inPoland: boolean | null
   city: string | null
   countryCode: string | null
+  /** Every country the location names, in text order. */
+  countries: string[]
   workMode: OfferWorkMode
+  /** The parsed location, for telling which countries a remote offer is open to. */
+  location: NormalizedLocation
 }
 
 export type MonthlyPay =
@@ -252,15 +265,20 @@ export function placeFacts(input: {
   const countries = new Set(parsed.countries.map((code) => code.toUpperCase()))
   const column = input.countryCode?.trim().toUpperCase() ?? ""
   if (/^[A-Z]{2}$/.test(column)) countries.add(column)
-  const plCity = parsed.cities.find((city) => city.country === "PL")
-  const city = (plCity ?? parsed.cities[0])?.city ?? null
+  const city = parsed.cities[0]?.city ?? null
   const inPoland = countries.has("PL") ? true : countries.size > 0 ? false : null
-  const countryCode = inPoland ? "PL" : column && countries.has(column) ? column : [...countries][0] ?? null
+  // A country stored with the offer wins; otherwise the first one the text names.
+  const countryCode = /^[A-Z]{2}$/.test(column) ? column : [...countries][0] ?? null
   const workMode: OfferWorkMode =
     parsed.workMode === "remote" || parsed.workMode === "hybrid" || parsed.workMode === "onsite"
       ? parsed.workMode
       : "unknown"
-  return { inPoland, city, countryCode, workMode }
+  return { inPoland, city, countryCode, countries: [...countries], workMode, location: parsed }
+}
+
+/** In the country, or remote and open to people there. */
+export function placeInCountry(place: PlaceFacts, country: string): boolean {
+  return place.countries.includes(country) || remoteOpenTo(place.location, country)
 }
 
 export function canonicalCity(value: string): string | null {
@@ -272,6 +290,11 @@ export function canonicalCity(value: string): string | null {
   return found?.[0] ?? null
 }
 
+/** The country of a canonical city name ("Warszawa" → "PL"). */
+export function cityCountry(city: string): string | null {
+  return Object.values(CITY_ALIASES).find(([name]) => name === city)?.[1] ?? null
+}
+
 export function cityNeedles(city: string): string[] {
   const needles = new Set<string>([city])
   for (const [alias, [canonical]] of Object.entries(CITY_ALIASES)) {
@@ -280,62 +303,78 @@ export function cityNeedles(city: string): string[] {
   return [...needles]
 }
 
-/** Substrings that mean the offer mentions Poland, including the accented city name. */
-export function polandNeedles(): string[] {
-  const needles = new Set(["poland", "polska", "polsce"])
-  for (const [alias, [city, country]] of Object.entries(CITY_ALIASES)) {
-    if (country !== "PL") continue
-    if (alias.length >= 4) needles.add(alias)
-    if (city.length >= 4) needles.add(city)
+const NAME_LOCALES = ["en", "pl", "de", "fr", "es", "it", "pt", "nl"]
+// The words matching/normalization reads as remote work (RE_REMOTE). Only narrows the database
+// scan; placeInCountry decides.
+const REMOTE_NEEDLES = [
+  "remote",
+  "zdaln",
+  "work from home",
+  "wfh",
+  "home office",
+  "anywhere",
+  "telepraca",
+  "distributed",
+]
+
+/**
+ * Substrings that may mean the offer is in this country: its names in the languages the matcher
+ * reads (with and without accents), its cities and its states or provinces. A superset only.
+ */
+export function countryNeedles(country: string): string[] {
+  const needles = new Set<string>(COUNTRY_NAMES[country] ?? [])
+  for (const [alias, code] of Object.entries(COUNTRY_ALIASES))
+    if (code === country) needles.add(alias)
+  for (const locale of NAME_LOCALES) {
+    const name = countryName(country, locale)
+    if (name) needles.add(name)
   }
-  return [...needles]
+  for (const [alias, [city, code]] of Object.entries(CITY_ALIASES)) {
+    if (code !== country) continue
+    needles.add(alias)
+    needles.add(city)
+  }
+  for (const [code, short, ...names] of SUBDIVISIONS) {
+    if (code !== country) continue
+    needles.add(`, ${short}`)
+    for (const name of names) needles.add(name)
+  }
+  // "Zielona Góra, PL": the matcher also reads a country code in a comma part.
+  needles.add(`, ${country}`)
+  return [...needles].filter((needle) => needle.trim().length >= 2)
 }
 
-/** Prisma filter for offers located in Poland. */
-export function inPolandWhere() {
+/** Prisma filter that keeps every offer in the country or remote; placeInCountry decides. */
+export function inCountryWhere(country: string, { remote = true } = {}) {
+  const contains = (needle: string) => ({
+    locationText: { contains: needle, mode: "insensitive" as const },
+  })
   return {
     OR: [
-      { countryCode: "PL" },
-      ...polandNeedles().map((needle) => ({
-        locationText: { contains: needle, mode: "insensitive" as const },
-      })),
+      { countryCode: country },
+      ...countryNeedles(country).map(contains),
+      ...(remote ? [{ workplaceType: "REMOTE" as const }, ...REMOTE_NEEDLES.map(contains)] : []),
     ],
   }
 }
 
-/** Substrings for a place outside Poland. Used only to narrow a database scan. */
-export function abroadNeedles(): string[] {
-  const needles = new Set([
-    "germany",
-    "france",
-    "netherlands",
-    "ireland",
-    "spain",
-    "portugal",
-    "austria",
-    "sweden",
-    "usa",
-    "united states",
-    "united kingdom",
-  ])
-  for (const [alias, [city, country]] of Object.entries(CITY_ALIASES)) {
-    if (country === "PL") continue
-    if (alias.length >= 4) needles.add(alias)
-    if (city.length >= 4) needles.add(city)
-  }
-  return [...needles]
+/** A country code from what someone typed: "PL", "Polska", "w USA", "in Germany". */
+export function countryFromQuery(text: string): string | null {
+  const trimmed = text.trim().replace(/^(w|we|in|na|do)\s+/i, "")
+  if (!trimmed) return null
+  return countryFromText(trimmed)
 }
 
 export type OfferFilter = {
-  where: "any" | "pl" | "abroad"
+  /** ISO code, or null for every country. */
+  country: string | null
   city: string
   mode: "any" | "remote" | "hybrid" | "onsite"
   minMonthlyPln?: number
 }
 
 export function offerMatches(place: PlaceFacts, pay: MonthlyPay, filters: OfferFilter): boolean {
-  if (filters.where === "pl" && place.inPoland !== true) return false
-  if (filters.where === "abroad" && place.inPoland !== false) return false
+  if (filters.country && !placeInCountry(place, filters.country)) return false
   if (filters.city && place.city !== filters.city) return false
   if (filters.mode !== "any" && place.workMode !== filters.mode) return false
   if (filters.minMonthlyPln != null && filters.minMonthlyPln > 0) {
@@ -390,7 +429,8 @@ export function requirementExcerpt(description: string): string[] {
     const pieces = splitPieces(slice)
     if (pieces.length) return pieces.slice(0, 4)
     const sentence = slice.split(/(?<=\.)\s+/)[0]?.trim()
-    if (sentence && sentence.length >= 8 && sentence.length <= 140) return [sentence.replace(/[.\s]+$/g, "")]
+    if (sentence && sentence.length >= 8 && sentence.length <= 140)
+      return [sentence.replace(/[.\s]+$/g, "")]
     return []
   }
   if (/[•·]|\s-\s/.test(text)) {

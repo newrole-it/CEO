@@ -12,13 +12,14 @@ import { profileReady } from "src/shared/shortlist"
 import {
   canonicalCity,
   citiesFrom,
+  cityCountry,
   cityNeedles,
+  countryFromQuery,
   descriptionExcerpt,
   offerMatches,
   offerPayFields,
   placeFacts,
-  inPolandWhere,
-  abroadNeedles,
+  inCountryWhere,
   requirementExcerpt,
   type MonthlyPay,
   type OfferFilter,
@@ -37,12 +38,16 @@ export const FOR_YOU_POOL = 600
 const FOR_YOU_BATCH = 200
 const CITY_SCAN = 2000
 
-const POLAND_WORDS = new Set(["poland", "polska", "polsce", "pl"])
 const REMOTE_WORDS = new Set(["remote", "zdalnie", "zdalna", "zdalny"])
 const HYBRID_WORDS = new Set(["hybrid", "hybryda", "hybrydowo"])
 const ONSITE_WORDS = new Set(["onsite", "stacjonarnie", "stacjonarna", "office"])
 
 export type BrowseInput = {
+  /** An ISO country code, or "any" for every country. */
+  country?: string
+  /** The country used when nothing else names one: the person's own (see jobs/country.ts). */
+  defaultCountry?: string | null
+  /** Old links: "pl" is Poland, "abroad" and "any" are every country. */
   where?: string
   city?: string
   mode?: string
@@ -143,33 +148,39 @@ function parseMode(value: string | undefined): OfferFilter["mode"] {
   return "any"
 }
 
-function parseWhere(value: string | undefined): OfferFilter["where"] | null {
-  const where = (value || "").trim().toLowerCase()
-  if (where === "pl" || where === "abroad" || where === "any") return where
-  return null
+/** undefined: nothing picked; null: every country. */
+function parseCountry(input: BrowseInput): string | null | undefined {
+  const value = (input.country || "").trim()
+  if (value.toLowerCase() === "any") return null
+  if (value) return countryFromQuery(value) ?? undefined
+  const where = (input.where || "").trim().toLowerCase()
+  if (where === "pl") return "PL"
+  if (where === "abroad" || where === "any") return null
+  return undefined
 }
 
 /** Words a person types in the location box, mapped onto the same filters as the offer list. */
 export function interpretLocation(
   text: string,
   mode: OfferFilter["mode"]
-): { where: OfferFilter["where"]; city: string; location: string; mode: OfferFilter["mode"] } {
+): { country: string | null; city: string; location: string; mode: OfferFilter["mode"] } {
   const trimmed = text.trim().slice(0, 120)
-  if (!trimmed) return { where: "any", city: "", location: "", mode }
+  if (!trimmed) return { country: null, city: "", location: "", mode }
   const folded = fold(trimmed)
-  if (POLAND_WORDS.has(folded)) return { where: "pl", city: "", location: "", mode }
   if (REMOTE_WORDS.has(folded)) {
-    return { where: "any", city: "", location: "", mode: mode === "any" ? "remote" : mode }
+    return { country: null, city: "", location: "", mode: mode === "any" ? "remote" : mode }
   }
   if (HYBRID_WORDS.has(folded)) {
-    return { where: "any", city: "", location: "", mode: mode === "any" ? "hybrid" : mode }
+    return { country: null, city: "", location: "", mode: mode === "any" ? "hybrid" : mode }
   }
   if (ONSITE_WORDS.has(folded)) {
-    return { where: "any", city: "", location: "", mode: mode === "any" ? "onsite" : mode }
+    return { country: null, city: "", location: "", mode: mode === "any" ? "onsite" : mode }
   }
   const city = canonicalCity(trimmed)
-  if (city) return { where: "any", city, location: "", mode }
-  return { where: "any", city: "", location: trimmed, mode }
+  if (city) return { country: cityCountry(city), city, location: "", mode }
+  const country = countryFromQuery(trimmed)
+  if (country) return { country, city: "", location: "", mode }
+  return { country: null, city: "", location: trimmed, mode }
 }
 
 export function phraseTokens(phrase: string): string[] {
@@ -201,14 +212,20 @@ export function titleMatchesPhrase(
 }
 
 export function resolveBrowse(input: BrowseInput): ResolvedBrowse {
-  const explicitWhere = parseWhere(input.where)
+  const picked = parseCountry(input)
   let mode = parseMode(input.mode)
   const place = interpretLocation(input.location ?? "", mode)
   mode = place.mode
   const cityFromParam = input.city?.trim() ? canonicalCity(input.city) ?? "" : ""
+  const city = cityFromParam || place.city
+  // A picked country wins, then one the location names (a city names its country), then the default.
+  const country =
+    picked !== undefined
+      ? picked
+      : place.country ?? (city ? cityCountry(city) : null) ?? input.defaultCountry ?? null
   return {
-    where: explicitWhere && explicitWhere !== "any" ? explicitWhere : place.where,
-    city: cityFromParam || place.city,
+    country,
+    city,
     mode,
     minMonthlyPln: parsePay(input.pay),
     phrase: (input.phrase || input.q || "").trim().slice(0, 160),
@@ -223,7 +240,7 @@ export function resolveBrowse(input: BrowseInput): ResolvedBrowse {
  * an empty list.
  */
 export function browseScanCap(filters: {
-  where: string
+  country: string | null
   city: string
   mode: string
   minMonthlyPln?: number
@@ -232,7 +249,7 @@ export function browseScanCap(filters: {
 }): number {
   const selective =
     (filters.minMonthlyPln != null && filters.minMonthlyPln > 0) ||
-    filters.where !== "any" ||
+    Boolean(filters.country) ||
     filters.mode !== "any" ||
     Boolean(filters.city) ||
     Boolean(filters.phrase) ||
@@ -258,7 +275,7 @@ export function browseQuery(filters: ResolvedBrowse, cursor?: string | null): st
   const params = new URLSearchParams()
   if (filters.phrase) params.set("q", filters.phrase)
   if (filters.location) params.set("location", filters.location)
-  if (filters.where !== "any") params.set("where", filters.where)
+  if (filters.country) params.set("country", filters.country)
   if (filters.city) params.set("city", filters.city)
   if (filters.mode !== "any") params.set("mode", filters.mode)
   if (filters.minMonthlyPln) params.set("pay", String(filters.minMonthlyPln))
@@ -316,18 +333,7 @@ function listWhere(filters: ResolvedBrowse, cursor: BrowseCursor | null): Prisma
     const mode = filters.mode.toUpperCase() as "REMOTE" | "HYBRID" | "ONSITE"
     and.push({ workplaceType: { in: [mode, "UNKNOWN"] } })
   }
-  if (filters.where === "pl") {
-    and.push(inPolandWhere())
-  } else if (filters.where === "abroad") {
-    and.push({
-      OR: [
-        { AND: [{ countryCode: { not: null } }, { countryCode: { not: "PL" } }] },
-        ...abroadNeedles().map((needle) => ({
-          locationText: { contains: needle, mode: "insensitive" as const },
-        })),
-      ],
-    })
-  }
+  if (filters.country) and.push(inCountryWhere(filters.country))
   if (filters.city) {
     and.push({
       OR: cityNeedles(filters.city).map((needle) => ({
@@ -356,7 +362,10 @@ function listWhere(filters: ResolvedBrowse, cursor: BrowseCursor | null): Prisma
   }
 }
 
-function toOfferView(job: JobRow, locale: "pl" | "en"): { view: FeedOffer; place: PlaceFacts; pay: MonthlyPay } {
+function toOfferView(
+  job: JobRow,
+  locale: "pl" | "en"
+): { view: FeedOffer; place: PlaceFacts; pay: MonthlyPay } {
   const description = (job.descriptionText || job.summary || "").replace(/\s+/g, " ").trim()
   const place = placeFacts({
     locationText: job.locationText,
@@ -598,7 +607,12 @@ export async function scoreOfferForUser(
   jobId: string,
   userId: number | null,
   locale: "pl" | "en"
-): Promise<{ view: FeedOffer; score: FeedScore; hasProfile: boolean; hasFeedback: boolean } | null> {
+): Promise<{
+  view: FeedOffer
+  score: FeedScore
+  hasProfile: boolean
+  hasFeedback: boolean
+} | null> {
   const [row, profile, model] = await Promise.all([
     db.job.findUnique({ where: { id: jobId }, select: jobSelect }),
     userId ? db.candidateProfile.findUnique({ where: { userId } }) : null,

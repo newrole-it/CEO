@@ -1,12 +1,14 @@
 /**
  * Companies worth watching. Deterministic suggestions come from the index: like the
- * companies a person liked, else fitting their profile, else hiring the most in Poland.
+ * companies a person liked, else fitting their profile, else hiring the most in their country.
  * The optional Claude expansion proposes new employers and resolves each through
  * watchCompany, at most five a day per person.
  */
 import db from "db"
 import { techScopeWhere } from "src/server/classify/scope"
-import { inPolandWhere, placeFacts } from "src/server/jobs/offer-facts"
+import { profileCountry } from "src/server/jobs/country"
+import { inCountryWhere, placeFacts } from "src/server/jobs/offer-facts"
+import { countryName } from "matching/places"
 import { normalizeCompanyName, titleTokens } from "src/server/jobs/normalize"
 import { findClaudeBinary, runClaudePrompt, extractJson } from "src/server/llm/claude-cli"
 import { asStringList } from "src/server/profile/schema"
@@ -23,6 +25,8 @@ export const SIMILAR_SOURCE = "similar_companies"
 export type SimilarContext = {
   liked: { company: string; domain: string | null; industry: string | null; aspects: string[] }[]
   known: string[]
+  /** Where the person looks for work, from their profile; null when it does not say. */
+  country?: string | null
 }
 
 export type CompanyProfile = {
@@ -39,7 +43,7 @@ export type SuggestionWhy =
   | { kind: "liked-roles"; company: string; terms: string[] }
   | { kind: "liked-industry"; company: string }
   | { kind: "profile"; matching: number; terms: string[] }
-  | { kind: "hiring" }
+  | { kind: "hiring"; country: string | null }
 
 export type Suggestion = {
   companyId: string
@@ -247,7 +251,8 @@ export function scoreSimilar(
       const roles = shared(source.roles, candidate.roles)
       if (roles.length) {
         score += Math.min(3, roles.length * 0.75)
-        if (!stack.length) reasons.push(`similar roles to ${source.name} (${roles.slice(0, 3).join(", ")})`)
+        if (!stack.length)
+          reasons.push(`similar roles to ${source.name} (${roles.slice(0, 3).join(", ")})`)
       }
       if (score < 2) continue
       const rounded = Math.round(score * 100) / 100
@@ -255,8 +260,8 @@ export function scoreSimilar(
         const why: SuggestionWhy = stack.length
           ? { kind: "liked-stack", company: source.name, terms: stack.slice(0, 3).map(termLabel) }
           : roles.length
-            ? { kind: "liked-roles", company: source.name, terms: roles.slice(0, 3) }
-            : { kind: "liked-industry", company: source.name }
+          ? { kind: "liked-roles", company: source.name, terms: roles.slice(0, 3) }
+          : { kind: "liked-industry", company: source.name }
         best = {
           companyId: candidate.companyId,
           name: candidate.name,
@@ -268,9 +273,7 @@ export function scoreSimilar(
     }
     if (best) out.push(best)
   }
-  return out
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
-    .slice(0, limit)
+  return out.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, limit)
 }
 
 export type ProfileSignals = { skills: Set<string>; roles: Set<string> }
@@ -317,7 +320,10 @@ export function rankForProfile(
     byCompany.set(job.companyId, entry)
   }
   return [...byCompany.entries()]
-    .sort(([leftId, left], [rightId, right]) => right.matching - left.matching || leftId.localeCompare(rightId))
+    .sort(
+      ([leftId, left], [rightId, right]) =>
+        right.matching - left.matching || leftId.localeCompare(rightId)
+    )
     .slice(0, limit)
     .map(([companyId, entry]) => ({
       companyId,
@@ -349,7 +355,11 @@ function openingCounts(jobs: OpenJob[]): Map<string, number> {
 export function ownDomain(url: string): string | null {
   const host = hostOf(url)
   if (!host || isAggregatorHost(host) || detectBoard(url)) return null
-  if (/(greenhouse|lever|ashbyhq|workable|smartrecruiters|teamtailor|recruitee|personio|traffit|pinpointhq|breezy|bamboohr|myworkdayjobs|erecruiter)\./.test(host)) {
+  if (
+    /(greenhouse|lever|ashbyhq|workable|smartrecruiters|teamtailor|recruitee|personio|traffit|pinpointhq|breezy|bamboohr|myworkdayjobs|erecruiter)\./.test(
+      host
+    )
+  ) {
     return null
   }
   return companyDomain(url)
@@ -357,7 +367,10 @@ export function ownDomain(url: string): string | null {
 
 async function knownDomains(): Promise<string[]> {
   const [companies, pages] = await Promise.all([
-    db.company.findMany({ where: { canonicalDomain: { not: null } }, select: { canonicalDomain: true } }),
+    db.company.findMany({
+      where: { canonicalDomain: { not: null } },
+      select: { canonicalDomain: true },
+    }),
     db.careerPage.findMany({ select: { url: true } }),
   ])
   const set = new Set<string>()
@@ -370,7 +383,9 @@ async function knownDomains(): Promise<string[]> {
 }
 
 function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : []
 }
 
 async function likedRows(userId: number) {
@@ -414,7 +429,15 @@ export async function similarCompanyContext(userId: number): Promise<SimilarCont
     current.aspects = [...new Set([...current.aspects, ...stringList(row.aspects)])]
     byCompany.set(company.id, current)
   }
-  return { liked: [...byCompany.values()], known: await knownDomains() }
+  const profile = await db.candidateProfile.findUnique({
+    where: { userId },
+    select: { homeCity: true, locations: true },
+  })
+  return {
+    liked: [...byCompany.values()],
+    known: await knownDomains(),
+    country: profileCountry(profile),
+  }
 }
 
 export type CompanySuggestion = {
@@ -452,14 +475,24 @@ export async function companySuggestions(userId: number, limit = 9): Promise<Com
       basis: fromIndex.basis,
       suggestions: fromIndex.suggestions,
       canSearch,
-      message: fromIndex.basis === "profile" ? "Based on your profile." : "Hiring the most in Poland.",
+      message:
+        fromIndex.basis === "profile"
+          ? "Based on your profile."
+          : fromIndex.country
+          ? `Hiring the most in ${countryName(fromIndex.country, "en") ?? fromIndex.country}.`
+          : "Hiring the most.",
     }
   }
   const liked = await db.offerFeedback.count({
     where: { userId, verdict: { in: ["LIKE", "APPLIED"] } },
   })
   if (!liked) {
-    return { status: "needs-likes", suggestions: [], canSearch, message: "Like a few offers first." }
+    return {
+      status: "needs-likes",
+      suggestions: [],
+      canSearch,
+      message: "Like a few offers first.",
+    }
   }
   return canSearch
     ? {
@@ -472,7 +505,8 @@ export async function companySuggestions(userId: number, limit = 9): Promise<Com
         status: "unavailable",
         suggestions: [],
         canSearch,
-        message: "No similar company in the index, and no web search or Claude provider is configured.",
+        message:
+          "No similar company in the index, and no web search or Claude provider is configured.",
       }
 }
 
@@ -518,17 +552,31 @@ export async function suggestSimilarCompanies(
     ...likedIds,
     ...watched.map((row) => row.companyId),
     ...disliked.map((row) => row.job.companyId).filter((id) => !likedSet.has(id)),
-    ...profiles.filter((item) => likedNames.has(normalizeCompanyName(item.name))).map((item) => item.companyId),
+    ...profiles
+      .filter((item) => likedNames.has(normalizeCompanyName(item.name)))
+      .map((item) => item.companyId),
   ])
   const picked = scoreSimilar(likedProfiles, profiles, exclude, limit)
   return describeCompanies(picked, jobCounts)
 }
 
-/** For a person without usable likes: index companies hiring in Poland, for their profile if it says enough. */
+/**
+ * For a person without usable likes: index companies hiring in their country (every country when
+ * the profile names none), for their profile if it says enough.
+ */
 async function suggestFromIndex(
   userId: number,
   limit: number
-): Promise<{ basis: "profile" | "hiring"; suggestions: (CompanySuggestion & { companyId: string })[] }> {
+): Promise<{
+  basis: "profile" | "hiring"
+  country: string | null
+  suggestions: (CompanySuggestion & { companyId: string })[]
+}> {
+  const located = await db.candidateProfile.findUnique({
+    where: { userId },
+    select: { homeCity: true, locations: true },
+  })
+  const country = profileCountry(located)
   const [profile, watched, opinions, rows] = await Promise.all([
     db.candidateProfile.findUnique({
       where: { userId },
@@ -541,7 +589,11 @@ async function suggestFromIndex(
       select: { job: { select: { companyId: true } } },
     }),
     db.job.findMany({
-      where: { status: "ACTIVE", AND: [techScopeWhere(), inPolandWhere()] },
+      where: {
+        status: "ACTIVE",
+        // Offices in the country: a remote offer says nothing about where a company hires.
+        AND: [techScopeWhere(), ...(country ? [inCountryWhere(country, { remote: false })] : [])],
+      },
       select: {
         companyId: true,
         title: true,
@@ -552,8 +604,9 @@ async function suggestFromIndex(
       },
     }),
   ])
-  // The same test as the browse page (offerMatches), which the database filter only narrows down.
-  const jobs = rows.filter((job) => placeFacts(job).inPoland === true)
+  // The database filter only narrows down; the location test decides.
+  const jobs = country ? rows.filter((job) => placeFacts(job).countries.includes(country)) : rows
+  const where = country ? ` in ${countryName(country, "en") ?? country}` : ""
   const exclude = new Set([
     ...watched.map((row) => row.companyId),
     ...opinions.map((row) => row.job.companyId),
@@ -563,10 +616,13 @@ async function suggestFromIndex(
   if (fitting.length) {
     return {
       basis: "profile",
+      country,
       suggestions: await describeCompanies(
         fitting.map(({ companyId, matching, terms }) => ({
           companyId,
-          reason: `${matching} open offers in Poland fit your profile${terms.length ? ` (${terms.join(", ")})` : ""}`,
+          reason: `${matching} open offers${where} fit your profile${
+            terms.length ? ` (${terms.join(", ")})` : ""
+          }`,
           why: { kind: "profile" as const, matching, terms },
         })),
         counts
@@ -575,11 +631,12 @@ async function suggestFromIndex(
   }
   return {
     basis: "hiring",
+    country,
     suggestions: await describeCompanies(
       rankByOpenings(jobs, exclude, limit).map((companyId) => ({
         companyId,
-        reason: "Many open offers in Poland",
-        why: { kind: "hiring" as const },
+        reason: `Many open offers${where}`,
+        why: { kind: "hiring" as const, country },
       })),
       counts
     ),
@@ -670,10 +727,15 @@ export function similarPrompt(context: SimilarContext): string {
     industry: item.industry,
     liked_for: item.aspects,
   }))
+  const place = context.country ? countryName(context.country, "en") ?? context.country : null
   return [
-    "A candidate in Poland liked job offers at these companies:",
+    place
+      ? `A candidate looking for work in ${place} liked job offers at these companies:`
+      : "A candidate liked job offers at these companies:",
     JSON.stringify(liked),
-    "Suggest up to 8 other tech employers hiring in Poland or remote across the EU that this person would likely also like",
+    place
+      ? `Suggest up to 8 other tech employers hiring in ${place}, or remotely from there, that this person would likely also like`
+      : "Suggest up to 8 other tech employers that this person would likely also like",
     "(similar product, stack, size, or industry). Prefer companies that publish offers on their own careers page or ATS.",
     "Skip these domains, they are already known:",
     context.known.slice(0, 400).join(", "),
@@ -733,7 +795,10 @@ export async function expandSimilarCompanies(
   if (!reply) return { proposed: 0, added: 0, skipped: "Claude did not answer" }
   const proposals = parseSimilarReply(reply.text, context.known)
   const watch = deps.watch ?? ((input) => watchCompany(input))
-  const likedNames = context.liked.slice(0, 3).map((item) => item.company).join(", ")
+  const likedNames = context.liked
+    .slice(0, 3)
+    .map((item) => item.company)
+    .join(", ")
   let added = 0
   for (const proposal of proposals) {
     if (added >= slots) break
@@ -743,7 +808,10 @@ export async function expandSimilarCompanies(
         url: proposal.url,
         name: proposal.name,
         source: "similar",
-        reason: `Similar to ${likedNames}${proposal.reason ? `: ${proposal.reason}` : ""}`.slice(0, 300),
+        reason: `Similar to ${likedNames}${proposal.reason ? `: ${proposal.reason}` : ""}`.slice(
+          0,
+          300
+        ),
       })
       if (result.status !== "not-found") added += 1
     } catch (error) {
