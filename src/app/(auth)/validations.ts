@@ -11,11 +11,6 @@ export const password = z
   .max(100)
   .transform((str) => str.trim())
 
-export const Signup = z.object({
-  email,
-  password,
-})
-
 export const Login = z.object({
   email,
   // Capped so nobody makes the server hash megabytes per guess.
@@ -24,23 +19,3 @@ export const Login = z.object({
 
 /** AuthenticationError message from login when the attempt limit is reached. */
 export const LOGIN_LIMITED = "too-many-attempts"
-
-export const ForgotPassword = z.object({
-  email,
-})
-
-export const ResetPassword = z
-  .object({
-    password: password,
-    passwordConfirmation: password,
-    token: z.string().optional(),
-  })
-  .refine((data) => data.password === data.passwordConfirmation, {
-    message: "Passwords don't match",
-    path: ["passwordConfirmation"], // set the path of the error
-  })
-
-export const ChangePassword = z.object({
-  currentPassword: z.string(),
-  newPassword: password,
-})

@@ -1,2 +1,0 @@
-// Removed in the October 2026 redesign. Delete this file.
-export {}
