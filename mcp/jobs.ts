@@ -1,6 +1,8 @@
 import type { CandidateProfile } from "@prisma/client"
+import { countryName } from "matching/places"
 import { fold } from "matching/text"
 import { listForYou, listOfferPage, type FeedOffer, type ForYouOffer } from "src/server/jobs/browse"
+import { defaultCountry } from "src/server/jobs/country"
 import { asStringList } from "src/server/profile/schema"
 
 /**
@@ -65,7 +67,7 @@ export function cardFromFeed(offer: FeedOffer | ForYouOffer): OfferCard {
     title: offer.title,
     company: offer.company,
     url: offer.url,
-    location: offer.city ?? (offer.inPoland ? "Polska" : null),
+    location: offer.city ?? (offer.countryCode ? countryName(offer.countryCode, "pl") : null),
     workMode: offer.workMode,
     salary: offer.payLabel,
     source: sourceLabel(offer),
@@ -79,12 +81,21 @@ export function cardFromFeed(offer: FeedOffer | ForYouOffer): OfferCard {
   return card
 }
 
-type Filters = { query?: string; location?: string; workplace?: Workplace; minMonthlyPln?: number }
+type Filters = {
+  query?: string
+  location?: string
+  /** ISO code, a country name, or "any"; unset means the person's own country. */
+  country?: string
+  workplace?: Workplace
+  minMonthlyPln?: number
+}
 
-function browseInput(filters: Filters) {
+async function browseInput(filters: Filters, userId: number | null) {
   return {
     phrase: filters.query,
     location: filters.location,
+    country: filters.country,
+    defaultCountry: filters.country ? null : await defaultCountry(userId),
     mode: filters.workplace && filters.workplace !== "any" ? filters.workplace : undefined,
     pay: filters.minMonthlyPln,
   }
@@ -99,7 +110,7 @@ async function rankedForUser(
 ): Promise<ForYouOffer[] | null> {
   const kept: ForYouOffer[] = []
   for (let page = 1; page <= MAX_FEED_PAGES; page += 1) {
-    const result = await listForYou({ ...browseInput(filters), page }, userId, "pl")
+    const result = await listForYou({ ...(await browseInput(filters, userId)), page }, userId, "pl")
     if (!result.hasProfile && !result.hasFeedback) return null
     kept.push(...result.offers.filter(keep))
     if (kept.length >= limit || !result.nextPage) break
@@ -118,7 +129,7 @@ export async function searchJobs(
   const offers: FeedOffer[] = []
   let cursor: string | undefined
   for (let page = 0; page < 3 && offers.length < args.limit; page += 1) {
-    const result = await listOfferPage({ ...browseInput(args), cursor }, "pl")
+    const result = await listOfferPage({ ...(await browseInput(args, args.userId)), cursor }, "pl")
     offers.push(...result.offers)
     if (!result.nextCursor) break
     cursor = result.nextCursor
@@ -131,9 +142,10 @@ export async function feedForUser(args: {
   userId: number
   limit: number
   since?: Date
+  country?: string
 }): Promise<OfferCard[] | null> {
   const since = args.since?.toISOString()
-  const ranked = await rankedForUser(args.userId, {}, args.limit, (offer) =>
+  const ranked = await rankedForUser(args.userId, { country: args.country }, args.limit, (offer) =>
     since ? offer.firstSeenAt >= since : true
   )
   return ranked ? ranked.map(cardFromFeed) : null

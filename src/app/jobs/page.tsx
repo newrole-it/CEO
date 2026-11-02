@@ -1,4 +1,4 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import db from "db"
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
@@ -6,7 +6,8 @@ import { COMPANIES_SEEN_COOKIE } from "src/app/components/site/links"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { countOpenOffers, listBrowseCities } from "src/server/jobs/browse"
+import { countOpenOffers, listBrowseCities, listBrowseCountries } from "src/server/jobs/browse"
+import { defaultCountry } from "src/server/jobs/country"
 import { getPreferenceSummary, type PreferenceSummary } from "src/server/preferences/model"
 import { findSimilarOffers } from "src/server/preferences/similar"
 import { listWatched } from "src/server/watchlist/watch"
@@ -16,7 +17,8 @@ import { parseFilters } from "./feed-filters"
 import type { FeedTab } from "./types"
 
 type Params = Record<string, string | string[] | undefined>
-const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? ""
+const one = (value: string | string[] | undefined) =>
+  (Array.isArray(value) ? value[0] : value) ?? ""
 
 export async function generateMetadata() {
   const t = translator(await getLocale())
@@ -24,9 +26,16 @@ export async function generateMetadata() {
 }
 
 export default async function JobsPage({ searchParams }: { searchParams: Promise<Params> }) {
-  const [locale, params, user] = await Promise.all([getLocale(), searchParams, invoke(getCurrentUser, null)])
+  const [locale, params, user] = await Promise.all([
+    getLocale(),
+    searchParams,
+    invoke(getCurrentUser, null),
+  ])
   const filters = parseFilters(params)
   const userId = user?.id ?? null
+  const ownCountry = await defaultCountry(userId, (await headers()).get("accept-language"))
+  // The country the list covers: the one picked, else the person's own; null is every country.
+  const country = filters.country === "any" ? null : filters.country || ownCountry
 
   const hasProfile = userId
     ? Boolean(await db.candidateProfile.findUnique({ where: { userId }, select: { id: true } }))
@@ -37,28 +46,38 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
     requested === "all" || requested === "foryou"
       ? (requested as FeedTab)
       : hasProfile || hasFeedback
-        ? "foryou"
-        : "all"
+      ? "foryou"
+      : "all"
 
   const jar = await cookies()
   const seen = Number(jar.get(COMPANIES_SEEN_COOKIE)?.value)
   const similarId = one(params.similar).slice(0, 64)
 
-  const [initial, totalOpen, cities, summary, watchedRows, similar] = await Promise.all([
-    loadFeed({ tab, filters, userId, locale }),
-    countOpenOffers(),
-    listBrowseCities(),
-    userId ? getPreferenceSummary(userId, locale).catch(() => null) : Promise.resolve(null as PreferenceSummary | null),
-    userId
-      ? listWatched(userId, { since: Number.isFinite(seen) && seen > 0 ? new Date(seen) : undefined }).catch(() => [])
-      : Promise.resolve([]),
-    userId && similarId
-      ? Promise.all([
-          findSimilarOffers({ userId, jobId: similarId, limit: 24, locale }),
-          db.job.findUnique({ where: { id: similarId }, select: { title: true, company: { select: { name: true } } } }),
-        ]).catch(() => null)
-      : Promise.resolve(null),
-  ])
+  const [initial, totalOpen, openInScope, cities, countries, summary, watchedRows, similar] =
+    await Promise.all([
+      loadFeed({ tab, filters, userId, locale, defaultCountry: ownCountry }),
+      countOpenOffers(),
+      country ? countOpenOffers(country) : Promise.resolve(null),
+      listBrowseCities(country),
+      listBrowseCountries(),
+      userId
+        ? getPreferenceSummary(userId, locale).catch(() => null)
+        : Promise.resolve(null as PreferenceSummary | null),
+      userId
+        ? listWatched(userId, {
+            since: Number.isFinite(seen) && seen > 0 ? new Date(seen) : undefined,
+          }).catch(() => [])
+        : Promise.resolve([]),
+      userId && similarId
+        ? Promise.all([
+            findSimilarOffers({ userId, jobId: similarId, limit: 24, locale }),
+            db.job.findUnique({
+              where: { id: similarId },
+              select: { title: true, company: { select: { name: true } } },
+            }),
+          ]).catch(() => null)
+        : Promise.resolve(null),
+    ])
 
   return (
     <SiteFrame user={user} locale={locale}>
@@ -68,7 +87,11 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         filters={filters}
         initial={initial}
         totalOpen={totalOpen}
+        openInScope={openInScope}
         cities={cities}
+        countries={countries}
+        country={country}
+        ownCountry={ownCountry}
         hasSession={Boolean(user)}
         signedIn={Boolean(user && user.role !== "GUEST")}
         summary={summary}

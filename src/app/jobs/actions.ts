@@ -1,6 +1,8 @@
 "use server"
 
+import { headers } from "next/headers"
 import { getBlitzContext } from "src/app/blitz-server"
+import { defaultCountry } from "src/server/jobs/country"
 import { loadFeed, type FeedChunk, type FeedFilters } from "./feed-data"
 import type { FeedTab } from "./types"
 
@@ -16,5 +18,15 @@ export async function loadMoreFeed(
     const ctx = await getBlitzContext()
     userId = ctx.session.userId ?? null
   } catch {}
-  return loadFeed({ tab, filters, next, userId, locale: locale === "en" ? "en" : "pl" })
+  const country = filters.country
+    ? null
+    : await defaultCountry(userId, (await headers()).get("accept-language"))
+  return loadFeed({
+    tab,
+    filters,
+    next,
+    userId,
+    locale: locale === "en" ? "en" : "pl",
+    defaultCountry: country,
+  })
 }

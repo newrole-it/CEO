@@ -25,7 +25,7 @@ newrole.it is a job finder that runs on your machine. It reads the public career
 - 💻 **Runs on your machine.** Postgres in Docker, Node, and that is it. No billing, no API keys required.
 - 🌍 **Global index, local results.** Search in a country and you get its offers plus remote roles open to people there. Your profile's country is the default; write another one in the phrase or pick it in the filter.
 - 🏢 **Offers from the source, not aggregators.** Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Teamtailor, Recruitee, Personio, Traffit, Pinpoint, Workday and SuccessFactors employer sites, plus schema.org JobPosting on company career pages. Every result links to the original posting. [Every source and its policy](docs/sources.md) is public in the app.
-- 👀 **Watch the companies you care about.** Name a company or paste its careers URL and newrole.it keeps reading it. Suggestions work from the first minute: companies like the ones you liked, and until likes give enough to go on, companies with offers in Poland that fit your profile or hire the most. That fallback looks at Poland only for now.
+- 👀 **Watch the companies you care about.** Name a company or paste its careers URL and newrole.it keeps reading it. Suggestions work from the first minute: companies like the ones you liked, and until likes give enough to go on, companies with offers in your profile's country that fit your profile or hire the most there.
 - 🎯 **A deterministic match score with reasons.** Role, seniority, location, salary (compared in monthly PLN, with the Polish UoP and B2B contracts normalised), freshness and source. The model may explain a score; it cannot change it.
 - 🧠 **Learns your taste.** Reject or like with one key (J/K), swipe on the phone, tell it what you liked about an offer. Decided offers move out of the way; similar titles move with them.
 - 🔍 **Search in Polish or English.** A phrase is expanded into related titles, seniority, synonyms and exclusions, then scored against the local index first, so results show before any crawl.
@@ -123,6 +123,7 @@ Things to ask:
 - „Załóż mój profil z ~/Downloads/Profile.pdf” (or: „przeczytaj mój profil LinkedIn w Chrome”)
 - „Pokaż nowe oferty dla mnie z tego tygodnia”
 - „Szukaj senior backend, zdalnie, od 25 tys.”
+- „Szukaj data engineer w Niemczech” (`jobs_search` and `jobs_for_me` take a `country`; the default is your profile's)
 - „Ta oferta z Allegro mi się podoba” (Claude asks what you like about it and records it)
 - „Znajdź mi oferty spoza agregatorów, jak ta z Allegro” (or the `/mcp__newrole__hunt` prompt)
 - „Na jakim etapie jestem z Acme?”, „Odrzucili mnie w Beta po rozmowach”, „Mam rozmowę finałową w czwartek”

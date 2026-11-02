@@ -18,7 +18,17 @@ export function payRange(min: number | null, max: number | null): string | null 
 
 /** "25–30 tys. zł / mies." with "≈" when converted, plus the tooltip text. */
 export function payInfo(
-  offer: Pick<OfferView, "payListed" | "payConverted" | "payMin" | "payMax" | "payNote" | "payCurrency" | "payFromOther" | "paySourceUrl">,
+  offer: Pick<
+    OfferView,
+    | "payListed"
+    | "payConverted"
+    | "payMin"
+    | "payMax"
+    | "payNote"
+    | "payCurrency"
+    | "payFromOther"
+    | "paySourceUrl"
+  >,
   t: T
 ): { text: string; none: boolean; approx: boolean; tip: string | null } {
   if (offer.payListed && offer.payConverted) {
@@ -34,9 +44,23 @@ export function payInfo(
     }
   }
   if (offer.payListed && !offer.payConverted) {
-    return { text: t("pay.foreign", { cur: offer.payCurrency || "?" }), none: true, approx: false, tip: null }
+    return {
+      text: t("pay.foreign", { cur: offer.payCurrency || "?" }),
+      none: true,
+      approx: false,
+      tip: null,
+    }
   }
   return { text: t("pay.none"), none: true, approx: false, tip: null }
+}
+
+/** A country's name in the interface language ("PL" → "Polska" / "Poland"). */
+export function countryLabel(code: string, locale: string): string {
+  try {
+    return new Intl.DisplayNames(locale, { type: "region" }).of(code) ?? code
+  } catch {
+    return code
+  }
 }
 
 export function placeText(
@@ -45,18 +69,18 @@ export function placeText(
   locale: Locale
 ): string {
   if (offer.city) return offer.city
-  if (offer.inPoland) return offer.workMode === "remote" ? t("loc.remotePl") : t("loc.poland")
   if (offer.countryCode) {
-    try {
-      return new Intl.DisplayNames(locale, { type: "region" }).of(offer.countryCode) ?? offer.countryCode
-    } catch {
-      return offer.countryCode
-    }
+    const country = countryLabel(offer.countryCode, locale)
+    return offer.workMode === "remote" ? t("loc.remoteIn", { country }) : country
   }
   return offer.workMode === "remote" ? t("mode.remote") : t("loc.unknown")
 }
 
-export function relativeTime(iso: string | Date | null | undefined, t: T, now = Date.now()): string | null {
+export function relativeTime(
+  iso: string | Date | null | undefined,
+  t: T,
+  now = Date.now()
+): string | null {
   if (!iso) return null
   const at = new Date(iso).getTime()
   if (!Number.isFinite(at)) return null

@@ -31,6 +31,7 @@ import type { CompanySuggestion, CompanySuggestions } from "src/server/discovery
 import type { WatchResult } from "src/server/watchlist/watch"
 import watchCompany from "./mutations/watchCompany"
 import unwatchCompany from "./mutations/unwatchCompany"
+import { countryLabel } from "src/app/jobs/format"
 import { providerLabel } from "./providers"
 
 export type WatchedView = {
@@ -53,14 +54,20 @@ function shortUrl(url: string | null): string | null {
   if (!url) return null
   try {
     const parsed = new URL(url)
-    return `${parsed.host.replace(/^www\./, "")}${parsed.pathname === "/" ? "" : parsed.pathname}`.slice(0, 44)
+    return `${parsed.host.replace(/^www\./, "")}${
+      parsed.pathname === "/" ? "" : parsed.pathname
+    }`.slice(0, 44)
   } catch {
     return url.slice(0, 44)
   }
 }
 
 /** The reason a company is suggested, in the reader's language. */
-function suggestionLine(item: CompanySuggestion, t: ReturnType<typeof useCopy>["t"]): string {
+function suggestionLine(
+  item: CompanySuggestion,
+  t: ReturnType<typeof useCopy>["t"],
+  locale: string
+): string {
   const why = item.why
   switch (why?.kind) {
     case "liked-stack":
@@ -74,7 +81,9 @@ function suggestionLine(item: CompanySuggestion, t: ReturnType<typeof useCopy>["
         ? t("co.why.profileTerms", { n: why.matching, terms: why.terms.join(", ") })
         : t("co.why.profile", { n: why.matching })
     case "hiring":
-      return t("co.why.hiring")
+      return why.country
+        ? t("co.why.hiring", { country: countryLabel(why.country, locale) })
+        : t("co.why.hiringAny")
     default:
       return item.reason
   }
@@ -123,7 +132,10 @@ export function Companies({
     setResult(null)
     try {
       const isUrl = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i.test(text) && !text.includes(" ")
-      const res = await invoke(watchCompany, isUrl ? { url: text, source: "user" } : { name: text, source: "user" })
+      const res = await invoke(
+        watchCompany,
+        isUrl ? { url: text, source: "user" } : { name: text, source: "user" }
+      )
       // "watching" also means "already in the index, now watched": only say "already" when it was on the list.
       const wasWatched = rows.some((row) => row.companyId === res.companyId)
       const status: WatchResult["status"] =
@@ -161,7 +173,10 @@ export function Companies({
     const key = companyId ?? name
     setSimWatching((current) => new Set(current).add(key))
     try {
-      await invoke(watchCompany, companyId ? { companyId, source: "similar", reason } : { name, source: "similar", reason })
+      await invoke(
+        watchCompany,
+        companyId ? { companyId, source: "similar", reason } : { name, source: "similar", reason }
+      )
       router.refresh()
     } catch {
       setSimWatching((current) => {
@@ -173,7 +188,9 @@ export function Companies({
     }
   }
 
-  const sorted = [...rows].sort((a, b) => b.newJobs - a.newJobs || a.name.localeCompare(b.name, "pl"))
+  const sorted = [...rows].sort(
+    (a, b) => b.newJobs - a.newJobs || a.name.localeCompare(b.name, "pl")
+  )
   const displayName = (res: WatchResult & { name: string }) =>
     rows.find((row) => row.companyId === res.companyId)?.name ?? res.name
   const resultLine = result
@@ -181,7 +198,10 @@ export function Companies({
         const name = displayName(result)
         switch (result.status) {
           case "resolved-ats":
-            return { tone: "success" as const, text: t("co.res.ats", { name, provider: providerLabel(result.provider) ?? "ATS" }) }
+            return {
+              tone: "success" as const,
+              text: t("co.res.ats", { name, provider: providerLabel(result.provider) ?? "ATS" }),
+            }
           case "career-site":
             return { tone: "success" as const, text: t("co.res.site", { name }) }
           case "link-only":
@@ -263,7 +283,11 @@ export function Companies({
                     disabled={pending || simWatching.has(item.companyId ?? item.name)}
                     // Same as the card's button: the source and the reason go with it.
                     onClick={() =>
-                      void watchSuggestion(item.name, item.companyId, suggestionLine(item, t))
+                      void watchSuggestion(
+                        item.name,
+                        item.companyId,
+                        suggestionLine(item, t, locale)
+                      )
                     }
                   >
                     <Plus aria-hidden /> {item.name}
@@ -303,8 +327,8 @@ export function Companies({
               suggestions.basis === "profile"
                 ? "co.sim.title.profile"
                 : suggestions.basis === "hiring"
-                  ? "co.sim.title.hiring"
-                  : "co.sim.title"
+                ? "co.sim.title.hiring"
+                : "co.sim.title"
             )}
           </h2>
           <p className="muted t-sm">
@@ -312,8 +336,8 @@ export function Companies({
               suggestions.basis === "profile"
                 ? "co.sim.sub.profile"
                 : suggestions.basis === "hiring"
-                  ? "co.sim.sub.hiring"
-                  : "co.sim.sub"
+                ? "co.sim.sub.hiring"
+                : "co.sim.sub"
             )}
           </p>
         </div>
@@ -326,7 +350,8 @@ export function Companies({
               {t("co.sim.goOffers")}
             </Link>
           </div>
-        ) : suggestions.status === "unavailable" || (!visibleSuggestions.length && !suggestions.canSearch) ? (
+        ) : suggestions.status === "unavailable" ||
+          (!visibleSuggestions.length && !suggestions.canSearch) ? (
           <div className="card card--pad row row--between">
             <span className="row muted" style={{ flex: "1 1 300px" }}>
               <SquareTerminal width={18} height={18} aria-hidden /> {t("co.sim.needSearch")}
@@ -364,11 +389,15 @@ export function Companies({
                     />
                   </div>
                   {item.domain ? <span className="t-sm subtle">{item.domain}</span> : null}
-                  <p>{suggestionLine(item, t)}</p>
+                  <p>{suggestionLine(item, t, locale)}</p>
                   <div className="row">
                     {label ? <Badge icon={<Link2 aria-hidden />}>{label}</Badge> : null}
                     {item.openJobs ? (
-                      <span className="t-sm muted num">{t(`co.jobs.${pluralKind(item.openJobs, locale)}` as CopyKey, { n: item.openJobs })}</span>
+                      <span className="t-sm muted num">
+                        {t(`co.jobs.${pluralKind(item.openJobs, locale)}` as CopyKey, {
+                          n: item.openJobs,
+                        })}
+                      </span>
                     ) : (
                       <span className="t-sm subtle">{t("co.indexNew")}</span>
                     )}
@@ -378,7 +407,13 @@ export function Companies({
                       variant={on ? "soft" : "secondary"}
                       size="sm"
                       disabled={on}
-                      onClick={() => void watchSuggestion(item.name, item.companyId, suggestionLine(item, t))}
+                      onClick={() =>
+                        void watchSuggestion(
+                          item.name,
+                          item.companyId,
+                          suggestionLine(item, t, locale)
+                        )
+                      }
                     >
                       {on ? t("co.watchingBtn") : t("co.watch")}
                     </Button>
@@ -437,10 +472,14 @@ function WatchRow({
   const checked = row.lastFetchedAt
     ? t("co.checked", { when: relativeTime(row.lastFetchedAt, t) ?? "" })
     : row.readMode === "link-only"
-      ? "—"
-      : t("co.queued")
+    ? "—"
+    : t("co.queued")
   const source =
-    row.source === "similar" ? t("co.fromSimilar") : row.source === "mcp" ? t("co.fromClaude") : null
+    row.source === "similar"
+      ? t("co.fromSimilar")
+      : row.source === "mcp"
+      ? t("co.fromClaude")
+      : null
   return (
     <li id={`co-${row.companyId}`} className={cx("watch-row", flash && "flash")}>
       <CompanyInitial name={row.name} />
@@ -465,7 +504,9 @@ function WatchRow({
             {t(`co.jobs.${pluralKind(row.openJobs, locale)}` as CopyKey, { n: row.openJobs })}
           </Link>
         )}
-        {hasSeen && row.newJobs ? <span className="badge badge--new">{t("co.newJobs", { n: row.newJobs })}</span> : null}
+        {hasSeen && row.newJobs ? (
+          <span className="badge badge--new">{t("co.newJobs", { n: row.newJobs })}</span>
+        ) : null}
         <span className="subtle">{checked}</span>
       </div>
       <div className="watch-row__menu rel" ref={ref}>
@@ -482,7 +523,13 @@ function WatchRow({
         {menu ? (
           <div className="menu" role="menu">
             {row.careerPageUrl ? (
-              <a className="menu__item" role="menuitem" href={row.careerPageUrl} target="_blank" rel="noreferrer noopener">
+              <a
+                className="menu__item"
+                role="menuitem"
+                href={row.careerPageUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
                 <ExternalLink aria-hidden /> {t("co.openCareers")}
               </a>
             ) : null}

@@ -19,6 +19,7 @@ import {
   offerMatches,
   offerPayFields,
   placeFacts,
+  placeInCountry,
   inCountryWhere,
   requirementExcerpt,
   type MonthlyPay,
@@ -37,6 +38,7 @@ const BEST_FIT_MIN = 56
 export const FOR_YOU_POOL = 600
 const FOR_YOU_BATCH = 200
 const CITY_SCAN = 2000
+const COUNTRY_SCAN = 5000
 
 const REMOTE_WORDS = new Set(["remote", "zdalnie", "zdalna", "zdalny"])
 const HYBRID_WORDS = new Set(["hybrid", "hybryda", "hybrydowo"])
@@ -654,16 +656,56 @@ export async function jobsPathForSavedSearch(
   )
 }
 
-export async function countOpenOffers(): Promise<number> {
-  return db.job.count({ where: { status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] } } })
+/** Open offers, in one country (and remote ones open to it) when given. */
+export async function countOpenOffers(country: string | null = null): Promise<number> {
+  const open = { status: { in: ["ACTIVE" as const, "POSSIBLY_CLOSED" as const] } }
+  if (!country) return db.job.count({ where: open })
+  const rows = await db.job.findMany({
+    where: { ...open, ...inCountryWhere(country) },
+    select: { locationText: true, countryCode: true, workplaceType: true },
+  })
+  return rows.filter((row) => placeInCountry(placeFacts(row), country)).length
 }
 
-export async function listBrowseCities(): Promise<{ city: string; count: number }[]> {
+/** The most common cities among the newest offers, in one country when given. */
+export async function listBrowseCities(
+  country: string | null = null
+): Promise<{ city: string; count: number }[]> {
   const rows = await db.job.findMany({
-    where: { status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] } },
+    where: {
+      status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] },
+      ...(country ? inCountryWhere(country, { remote: false }) : {}),
+    },
     select: { locationText: true, countryCode: true, workplaceType: true },
     orderBy: { lastSeenAt: "desc" },
     take: CITY_SCAN,
   })
-  return citiesFrom(rows).slice(0, 12)
+  const inCountry = country
+    ? rows.filter((row) => {
+        const place = placeFacts(row)
+        return (
+          place.countries.includes(country) && (!place.city || cityCountry(place.city) === country)
+        )
+      })
+    : rows
+  return citiesFrom(inCountry).slice(0, 12)
+}
+
+/** Countries with open offers, most offers first, counted over the newest offers. */
+export async function listBrowseCountries(): Promise<{ country: string; count: number }[]> {
+  const rows = await db.job.findMany({
+    where: { status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] } },
+    select: { locationText: true, countryCode: true, workplaceType: true },
+    orderBy: { lastSeenAt: "desc" },
+    take: COUNTRY_SCAN,
+  })
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    for (const country of placeFacts(row).countries) {
+      counts.set(country, (counts.get(country) ?? 0) + 1)
+    }
+  }
+  return [...counts.entries()]
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country))
 }

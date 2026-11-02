@@ -6,7 +6,8 @@ export const LEVELS: Level[] = ["junior", "mid", "senior", "lead", "head"]
 
 export type FeedFilters = {
   q: string
-  where: "any" | "pl" | "abroad"
+  /** "" follows the person's country (profile, else browser); "any" is every country; else ISO. */
+  country: string
   city: string
   mode: "any" | "remote" | "hybrid" | "onsite"
   pay: number | null
@@ -19,15 +20,24 @@ export type FeedFilters = {
 }
 
 type Params = Record<string, string | string[] | undefined>
-const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? ""
+const one = (value: string | string[] | undefined) =>
+  (Array.isArray(value) ? value[0] : value) ?? ""
 
 export function parseFilters(params: Params): FeedFilters {
   const where = one(params.where)
+  const country = one(params.country).trim()
   const mode = one(params.mode)
   const pay = Number(one(params.pay))
   return {
     q: one(params.q).slice(0, 160),
-    where: where === "pl" || where === "abroad" ? where : "any",
+    // Old links: where=pl is Poland, where=abroad was "not Poland" and now means every country.
+    country: /^[a-z]{2}$/i.test(country)
+      ? country.toUpperCase()
+      : country === "any" || where === "abroad" || where === "any"
+      ? "any"
+      : where === "pl"
+      ? "PL"
+      : "",
     city: one(params.city).slice(0, 80),
     mode: mode === "remote" || mode === "hybrid" || mode === "onsite" ? mode : "any",
     pay: Number.isFinite(pay) && pay > 0 ? Math.round(pay) : null,
@@ -43,11 +53,15 @@ export function parseFilters(params: Params): FeedFilters {
 }
 
 /** URL for a filter set (keeps the tab). */
-export function filtersQuery(filters: FeedFilters, tab: FeedTab, extra: Record<string, string> = {}): string {
+export function filtersQuery(
+  filters: FeedFilters,
+  tab: FeedTab,
+  extra: Record<string, string> = {}
+): string {
   const params = new URLSearchParams()
   if (tab === "all") params.set("tab", "all")
   if (filters.q) params.set("q", filters.q)
-  if (filters.where !== "any") params.set("where", filters.where)
+  if (filters.country) params.set("country", filters.country)
   if (filters.city) params.set("city", filters.city)
   if (filters.mode !== "any") params.set("mode", filters.mode)
   if (filters.pay) params.set("pay", String(filters.pay))
@@ -65,7 +79,7 @@ export function filtersQuery(filters: FeedFilters, tab: FeedTab, extra: Record<s
 export function hasActiveFilters(filters: FeedFilters): boolean {
   return Boolean(
     filters.q ||
-      filters.where !== "any" ||
+      Boolean(filters.country) ||
       filters.city ||
       filters.mode !== "any" ||
       filters.pay ||

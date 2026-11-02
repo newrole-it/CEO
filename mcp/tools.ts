@@ -231,7 +231,14 @@ export function registerTools(server: McpServer) {
           .string()
           .max(120)
           .optional()
-          .describe("City, 'Polska', 'remote', or free text matched against the location"),
+          .describe("City, country, 'remote', or free text matched against the location"),
+        country: z
+          .string()
+          .max(60)
+          .optional()
+          .describe(
+            "Where to search: ISO code or name ('PL', 'Germany', 'USA'), or 'any' for every country. Default: the profile's country. Covers offers in that country plus remote ones open to it"
+          ),
         workplace: workplaceSchema.optional(),
         minMonthlyPln: z.number().min(0).max(1_000_000).optional().describe("Monthly floor in PLN"),
         limit: z.number().int().min(1).max(50).optional(),
@@ -242,6 +249,7 @@ export function registerTools(server: McpServer) {
       async (args: {
         query: string
         location?: string
+        country?: string
         workplace?: "remote" | "hybrid" | "onsite" | "any"
         minMonthlyPln?: number
         limit?: number
@@ -277,16 +285,24 @@ export function registerTools(server: McpServer) {
           .optional()
           .describe("Only offers first seen recently (default 7 days)"),
         since: z.string().max(40).optional().describe("'3d', '14d' or an ISO date"),
+        country: z
+          .string()
+          .max(60)
+          .optional()
+          .describe(
+            "Where to search: ISO code or name ('PL', 'Germany', 'USA'), or 'any' for every country. Default: the profile's country. Covers offers in that country plus remote ones open to it"
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    guard(async (args: { limit?: number; onlyNew?: boolean; since?: string }) => {
+    guard(async (args: { limit?: number; onlyNew?: boolean; since?: string; country?: string }) => {
       const user = await currentUser()
       const since = sinceDate(args.since, Boolean(args.onlyNew))
       const offers = await feedForUser({
         userId: user.id,
         limit: clampLimit(args.limit, 10, 40),
         since,
+        country: args.country,
       })
       if (!offers) return failure(noProfileHint())
       const window = since ? ` od ${since.toISOString().slice(0, 10)}` : ""

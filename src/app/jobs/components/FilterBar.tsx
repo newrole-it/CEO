@@ -2,12 +2,24 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Building2, ChevronDown, Clock, House, Keyboard, MapPin, Search, TrendingUp, Wallet, X } from "lucide-react"
+import {
+  Building2,
+  ChevronDown,
+  Clock,
+  House,
+  Keyboard,
+  MapPin,
+  Search,
+  TrendingUp,
+  Wallet,
+  X,
+} from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "src/app/components/ds/Button"
 import { Modal, ModalHead, useIsMobile, usePopoverFocus } from "src/app/components/ds/interactive"
 import { cx } from "src/app/components/ds/cx"
 import { LEVELS, filtersQuery, type FeedFilters, type Level } from "../feed-filters"
+import { countryLabel } from "../format"
 import type { FeedTab } from "../types"
 
 type PillId = "mode" | "city" | "pay" | "level" | "source"
@@ -16,16 +28,22 @@ export function FilterBar({
   filters,
   tab,
   cities,
+  countries,
+  country,
+  ownCountry,
   onShortcuts,
   searchRef,
 }: {
   filters: FeedFilters
   tab: FeedTab
   cities: { city: string; count: number }[]
+  countries: { country: string; count: number }[]
+  country: string | null
+  ownCountry: string | null
   onShortcuts: () => void
   searchRef: React.RefObject<HTMLInputElement | null>
 }) {
-  const { t } = useCopy()
+  const { t, locale } = useCopy()
   const router = useRouter()
   const mobile = useIsMobile()
   const [open, setOpen] = useState<PillId | null>(null)
@@ -67,28 +85,31 @@ export function FilterBar({
     filters.mode === "remote"
       ? t("mode.remote")
       : filters.mode === "hybrid"
-        ? t("mode.hybrid")
-        : filters.mode === "onsite"
-          ? t("mode.onsite")
-          : null
+      ? t("mode.hybrid")
+      : filters.mode === "onsite"
+      ? t("mode.onsite")
+      : null
+  // The place pill always says where the list is: a city, else the country, else every country.
   const cityLabel = filters.city
     ? filters.city
-    : filters.where === "pl"
-      ? t("filter.where.pl")
-      : filters.where === "abroad"
-        ? t("filter.where.abroad")
-        : null
+    : country
+    ? countryLabel(country, locale)
+    : t("filter.country.any")
   const payLabel = filters.pay ? t("filter.payValue", { n: Math.round(filters.pay / 1000) }) : null
-  const levelLabel = filters.levels.length ? filters.levels.map((level) => t(`sen.${level}`)).join(", ") : null
+  const levelLabel = filters.levels.length
+    ? filters.levels.map((level) => t(`sen.${level}`)).join(", ")
+    : null
   const sourceLabel =
     filters.companyOnly && filters.payOnly
       ? `${t("filter.companyOnly")} +1`
       : filters.companyOnly
-        ? t("filter.companyOnly")
-        : filters.payOnly
-          ? t("filter.payOnly")
-          : null
-  const anyActive = Boolean(modeLabel || cityLabel || payLabel || levelLabel || sourceLabel || filters.fresh || filters.q)
+      ? t("filter.companyOnly")
+      : filters.payOnly
+      ? t("filter.payOnly")
+      : null
+  const anyActive = Boolean(
+    modeLabel || cityLabel || payLabel || levelLabel || sourceLabel || filters.fresh || filters.q
+  )
 
   const body: Record<PillId, ReactNode> = {
     mode: (
@@ -106,7 +127,16 @@ export function FilterBar({
         ))}
       </div>
     ),
-    city: <CityBody draft={draft} setDraft={setDraft} cities={cities} />,
+    city: (
+      <CityBody
+        draft={draft}
+        setDraft={setDraft}
+        cities={cities}
+        countries={countries}
+        country={country}
+        ownCountry={ownCountry}
+      />
+    ),
     pay: (
       <label className="field">
         <span className="field__label">{t("filter.pay")}</span>
@@ -174,7 +204,7 @@ export function FilterBar({
 
   const clearOne: Record<PillId, Partial<FeedFilters>> = {
     mode: { mode: "any" },
-    city: { city: "", where: "any" },
+    city: { city: "", country: "" },
     pay: { pay: null },
     level: { levels: [] },
     source: { companyOnly: false, payOnly: false },
@@ -185,7 +215,12 @@ export function FilterBar({
     { id: "city", label: t("filter.city"), value: cityLabel, icon: <MapPin aria-hidden /> },
     { id: "pay", label: t("filter.pay"), value: payLabel, icon: <Wallet aria-hidden /> },
     { id: "level", label: t("filter.level"), value: levelLabel, icon: <TrendingUp aria-hidden /> },
-    { id: "source", label: t("filter.source"), value: sourceLabel, icon: <Building2 aria-hidden /> },
+    {
+      id: "source",
+      label: t("filter.source"),
+      value: sourceLabel,
+      icon: <Building2 aria-hidden />,
+    },
   ]
 
   const footer = (id: PillId) => (
@@ -258,7 +293,25 @@ export function FilterBar({
           <span>{t("filter.fresh")}</span>
         </button>
         {anyActive ? (
-          <button type="button" className="link t-sm" style={{ flex: "none", padding: "0 6px" }} onClick={() => apply({ ...filters, q: "", where: "any", city: "", mode: "any", pay: null, levels: [], companyOnly: false, payOnly: false, fresh: false })}>
+          <button
+            type="button"
+            className="link t-sm"
+            style={{ flex: "none", padding: "0 6px" }}
+            onClick={() =>
+              apply({
+                ...filters,
+                q: "",
+                country: "",
+                city: "",
+                mode: "any",
+                pay: null,
+                levels: [],
+                companyOnly: false,
+                payOnly: false,
+                fresh: false,
+              })
+            }
+          >
             {t("filter.clearAll")}
           </button>
         ) : null}
@@ -283,14 +336,24 @@ export function FilterBar({
           />
           {!q ? <kbd className="kbd">/</kbd> : null}
         </form>
-        <Button variant="ghost" size="sm" className="is-desktop-inline" icon={<Keyboard />} onClick={onShortcuts}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="is-desktop-inline"
+          icon={<Keyboard />}
+          onClick={onShortcuts}
+        >
           {t("keys.link")}
         </Button>
       </div>
 
       {mobile && open ? (
         <Modal open kind="sheet" onClose={() => setOpen(null)} labelledBy="filter-sheet-title">
-          <ModalHead title={pills.find((pill) => pill.id === open)?.label} id="filter-sheet-title" onClose={() => setOpen(null)} />
+          <ModalHead
+            title={pills.find((pill) => pill.id === open)?.label}
+            id="filter-sheet-title"
+            onClose={() => setOpen(null)}
+          />
           <div className="modal__body">{body[open]}</div>
           {footer(open)}
         </Modal>
@@ -303,55 +366,84 @@ function CityBody({
   draft,
   setDraft,
   cities,
+  countries,
+  country,
+  ownCountry,
 }: {
   draft: FeedFilters
   setDraft: (filters: FeedFilters) => void
   cities: { city: string; count: number }[]
+  countries: { country: string; count: number }[]
+  country: string | null
+  ownCountry: string | null
 }) {
-  const { t } = useCopy()
+  const { t, locale } = useCopy()
   const [search, setSearch] = useState("")
-  const shown = cities.filter((item) => item.city.toLocaleLowerCase("pl").includes(search.toLocaleLowerCase("pl")))
+  const shown = cities.filter((item) =>
+    item.city.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale))
+  )
+  const picked = draft.country === "any" ? null : draft.country || ownCountry
+  // The city list belongs to the country on screen; another country shows its cities after Apply.
+  const citiesFit = picked === country
+  const options = countries.filter((item) => item.country !== ownCountry)
   return (
     <div className="stack-sm">
-      <div className="seg" role="radiogroup" aria-label={t("filter.city")}>
-        {(["pl", "abroad", "any"] as const).map((where) => (
-          <button
-            key={where}
-            type="button"
-            role="radio"
-            aria-checked={draft.where === where}
-            onClick={() => setDraft({ ...draft, where })}
-          >
-            {t(`filter.where.${where}`)}
-          </button>
-        ))}
-      </div>
-      <input
-        className="input"
-        type="search"
-        placeholder={t("filter.citySearch")}
-        aria-label={t("filter.citySearch")}
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-      />
-      <div className="radio-list">
-        <label>
-          <input type="radio" name="city" checked={!draft.city} onChange={() => setDraft({ ...draft, city: "" })} />
-          {t("filter.cityAll")}
-        </label>
-        {shown.map((item) => (
-          <label key={item.city}>
-            <input
-              type="radio"
-              name="city"
-              checked={draft.city === item.city}
-              onChange={() => setDraft({ ...draft, city: item.city })}
-            />
-            {item.city}
-            <span className="count">{item.count}</span>
-          </label>
-        ))}
-      </div>
+      <label className="field">
+        <span className="field__label">{t("filter.country")}</span>
+        <select
+          className="input"
+          value={draft.country}
+          onChange={(event) => setDraft({ ...draft, country: event.target.value, city: "" })}
+        >
+          {ownCountry ? (
+            <option value="">
+              {t("filter.country.own", { country: countryLabel(ownCountry, locale) })}
+            </option>
+          ) : null}
+          <option value={ownCountry ? "any" : ""}>{t("filter.country.any")}</option>
+          {options.map((item) => (
+            <option key={item.country} value={item.country}>
+              {countryLabel(item.country, locale)} ({item.count})
+            </option>
+          ))}
+        </select>
+        <span className="field__hint">{t("filter.country.hint")}</span>
+      </label>
+      {citiesFit && cities.length ? (
+        <>
+          <input
+            className="input"
+            type="search"
+            placeholder={t("filter.citySearch")}
+            aria-label={t("filter.citySearch")}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <div className="radio-list">
+            <label>
+              <input
+                type="radio"
+                name="city"
+                checked={!draft.city}
+                onChange={() => setDraft({ ...draft, city: "" })}
+              />
+              {t("filter.cityAll")}
+            </label>
+            {shown.map((item) => (
+              <label key={item.city}>
+                <input
+                  type="radio"
+                  name="city"
+                  checked={draft.city === item.city}
+                  onChange={() => setDraft({ ...draft, city: item.city })}
+                />
+                {item.city}
+                <span className="count">{item.count}</span>
+              </label>
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }

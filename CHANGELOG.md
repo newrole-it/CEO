@@ -8,6 +8,8 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- Search in a country: the list shows offers there plus remote roles open to people there. Your profile's country is the default, or your browser's region before you have a profile. Pick another country in the Where filter, type it in the search ("w USA", "Germany"), or choose All countries. Claude's jobs_search and jobs_for_me take a country too.
+- Offers are placed in a country from their location text in any country, including US, Canadian and Australian states, so many more of them show their country.
 - A public changelog: CHANGELOG.md and the /changelog page, linked from the footer.
 - The project is now licensed under AGPL-3.0, with a contributor licence agreement for pull requests.
 - A /bot page that says what the crawler does and how a site can make it stop.
@@ -27,7 +29,7 @@ When you change something people can notice, add a line under Unreleased in the 
 - Reading a CV needs a session, which is created for you, and is limited per hour. Very long pasted text is refused.
 - A reply from a company no longer moves an application when it names a different role, or when only a recruiting system's sender name points to it. The app asks you first.
 - "Only shortlisted candidates will be contacted" and similar sentences no longer count as a next stage.
-- Company suggestions leave out companies you liked or applied to, and offices outside Poland. "Go" and "data" in ordinary phrases no longer count as skills.
+- Company suggestions leave out companies you liked or applied to, and offices outside your profile's country. "Go" and "data" in ordinary phrases no longer count as skills.
 - Company aliases removed from the list stop matching.
 - iCIMS boards are linked, not fetched, because the vendor terms ban robots.
 - The privacy policy lists every place your data goes to a language model or a search provider, and says the uploaded PDF is read in memory.

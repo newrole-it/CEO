@@ -37,10 +37,11 @@ export type FeedChunk = {
   hasFeedback: boolean
 }
 
-function browseInput(filters: FeedFilters): BrowseInput {
+function browseInput(filters: FeedFilters, defaultCountry: string | null): BrowseInput {
   return {
     q: filters.q,
-    where: filters.where,
+    country: filters.country || undefined,
+    defaultCountry,
     city: filters.city,
     mode: filters.mode,
     pay: filters.pay ?? undefined,
@@ -66,8 +67,10 @@ async function decorate(offers: CardOffer[], filters: FeedFilters): Promise<Feed
       }
     })
     .filter((offer) => {
-      if (filters.levels.length && (!offer.level || !filters.levels.includes(offer.level))) return false
-      if (filters.companyOnly && offer.sourceKind !== "company-site" && offer.sourceKind !== "ats") return false
+      if (filters.levels.length && (!offer.level || !filters.levels.includes(offer.level)))
+        return false
+      if (filters.companyOnly && offer.sourceKind !== "company-site" && offer.sourceKind !== "ats")
+        return false
       if (filters.payOnly && !offer.payListed) return false
       if (filters.fresh && new Date(offer.firstSeenAt).getTime() < freshSince) return false
       if (filters.company && offer.companyId !== filters.company) return false
@@ -82,11 +85,17 @@ export async function loadFeed(args: {
   next?: string | null
   userId: number | null
   locale: "pl" | "en"
+  /** Used when the filters pick no country: the person's own (see src/server/jobs/country.ts). */
+  defaultCountry: string | null
 }): Promise<FeedChunk> {
-  const { tab, filters, userId, locale } = args
+  const { tab, filters, userId, locale, defaultCountry } = args
   if (tab === "foryou") {
     const page = Number(args.next ?? 1) || 1
-    const result = await listForYou({ ...browseInput(filters), page }, userId, locale)
+    const result = await listForYou(
+      { ...browseInput(filters, defaultCountry), page },
+      userId,
+      locale
+    )
     let offers = await decorate(result.offers, filters)
     if (filters.sort === "new") {
       offers = [...offers].sort((a, b) => b.firstSeenAt.localeCompare(a.firstSeenAt))
@@ -99,7 +108,10 @@ export async function loadFeed(args: {
       hasFeedback: result.hasFeedback,
     }
   }
-  const result = await listOfferPage({ ...browseInput(filters), cursor: args.next ?? undefined }, locale)
+  const result = await listOfferPage(
+    { ...browseInput(filters, defaultCountry), cursor: args.next ?? undefined },
+    locale
+  )
   return {
     offers: await decorate(result.offers, filters),
     next: result.nextCursor,

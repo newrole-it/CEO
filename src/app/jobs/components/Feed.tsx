@@ -75,14 +75,29 @@ export type FeedProps = {
   tab: FeedTab
   filters: FeedFilters
   initial: FeedChunk
+  /** Open offers in the whole index. */
   totalOpen: number
+  /** Open offers in the country the list covers; null when it covers every country. */
+  openInScope: number | null
   cities: { city: string; count: number }[]
+  /** Countries with offers in the index, most offers first. */
+  countries: { country: string; count: number }[]
+  /** The country the list covers; null is every country. */
+  country: string | null
+  /** The person's own country (profile, else browser), the default. */
+  ownCountry: string | null
   hasSession: boolean
   signedIn: boolean
   summary: PreferenceSummary | null
   watched: { count: number; fresh: number }
   welcome: boolean
-  similarTo: { id: string; title: string; company: string; basis: string; offers: RankedOffer[] } | null
+  similarTo: {
+    id: string
+    title: string
+    company: string
+    basis: string
+    offers: RankedOffer[]
+  } | null
   initialOffer: string | null
 }
 
@@ -201,18 +216,20 @@ export function Feed(props: FeedProps) {
     async (offer: FeedCard, aspects?: FeedbackAspect[], saved?: boolean) => {
       const toastId = `sim-${offer.id}`
       if (saved) toast.show({ id: toastId, message: t("toast.saving"), duration: 0 })
-      setRows((current) => [
-        {
-          anchorId: offer.id,
-          title: offer.title,
-          company: offer.company,
-          companyId: offer.companyId,
-          basis: null,
-          offers: [],
-          loading: true,
-        },
-        ...current.filter((row) => row.anchorId !== offer.id),
-      ].slice(0, 2))
+      setRows((current) =>
+        [
+          {
+            anchorId: offer.id,
+            title: offer.title,
+            company: offer.company,
+            companyId: offer.companyId,
+            basis: null,
+            offers: [],
+            loading: true,
+          },
+          ...current.filter((row) => row.anchorId !== offer.id),
+        ].slice(0, 2)
+      )
       const result = await feedback.similar(offer.id, aspects)
       setRows((current) =>
         current.map((row) =>
@@ -224,7 +241,9 @@ export function Feed(props: FeedProps) {
       if (saved) {
         const n = result?.offers.length ?? 0
         toast.update(toastId, {
-          message: n ? `${t("toast.saving").split(".")[0]}. ${t("toast.found", { n })}` : t("toast.liked"),
+          message: n
+            ? `${t("toast.saving").split(".")[0]}. ${t("toast.found", { n })}`
+            : t("toast.liked"),
           duration: 5000,
           action: n
             ? {
@@ -286,18 +305,18 @@ export function Feed(props: FeedProps) {
       if (verdict === "LIKE") {
         setPhase(offer.id, "liking")
         if (!prompts.has(offer.id)) {
-          void feedback.prompt(offer.id).then((prompt) =>
-            setPrompts((current) => new Map(current).set(offer.id, prompt))
-          )
+          void feedback
+            .prompt(offer.id)
+            .then((prompt) => setPrompts((current) => new Map(current).set(offer.id, prompt)))
         }
         if (opts.fromDrawer) setDrawerLike(true)
         else if (mobile) setSheetFor(offer.id)
       } else if (verdict === "DISLIKE") {
         setPhase(offer.id, "passing")
         if (!prompts.has(offer.id)) {
-          void feedback.prompt(offer.id).then((prompt) =>
-            setPrompts((current) => new Map(current).set(offer.id, prompt))
-          )
+          void feedback
+            .prompt(offer.id)
+            .then((prompt) => setPrompts((current) => new Map(current).set(offer.id, prompt)))
         }
         advanceFrom(offer)
       } else {
@@ -316,7 +335,19 @@ export function Feed(props: FeedProps) {
         fail(offer, prev, prevPhase)
       }
     },
-    [advanceFrom, fail, feedback, mobile, phaseOf, prompts, setPhase, setVerdict, t, toast, verdicts]
+    [
+      advanceFrom,
+      fail,
+      feedback,
+      mobile,
+      phaseOf,
+      prompts,
+      setPhase,
+      setVerdict,
+      t,
+      toast,
+      verdicts,
+    ]
   )
 
   const undoLast = useCallback(async () => {
@@ -335,7 +366,10 @@ export function Feed(props: FeedProps) {
   }, [feedback, setPhase, setVerdict, t, toast])
 
   const finishLike = useCallback(
-    async (offer: FeedCard, answer: { aspects: FeedbackAspect[]; tags: string[]; note: string | null } | null) => {
+    async (
+      offer: FeedCard,
+      answer: { aspects: FeedbackAspect[]; tags: string[]; note: string | null } | null
+    ) => {
       setSheetFor(null)
       setDrawerLike(false)
       setPhase(offer.id, "liked")
@@ -352,7 +386,10 @@ export function Feed(props: FeedProps) {
         const count = skips + 1
         setSkips(count)
         writeValue(SKIPS_KEY, String(count))
-        toast.show({ message: t("toast.liked"), action: { label: t("act.undo"), onClick: () => void undoLast() } })
+        toast.show({
+          message: t("toast.liked"),
+          action: { label: t("act.undo"), onClick: () => void undoLast() },
+        })
         void loadSimilar(offer)
       }
       void refreshTaste()
@@ -362,16 +399,13 @@ export function Feed(props: FeedProps) {
   )
 
   /* -------------------------------------------------------------- drawer */
-  const openDrawer = useCallback(
-    (id: string) => {
-      setDrawer(id)
-      setDrawerLike(false)
-      const url = new URL(window.location.href)
-      url.searchParams.set("offer", id)
-      window.history.pushState({ ...window.history.state, nrOffer: id }, "", url.toString())
-    },
-    []
-  )
+  const openDrawer = useCallback((id: string) => {
+    setDrawer(id)
+    setDrawerLike(false)
+    const url = new URL(window.location.href)
+    url.searchParams.set("offer", id)
+    window.history.pushState({ ...window.history.state, nrOffer: id }, "", url.toString())
+  }, [])
   const closeDrawer = useCallback(() => {
     setDrawer(null)
     setDrawerLike(false)
@@ -410,8 +444,8 @@ export function Feed(props: FeedProps) {
     drawerIndex >= 0
       ? visible[drawerIndex]
       : detail
-        ? ({ ...detail.offer, companyId: null, level: null } as FeedCard)
-        : null
+      ? ({ ...detail.offer, companyId: null, level: null } as FeedCard)
+      : null
   const goDrawer = (delta: number) => {
     const target = visible[drawerIndex + delta]
     if (target) {
@@ -424,8 +458,28 @@ export function Feed(props: FeedProps) {
   }
 
   /* ----------------------------------------------------------- keyboard */
-  const keyState = useRef({ activeOffer, decide, undoLast, focusCard, active, drawerOffer, drawer, openDrawer, goDrawer })
-  keyState.current = { activeOffer, decide, undoLast, focusCard, active, drawerOffer, drawer, openDrawer, goDrawer }
+  const keyState = useRef({
+    activeOffer,
+    decide,
+    undoLast,
+    focusCard,
+    active,
+    drawerOffer,
+    drawer,
+    openDrawer,
+    goDrawer,
+  })
+  keyState.current = {
+    activeOffer,
+    decide,
+    undoLast,
+    focusCard,
+    active,
+    drawerOffer,
+    drawer,
+    openDrawer,
+    goDrawer,
+  }
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -463,7 +517,21 @@ export function Feed(props: FeedProps) {
         return
       }
       const offer = state.activeOffer
-      if (["j", "k", "a", "J", "K", "A", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab"].includes(key)) {
+      if (
+        [
+          "j",
+          "k",
+          "a",
+          "J",
+          "K",
+          "A",
+          "ArrowDown",
+          "ArrowUp",
+          "ArrowLeft",
+          "ArrowRight",
+          "Tab",
+        ].includes(key)
+      ) {
         setKeyboard(true)
       }
       if (key === "/") {
@@ -529,7 +597,8 @@ export function Feed(props: FeedProps) {
     if (!node || !next) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting) && !loadingMore && !loadError) void moreRef.current()
+        if (entries.some((entry) => entry.isIntersecting) && !loadingMore && !loadError)
+          void moreRef.current()
       },
       { rootMargin: "600px" }
     )
@@ -554,8 +623,12 @@ export function Feed(props: FeedProps) {
 
   /* -------------------------------------------------------------- render */
   const noProfile = tab === "foryou" && !initial.hasProfile && !initial.hasFeedback
-  const count = tab === "foryou" ? initial.total ?? 0 : props.totalOpen
-  const countKey = (tab === "foryou" ? `feed.count.${pluralKind(count, locale)}` : `feed.countAll.${pluralKind(count, locale)}`) as CopyKey
+  const count = tab === "foryou" ? initial.total ?? 0 : props.openInScope ?? props.totalOpen
+  const countKey = (
+    tab === "foryou"
+      ? `feed.count.${pluralKind(count, locale)}`
+      : `feed.countAll.${pluralKind(count, locale)}`
+  ) as CopyKey
   const filtered = hasActiveFilters(filters)
   const allDecided = !noProfile && items.length > 0 && visible.length === 0 && !next
   const similarMode = props.similarTo
@@ -563,25 +636,36 @@ export function Feed(props: FeedProps) {
   const tabsRow = (
     <div className="feed-tabs-row">
       <nav className="tabs" aria-label={t("feed.title")}>
-        <Link className="tab" href={filtersQuery(filters, "foryou")} aria-current={tab === "foryou" ? "page" : undefined}>
+        <Link
+          className="tab"
+          href={filtersQuery(filters, "foryou")}
+          aria-current={tab === "foryou" ? "page" : undefined}
+        >
           {t("feed.title")}
         </Link>
-        <Link className="tab" href={filtersQuery(filters, "all")} aria-current={tab === "all" ? "page" : undefined}>
+        <Link
+          className="tab"
+          href={filtersQuery(filters, "all")}
+          aria-current={tab === "all" ? "page" : undefined}
+        >
           {t("feed.all")}
         </Link>
       </nav>
       {tab === "foryou" && !noProfile ? (
-      <select
-        className="select select--sm"
-        aria-label={t("feed.sort")}
-        value={filters.sort}
-        onChange={(event) =>
-          router.push(filtersQuery({ ...filters, sort: event.target.value === "new" ? "new" : "fit" }, tab), { scroll: false })
-        }
-      >
-        <option value="fit">{t("feed.sort.fit")}</option>
-        <option value="new">{t("feed.sort.new")}</option>
-      </select>
+        <select
+          className="select select--sm"
+          aria-label={t("feed.sort")}
+          value={filters.sort}
+          onChange={(event) =>
+            router.push(
+              filtersQuery({ ...filters, sort: event.target.value === "new" ? "new" : "fit" }, tab),
+              { scroll: false }
+            )
+          }
+        >
+          <option value="fit">{t("feed.sort.fit")}</option>
+          <option value="new">{t("feed.sort.new")}</option>
+        </select>
       ) : null}
     </div>
   )
@@ -613,7 +697,12 @@ export function Feed(props: FeedProps) {
           onReason={(aspect, tag) => {
             const prev = undo.current
             void feedback
-              .save({ jobId: offer.id, verdict: "DISLIKE", aspects: [aspect], tags: tag ? [tag] : [] })
+              .save({
+                jobId: offer.id,
+                verdict: "DISLIKE",
+                aspects: [aspect],
+                tags: tag ? [tag] : [],
+              })
               .catch(() => {
                 undo.current = prev
                 toast.show({ message: t("err.save"), tone: "danger" })
@@ -664,7 +753,13 @@ export function Feed(props: FeedProps) {
             fatigue ? (
               <CompactPrompt
                 prompt={prompt}
-                onPick={(chip) => void finishLike(offer, { aspects: [chip.aspect], tags: chip.tag ? [chip.tag] : [], note: null })}
+                onPick={(chip) =>
+                  void finishLike(offer, {
+                    aspects: [chip.aspect],
+                    tags: chip.tag ? [chip.tag] : [],
+                    note: null,
+                  })
+                }
                 onMore={() => setSkips(0)}
               />
             ) : (
@@ -715,14 +810,21 @@ export function Feed(props: FeedProps) {
     <div className="feed">
       {offline ? (
         <div className="offline" role="status">
-          <WifiOff width={16} height={16} aria-hidden style={{ display: "inline", marginRight: 8, verticalAlign: -3 }} />
+          <WifiOff
+            width={16}
+            height={16}
+            aria-hidden
+            style={{ display: "inline", marginRight: 8, verticalAlign: -3 }}
+          />
           {t("offline")}
         </div>
       ) : null}
       <header className="feed-head">
         <div className="feed-head__top">
           <h1 className="t-h1">{tab === "foryou" ? t("feed.title") : t("feed.all")}</h1>
-          {!noProfile ? <span className="feed-head__count">{t(countKey, { n: nf.format(count) })}</span> : null}
+          {!noProfile ? (
+            <span className="feed-head__count">{t(countKey, { n: nf.format(count) })}</span>
+          ) : null}
         </div>
         {tabsRow}
       </header>
@@ -730,13 +832,18 @@ export function Feed(props: FeedProps) {
         filters={filters}
         tab={tab}
         cities={props.cities}
+        countries={props.countries}
+        country={props.country}
+        ownCountry={props.ownCountry}
         onShortcuts={() => setKeysOpen(true)}
         searchRef={searchRef}
       />
 
       <div className="feed-layout">
         <div className="feed-main stack">
-          {tab === "foryou" && !noProfile ? <TasteStrip summary={summary} onChanged={() => void refreshTaste()} /> : null}
+          {tab === "foryou" && !noProfile ? (
+            <TasteStrip summary={summary} onChanged={() => void refreshTaste()} />
+          ) : null}
           {coach ? (
             <div className="coach" role="status">
               <Heart aria-hidden />
@@ -757,7 +864,11 @@ export function Feed(props: FeedProps) {
             <Banner tone="info" icon={<Heart aria-hidden />}>
               <p>{t("account.banner")}</p>
               <div className="row">
-                <ButtonLink href={`/login?returnTo=${encodeURIComponent(pathname)}`} variant="secondary" size="sm">
+                <ButtonLink
+                  href={`/login?returnTo=${encodeURIComponent(pathname)}`}
+                  variant="secondary"
+                  size="sm"
+                >
                   {t("account.banner.email")}
                 </ButtonLink>
                 <Button
@@ -782,7 +893,11 @@ export function Feed(props: FeedProps) {
             <div className="stack">
               <div className="row">
                 <span className="chip chip--on">
-                  <span>{t("feed.similarTo", { title: `${similarMode.title} · ${similarMode.company}` })}</span>
+                  <span>
+                    {t("feed.similarTo", {
+                      title: `${similarMode.title} · ${similarMode.company}`,
+                    })}
+                  </span>
                   <Link className="chip__x" href={pathname} aria-label={t("feed.similarClear")}>
                     <X width={14} height={14} aria-hidden />
                   </Link>
@@ -796,7 +911,11 @@ export function Feed(props: FeedProps) {
               </div>
             </div>
           ) : noProfile ? (
-            <EmptyState icon={<FileUp />} title={t("empty.noProfile.t")} body={t("empty.noProfile.b")}>
+            <EmptyState
+              icon={<FileUp />}
+              title={t("empty.noProfile.t")}
+              body={t("empty.noProfile.b")}
+            >
               <ButtonLink href="/start" variant="primary" iconRight={<ArrowRight />}>
                 {t("empty.noProfile.cta")}
               </ButtonLink>
@@ -823,7 +942,10 @@ export function Feed(props: FeedProps) {
             </EmptyState>
           ) : (
             <>
-              <ul className="feed-list" aria-label={tab === "foryou" ? t("feed.title") : t("feed.all")}>
+              <ul
+                className="feed-list"
+                aria-label={tab === "foryou" ? t("feed.title") : t("feed.all")}
+              >
                 {visible.map(renderItem)}
               </ul>
               {loadingMore ? (
@@ -860,11 +982,19 @@ export function Feed(props: FeedProps) {
         </div>
         <aside className="rail" aria-label={t("taste.title")}>
           {props.hasSession ? (
-            <TastePanel summary={summary} freshKeys={freshKeys} onChanged={() => void refreshTaste()} />
+            <TastePanel
+              summary={summary}
+              freshKeys={freshKeys}
+              onChanged={() => void refreshTaste()}
+            />
           ) : null}
           <WatchedCard watched={props.watched} />
           {ccCard ? (
-            <Link className="card card--hover rail-link" href="/connect" onClick={() => writeValue(CC_KEY, "1")}>
+            <Link
+              className="card card--hover rail-link"
+              href="/connect"
+              onClick={() => writeValue(CC_KEY, "1")}
+            >
               <SquareTerminal aria-hidden />
               <span>{t("cc.rail")}</span>
               <ArrowRight width={16} height={16} aria-hidden />
@@ -887,7 +1017,11 @@ export function Feed(props: FeedProps) {
             detail={detail && detail.offer.id === drawer ? detail : null}
             loading={!detail}
             error={detailError}
-            verdict={drawer ? verdicts.get(drawer) ?? (detail?.feedback?.verdict as Verdict | undefined) ?? null : null}
+            verdict={
+              drawer
+                ? verdicts.get(drawer) ?? (detail?.feedback?.verdict as Verdict | undefined) ?? null
+                : null
+            }
             onVerdict={(verdict) => {
               if (!drawerOffer) return
               void decide(drawerOffer, verdict, { fromDrawer: true })
@@ -906,7 +1040,13 @@ export function Feed(props: FeedProps) {
             }
             onClose={closeDrawer}
             onPrev={drawerIndex > 0 ? () => goDrawer(-1) : drawerIndex === -1 ? undefined : null}
-            onNext={drawerIndex >= 0 && drawerIndex < visible.length - 1 ? () => goDrawer(1) : drawerIndex === -1 ? undefined : null}
+            onNext={
+              drawerIndex >= 0 && drawerIndex < visible.length - 1
+                ? () => goDrawer(1)
+                : drawerIndex === -1
+                ? undefined
+                : null
+            }
             onOpenOther={(id) => openDrawer(id)}
           />
         </div>
@@ -945,21 +1085,32 @@ function SimilarCard({ offer, onOpen }: { offer: RankedOffer; onOpen: (id: strin
         <span className="score-pill">{offer.score}</span>
       </span>
       <span className="mini__title">{offer.title}</span>
-      <span className="mini__facts">{[offer.salary, offer.location].filter(Boolean).join(" · ") || t("pay.none")}</span>
+      <span className="mini__facts">
+        {[offer.salary, offer.location].filter(Boolean).join(" · ") || t("pay.none")}
+      </span>
       <span className="t-caption subtle">{offer.reasons[0] ?? ""}</span>
     </button>
   )
 }
 
-function WatchedCard({ watched, inline }: { watched: { count: number; fresh: number }; inline?: boolean }) {
+function WatchedCard({
+  watched,
+  inline,
+}: {
+  watched: { count: number; fresh: number }
+  inline?: boolean
+}) {
   const { t } = useCopy()
   const text = watched.fresh
     ? t("rail.watch.some", { n: watched.fresh })
     : watched.count
-      ? t("rail.watch.total", { n: watched.count })
-      : t("rail.watch.none")
+    ? t("rail.watch.total", { n: watched.count })
+    : t("rail.watch.none")
   return (
-    <Link className={`card card--hover rail-link${inline ? " rail-link--inline" : ""}`} href="/companies">
+    <Link
+      className={`card card--hover rail-link${inline ? " rail-link--inline" : ""}`}
+      href="/companies"
+    >
       <Building2 aria-hidden />
       <span>{text}</span>
       <ArrowRight width={16} height={16} aria-hidden />
