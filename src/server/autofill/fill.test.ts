@@ -14,6 +14,7 @@ vi.mock("src/server/llm/client", () => ({ createLlmClient: vi.fn(() => null) }))
 import { draftAnswers } from "src/server/answers/service"
 import { findApplicationByUrl, findJobByUrl } from "src/server/applications/service"
 import { defaultCv, tailoredCv } from "src/server/cv/service"
+import { createLlmClient } from "src/server/llm/client"
 import { getApplicant } from "src/server/profile/applicant"
 import { fillForm, planFill } from "./fill"
 
@@ -190,5 +191,51 @@ describe("fillForm", () => {
     error.mockRestore()
     expect(result.job).toEqual({ company: "Acme Robotics S.A.", title: "Staff Platform Engineer" })
     expect(result.values.map((value) => value.source)).toEqual(["skip", "skip"])
+  })
+
+  it("does not tell the draft that a part of the window title is the employer", async () => {
+    mocked(draftAnswers).mockResolvedValue({})
+    const result = await fillForm({
+      userId: 2,
+      page: {
+        url: "https://careers.acme.com/1",
+        title: "Staff Engineer - Warsaw",
+        text: "We build robots.",
+      },
+      fields: [f("q", "Why us?", { type: "textarea" })],
+    })
+    expect(mocked(draftAnswers).mock.calls[0][0].context).toMatchObject({
+      company: null,
+      jobTitle: "Staff Engineer",
+    })
+    expect(result.job).toEqual({ company: "Acme", title: "Staff Engineer" })
+  })
+
+  it("gives the draft the company the page's own data names", async () => {
+    mocked(draftAnswers).mockResolvedValue({})
+    await fillForm({
+      userId: 2,
+      page: { ...page, company: "Acme Robotics S.A.", role: "Staff Platform Engineer" },
+      fields: [f("q", "Why us?", { type: "textarea" })],
+    })
+    expect(mocked(draftAnswers).mock.calls[0][0].context).toMatchObject({
+      company: "Acme Robotics S.A.",
+      jobTitle: "Staff Platform Engineer",
+    })
+  })
+
+  it("names no company on LinkedIn's feed, and does not ask the model", async () => {
+    vi.mocked(createLlmClient).mockClear()
+    const result = await fillForm({
+      userId: 2,
+      page: {
+        url: "https://www.linkedin.com/feed/",
+        title: "Kanał informacji | LinkedIn",
+        text: "Post",
+      },
+      fields: [f("a", "Email", { type: "email" })],
+    })
+    expect(result.job).toBeNull()
+    expect(createLlmClient).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,6 @@
 # Nowa Rola: plan prac P0 (30.10.2026)
 
-Dokument dla osób i agentów, którzy realizują zadania P0 z backlogu. Identyfikatory (OF-1, CV-1…) pochodzą z backlogu: https://claude.ai/artifact/SM1mgkcF88a7VvCYLu6rmD
+Dokument dla osób i agentów, którzy realizują zadania P0 z backlogu. Identyfikatory (OF-1, CV-1…) pochodzą z backlogu.
 
 ## 1. Zasady dla danych
 

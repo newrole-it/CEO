@@ -1,6 +1,6 @@
 # Jobscanner — matching pack
 
-Matching layer for Jobscanner (a personal job scanner). Pure TypeScript + Zod, no I/O except reading prompt `.md` files.
+Matching layer for Jobscanner (Poland / Europe-Warsaw). Pure TypeScript + Zod, no I/O except reading prompt `.md` files.
 Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → normalize → dedupe → score (deterministic) → explain (LLM, optional)**.
 
 > No existing Jobscanner code or specs were found under `/workspace/jobscanner` when this pack was written (only an empty `scripts/`),
@@ -59,10 +59,10 @@ Output is always re-validated with Zod.
 5. Injection safety by construction: score computed before the LLM sees the text; model output can't change score/band; random delimiters; strict schema; fallback.
 6. Dedupe prefers direct ATS records, keeps the earliest postedAt and the union of sources; all merges logged with rule + detail.
 
-## Open questions
-See the final section of the hand-off message; mirrored here:
-- Real salary floor and target (and in which basis — B2B net or UoP gross?).
+## What each person sets
+These come from the person's profile in the database, never from this pack:
+- Salary floor and target (and in which basis — B2B net or UoP gross?).
 - Accepted contracts (B2B only? UoP ok? foreign employment / EoR?).
-- Home city and hybrid/on-site cities; would he relocate (in PL / abroad)? Acceptable remote regions (PL only, EU, EMEA, worldwide)?
-- Target role list and seniority range (is Engineering Manager too junior? is Team Lead ever interesting?).
-- Exclusions: industries/companies (gambling, body-leasing/outsourcing agencies, defence…)? Language requirements (German, etc.)?
+- Home city and hybrid/on-site cities; relocation (in PL / abroad); acceptable remote regions (PL only, EU, EMEA, worldwide).
+- Target role list and seniority range.
+- Exclusions: industries/companies; language requirements.

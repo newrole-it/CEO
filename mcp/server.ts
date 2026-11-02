@@ -1,31 +1,13 @@
 import "./env"
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import db from "db"
 import { beat } from "src/server/setup/heartbeat"
-import { INSTRUCTIONS, registerPrompts } from "./prompts"
-import { registerTools } from "./tools"
-import { registerAnswerTools } from "./tools-answers"
-import { registerApplicationTools } from "./tools-applications"
-import { registerCvTools } from "./tools-cv"
+import { createServer } from "./create-server"
 
 /**
  * Nowa Rola MCP server over stdio. Claude Code starts it with `npx tsx mcp/server.ts`;
  * it talks to the same Postgres as the web app and worker.
  */
-export function createServer() {
-  const server = new McpServer(
-    { name: "nowarola", title: "Nowa Rola", version: "1.0.0" },
-    { instructions: INSTRUCTIONS }
-  )
-  registerTools(server)
-  registerApplicationTools(server)
-  registerCvTools(server)
-  registerAnswerTools(server)
-  registerPrompts(server)
-  return server
-}
-
 async function main() {
   const server = createServer()
   await server.connect(new StdioServerTransport())

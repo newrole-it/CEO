@@ -604,6 +604,26 @@ describe("rules", () => {
     expect(signal(text)).toMatchObject({ signal: "CONFIRMATION", sure: true })
   })
 
+  it.each([
+    ["We have received your CV. Only shortlisted candidates will be contacted.", "CONFIRMATION"],
+    [
+      "Twoje CV jest w trakcie weryfikacji. O kolejnych etapach rekrutacji poinformujemy mailowo.",
+      "CONFIRMATION",
+    ],
+    ["Our team will schedule a call with selected candidates next week.", "OTHER"],
+    ["Skontaktujemy się z wybranymi kandydatami w celu umówienia rozmowy.", "OTHER"],
+  ])("does not take what happens to some candidates later for progress: %s", (text, expected) => {
+    const reading = signal(text)
+    expect(reading.signal).toBe(expected)
+    if (expected === "OTHER") expect(reading.sure).toBe(false)
+  })
+
+  it("still reads a rejection that names other candidates", () => {
+    expect(signal("We have decided to move forward with other selected candidates.")).toMatchObject(
+      { signal: "REJECTED", sure: true }
+    )
+  })
+
   it("does not read a schedule change as a rejection", () => {
     const reading = signal("Unfortunately I can't do Monday. Could you do Tuesday instead?")
     expect(reading.signal).toBe("OTHER")
@@ -699,11 +719,13 @@ describe("matching", () => {
     })
   })
 
-  it("trusts a name only on the system the posting is on", () => {
+  it("finds the application from a name on the posting's system, but never trusts a name", () => {
     const lever = app({ domains: [], ats: "lever" })
     const onLever = { address: "x@hire.lever.co", domain: "hire.lever.co", name: "Acme Hiring" }
+    // Anyone with an account on Lever can call themselves "Acme Hiring".
     expect(matchApplication(message({ sender: onLever, tier: "ats" }), [lever])).toMatchObject({
-      certain: true,
+      certain: false,
+      application: { id: "a1" },
     })
     const onGreenhouse = {
       address: "x@us.greenhouse-mail.io",
@@ -722,7 +744,7 @@ describe("matching", () => {
       matchApplication(message({ sender: slug, tier: "ats" }), [
         app({ domains: [], company: "ACME Holdings", slug: "acme", ats: "lever" }),
       ])
-    ).toMatchObject({ certain: true })
+    ).toMatchObject({ certain: false, application: { id: "a1" } })
     const inTheMiddle = { ...onLever, name: "Hiring for Acme" }
     expect(matchApplication(message({ sender: inTheMiddle, tier: "ats" }), [lever])).toMatchObject({
       certain: false,
@@ -792,6 +814,35 @@ describe("matching", () => {
     const late = app({ appliedAt: new Date("2026-10-25T10:00:00Z") })
     expect(matchApplication(message(), [late]).application).toBeNull()
   })
+
+  it.each([
+    ["Your application for Data Engineer at Acme", ""],
+    ["Update on your application", "Thank you for your application for the Data Engineer role."],
+    ["Twoja aplikacja", "Dziękujemy za aplikację na stanowisko Data Engineer w Acme."],
+    ["Re: candidacy", "Position: Data Engineer"],
+  ])("asks when the employer's own mail names another role: %s", (subject, text) => {
+    const platform = app({ title: "Platform Engineer" })
+    expect(matchApplication(message({ subject, text }), [platform])).toMatchObject({
+      certain: false,
+      application: { id: "a1" },
+    })
+  })
+
+  it("asks when the model read another role", () => {
+    const platform = app({ title: "Platform Engineer" })
+    expect(matchApplication(message({ title: "Data Engineer" }), [platform]).certain).toBe(false)
+  })
+
+  it.each([
+    ["Your application for Senior Platform Engineer at Acme", ""],
+    ["Update", "Thank you for applying for this position."],
+    ["Update", "Thank you for your application for the role at Acme."],
+    ["Your application for Acme", ""],
+    ["Twoja aplikacja", ""],
+  ])("stays certain when the role is this one or not named: %s", (subject, text) => {
+    const platform = app({ title: "Platform Engineer" })
+    expect(matchApplication(message({ subject, text }), [platform]).certain).toBe(true)
+  })
 })
 
 describe("policy", () => {
@@ -839,6 +890,29 @@ describe("policy", () => {
       outcome: "PENDING",
       toStatus: "REJECTED",
       applicationId: "a1",
+    })
+  })
+
+  it("asks before a rejection for another role closes this application", () => {
+    const platform = app({ title: "Platform Engineer" })
+    const text = "We regret to inform you that we will not proceed with your application."
+    const subject = "Your application for Data Engineer at Acme"
+    const reading = classifyByRules(subject, text)
+    const match = matchApplication(
+      {
+        sender: { address: "jobs@acme.com", domain: "acme.com", name: "Acme" },
+        tier: "company",
+        subject,
+        text,
+        receivedAt: new Date("2026-10-20T10:00:00Z"),
+      },
+      [platform]
+    )
+    expect(reading).toMatchObject({ signal: "REJECTED", sure: true })
+    expect(decide(input({ signal: reading.signal, sure: reading.sure, match }))).toMatchObject({
+      outcome: "PENDING",
+      applicationId: "a1",
+      toStatus: "REJECTED",
     })
   })
 

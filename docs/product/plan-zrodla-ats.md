@@ -65,7 +65,7 @@ Do pominięcia: Cornerstone (wyszukiwarka wymaga tokenu SPA, robots `Crawl-delay
 ### Faza 2b: bez zmiany schematu
 
 - **eRecruiter Kariera PRO** (`{slug}.kariera.pro`, własne domeny): sitemap `/sitemap.xml` z `/jobs/{id}/{slug}/`, strony og:title/og:description, bez JSON-LD. Dodać jako `CAREER_SITE` z `detail: "html"`.
-- **Strony firm z własnym CMS** z badania PL: Synerise `https://synerise.com/api/cms/job-postings` (19 ofert, opisy, widełki), Allegro `jobs.allegro.eu` (sitemap rekrutacyjny Yoast), Miquido, Future Processing, Comarch (HTML). Pierwsze trzy to kandydaci do `KNOWN` w `career-site.ts` (plik ma niezacommitowane zmiany właściciela, więc nie ruszany).
+- **Strony firm z własnym CMS** z badania PL: Synerise `https://synerise.com/api/cms/job-postings` (19 ofert, opisy, widełki), Allegro `jobs.allegro.eu` (sitemap rekrutacyjny Yoast), Miquido, Future Processing, Comarch (HTML). Pierwsze trzy to kandydaci do `KNOWN` w `career-site.ts` (plik miał wtedy niezacommitowane zmiany, więc nie ruszany).
 - **Avature RSS** jako alternatywa dla sitemap: `/{portal}/SearchJobs/feed/?jobRecordsPerPage=50&jobOffset=0` daje tytuły i linki; `/SearchJobs/Poland` filtruje po lokalizacji (Lenovo: 10 ofert Warszawa).
 - **Phenom przez Workday/SF**: wiele stron Phenom (Mastercard, Philips) kieruje aplikację do Workday. Dedupe po tytule i URL źródłowym, gdy ta sama firma ma oba boardy.
 

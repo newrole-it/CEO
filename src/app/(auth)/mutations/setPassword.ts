@@ -3,11 +3,13 @@ import { SecurePassword } from "@blitzjs/auth/secure-password"
 import { AuthenticationError, NotFoundError } from "blitz"
 import db from "db"
 import { z } from "zod"
+import { revokeOtherAccess } from "src/server/auth/accounts"
 import { password } from "../validations"
 
 /**
  * Sets a password on an account that has none, or changes it when `currentPassword` matches.
- * Guests cannot set one: they save the account with an email first.
+ * Guests cannot set one: they save the account with an email first. Every other session and every
+ * extension token ends, so someone who knew the old password keeps no way in.
  */
 export default resolver.pipe(
   resolver.zod(
@@ -29,6 +31,7 @@ export default resolver.pipe(
       where: { id: user.id },
       data: { hashedPassword: await SecurePassword.hash(newPassword) },
     })
+    await revokeOtherAccess(user.id, ctx.session.$handle)
     await db.auditEvent.create({ data: { userId: user.id, action: "password.set" } })
     return { ok: true }
   }

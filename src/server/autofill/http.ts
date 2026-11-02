@@ -2,6 +2,7 @@ import { z } from "zod"
 import { ApplicationError } from "src/server/applications/service"
 import { authenticateRequest } from "src/server/auth/api-tokens"
 import { appOrigin } from "src/server/auth/email"
+import { isAppHost } from "src/server/security/origin"
 
 /** Shared plumbing for /api/ext/** (docs/product/plan-aplikacje.md §5.3). */
 
@@ -51,6 +52,9 @@ export const PageSchema = z.object({
     .transform((value) => value ?? ""),
   /** og:site_name, when the page has one */
   siteName: optionalCapped(200),
+  /** The hiring company and role in the page's own data, when it has any */
+  company: optionalCapped(160),
+  role: optionalCapped(200),
 })
 
 export const FormFieldSchema = z.object({
@@ -204,13 +208,13 @@ export function withToken(
 export function isSameOrigin(request: Request): boolean {
   const site = request.headers.get("sec-fetch-site")
   if (site && site !== "same-origin") return false
+  // A DNS-rebinding page is "same-origin" with whatever Host it points at us, so the Host itself
+  // has to be this app: APP_ORIGIN's host or a loopback name.
+  const host = request.headers.get("host")
+  if (host && !isAppHost(host)) return false
   const origin = request.headers.get("origin")
   if (!origin) return site === "same-origin"
   const allowed = new Set<string>([appOrigin()])
-  try {
-    allowed.add(new URL(request.url).origin)
-  } catch {}
-  const host = request.headers.get("host")
   if (host) {
     allowed.add(`http://${host}`)
     allowed.add(`https://${host}`)

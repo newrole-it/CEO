@@ -83,6 +83,7 @@ export function SiteHeader({
   newAtWatched,
   app,
   setup,
+  offerIndex,
 }: {
   user: ShellUser
   liked: number
@@ -90,6 +91,8 @@ export function SiteHeader({
   app: boolean
   /** A local install: the /setup checklist exists */
   setup: boolean
+  /** False with OFFER_INDEX=off: the screens built on offers do not exist */
+  offerIndex: boolean
 }) {
   const { t } = useCopy()
   const pathname = usePathname()
@@ -174,10 +177,20 @@ export function SiteHeader({
     <>
       <header className="site-header">
         <div className="container site-header__inner">
-          <Link className="brand" href={app ? "/jobs" : "/"} aria-label={t("brandHome")}>
+          <Link
+            className="brand"
+            href={app ? (offerIndex ? "/jobs" : "/applications") : "/"}
+            aria-label={t("brandHome")}
+          >
             <LogoLockup />
           </Link>
-          {app ? (
+          {!offerIndex ? (
+            <nav className="nav" aria-label={t("nav.main")}>
+              <Link href="/applications" aria-current={cur("/applications")}>
+                {t("nav.applications")}
+              </Link>
+            </nav>
+          ) : app ? (
             <nav className="nav" aria-label={t("nav.main")}>
               <Link href="/jobs" aria-current={forYouCurrent ? "page" : undefined}>
                 {t("nav.forYou")}

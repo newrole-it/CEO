@@ -14,6 +14,7 @@ import { identityFor, saveDiscoveredJob } from "src/server/index/store"
 import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
 import { htmlToText } from "src/server/jobs/text"
+import { offerIndexEnabled } from "src/server/offer-index"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import { assertSafeUrl } from "src/server/security/url-safety"
 import type { ListedJob } from "src/shared/schemas"
@@ -21,6 +22,8 @@ import { isPolishBoardHost } from "src/shared/polish-boards"
 import { classifyHit, workableSlugFromHtml } from "./boards"
 import { hostOf, isAggregatorHost } from "./careers-detect"
 import { createRobotsCache, policyFor, politeGet, type RobotsCache } from "./polite-fetch"
+
+const NO_INDEX = "This server keeps no index of offers."
 
 export type IngestUrlResult = {
   status: "created" | "updated" | "link-only" | "rejected"
@@ -142,6 +145,7 @@ export async function ingestOfferUrl(
   input: { url: string; userId?: number; channel: "web" | "mcp"; forTracker?: boolean },
   deps: IngestDeps = {}
 ): Promise<IngestUrlResult> {
+  if (!offerIndexEnabled()) return { status: "rejected", message: NO_INDEX }
   const exact = input.forTracker === true
   const now = deps.now ?? new Date()
   const http = deps.http ?? createHttpClient()
@@ -308,6 +312,7 @@ export async function ingestOfferPayload(
   },
   deps: IngestDeps = {}
 ): Promise<IngestPayloadResult> {
+  if (!offerIndexEnabled()) return { status: "rejected", message: NO_INDEX }
   const result = payloadToJob(input)
   if ("error" in result) return { status: "rejected", message: result.error }
   const now = deps.now ?? new Date()

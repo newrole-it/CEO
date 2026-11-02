@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-  companyKeys,
+  companyNameKey,
   compareCompanies,
   identifyCompany,
   isPlatformName,
@@ -12,25 +12,25 @@ const compare = (a: string, b: string, map?: Map<string, string[]>) =>
 
 describe("readCompanyName", () => {
   it.each([
-    ["Careers at Tide", "Tide", []],
-    ["Wolt - English", "Wolt", []],
-    ["Fast Forward Solutions - Executive & Direct Search Services", "Fast Forward Solutions", []],
-    ["Exadel (acquired Codete)", "Exadel", ["Codete"]],
-    ["Samsung (incl. SRPOL)", "Samsung", ["SRPOL"]],
-    ["Vodeno (Aion)", "Vodeno", ["Aion"]],
-    ["Coca-Cola", "Coca-Cola", []],
-    ["Acme Careers", "Acme", []],
-    ["Praca w Acme", "Acme", []],
-  ])("reads %j", (raw, main, also) => {
-    expect(readCompanyName(raw)).toEqual({ main, also })
+    ["Careers at Tide", "Tide"],
+    ["Wolt - English", "Wolt"],
+    ["Swift Harbor Solutions - Executive & Direct Search Services", "Swift Harbor Solutions"],
+    ["Exadel (acquired Codete)", "Exadel"],
+    ["Samsung (incl. SRPOL)", "Samsung"],
+    ["Vodeno (Aion)", "Vodeno"],
+    ["Coca-Cola", "Coca-Cola"],
+    ["Acme Careers", "Acme"],
+    ["Praca w Acme", "Acme"],
+  ])("reads %j", (raw, main) => {
+    expect(readCompanyName(raw)).toBe(main)
   })
 
   it("keeps a name that is nothing but what would be cut", () => {
-    expect(readCompanyName("Careers").main).toBe("Careers")
+    expect(readCompanyName("Careers")).toBe("Careers")
   })
 })
 
-describe("companyKeys", () => {
+describe("companyNameKey", () => {
   it("gives one key for the spellings of a name", () => {
     for (const name of [
       "Acme",
@@ -46,34 +46,31 @@ describe("companyKeys", () => {
       "Grupa Acme",
       "Careers at Acme",
       "Acme - English",
+      "Acme (Remote)",
+      "Acme (incl. Other)",
     ]) {
-      expect([name, companyKeys(name)]).toEqual([name, ["acme"]])
+      expect([name, companyNameKey(name)]).toEqual([name, "acme"])
     }
   })
 
   it("squeezes what an ATS slug turns into words", () => {
-    expect(companyKeys("Capital.com")).toEqual(companyKeys("Capital Com"))
-    expect(companyKeys("capital-com")).toEqual(companyKeys("Capital.com"))
-    expect(companyKeys("Żabka Group")).toEqual(["zabka"])
-  })
-
-  it("adds the second name, unless the bracket only says where", () => {
-    expect(companyKeys("Exadel (acquired by Codete)")).toEqual(["exadel", "codete"])
-    expect(companyKeys("Acme (Remote)")).toEqual(["acme"])
-    expect(companyKeys("Acme (Polska)")).toEqual(["acme"])
+    expect(companyNameKey("Capital.com")).toBe(companyNameKey("Capital Com"))
+    expect(companyNameKey("capital-com")).toBe(companyNameKey("Capital.com"))
+    expect(companyNameKey("Żabka Group")).toBe("zabka")
   })
 
   it("has nothing for a name that is only a legal form", () => {
-    expect(companyKeys("Sp. z o.o.")).toEqual([])
-    expect(companyKeys("")).toEqual([])
+    expect(companyNameKey("Sp. z o.o.")).toBe("")
+    expect(companyNameKey("")).toBe("")
   })
 })
 
 describe("isPlatformName", () => {
   it("catches the site given as the company", () => {
     expect(isPlatformName("LinkedIn", "https://www.linkedin.com/feed/")).toBe(true)
-    expect(isPlatformName("BambooHR", "https://sforbt.bamboohr.com/careers/115")).toBe(true)
+    expect(isPlatformName("BambooHR", "https://zefirex.bamboohr.com/careers/115")).toBe(true)
     expect(isPlatformName("Pracuj.pl", "https://www.pracuj.pl/praca/x,oferta,1")).toBe(true)
+    expect(isPlatformName("eRecruiter", "https://skk.erecruiter.pl/Offer.aspx?oid=1")).toBe(true)
   })
 
   it("lets the platform apply as an employer through another site", () => {
@@ -82,7 +79,7 @@ describe("isPlatformName", () => {
   })
 
   it("leaves real companies alone", () => {
-    expect(isPlatformName("Sforbt", "https://sforbt.bamboohr.com/careers/115")).toBe(false)
+    expect(isPlatformName("Zefirex", "https://zefirex.bamboohr.com/careers/115")).toBe(false)
     expect(isPlatformName("OLX", "https://jobs.eu.lever.co/olx/5827")).toBe(false)
   })
 })
@@ -91,22 +88,28 @@ describe("compareCompanies", () => {
   it("sees one company in two spellings", () => {
     expect(compare("Techland S.A.", "Techland")).toBe("same")
     expect(compare("Careers at Tide", "Tide")).toBe("same")
-    expect(compare("Fast Forward Solutions - Executive & Direct", "Fast Forward Solutions")).toBe(
+    expect(compare("Swift Harbor Solutions - Executive & Direct", "Swift Harbor Solutions")).toBe(
       "same"
     )
   })
 
-  it("sees a second name", () => {
-    expect(compare("Exadel (acquired Codete)", "Codete")).toBe("same")
+  it("takes no bracket for a second company, only the map can say that", () => {
+    expect(compare("Mangopay (incl. Nethone)", "Nethone")).toBe(null)
+    expect(compare("Vodeno (Aion)", "Aion")).toBe(null)
+    const map = new Map([
+      ["codete", ["c_exadel"]],
+      ["exadel", ["c_exadel"]],
+    ])
+    expect(compare("Exadel (acquired Codete)", "Codete", map)).toBe("same")
   })
 
   it("sees what only the map knows", () => {
     const map = new Map([
-      ["livechat", ["c_text"]],
+      ["livechatsoftware", ["c_text"]],
       ["text", ["c_text"]],
     ])
-    expect(compare("LiveChat", "Text S.A.")).toBe(null)
-    expect(compare("LiveChat", "Text S.A.", map)).toBe("same")
+    expect(compare("LiveChat Software", "Text S.A.")).toBe(null)
+    expect(compare("LiveChat Software", "Text S.A.", map)).toBe("same")
   })
 
   it("joins two index rows through the row they both map to", () => {
@@ -125,8 +128,10 @@ describe("compareCompanies", () => {
   })
 
   it("calls a name that opens another only similar", () => {
-    expect(compare("Fast Forward", "Fast Forward Solutions")).toBe("similar")
+    expect(compare("Swift Harbor", "Swift Harbor Solutions")).toBe("similar")
     expect(compare("Ocado Technology", "Ocado")).toBe("similar")
+    expect(compare("Motorola Solutions", "Motorola Mobility")).toBe(null)
+    expect(compare("Allegro.pl", "Allegro")).toBe("similar")
   })
 
   it("does not build on a word too short to mean a company", () => {
@@ -137,7 +142,6 @@ describe("compareCompanies", () => {
   it("keeps different companies apart", () => {
     expect(compare("Acme", "Globex")).toBe(null)
     expect(compare("Sumo Logic", "Sumo Digital")).toBe(null)
-    expect(compare("Allegro", "Allegro Pay Solutions")).toBe("similar")
     expect(compare("Sp. z o.o.", "S.A.")).toBe(null)
   })
 })

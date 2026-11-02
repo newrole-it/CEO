@@ -11,7 +11,7 @@ import type { BoardList } from "./types"
  * on how the pipeline scopes externalId.
  */
 
-type Row = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>
 type Listing = (board: string, http: HttpClient, name?: string) => Promise<BoardList>
 
 class BoardMissing extends Error {}
@@ -21,7 +21,7 @@ async function getJson(
   url: string,
   label: string,
   headers?: Record<string, string>
-): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<any> {
   const response = await http.get(url, { accept: "application/json", maxBytes: 8_000_000, headers })
   if (response.status === 404 || response.status === 410 || response.status === 422) {
     throw new BoardMissing(`${label} was not found`)

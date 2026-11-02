@@ -6,9 +6,14 @@ import { cvContentError, cvTooLongLimit, type CvContent } from "src/shared/cv/sc
 import updateCvDocument from "../mutations/updateCvDocument"
 
 export type CvLanguage = "pl" | "en"
-export type SaveState = "saved" | "saving" | "error"
+/** "conflict": the stored CV is newer than this tab's copy; saving stops until a reload */
+export type SaveState = "saved" | "saving" | "error" | "conflict"
 
 type Doc = { title: string; language: CvLanguage; content: CvContent }
+
+function isConflict(error: unknown): boolean {
+  return error instanceof Error && error.message === "conflict"
+}
 
 const AUTOSAVE_MS = 800
 const HISTORY_LIMIT = 200
@@ -19,8 +24,10 @@ const GROUP_MS = 1000
  * The document being edited: content with undo/redo snapshots, title and language, and
  * autosave 0.8 s after the last change. Saves run one at a time; a change made during a save is
  * sent right after it. Nothing is lost when a save fails: the state says so and retry() resends.
+ * Each save carries the updatedAt this tab knows (`loadedAt`, then each save's reply); when the
+ * server has a newer one, another tab saved in between and the state turns to "conflict".
  */
-export function useCvDocument(id: string, initial: Doc) {
+export function useCvDocument(id: string, initial: Doc, loadedAt: Date) {
   const [doc, setDoc] = useState<Doc>(initial)
   const [saveState, setSaveState] = useState<SaveState>("saved")
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -34,6 +41,8 @@ export function useCvDocument(id: string, initial: Doc) {
   const lastEdit = useRef<{ group: string | null; at: number }>({ group: null, at: 0 })
   const timer = useRef<number | null>(null)
   const inFlight = useRef<Promise<boolean> | null>(null)
+  const version = useRef(loadedAt)
+  const conflicted = useRef(false)
 
   const clearTimer = () => {
     if (timer.current != null) window.clearTimeout(timer.current)
@@ -43,6 +52,8 @@ export function useCvDocument(id: string, initial: Doc) {
   const flush = useCallback((): Promise<boolean> => {
     clearTimer()
     if (inFlight.current) return inFlight.current.then(() => flush())
+    // a newer save exists elsewhere: sending this copy again would only be refused again
+    if (conflicted.current) return Promise.resolve(false)
     const snapshot = latest.current
     const base = saved.current
     const patch = {
@@ -57,10 +68,11 @@ export function useCvDocument(id: string, initial: Doc) {
       return Promise.resolve(true)
     }
     setSaveState("saving")
-    const run = invoke(updateCvDocument, patch).then(
-      () => {
+    const run = invoke(updateCvDocument, { ...patch, baseUpdatedAt: version.current }).then(
+      (result) => {
         inFlight.current = null
         saved.current = snapshot
+        if (result) version.current = result.updatedAt
         setSaveError(null)
         if (latest.current !== snapshot) return flush()
         setSaveState("saved")
@@ -68,6 +80,13 @@ export function useCvDocument(id: string, initial: Doc) {
       },
       (error: unknown) => {
         inFlight.current = null
+        if (isConflict(error)) {
+          conflicted.current = true
+          setSaveError(null)
+          setSaveLimit(null)
+          setSaveState("conflict")
+          return false
+        }
         const invalid = cvContentError(snapshot.content)
         // Invalid content is the person's to fix and the toolbar says how; anything else is a bug.
         if (!invalid) console.error("CV save failed", error)
@@ -85,6 +104,8 @@ export function useCvDocument(id: string, initial: Doc) {
     (next: Doc) => {
       latest.current = next
       setDoc(next)
+      // after a conflict the message stays until the person reloads
+      if (conflicted.current) return
       setSaveState("saving")
       clearTimer()
       timer.current = window.setTimeout(() => void flush(), AUTOSAVE_MS)
@@ -134,9 +155,12 @@ export function useCvDocument(id: string, initial: Doc) {
   /**
    * Content the server already stored (a restored version, a new generation): nothing to save,
    * and the state before it is one undo away. Call flush() first, so no save is pending.
+   * `updatedAt` is the document's after that write: this tab now matches what is stored.
    */
-  const replace = useCallback((next: Pick<Doc, "content" | "language">) => {
+  const replace = useCallback((next: Pick<Doc, "content" | "language">, updatedAt: Date) => {
     clearTimer()
+    version.current = updatedAt
+    conflicted.current = false
     past.current.push(latest.current.content)
     if (past.current.length > HISTORY_LIMIT) past.current.shift()
     future.current = []

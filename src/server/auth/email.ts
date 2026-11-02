@@ -6,15 +6,22 @@ export function magicLinkUrl(token: string): string {
   return `${appOrigin()}/login/verify?token=${encodeURIComponent(token)}`
 }
 
+export function sendMagicLinkEmail(email: string, url: string) {
+  return sendTextEmail(
+    email,
+    "Your Nowa Rola sign-in link",
+    `Sign in to Nowa Rola. This link works once and expires in 15 minutes.\n\n${url}\n`
+  )
+}
+
 /** Console in dev. Resend or SMTP when EMAIL_PROVIDER and credentials are set. */
-export async function sendMagicLinkEmail(
+export async function sendTextEmail(
   email: string,
-  url: string
+  subject: string,
+  text: string
 ): Promise<"console" | "resend" | "smtp"> {
   const provider = (process.env.EMAIL_PROVIDER || "console").trim().toLowerCase()
   const from = process.env.EMAIL_FROM || "Nowa Rola <login@jobscanner.local>"
-  const subject = "Your Nowa Rola sign-in link"
-  const text = `Sign in to Nowa Rola. This link works once and expires in 15 minutes.\n\n${url}\n`
   if (provider === "resend" && process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -50,6 +57,6 @@ export async function sendMagicLinkEmail(
   if (provider !== "console") {
     throw new Error(`EMAIL_PROVIDER=${provider} cannot send: its credentials are not set`)
   }
-  console.log(`Magic link (local console delivery): ${url}`)
+  console.log(`Sign-in mail (local console delivery): ${text}`)
   return "console"
 }

@@ -60,6 +60,9 @@ export const cvPl = {
   "cv.ed.unsaved": "Nie zapisano",
   "cv.ed.invalid": "Nie zapisano: {reason}",
   "cv.ed.tooLong": "Nie zapisano: blok ma ponad {max} znaków. Skróć go.",
+  "cv.ed.conflict":
+    "Nie zapisano: to CV zmieniono w innym miejscu, na przykład w innej karcie. Odśwież stronę, żeby zobaczyć nowszą wersję.",
+  "cv.ed.reload": "Odśwież",
   "cv.ed.undo": "Cofnij",
   "cv.ed.redo": "Ponów",
   "cv.ed.pages": "Stron: {n}",
@@ -276,6 +279,9 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.ed.unsaved": "Not saved",
   "cv.ed.invalid": "Not saved: {reason}",
   "cv.ed.tooLong": "Not saved: a block is over {max} characters. Shorten it.",
+  "cv.ed.conflict":
+    "Not saved: this CV was changed somewhere else, such as another tab. Reload the page to see the newer version.",
+  "cv.ed.reload": "Reload",
   "cv.ed.undo": "Undo",
   "cv.ed.redo": "Redo",
   "cv.ed.pages": "Pages: {n}",

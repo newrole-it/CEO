@@ -21,6 +21,7 @@ import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { Dropzone, isPdf, isZip, useToast } from "src/app/components/ds/interactive"
 import { Banner } from "src/app/components/ds/primitives"
 import { LinkedInMark } from "src/app/components/site/Brand"
+import ensureGuest from "src/app/profile/mutations/ensureGuest"
 import saveProfile from "src/app/profile/mutations/saveProfile"
 import {
   ProfileReview,
@@ -104,6 +105,7 @@ export function Onboarding({
   const [pasteText, setPasteText] = useState("")
   const [reviewKey, setReviewKey] = useState(0)
   const [save, { isPending: saving }] = useMutation(saveProfile)
+  const [ensureSession] = useMutation(ensureGuest)
   const xhr = useRef<XMLHttpRequest | null>(null)
   const last = useRef<Source | null>(null)
   const manualRef = useRef(false)
@@ -202,9 +204,14 @@ export function Onboarding({
       }
       request.onerror = fail
       request.ontimeout = fail
-      request.send(body)
+      // The import route reads CVs only for a session; a first visit has none yet.
+      ensureSession(null)
+        .then(() => {
+          if (xhr.current === request) request.send(body)
+        })
+        .catch(fail)
     },
-    [go, toReview]
+    [go, toReview, ensureSession]
   )
 
   // A file handed over from the landing hero.

@@ -50,6 +50,8 @@ export type CvErrorCode =
   | "no-base"
   | "llm-unavailable"
   | "llm-failed"
+  /** Saved from a stale copy: the stored CV changed after the editor loaded it */
+  | "conflict"
 
 export class CvError extends Error {
   constructor(readonly code: CvErrorCode, message: string) {
@@ -243,10 +245,18 @@ export async function createCv(input: {
   return toDetail(row)
 }
 
+const CONFLICT_MESSAGE =
+  "This CV was changed elsewhere after you opened it. Reload to see the newer version."
+
+/**
+ * `baseUpdatedAt` is the updatedAt the editor loaded (or got back from its last save). When the
+ * stored CV is newer, another tab or the assistant saved in between, and the write is refused
+ * with a "conflict" instead of overwriting that save. Without it the write is unconditional.
+ */
 export async function updateCv(
   userId: number,
   id: string,
-  patch: { title?: string; language?: CvLanguage; content?: CvContent }
+  patch: { title?: string; language?: CvLanguage; content?: CvContent; baseUpdatedAt?: Date }
 ): Promise<CvDetail> {
   const row = await db.cvDocument.findFirst({
     where: { id, userId },
@@ -257,9 +267,14 @@ export async function updateCv(
       language: true,
       content: patch.content !== undefined,
       versionCheckedAt: true,
+      updatedAt: true,
     },
   })
   if (!row) throw new CvError("not-found", "CV not found.")
+  const base = patch.baseUpdatedAt
+  if (base && row.updatedAt.getTime() > base.getTime()) {
+    throw new CvError("conflict", CONFLICT_MESSAGE)
+  }
   const data: {
     title?: string
     language?: string
@@ -289,6 +304,17 @@ export async function updateCv(
     data.pdf = null
     data.pdfName = null
     data.pdfUpdatedAt = null
+  }
+  if (base) {
+    // written only if no other save landed since the read above
+    const written = await db.cvDocument.updateMany({
+      where: { id, userId, updatedAt: row.updatedAt },
+      data,
+    })
+    if (written.count === 0) throw new CvError("conflict", CONFLICT_MESSAGE)
+    const updated = await db.cvDocument.findFirst({ where: { id, userId }, select: DETAIL_FIELDS })
+    if (!updated) throw new CvError("not-found", "CV not found.")
+    return toDetail(updated)
   }
   const updated = await db.cvDocument.update({ where: { id }, data, select: DETAIL_FIELDS })
   return toDetail(updated)

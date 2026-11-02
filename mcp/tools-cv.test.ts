@@ -5,7 +5,6 @@ vi.mock("db", () => ({ default: {} }))
 vi.mock("./user", () => ({
   currentUser: vi.fn(async () => ({ id: 2, email: "a@example.com", name: "A", how: "test" })),
   NoUserError: class extends Error {},
-  NO_PROFILE_HINT: "",
 }))
 vi.mock("./tools", () => ({
   reply: (text: string, structured?: unknown) => ({
@@ -28,6 +27,8 @@ vi.mock("src/server/cv/render", () => ({ findChrome: vi.fn(() => "/chrome") }))
 vi.mock("fs/promises", () => ({
   mkdir: vi.fn(async () => undefined),
   writeFile: vi.fn(async () => undefined),
+  lstat: vi.fn(),
+  open: vi.fn(),
 }))
 
 import * as filesModule from "fs/promises"
@@ -38,7 +39,27 @@ import { exportPath, registerCvTools, withKeptPhoto } from "./tools-cv"
 type AnyMock = ReturnType<typeof vi.fn> & { mock: { calls: any[][] } }
 const service = serviceModule as unknown as Record<keyof typeof serviceModule, AnyMock>
 const chrome = chromeModule as unknown as Record<"findChrome", AnyMock>
-const files = filesModule as unknown as Record<"mkdir" | "writeFile", AnyMock>
+const files = filesModule as unknown as Record<"mkdir" | "writeFile" | "lstat" | "open", AnyMock>
+
+/** What lstat and open see at the target: nothing, or a file starting with `head`. */
+function onDisk(entry: null | { head?: string; link?: boolean; folder?: boolean }) {
+  if (!entry) {
+    files.lstat.mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" }))
+    return
+  }
+  files.lstat.mockResolvedValue({
+    isSymbolicLink: () => Boolean(entry.link),
+    isFile: () => !entry.link && !entry.folder,
+  })
+  files.open.mockResolvedValue({
+    read: async (buffer: Uint8Array) => {
+      const bytes = new TextEncoder().encode(entry.head ?? "").slice(0, buffer.length)
+      buffer.set(bytes)
+      return { bytesRead: bytes.length }
+    },
+    close: async () => undefined,
+  })
+}
 
 type Handler = (args: Record<string, unknown>) => Promise<{
   content: { text: string }[]
@@ -213,6 +234,34 @@ describe("cv_update", () => {
 })
 
 describe("cv_export_pdf", () => {
+  beforeEach(() => onDisk(null))
+
+  it("replaces an older PDF at the same path", async () => {
+    onDisk({ head: "%PDF-1.7" })
+    const result = await call("cv_export_pdf", { id: "cv1", path: "/tmp/cv/x.pdf" })
+    expect(result.isError).toBeUndefined()
+    expect(files.writeFile.mock.calls[0][0]).toBe("/tmp/cv/x.pdf")
+  })
+
+  it.each([
+    ["a file that is not a PDF", { head: "#!/bin/sh" }],
+    ["a link", { link: true }],
+    ["a folder", { folder: true }],
+  ])("does not overwrite %s", async (_name, entry) => {
+    onDisk(entry)
+    const result = await call("cv_export_pdf", { id: "cv1", path: "/Users/a/notes.pdf" })
+    expect(result.isError).toBe(true)
+    expect(files.writeFile).not.toHaveBeenCalled()
+  })
+
+  it("wants a folder or a .pdf file name", async () => {
+    const result = await call("cv_export_pdf", { id: "cv1", path: "/Users/a/.ssh/config.txt" })
+    expect(result.isError).toBe(true)
+    expect(files.writeFile).not.toHaveBeenCalled()
+    expect(exportPath("/data/x.PDF", "A_CV.pdf", "/home/a")).toBe("/data/x.PDF")
+    expect(exportPath("/data", "A_CV", "/home/a")).toHaveProperty("error")
+  })
+
   it("writes to the given absolute path and returns it", async () => {
     const result = await call("cv_export_pdf", { id: "cv1", path: "/tmp/cv/x.pdf" })
     expect(files.mkdir).toHaveBeenCalledWith("/tmp/cv", { recursive: true })

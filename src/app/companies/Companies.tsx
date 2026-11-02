@@ -27,7 +27,7 @@ import { Badge, Banner, CompanyInitial, EmptyState } from "src/app/components/ds
 import { cx } from "src/app/components/ds/cx"
 import { COMPANIES_SEEN_COOKIE } from "src/app/components/site/links"
 import { relativeTime } from "src/app/jobs/format"
-import type { CompanySuggestions } from "src/server/discovery/similar-companies"
+import type { CompanySuggestion, CompanySuggestions } from "src/server/discovery/similar-companies"
 import type { WatchResult } from "src/server/watchlist/watch"
 import watchCompany from "./mutations/watchCompany"
 import unwatchCompany from "./mutations/unwatchCompany"
@@ -59,6 +59,27 @@ function shortUrl(url: string | null): string | null {
   }
 }
 
+/** The reason a company is suggested, in the reader's language. */
+function suggestionLine(item: CompanySuggestion, t: ReturnType<typeof useCopy>["t"]): string {
+  const why = item.why
+  switch (why?.kind) {
+    case "liked-stack":
+      return t("co.why.stack", { terms: why.terms.join(", "), company: why.company })
+    case "liked-roles":
+      return t("co.why.roles", { terms: why.terms.join(", "), company: why.company })
+    case "liked-industry":
+      return t("co.why.industry", { company: why.company })
+    case "profile":
+      return why.terms.length
+        ? t("co.why.profileTerms", { n: why.matching, terms: why.terms.join(", ") })
+        : t("co.why.profile", { n: why.matching })
+    case "hiring":
+      return t("co.why.hiring")
+    default:
+      return item.reason
+  }
+}
+
 export function Companies({
   watched: initial,
   suggestions,
@@ -80,7 +101,6 @@ export function Companies({
   const [flash, setFlash] = useState<string | null>(focus)
   const [dismissed, setDismissed] = useState<string[]>([])
   const [simWatching, setSimWatching] = useState(new Set<string>())
-  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     document.cookie = `${COMPANIES_SEEN_COOKIE}=${Date.now()}; path=/; max-age=31536000; samesite=lax`
@@ -191,7 +211,6 @@ export function Companies({
           <span className="input-affix input-affix--icon">
             <Plus className="input-affix__icon" aria-hidden />
             <input
-              ref={inputRef}
               className="input input--lg"
               value={value}
               placeholder={t("co.input.ph")}
@@ -235,19 +254,32 @@ export function Companies({
         </h2>
         {sorted.length === 0 ? (
           <EmptyState icon={<Building2 />} title={t("co.empty.t")} body={t("co.empty.b")}>
-            {["Allegro", "Revolut", "Booksy"].map((name) => (
-              <button
-                key={name}
-                type="button"
-                className="chip"
-                onClick={() => {
-                  setValue(name)
-                  inputRef.current?.focus()
-                }}
-              >
-                <Plus aria-hidden /> {name}
-              </button>
-            ))}
+            {visibleSuggestions.length
+              ? visibleSuggestions.slice(0, 3).map((item) => (
+                  <button
+                    key={item.companyId ?? item.name}
+                    type="button"
+                    className="chip"
+                    disabled={pending || simWatching.has(item.companyId ?? item.name)}
+                    // Same as the card's button: the source and the reason go with it.
+                    onClick={() =>
+                      void watchSuggestion(item.name, item.companyId, suggestionLine(item, t))
+                    }
+                  >
+                    <Plus aria-hidden /> {item.name}
+                  </button>
+                ))
+              : ["Allegro", "Revolut", "Booksy"].map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="chip"
+                    disabled={pending}
+                    onClick={() => void submit(name)}
+                  >
+                    <Plus aria-hidden /> {name}
+                  </button>
+                ))}
           </EmptyState>
         ) : (
           <ul className="watch-list" style={{ listStyle: "none" }}>
@@ -267,9 +299,23 @@ export function Companies({
       <section className="stack" aria-labelledby="sim-title">
         <div className="stack-sm">
           <h2 id="sim-title" className="t-h3">
-            {t("co.sim.title")}
+            {t(
+              suggestions.basis === "profile"
+                ? "co.sim.title.profile"
+                : suggestions.basis === "hiring"
+                  ? "co.sim.title.hiring"
+                  : "co.sim.title"
+            )}
           </h2>
-          <p className="muted t-sm">{t("co.sim.sub")}</p>
+          <p className="muted t-sm">
+            {t(
+              suggestions.basis === "profile"
+                ? "co.sim.sub.profile"
+                : suggestions.basis === "hiring"
+                  ? "co.sim.sub.hiring"
+                  : "co.sim.sub"
+            )}
+          </p>
         </div>
         {suggestions.status === "needs-likes" ? (
           <div className="card card--quiet card--pad row row--between">
@@ -318,7 +364,7 @@ export function Companies({
                     />
                   </div>
                   {item.domain ? <span className="t-sm subtle">{item.domain}</span> : null}
-                  <p>{item.reason}</p>
+                  <p>{suggestionLine(item, t)}</p>
                   <div className="row">
                     {label ? <Badge icon={<Link2 aria-hidden />}>{label}</Badge> : null}
                     {item.openJobs ? (
@@ -332,7 +378,7 @@ export function Companies({
                       variant={on ? "soft" : "secondary"}
                       size="sm"
                       disabled={on}
-                      onClick={() => void watchSuggestion(item.name, item.companyId, item.reason)}
+                      onClick={() => void watchSuggestion(item.name, item.companyId, suggestionLine(item, t))}
                     >
                       {on ? t("co.watchingBtn") : t("co.watch")}
                     </Button>

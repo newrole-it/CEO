@@ -22,7 +22,7 @@ import {
   saveFormAnswers,
 } from "src/server/applications/service"
 import { personalNames, personalValues } from "src/server/answers/filter"
-import { answerPairs, formAnswers, RESENT_NOTE, trackSubmission } from "./track"
+import { answerPairs, formAnswers, RESENT_NOTE, trackSubmission, UNKNOWN_COMPANY } from "./track"
 
 const mocked = (fn: unknown) => fn as ReturnType<typeof vi.fn>
 
@@ -323,6 +323,38 @@ describe("trackSubmission", () => {
       expect.objectContaining({ company: "Acme", title: "Staff Engineer" })
     )
     expect(recordFormAnswers).not.toHaveBeenCalled()
+  })
+
+  it("saves a page that names no employer as an unknown company, not as the site", async () => {
+    await trackSubmission({
+      userId: 2,
+      page: {
+        url: "https://www.linkedin.com/feed/",
+        title: "Kanał informacji | LinkedIn",
+        text: "Post",
+      },
+      fields: [],
+    })
+    expect(createApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ company: UNKNOWN_COMPANY, title: "Kanał informacji" })
+    )
+  })
+
+  it("keeps the company the page's own data names", async () => {
+    await trackSubmission({
+      userId: 2,
+      page: {
+        url: "https://apply.workable.com/j/ABC123",
+        title: "Workable",
+        text: "x",
+        company: "Monterail",
+        role: "Senior Engineer",
+      },
+      fields: [],
+    })
+    expect(createApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ company: "Monterail", title: "Senior Engineer" })
+    )
   })
 
   it("adds a note when an APPLIED application is sent again", async () => {

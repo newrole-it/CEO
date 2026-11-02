@@ -35,6 +35,7 @@ export default async function CvEditorPage({
         <CvEditor
           id={cv.id}
           initial={{ title: cv.title, language: cv.language, content: cv.content }}
+          loadedAt={cv.updatedAt.toISOString()}
           initialAudit={audit}
           startAudit={startAudit}
           isLetter={cv.docType === "LETTER"}

@@ -80,9 +80,12 @@ export async function indexBoard(
 ): Promise<"indexed" | "unchanged" | "skipped" | "failed"> {
   if (!boardIsIndexable(board)) return "skipped"
   const page = await noteIndexStart(board, now)
-  const wrapped = conditionalHttp(http, page)
+  // A 304 is recorded as an unchanged, complete crawl. After an unfinished crawl it would park
+  // the board for a day with the inventory still half read, so validators go only after a full one.
+  const wrapped = conditionalHttp(http, page.indexComplete ? page : {})
+  const career = CAREER.has(board.provider)
   try {
-    const listed = CAREER.has(board.provider)
+    const listed = career
       ? await listCareerSite(board.boardId, wrapped.client, board.companyName, {
           detailBudget: CAREER_BATCH,
           knownUrls: await knownCanonicals(page.id),
@@ -92,34 +95,30 @@ export async function indexBoard(
           wrapped.client,
           board.companyName
         )
-    if (CAREER.has(board.provider) && listed.complete == null) {
-      listed.complete = listed.proven
-      listed.listedCount = listed.listedCount ?? listed.jobs.length
-      if (!listed.proven) {
-        await noteIndexFailure(
-          board,
-          now,
-          new Date(now.getTime() + SOURCE_RETRY_MS),
-          listed.note || "Career page was not proven"
-        )
-        return "failed"
-      }
+    const emptyBoard =
+      !career && /no open jobs|has no open|empty jobs array/i.test(listed.note || "")
+    // Unproven is a failure in every case, whatever else the result says: storing it would
+    // mark the board as successfully fetched.
+    if (!listed.proven && !emptyBoard) {
+      await noteIndexFailure(
+        board,
+        now,
+        new Date(now.getTime() + (career ? SOURCE_RETRY_MS : BOARD_RETRY_MS)),
+        listed.note || (career ? "Career page was not proven" : "Board was not proven")
+      )
+      return "failed"
     }
-    if (!CAREER.has(board.provider)) {
-      const emptyBoard = /no open jobs|has no open|empty jobs array/i.test(listed.note || "")
-      listed.complete = listed.proven || emptyBoard
+    if (career) {
+      // A career result is complete only when the adapter says so; a partial read never closes.
+      listed.complete = listed.complete === true
+      listed.listedCount = listed.listedCount ?? listed.jobs.length
+    } else {
+      // A board API answers with its whole list unless the adapter reports a cap.
+      listed.complete = listed.complete !== false
       listed.listedCount = listed.jobs.length
       listed.coveredUrls = undefined
-      if (!listed.proven && listed.jobs.length === 0 && !emptyBoard) {
-        await noteIndexFailure(
-          board,
-          now,
-          new Date(now.getTime() + BOARD_RETRY_MS),
-          listed.note || "Board was not proven"
-        )
-        return "failed"
-      }
     }
+    if (!listed.complete) listed.coveredUrls = undefined
     const complete = listed.complete === true
     await storeBoardInventory({
       board,

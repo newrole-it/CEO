@@ -44,8 +44,10 @@ const REJECTED: RegExp[] = [
 
 const CONFIRMATION: RegExp[] = [
   /(thank you|thanks) for (your application|applying|submitting)/,
-  /(we('ve| have)|we) (successfully )?received your application/,
+  /(we('ve| have)|we) (successfully )?received your (application|cv|resume|candidacy)/,
   /your application (has been|was|is) (received|submitted|sent|successfully)/,
+  /(application|cv|resume|profile) (is|has been) (now )?(under review|being reviewed)/,
+  /(cv|aplikacj\w*|zgloszeni\w*|kandydatur\w*) (jest |zostal\w* )?(w trakcie|przekazan\w* do) (weryfikacji|analizy|rozpatrywania|oceny)/,
   /application (received|submitted|confirmation)/,
   /dziekujemy za (aplikacj|zgloszeni|przeslani|zlozeni)\w*/,
   /otrzymal\w* (twoj\w+ |pana |pani )?(aplikacj|zgloszeni|cv)\w*/,
@@ -137,6 +139,22 @@ function sentences(text: string): string[] {
 
 const normalize = (line: string) => fold(line).replace(/[’‘]/g, "'")
 
+/**
+ * "Only shortlisted candidates will be contacted", "we will schedule a call with selected
+ * candidates", "o kolejnych etapach poinformujemy": what happens to some people later, said in a
+ * plain confirmation. Progress only: "we moved forward with more suitable candidates" rejects.
+ */
+const PROSPECTIVE = new RegExp(
+  [
+    /\b(selected|shortlisted|successful|chosen) (candidates|applicants|profiles|people)\b/,
+    /\b(wybran|zakwalifikowan)\w* (kandydat|osob|kandydatur|aplikacj)\w*/,
+    /\bpoinformujemy\b/,
+    /\bo (kolejn|dalsz|nastepn)\w+ (etap|krok)\w*/,
+  ]
+    .map((pattern) => pattern.source)
+    .join("|")
+)
+
 function isDecision(line: string, patterns: RegExp[]): boolean {
   const folded = normalize(line)
   return !HYPOTHETICAL.test(folded) && patterns.some((pattern) => pattern.test(folded))
@@ -144,6 +162,14 @@ function isDecision(line: string, patterns: RegExp[]): boolean {
 
 function findSentence(lines: string[], patterns: RegExp[]) {
   return lines.find((line) => isDecision(line, patterns))?.slice(0, 160) ?? null
+}
+
+function findProgress(lines: string[], patterns: RegExp[]) {
+  return (
+    lines
+      .find((line) => isDecision(line, patterns) && !PROSPECTIVE.test(normalize(line)))
+      ?.slice(0, 160) ?? null
+  )
 }
 
 /** `text` is already redacted, so the sentence kept as evidence holds no links or tokens. */
@@ -158,7 +184,7 @@ export function classifyByRules(subject: string, text: string): Reading {
   const others = lines.filter((line) => !isDecision(line, REJECTED))
   let progress: { signal: MailSignal; evidence: string } | null = null
   for (const [signal, patterns] of PROGRESS) {
-    const evidence = findSentence(others, patterns)
+    const evidence = findProgress(others, patterns)
     if (evidence) {
       progress = { signal, evidence }
       break

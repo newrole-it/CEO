@@ -5,7 +5,7 @@ import type { SourceType } from "./schemas"
  * connected: an adapter reads it. unverified: an adapter exists, never run on a live board.
  * partial: titles only. link_only: outbound links, never downloaded. banned: terms or robots forbid it.
  */
-export type CatalogState = "connected" | "unverified" | "partial" | "link_only" | "banned"
+export type CatalogState = "connected" | "at_risk" | "unverified" | "partial" | "link_only" | "banned"
 
 export type CatalogEntry = {
   name: string
@@ -31,7 +31,15 @@ export const SOURCE_CATALOG: CatalogEntry[] = [
   live("Lever", "LEVER"),
   live("Ashby", "ASHBY"),
   live("Workable", "WORKABLE"),
-  live("SmartRecruiters", "SMARTRECRUITERS"),
+  {
+    name: "SmartRecruiters",
+    sourceType: "SMARTRECRUITERS",
+    state: "at_risk",
+    note: say(
+      "Polityka może się zmienić w każdym momencie.",
+      "The policy may change at any moment."
+    ),
+  },
   live("Teamtailor", "TEAMTAILOR"),
   live("Recruitee", "RECRUITEE"),
   live("Traffit", "TRAFFIT"),

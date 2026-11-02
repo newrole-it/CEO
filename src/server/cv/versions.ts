@@ -279,7 +279,13 @@ export async function restoreVersion(
   userId: number,
   id: string,
   versionId: string
-): Promise<{ content: CvContent; language: "pl" | "en"; version: CvVersionView } | null> {
+): Promise<{
+  content: CvContent
+  language: "pl" | "en"
+  version: CvVersionView
+  /** The document's new updatedAt, for the editor's next save (updateCv baseUpdatedAt) */
+  updatedAt: Date
+} | null> {
   const [document, target] = await Promise.all([
     ownedDocument(userId, id),
     db.cvVersion.findFirst({
@@ -290,9 +296,9 @@ export async function restoreVersion(
   const content = parseCvContent(target?.content)
   if (!document || !target || !content) return null
   const language = cvLocale(target.language)
-  const row = await db.$transaction(async (tx) => {
+  const { row, updatedAt } = await db.$transaction(async (tx) => {
     await keepCurrentState(tx, document)
-    await tx.cvDocument.update({
+    const written = await tx.cvDocument.update({
       where: { id },
       data: {
         content: toStoredJson(content),
@@ -303,15 +309,16 @@ export async function restoreVersion(
         pdfName: null,
         pdfUpdatedAt: null,
       },
-      select: { id: true },
+      select: { updatedAt: true },
     })
-    return appendVersion(tx, {
+    const row = await appendVersion(tx, {
       documentId: id,
       content,
       language,
       origin: "restored",
       sourceNumber: target.number,
     })
+    return { row, updatedAt: written.updatedAt }
   })
-  return { content, language, version: toView(row, row.contentHash) }
+  return { content, language, version: toView(row, row.contentHash), updatedAt }
 }

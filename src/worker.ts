@@ -1,4 +1,7 @@
 import { currentTaskId, requeueInFlight, workerLoop } from "src/server/queue/worker"
+import { assertSafeProductionEnv } from "src/server/security/env-check"
+
+assertSafeProductionEnv()
 
 /** Ctrl+C has to feel immediate. An index crawl can run for minutes and resumes on the next start. */
 const STOP_GRACE_MS = 5000

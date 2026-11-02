@@ -82,8 +82,9 @@ export function scoreForFeed(args: {
   const industryDelta = fit?.industryDelta ?? 0
   const skillDelta = fit?.skillDelta ?? 0
   const reasons: FeedReason[] = [
-    ...preference.reasons.map((text, index) => ({
-      text,
+    // the page's language, not the account's: User.locale defaults to "en" for a Polish page
+    ...preference.reasonsI18n.map((text, index) => ({
+      text: args.locale === "en" ? text.en : text.pl,
       kind: (preference.signs[index] < 0 ? "warn" : "ok") as FeedReason["kind"],
       origin: "feedback" as const,
     })),

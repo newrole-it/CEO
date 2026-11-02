@@ -178,6 +178,14 @@ describe("normalization", () => {
     assert.equal(extractAtsKey("https://apply.workable.com/acme/j/7C2A9B41D0/", "workable"), "workable:acme:7C2A9B41D0");
     assert.equal(extractAtsKey("https://www.pracuj.pl/praca/x,oferta,1003456789", "pracuj"), "pracuj:1003456789");
   });
+  it("scopes tenant-local ids by board, once", () => {
+    const tutlo = extractAtsKey("https://tutlo.traffit.com/public/an/106", "company_site", "106", "Tutlo");
+    const zen = extractAtsKey("https://zen.traffit.com/public/an/106", "company_site", "106", "zen");
+    assert.equal(tutlo, "company_site:tutlo:106");
+    assert.equal(zen, "company_site:zen:106");
+    assert.equal(extractAtsKey("https://tutlo.traffit.com/x", "company_site", "tutlo:106", "tutlo"), "company_site:tutlo:106");
+    assert.equal(extractAtsKey("https://boards.greenhouse.io/x", "greenhouse", "77", "acme"), "greenhouse:77");
+  });
 });
 
 describe("query expansion examples", () => {

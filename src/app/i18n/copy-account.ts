@@ -44,7 +44,7 @@ export const accountPl = {
   "apl.f.salaryExpectation": "Oczekiwania finansowe",
   "apl.f.workAuthorization": "Prawo do pracy",
   "apl.f.relocation": "Relokacja",
-  "apl.ph.firstName": "Rafał",
+  "apl.ph.firstName": "Anna",
   "apl.ph.lastName": "Kowalski",
   "apl.ph.email": "ty@example.com",
   "apl.ph.phone": "+48 600 000 000",

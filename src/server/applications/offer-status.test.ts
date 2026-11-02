@@ -129,19 +129,19 @@ describe("matchOffer", () => {
       row({ id: "a", company: "Inna nazwa", title: "QA", job: { companyId: "c_acme" } }),
     ]
     const map = new Map([["acme", ["c_acme"]]])
-    expect(matchOffer(rows, { url: LEVER, company: "Acme", title: "QA" }, map).applied).toMatchObject(
-      { match: "role", row: { id: "a" } }
-    )
+    expect(
+      matchOffer(rows, { url: LEVER, company: "Acme", title: "QA" }, map).applied
+    ).toMatchObject({ match: "role", row: { id: "a" } })
   })
 
   it("lets a similar company name count only together with the role", () => {
-    const rows = [row({ id: "a", company: "Fast Forward", title: "Staff Engineer" })]
-    const same = { url: LEVER, company: "Fast Forward Solutions", title: "Staff Engineer" }
+    const rows = [row({ id: "a", company: "Swift Harbor", title: "Staff Engineer" })]
+    const same = { url: LEVER, company: "Swift Harbor Solutions", title: "Staff Engineer" }
     expect(matchOffer(rows, same)).toMatchObject({
       applied: { match: "role", companyMatch: "similar" },
       sameCompany: [],
     })
-    const other = { url: LEVER, company: "Fast Forward Solutions", title: "Data Analyst" }
+    const other = { url: LEVER, company: "Swift Harbor Solutions", title: "Data Analyst" }
     expect(matchOffer(rows, other)).toEqual({ applied: null, sameCompany: [] })
   })
 
@@ -182,9 +182,9 @@ describe("matchOffer", () => {
       company: "LinkedIn",
       url: "https://www.linkedin.com/jobs/view/123/",
     })
-    expect(matchOffer([junk], { url: "https://www.linkedin.com/jobs/view/123/" }).applied?.row.id).toBe(
-      "a"
-    )
+    expect(
+      matchOffer([junk], { url: "https://www.linkedin.com/jobs/view/123/" }).applied?.row.id
+    ).toBe("a")
   })
 
   it("does not call another role at the company this offer", () => {
@@ -256,10 +256,12 @@ describe("offerFacts", () => {
   it("reads the company LinkedIn's lists leave in the address", () => {
     expect(
       offerFacts(
-        { url: "https://www.linkedin.com/jobs/view/4478971728/?companyName=Fast+Forward+Solutions" },
+        {
+          url: "https://www.linkedin.com/jobs/view/4478971728/?companyName=Swift+Harbor+Solutions",
+        },
         null
       )
-    ).toEqual({ company: "Fast Forward Solutions", title: null })
+    ).toEqual({ company: "Swift Harbor Solutions", title: null })
   })
 
   it("reads the company from an ATS address and the role from its window title", () => {

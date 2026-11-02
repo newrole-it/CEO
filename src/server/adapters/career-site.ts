@@ -1,6 +1,7 @@
 import { gunzipSync } from "zlib"
 import db from "db"
 import { envCount } from "config/env"
+import { NotModifiedError } from "src/server/index/conditional"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { noteHostInterval } from "src/server/security/safe-fetch"
 import { UnsafeUrlError } from "src/server/security/url-safety"
@@ -345,38 +346,52 @@ async function fetchText(
   return { ...response, body }
 }
 
+/**
+ * Reads a sitemap and its children. Every sitemap that could not be read is added to `failures`,
+ * so the caller never treats a partial read as the full inventory and closes the rest.
+ */
 async function collectSitemaps(
   start: string,
   http: HttpClient,
   rules: RobotsRules,
+  failures: string[],
   depth = 0
 ): Promise<SitemapEntry[]> {
   if (depth > 3) return []
-  let path = "/"
+  let url: URL
   try {
-    path = new URL(start).pathname
+    url = new URL(start)
   } catch {
     return []
   }
-  if (!robotsAllows(rules, path)) return []
-  const response = await fetchText(
-    start,
-    http,
-    "application/xml, text/xml, application/gzip",
-    8_000_000
-  )
-  if (response.status >= 400) return []
+  if (!robotsAllows(rules, url.pathname)) return []
+  let response: { status: number; body: string }
+  try {
+    response = await fetchText(
+      start,
+      http,
+      "application/xml, text/xml, application/gzip",
+      8_000_000
+    )
+  } catch (error) {
+    // The board's own validators answered 304 before anything else failed: nothing changed.
+    if (error instanceof NotModifiedError && depth === 0 && failures.length === 0) throw error
+    // A blog or page sitemap on the same host is often outside the allow-list. Our own source
+    // policy refused it (assertSourcePolicy words it this way): a standing refusal, not a failed
+    // read, so it is skipped and does not hold the board open.
+    if (error instanceof UnsafeUrlError && /^Source policy is /.test(error.message)) return []
+    const reason = error instanceof Error ? error.message : "request failed"
+    failures.push(`Sitemap ${start} could not be read: ${reason}.`)
+    return []
+  }
+  if (response.status < 200 || response.status >= 300) {
+    failures.push(`Sitemap ${start} returned ${response.status}.`)
+    return []
+  }
   const parsed = parseSitemap(response.body)
   const urls = [...parsed.urls]
   for (const child of orderSitemapChildren(parsed.children).slice(0, 24)) {
-    try {
-      urls.push(...(await collectSitemaps(child, http, rules, depth + 1)))
-    } catch (error) {
-      // A blog or page sitemap on the same host is often outside the allow-list.
-      // Keep the job URLs already collected.
-      if (error instanceof UnsafeUrlError) continue
-      throw error
-    }
+    urls.push(...(await collectSitemaps(child, http, rules, failures, depth + 1)))
   }
   return urls
 }
@@ -435,12 +450,11 @@ async function fetchJobPage(
   if (target.detail === "none") return null
   const allowed = await takeDetailSlot(target.host)
   if (!allowed) return null
-  const headers: Record<string, string> = {}
-  if (entry.lastmod) headers["If-Modified-Since"] = entry.lastmod
+  // No If-Modified-Since: nothing here keeps a stored copy of the page (the indexer skips
+  // stored URLs before this call), so a 304 would only drop the job.
   const response = await http.get(url.toString(), {
     accept: "text/html",
     maxBytes: 1_500_000,
-    headers,
   })
   if (response.status === 304 || response.status >= 400) return null
   const pageUrl = response.url || url.toString()
@@ -523,9 +537,11 @@ async function readListing(
   const jobs: ListedJob[] = []
   const limit = detailLimit()
   let fetched = 0
+  let refused = ""
   for (const link of candidates) {
     const host = new URL(link.url).hostname
     const enrich =
+      !refused &&
       target.detail !== "none" &&
       sameSite(host, target.host) &&
       fetched < limit &&
@@ -560,20 +576,27 @@ async function readListing(
       const chosen = parsed ?? listedFromTitle(link.title, link.url, target)
       if (chosen) jobs.push(chosen)
     } catch (error) {
-      if (error instanceof UnsafeUrlError) break
+      // Stop fetching detail pages, but keep every link from the listing as a title, so the
+      // list stays whole and nothing is closed because a detail page was refused.
+      if (error instanceof UnsafeUrlError) refused = error.message
       const listed = listedFromTitle(link.title, link.url, target)
       if (listed) jobs.push(listed)
     }
   }
+  const stopped = refused ? ` Detail pages stopped: ${refused}` : ""
   const note =
     target.mode === "search" && jobs.length === 0
       ? "Listing API /api/cms/job-postings is disallowed by robots.txt. Job pages are fetched when web search finds them."
-      : `${candidates.length} links on the listing. Fetched ${fetched} detail pages. Off-host detail links stay link-outs.`
+      : `${candidates.length} links on the listing. Fetched ${fetched} detail pages. Off-host detail links stay link-outs.${stopped}`
+  const proven = jobs.length > 0 || target.mode === "search"
   return {
     jobs,
-    proven: jobs.length > 0 || target.mode === "search",
+    proven,
     companyName: target.companyName,
     note,
+    listedCount: jobs.length,
+    // Search mode reads only what web search found, never the whole inventory.
+    complete: proven && target.mode !== "search",
   }
 }
 
@@ -627,6 +650,8 @@ async function tryFeed(
       proven: true,
       companyName: target.companyName,
       note: `Published feed listed ${jobs.length} jobs. Detail hosts were not fetched.`,
+      listedCount: jobs.length,
+      complete: true,
     }
   } catch (error) {
     if (error instanceof UnsafeUrlError) return null
@@ -816,13 +841,20 @@ export async function listCareerSite(
     ]),
   ]
   const entries: SitemapEntry[] = []
-  for (const seed of sitemapSeeds.slice(0, 6)) {
+  const failures: string[] = []
+  const seeds = sitemapSeeds.slice(0, 6)
+  for (const seed of seeds) {
     try {
-      entries.push(...(await collectSitemaps(seed, http, robots.rules)))
+      entries.push(...(await collectSitemaps(seed, http, robots.rules, failures)))
     } catch (error) {
-      if (error instanceof UnsafeUrlError) notes.push(error.message)
+      // NotModifiedError: with one sitemap the board is unchanged and the indexer records that.
+      // With several, one unchanged file says nothing about the others, so read it in full;
+      // the validators went with the first request only.
+      if (!(error instanceof NotModifiedError) || seeds.length === 1) throw error
+      entries.push(...(await collectSitemaps(seed, http, robots.rules, failures)))
     }
   }
+  notes.push(...failures)
   const urls = jobUrls(entries, target)
   if (!urls.length && target.listingUrl) {
     const listing = await readListing(target, http, robots.rules)
@@ -881,8 +913,8 @@ export async function listCareerSite(
       }
     }
   }
-  const complete = !budgetExhausted && covered.size >= urls.length && blockedStreak < 3
-
+  const complete =
+    !budgetExhausted && covered.size >= urls.length && blockedStreak < 3 && failures.length === 0
   let cxsNote = ""
   if (target.platform === "workday" && urls.length >= 100) {
     const extra = await cxsPoland(target, http)

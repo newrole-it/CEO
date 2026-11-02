@@ -59,12 +59,16 @@ function textWithoutControls(node) {
 
 // ------------------------------------------------------------------ never-touch rules
 
-const SECRET =
-  /\b(password|passwort|haslo|cvv|cvc|card number|credit card|debit card|numer karty|karta platnicza|pesel|iban|social security|ssn|national insurance|national id|passport number|numer paszportu|numer dowodu|tax id|nip|bank account|konto bankowe|routing number)\b/
-const EEO =
-  /\b(gender|sex|plec|race(?! conditions?)|racial|ethnicity|ethnic|hispanic|latino|latinx|veteran|veterans|military status|disability|disabilities|disabled|niepelnosprawn\w*|pronoun|pronouns|zaimki|age|wiek|date of birth|birth date|birthdate|birthday|data urodzenia|urodzon\w*|sexual orientation|orientacj\w* seksualn\w*|transgender|religion|wyznanie|marital|stan cywilny|self identify|self identification|eeo|eeoc|equal employment)\b/
-const CONSENT =
-  /\b(privacy (policy|notice|statement)|polityk\w* prywatnosci|rodo|gdpr|data protection|przetwarzani\w*|personal data|danych osobowych|terms (and|of)|regulamin\w*|wyrazam zgode|zgod\w*|consent|i agree|agree to|i acknowledge|i certify|i confirm|oswiadczam|akceptuje|talent (pool|community)|newsletter|marketing|klauzul\w*)\b/
+// At least everything src/server/autofill/fields.ts treats as secret, EEO or consent:
+// src/server/autofill/extension-privacy.test.ts fails when the two drift apart.
+export const SECRET =
+  /\b(password|passwort|haslo|cvv|cvc|card number|credit card|debit card|numer karty|karta platnicza|pesel|iban|social security|ssn|national insurance|national id|passport number|numer paszportu|numer dowodu|id number|tax id|nip|bank account|konto bankowe|routing number)\b/
+export const EEO =
+  /\b(gender|genders|sex|plec|race(?! conditions?)|racial|ethnicity|ethnic|hispanic|latino|latinx|veteran|veterans|military status|disability|disabilities|disabled|niepelnosprawn\w*|pronoun|pronouns|zaimki|age|wiek|date of birth|birth date|birthdate|birthday|data urodzenia|urodzon\w*|sexual orientation|orientacj\w* seksualn\w*|transgender|lgbt\w*|religion|religious|wyznanie|marital|stan cywilny|self identify|self identification|voluntary self|eeo|eeoc|equal employment)\b/
+export const CONSENT =
+  /\b(privacy (policy|notice|statement)|polityk\w* prywatnosci|rodo|gdpr|data protection|przetwarzani\w*|przetwarzanie danych|processing of (my )?(personal )?data|personal data|danych osobowych|terms (and|of)|terms (and|&) conditions|terms of (use|service)|regulamin\w*|wyrazam zgode|zgod\w*|zgoda|i consent|consent to|consent|future recruitment|przyszlych rekrutac\w*|talent (pool|community)|newsletter|marketing|i acknowledge|acknowledge that|i certify|i confirm|oswiadczam|potwierdzam|i agree|agree to|accept the|akceptuje|zapoznalem|zapoznalam|information clause|klauzul\w*)\b/
+export const EEO_SECTION =
+  /\b(eeo|self identification|demographic|voluntary self identification|equal opportunit\w*)\b/
 const CONTACT =
   /\b(first name|firstname|last name|lastname|surname|family name|given name|full name|your name|imie|nazwisko|e ?mail|phone|telefon\w*|mobile|komork\w*|address|adres|ulica|street|postal|zip|kod pocztowy|city|miasto|miejscowosc|location|lokalizacja|country|kraj|linkedin|linked in|github|git hub|website|portfolio|strona www|twitter|instagram|facebook)\b/
 const BARE_NAME = /^name$/
@@ -78,26 +82,46 @@ function descriptor(field) {
   )
 }
 
+/** fold() keeping "?", as the server folds a label: lengths and "is it a question" agree. */
+function foldLabel(value) {
+  return String(value == null ? "" : value)
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/ł/g, "l")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9?]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 /** True for fields this extension must never fill or report: secrets, EEO, consents. */
 export function neverTouch(field) {
   const type = String(field.type || "").toLowerCase()
   const autocomplete = String(field.autocomplete || "").toLowerCase()
   if (type === "password" || type === "hidden") return true
-  if (/(^|\s)(cc-|new-password|current-password|one-time-code|bday|sex)/.test(autocomplete))
+  if (/(^|\s)(cc-|cc\s|new-password|current-password|one-time-code|bday|sex)/.test(autocomplete))
     return true
   const text = descriptor(field)
   if (SECRET.test(text)) return true
+  const label = foldLabel(field.label)
   const visible = fold([field.label, field.placeholder].filter(Boolean).join(" "))
+  const asked = label.endsWith("?")
   // A question to write about ("How did you build for disabled users?") is about the work.
-  const prose =
-    (type === "textarea" || type === "contenteditable") &&
-    (visible.length > 40 || /\?\s*$/.test(String(field.label || "")))
+  const prose = (type === "textarea" || type === "contenteditable") && (label.length > 40 || asked)
   if (!prose && EEO.test(visible || text)) return true
-  if (/\b(self identification|demographic|equal opportunit\w*)\b/.test(fold(field.section)))
+  // No label, only a name or id that says it: <select name="gender"> under a placeholder.
+  if (
+    !label &&
+    EEO.test(fold([field.name, field.id, field.autocomplete].filter(Boolean).join(" ")))
+  )
     return true
+  if (EEO_SECTION.test(fold(field.section))) return true
   const single = type === "checkbox" && (!field.options || field.options.length < 2)
   if (single) return true
   if ((type === "checkbox" || type === "radio") && CONSENT.test(visible)) return true
+  // A long consent statement, whatever control carries it.
+  if (CONSENT.test(visible) && label.length > 60 && !asked && !prose) return true
   return false
 }
 
@@ -262,17 +286,85 @@ function hasLayout(doc) {
   return Boolean(html && html.getBoundingClientRect && html.getBoundingClientRect().width > 0)
 }
 
+/** Percentages of an inset() clip-path as [top, right, bottom, left], or null for other units. */
+function insetPercents(path) {
+  const found = /inset\(([^)]*)\)/.exec(path)
+  if (!found) return null
+  const parts = found[1]
+    .split(/\s+round\s+/)[0]
+    .trim()
+    .split(/\s+/)
+  const values = parts.map((part) =>
+    /^-?\d*\.?\d+%$/.test(part) ? parseFloat(part) : part === "0" ? 0 : NaN
+  )
+  if (!values.length || values.some(Number.isNaN)) return null
+  const [top, right = top, bottom = top, left = right] = values
+  return [top, right, bottom, left]
+}
+
+/** Clipped down to nothing: the "visually hidden" pattern, still in the page and still sent. */
+function clippedAway(style) {
+  const clip = String(style.clip || "")
+  if (/rect\(/.test(clip)) {
+    const sizes = (clip.match(/-?\d*\.?\d+/g) || []).map(Number)
+    if (sizes.length === 4 && (sizes[1] - sizes[3] <= 1 || sizes[2] - sizes[0] <= 1)) return true
+  }
+  const path = String(style.clipPath || style.webkitClipPath || "")
+  const inset = insetPercents(path)
+  if (inset && (inset[0] + inset[2] >= 100 || inset[1] + inset[3] >= 100)) return true
+  return /circle\(\s*0(px|%)?[\s)]/.test(path) || /ellipse\(\s*0(px|%)?\s/.test(path)
+}
+
+/** Transparent or clipped, itself or inside something that is. */
+function concealed(el, view) {
+  if (!view || !view.getComputedStyle) return false
+  let node = el
+  for (let depth = 0; node && node.nodeType === 1 && depth < 15; depth++) {
+    const style = view.getComputedStyle(node)
+    // A custom select keeps its own input transparent and draws the box around it.
+    const ownComboInput = node === el && isCombobox(el)
+    if (!ownComboInput && style.opacity !== "" && parseFloat(style.opacity) === 0) return true
+    if (clippedAway(style)) return true
+    node = node.parentElement
+  }
+  return false
+}
+
+/**
+ * Whether the person can see a field. A form can hide one in many ways and still read what is
+ * filled into it, so a field only counts when it is on the page, opaque and not clipped away.
+ */
 function isVisible(el) {
   const doc = el.ownerDocument
   const view = doc.defaultView
   if (el.hidden || el.closest("[hidden]")) return false
   const style = view && view.getComputedStyle ? view.getComputedStyle(el) : null
   if (style && (style.display === "none" || style.visibility === "hidden")) return false
+  if (concealed(el, view)) return false
   if (hasLayout(doc)) {
     const rect = el.getBoundingClientRect()
     if (rect.width <= 1 && rect.height <= 1) return false
+    if (beforeThePage(el, rect, view)) return false
   }
   return true
+}
+
+/**
+ * Placed above or left of where any scrolling can reach (left: -9999px). Scrolling the window and
+ * every box around the field back to the start moves it by at most what they are scrolled now.
+ */
+function beforeThePage(el, rect, view) {
+  const html = el.ownerDocument.documentElement
+  let scrolledX = Math.abs(view.scrollX || 0)
+  let scrolledY = Math.abs(view.scrollY || 0)
+  for (let node = el.parentElement; node && node !== html; node = node.parentElement) {
+    scrolledX += Math.abs(node.scrollLeft || 0)
+    scrolledY += Math.abs(node.scrollTop || 0)
+  }
+  // A right-to-left page grows to the left, so only the top counts there.
+  const rtl = view.getComputedStyle && view.getComputedStyle(html).direction === "rtl"
+  if (!rtl && rect.right + scrolledX <= 0) return true
+  return rect.bottom + scrolledY <= 0
 }
 
 const SKIPPED_INPUTS = new Set([

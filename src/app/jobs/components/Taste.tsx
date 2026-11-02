@@ -6,7 +6,7 @@ import { invoke } from "@blitzjs/rpc"
 import { ChevronRight, Heart, Minus } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "src/app/components/ds/Button"
-import { Modal, ModalHead, useToast } from "src/app/components/ds/interactive"
+import { Modal, ModalHead, usePopoverFocus, useToast } from "src/app/components/ds/interactive"
 import { cx } from "src/app/components/ds/cx"
 import muteSignal from "src/app/feedback/mutations/muteSignal"
 import type { PreferenceSummary } from "src/server/preferences/model"
@@ -31,7 +31,11 @@ export function TasteChip({
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const positive = item.sign > 0
+  // focus goes into the popover when it opens and back to the chip when it closes
+  usePopoverFocus(popoverRef, open, triggerRef)
 
   useEffect(() => {
     if (!open) return
@@ -72,8 +76,10 @@ export function TasteChip({
   return (
     <span className="rel" ref={ref} style={{ display: "inline-flex" }}>
       <button
+        ref={triggerRef}
         type="button"
         className={cx("chip chip--sm", positive ? "chip--pos" : "chip--neg", fresh && "flash")}
+        aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
@@ -81,7 +87,14 @@ export function TasteChip({
         <span>{label(item, locale)}</span>
       </button>
       {open ? (
-        <div className="menu" role="dialog" aria-label={label(item, locale)} style={{ left: 0, right: "auto", width: 260 }}>
+        <div
+          ref={popoverRef}
+          className="menu"
+          role="dialog"
+          aria-label={label(item, locale)}
+          tabIndex={-1}
+          style={{ left: 0, right: "auto", width: 260 }}
+        >
           <p className="menu__label" style={{ whiteSpace: "normal" }}>
             {item.source === "profile" ? t("taste.fromProfile") : t("taste.source", { n: item.count })}
           </p>

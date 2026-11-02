@@ -17,7 +17,7 @@ import {
   offerMatches,
   offerPayFields,
   placeFacts,
-  polandNeedles,
+  inPolandWhere,
   abroadNeedles,
   requirementExcerpt,
   type MonthlyPay,
@@ -317,14 +317,7 @@ function listWhere(filters: ResolvedBrowse, cursor: BrowseCursor | null): Prisma
     and.push({ workplaceType: { in: [mode, "UNKNOWN"] } })
   }
   if (filters.where === "pl") {
-    and.push({
-      OR: [
-        { countryCode: "PL" },
-        ...polandNeedles().map((needle) => ({
-          locationText: { contains: needle, mode: "insensitive" as const },
-        })),
-      ],
-    })
+    and.push(inPolandWhere())
   } else if (filters.where === "abroad") {
     and.push({
       OR: [

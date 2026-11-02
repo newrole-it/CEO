@@ -137,6 +137,17 @@ describe("readJson and schemas", () => {
     expect(body.fields[0].value).toHaveLength(LIMITS.value)
   })
 
+  it("takes the company and role the page's own data names, and works without them", async () => {
+    const named = await readJson(
+      post({ page: { ...page, company: "Acme", role: "R".repeat(500) }, fields: [] }),
+      FillBodySchema
+    )
+    expect(named.page.company).toBe("Acme")
+    expect(named.page.role).toHaveLength(200)
+    const bare = await readJson(post({ page, fields: [] }), FillBodySchema)
+    expect(bare.page.company).toBeUndefined()
+  })
+
   it("refuses an oversized body", async () => {
     await expect(readJson(post("x".repeat(LIMITS.body + 1)), FillBodySchema)).rejects.toThrow(
       "too large"
@@ -166,6 +177,17 @@ describe("isSameOrigin", () => {
     expect(check({ Origin: EXT, "Sec-Fetch-Site": "none" })).toBe(false)
     expect(check({ Origin: EXT })).toBe(false)
     expect(check({})).toBe(false)
+  })
+
+  it("refuses a DNS-rebinding page, which looks same-origin under its own host name", () => {
+    const rebound = {
+      Host: "attacker.example:43123",
+      Origin: "http://attacker.example:43123",
+      "Sec-Fetch-Site": "same-origin",
+    }
+    expect(check(rebound)).toBe(false)
+    expect(check({ Host: "attacker.example:43123", "Sec-Fetch-Site": "same-origin" })).toBe(false)
+    expect(check({ Host: "localhost:43123", Origin: "http://localhost:43123" })).toBe(true)
   })
 })
 

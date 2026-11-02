@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { CircleAlert, MailCheck } from "lucide-react"
 import login from "../mutations/login"
 import requestMagicLink from "../mutations/requestMagicLink"
+import { LOGIN_LIMITED } from "../validations"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { Banner } from "src/app/components/ds/primitives"
@@ -57,6 +58,10 @@ export const LoginForm = () => {
       router.refresh()
       router.push(destination)
     } catch (err) {
+      if (err instanceof AuthenticationError && err.message === LOGIN_LIMITED) {
+        setError(t("login.tooMany"))
+        return
+      }
       setError(err instanceof AuthenticationError ? t("login.badCreds") : t("login.failed"))
     }
   }

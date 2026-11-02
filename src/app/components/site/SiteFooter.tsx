@@ -15,12 +15,16 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           </Link>
           <span className="site-footer__tag">{t("footer.tagline")}</span>
         </div>
-        <nav aria-label="Footer">
+        <nav aria-label={t("footer.nav")}>
           <Link href="/sources">{t("footer.sources")}</Link>
           <Link href="/privacy">{t("footer.privacy")}</Link>
           <Link href="/terms">{t("footer.terms")}</Link>
+          <Link href="/changelog">{t("footer.changelog")}</Link>
           <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener">
             {t("footer.github")}
+          </a>
+          <a href={`${GITHUB_URL}/blob/main/LICENSE`} target="_blank" rel="noreferrer noopener">
+            {t("footer.license")}
           </a>
         </nav>
         <FooterSwitches />

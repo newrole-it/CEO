@@ -2,7 +2,7 @@ import db from "db"
 import {executeSearch} from "../src/server/search/pipeline"
 
 async function main() {
-  const user = await db.user.findUnique({where: {email: process.env.OWNER_EMAIL || "rafal@jobscanner.local"}})
+  const user = await db.user.findUnique({where: {email: process.env.OWNER_EMAIL || "owner@nowarola.local"}})
   if (!user) throw new Error("owner missing")
   const search = await db.savedSearch.create({
     data: {

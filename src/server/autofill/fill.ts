@@ -9,8 +9,8 @@ import {
   extractJobByRules,
   extractJobFromIndex,
   finishJob,
-  isComplete,
   mergeFacts,
+  needsModel,
   normalizePostingUrl,
   type ExtractedJob,
 } from "./job-extract"
@@ -28,7 +28,14 @@ export type FillValue = {
   answerId?: string
 }
 
-export type PageInfo = { url: string; title: string; text: string; siteName?: string | null }
+export type PageInfo = {
+  url: string
+  title: string
+  text: string
+  siteName?: string | null
+  company?: string | null
+  role?: string | null
+}
 
 export type AppliedInfo = { id: string; status: string; appliedAt: Date }
 
@@ -148,9 +155,8 @@ export async function fillForm(input: {
   const plan = planFill(fields, applicant.effective, cv)
 
   // Index and rules first; the model runs next to the drafts, only when they miss.
-  const rules = indexed ?? extractJobByRules(page)
-  const needsModel = !indexed && !isComplete(rules)
-  const ruled = isComplete(rules) ? rules : null
+  const rules = extractJobByRules(page)
+  const askModel = !indexed && needsModel(page, rules)
   const noDrafts: Record<string, DraftResult> = {}
   const [drafts, modelJob] = await Promise.all([
     plan.questions.length
@@ -163,8 +169,9 @@ export async function fillForm(input: {
             options,
           })),
           context: {
-            company: ruled?.company ?? null,
-            jobTitle: ruled?.title ?? null,
+            // No guess from the window title here: a draft would praise "Warsaw" as the employer.
+            company: indexed?.company ?? rules.company,
+            jobTitle: indexed?.title ?? rules.title,
             jobText: page.text || null,
             url: page.url,
           },
@@ -174,7 +181,7 @@ export async function fillForm(input: {
           return noDrafts
         })
       : Promise.resolve(noDrafts),
-    needsModel ? extractJobByModel(page) : Promise.resolve(null),
+    askModel ? extractJobByModel(page) : Promise.resolve(null),
   ])
   const job: ExtractedJob | null = indexed ?? finishJob(page, mergeFacts(rules, modelJob))
 

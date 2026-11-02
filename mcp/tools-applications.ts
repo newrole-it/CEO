@@ -28,8 +28,8 @@ import { sheetStatus, sheetTable, syncSheet, toCsv } from "src/server/applicatio
 import { sheetDate, sourceLabel } from "src/server/applications/sheet-table"
 import type { ApplicationDetail, ApplicationView } from "src/server/applications/types"
 import { gmailStatus, mailInbox } from "src/server/gmail/service"
-import { syncGmail } from "src/server/gmail/sync"
 import { clampLimit, facts } from "./format"
+import { appLink, mcpHost } from "./host"
 import { failure, guard, reply, type Structured, type ToolResult } from "./tools"
 import { currentUser } from "./user"
 
@@ -247,6 +247,8 @@ async function resolveApplication(
 }
 
 export function registerApplicationTools(server: McpServer) {
+  const { localInstall } = mcpHost()
+
   server.registerTool(
     "applications_list",
     {
@@ -314,8 +316,9 @@ export function registerApplicationTools(server: McpServer) {
     "application_add",
     {
       title: "Dodaj aplikację",
-      description:
-        "Record an application the person sent. Pass `jobId` (an offer from jobs_search / jobs_for_me), or the posting `url` alone (read from the index, the ATS or the page; LinkedIn and job boards are never fetched, so for those pass `company` + `title` with what the person sees), or `company` + `title`. Optional status (default APPLIED), appliedAt (YYYY-MM-DD), location, notes. An application already tracked for the same offer or URL is returned instead of a duplicate. Also marks the offer as applied in the feed.",
+      description: localInstall
+        ? "Record an application the person sent. Pass `jobId` (an offer from jobs_search / jobs_for_me), or the posting `url` alone (read from the index, the ATS or the page; LinkedIn and job boards are never fetched, so for those pass `company` + `title` with what the person sees), or `company` + `title`. Optional status (default APPLIED), appliedAt (YYYY-MM-DD), location, notes. An application already tracked for the same offer or URL is returned instead of a duplicate. Also marks the offer as applied in the feed."
+        : "Record an application the person sent: `company` + `title` as you read them on the posting, and its `url`. Optional status (default APPLIED), appliedAt (YYYY-MM-DD), location, notes. An application already tracked for the same URL is returned instead of a duplicate.",
       inputSchema: {
         jobId: z.string().min(1).max(64).optional(),
         url: z.string().max(2000).optional(),
@@ -326,6 +329,7 @@ export function registerApplicationTools(server: McpServer) {
         appliedAt: z.string().max(40).optional().describe("YYYY-MM-DD or ISO date"),
         notes: z.string().max(20_000).optional(),
       },
+      annotations: { destructiveHint: true },
     },
     tracked(
       async (args: {
@@ -347,6 +351,10 @@ export function registerApplicationTools(server: McpServer) {
           !args.jobId &&
           !(args.company && args.title) &&
           !(await findApplicationByUrl(user.id, args.url))
+        // readOffer adds the offer to the index, which a shared server keeps out of people's hands.
+        if (needsReading && !localInstall) {
+          return failure("Podaj company i title: przeczytaj je sam ze strony oferty.")
+        }
         const reading = needsReading ? await readOffer(args.url!) : null
         if (reading && reading.outcome !== "read") {
           const known = [reading.facts?.company, reading.facts?.title].filter(Boolean).join(" · ")
@@ -415,6 +423,7 @@ export function registerApplicationTools(server: McpServer) {
         notes: z.string().max(20_000).optional(),
         notesMode: z.enum(["append", "replace"]).optional(),
       },
+      annotations: { destructiveHint: true },
     },
     tracked(
       async (args: {
@@ -518,7 +527,9 @@ export function registerApplicationTools(server: McpServer) {
               ["Arkusz", status.spreadsheetUrl],
             ]),
           ].join("\n")
-        : "Arkusz Google nie jest połączony. Połączysz go w Ustawieniach → Arkusz Google (http://127.0.0.1:43123/settings). Do tego czasu applications_export daje CSV, z którego można utworzyć nowy arkusz."
+        : `Arkusz Google nie jest połączony. Połączysz go w Ustawieniach → Arkusz Google (${appLink(
+            "/settings"
+          )}). Do tego czasu applications_export daje CSV, z którego można utworzyć nowy arkusz.`
       return reply(text, {
         ...status,
         lastSyncedAt: status.lastSyncedAt?.toISOString() ?? null,
@@ -535,6 +546,7 @@ export function registerApplicationTools(server: McpServer) {
       description:
         "Send the whole application tracker to the connected Google Sheet now (one-way: Nowa Rola → sheet, the 'Aplikacje' tab is rewritten). Without a connected sheet it says so; then offer applications_export.",
       inputSchema: {},
+      annotations: { destructiveHint: true },
     },
     tracked(async () => {
       const user = await currentUser()
@@ -544,96 +556,50 @@ export function registerApplicationTools(server: McpServer) {
     })
   )
 
-  // Subjects and quotes stay out of both Gmail tools: whoever sent the mail wrote them, and this
-  // text goes straight to a model that can change the tracker.
+  // Subjects and quotes stay out of this tool: whoever sent the mail wrote them, and this text
+  // goes straight to a model that can change the tracker.
   server.registerTool(
     "gmail_status",
     {
-      title: "Stan Gmaila",
+      title: "Maile w trackerze",
       description:
-        "Whether the person's Gmail is connected, when it was last checked, the last error, and the applications with a message waiting for their confirmation in the tracker (company, role, proposed status; never the mail's text). Confirming happens on /applications; to change a status yourself use application_update.",
+        "How mail from companies reaches the tracker, and what still waits. Nowa Rola never searches the person's mailbox: they open a message in Gmail, click the Nowa Rola extension and pick the application and the status („Użyj tego maila w aplikacji”). Also lists messages an earlier mailbox check left waiting for confirmation on /applications (company, role, proposed status; never the mail's text), and whether a mailbox connected in an earlier version still holds a token to revoke. To change a status yourself use application_update.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
     tracked(async () => {
       const user = await currentUser()
       const [status, inbox] = await Promise.all([gmailStatus(user.id), mailInbox(user.id)])
-      if (!status.connected) {
-        return reply(
-          "Gmail nie jest połączony. Połączysz go w Ustawieniach → Gmail (http://127.0.0.1:43123/settings#st-gmail).",
-          { connected: false }
-        )
-      }
       const name = (item: (typeof inbox.pending)[number]) =>
         item.application
           ? `${item.application.company} · ${item.application.title}`
           : "bez przypisanej aplikacji"
       const pending = inbox.pending.map((item, index) => {
         const target = item.toStatus ? statusLabel(item.toStatus) : item.signal
-        return `${index + 1}. ${name(item)}: ${target}${
-          item.authenticated ? "" : " (nadawca niezweryfikowany)"
-        }`
+        return `${index + 1}. ${name(item)}: ${target}`
       })
+      const settings = appLink("/settings#st-gmail")
       const text = [
-        "Gmail: połączony.",
-        facts([
-          ["Skrzynka", status.email],
-          [
-            "Ostatnio sprawdzono",
-            status.lastSyncedAt ? sheetDate(status.lastSyncedAt) : "jeszcze nie",
-          ],
-          ["Automatyczne statusy", status.autoApply ? "tak" : "nie"],
-          ["Błąd", status.lastErrorCode],
-        ]),
+        "Nowa Rola nie przeszukuje skrzynki. Mail od firmy otwierasz w Gmailu, klikasz rozszerzenie Nowa Rola → „Użyj tego maila w aplikacji” i wybierasz aplikację oraz status.",
+        ...(status.connected
+          ? [
+              `Skrzynka ${status.email} została połączona we wcześniejszej wersji i nie jest już czytana.`,
+              `Odłącz ją w Ustawieniach → Gmail (${settings}), żeby odwołać token.`,
+            ]
+          : []),
         ...(pending.length
           ? [`Do potwierdzenia na /applications (${pending.length}):`, ...pending]
-          : ["Nic nie czeka na potwierdzenie."]),
+          : []),
       ].join("\n")
       return reply(text, {
-        connected: true,
-        email: status.email,
-        autoApply: status.autoApply,
-        lastSyncedAt: status.lastSyncedAt?.toISOString() ?? null,
-        lastErrorCode: status.lastErrorCode,
+        legacyMailbox: status.connected,
         pending: inbox.pending.map((item) => ({
           id: item.id,
           signal: item.signal,
           toStatus: item.toStatus,
-          authenticated: item.authenticated,
           applicationId: item.application?.id ?? null,
         })),
       })
-    })
-  )
-
-  server.registerTool(
-    "gmail_sync",
-    {
-      title: "Sprawdź Gmail",
-      description:
-        "Check the connected Gmail now for messages about the person's applications and update statuses. The worker also does this every 15 minutes. Only mail from recruiting systems and companies they applied to is read. Returns counts, never the mail's text.",
-      inputSchema: {},
-    },
-    tracked(async () => {
-      const user = await currentUser()
-      const result = await syncGmail(user.id)
-      if (result.status === "not-connected") {
-        return failure("Gmail nie jest połączony. Połączysz go w Ustawieniach → Gmail.")
-      }
-      if (result.status === "not-configured") {
-        return failure("Brakuje GMAIL_CLIENT_ID i GMAIL_CLIENT_SECRET w pliku .env.")
-      }
-      if (result.status === "failed") {
-        return failure(`Nie udało się sprawdzić poczty (${result.code}). Szczegóły w Ustawieniach.`)
-      }
-      if (result.status !== "synced") {
-        return reply("Skrzynka jest właśnie sprawdzana.", { busy: true })
-      }
-      const { stats } = result
-      return reply(
-        `Sprawdzono Gmail. Przeczytano ${stats.read}, zmiany statusu: ${stats.applied}, do potwierdzenia: ${stats.pending}.`,
-        stats
-      )
     })
   )
 

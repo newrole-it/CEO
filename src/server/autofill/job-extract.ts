@@ -1,12 +1,16 @@
 import { z } from "zod"
 import { CITY_ALIASES } from "matching/normalization"
 import { fold } from "matching/text"
+import { isPlatformName, readCompanyName } from "src/server/companies/names"
+import { hostOf, isAggregatorHost } from "src/server/discovery/careers-detect"
+import { decodeEntities } from "src/server/jobs/text"
 import { createLlmClient } from "src/server/llm/client"
 import { wrapUntrusted } from "src/server/llm/common"
 
 /**
  * Company, role and location of the posting behind an application page (E5.3):
- * the Job index by URL first, then rules (ATS URL slugs and title patterns), then the model.
+ * the Job index by URL first, then rules (the page's own data, its address, title patterns), then
+ * the model.
  */
 
 export type ExtractedJob = { company: string; title: string; location: string | null }
@@ -15,9 +19,17 @@ export type PageInput = {
   title?: string | null
   text?: string | null
   siteName?: string | null
+  /** The hiring company and role in the page's schema.org JobPosting, read by the extension */
+  company?: string | null
+  role?: string | null
 }
 
 type JobFacts = { company: string | null; title: string | null; location: string | null }
+/**
+ * company rests on evidence. companyGuess is only where a window title usually keeps a company, as
+ * in "Staff Engineer - Warsaw", so the page's reading by the model goes first.
+ */
+export type RuleFacts = JobFacts & { companyGuess?: string }
 export type ModelFacts = JobFacts & { salaryText: string | null }
 
 // ---------------------------------------------------------------- ATS URL slugs
@@ -43,6 +55,33 @@ const PATH_ATS: RegExp[] = [
   /^jobs\.smartrecruiters\.com$/,
   /^jobs\.jobvite\.com$/,
 ]
+
+/** Recruitment software on hosts the lists above leave out; see platformKeyForHost in config. */
+const VENDOR_HOST =
+  /(^|\.)(?:greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|smartrecruiters\.com|jobvite\.com|erecruiter\.pl|taleo\.net|successfactors\.(?:com|eu)|sapsf\.(?:com|eu)|oraclecloud\.com|avature\.net|phenom\.com|hibob\.com|peopleforce\.io|join\.com)$/
+
+/** A job board's or recruitment software's address: what it spells is not the employer. */
+function onPlatformHost(rawUrl: string): boolean {
+  const host = hostOf(rawUrl)?.replace(/^www\./, "")
+  if (!host) return false
+  return (
+    isAggregatorHost(host) ||
+    VENDOR_HOST.test(host) ||
+    SUBDOMAIN_ATS.some(({ host: pattern }) => pattern.test(host)) ||
+    PATH_ATS.some((pattern) => pattern.test(host))
+  )
+}
+
+/** LinkedIn's feed, its tracker, a search with no offer open: no one job for a model to read. */
+function aboutNoOffer(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl)
+    if (!/(^|\.)linkedin\.com$/.test(url.hostname)) return false
+    return !url.searchParams.has("currentJobId") && !url.pathname.includes("/jobs/view/")
+  } catch {
+    return false
+  }
+}
 
 const GENERIC_SLUGS = new Set([
   "embed",
@@ -267,7 +306,7 @@ export function companyFromSlug(slug: string, hints: string[] = []): string {
 // ---------------------------------------------------------------- title patterns
 
 const SUFFIXES =
-  /\s*[|\-–—·•:]\s*(greenhouse|lever|ashby|workable|teamtailor|recruitee|smartrecruiters|personio|workday|bamboohr|breezy( hr)?|pinpoint|traffit|jobvite|icims|careers?|jobs?|kariera|praca|oferty pracy|job board|apply|application)\s*$/i
+  /\s*[|\-–—·•:]\s*(greenhouse|lever|ashby|workable|teamtailor|recruitee|smartrecruiters|personio|workday|bamboohr|breezy( hr)?|pinpoint|traffit|jobvite|icims|erecruiter|linkedin|pracuj\.pl|just join it|justjoin\.it|no fluff jobs|nofluffjobs|the ?protocol(\.it)?|bulldogjob|careers?|jobs?|kariera|praca|oferty pracy|job board|apply|application)\s*$/i
 
 const ROLE_WORDS =
   /\b(engineer|engineering|developer|programmer|architect|manager|lead|leader|head|director|vp|chief|cto|cio|designer|analyst|scientist|specialist|consultant|administrator|admin|devops|sre|tester|qa|owner|officer|intern|internship|staż|stażysta|inżynier|programista|kierownik|dyrektor|specjalista|projektant|analityk|tester|koordynator|coordinator|recruiter|product|marketing|sales|support|frontend|backend|fullstack|full-stack|senior|junior|mid|principal|staff)\b/i
@@ -279,8 +318,33 @@ function splitTitle(title: string): string[] {
     .filter(Boolean)
 }
 
-function cleanTitle(raw: string): string {
-  let title = raw.replace(/\s+/g, " ").trim()
+/** A page title that names the site's section rather than a job. */
+export const GENERIC_TITLE =
+  /^(?:home|strona główna|kariera|careers?|jobs?|praca|oferty? pracy|welcome)$/i
+
+/** Title parts that name no company. "(f/m/x)" marks a part of a role, whatever else it says. */
+const NOT_A_COMPANY =
+  /^(?:home|strona główna|apply(?: now)?|aplikuj|kariera|careers?|jobs?|job offers?(?: .*)?|praca|oferty? pracy|remote|hybrid|zdalnie|hybrydowo|polska|poland)$|\((?:[a-z]+\/)+[a-z]+\)/i
+
+function couldBeCompany(name: string, url: string): boolean {
+  return !NOT_A_COMPANY.test(name) && !placeOf(fold(name)) && !isPlatformName(name, url)
+}
+
+/** og:site_name, when it names the employer: a board's names the board, and software its maker. */
+function siteCompany(page: PageInput): string | null {
+  const name = page.siteName?.trim()
+  const host = hostOf(page.url)
+  if (!name || !host || isAggregatorHost(host)) return null
+  const company = readCompanyName(name)
+  return couldBeCompany(company, page.url) ? company : null
+}
+
+export function cleanTitle(raw: string): string {
+  // "(3) Rola | Firma": LinkedIn counts unread notifications in the window title.
+  let title = raw
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\(\d+\+?\)\s*/, "")
   for (let i = 0; i < 3; i++) title = title.replace(SUFFIXES, "").trim()
   return title.replace(
     /^(job application for|application for|apply for|apply to|aplikuj na|aplikuj:|oferta pracy:?)\s+/i,
@@ -343,6 +407,7 @@ export function parseTitle(rawTitle: string, companyHint?: string | null): JobFa
 
 /** "careers.acme.com" → "Acme" when nothing better is known. */
 export function companyFromHost(rawUrl: string): string | null {
+  if (onPlatformHost(rawUrl)) return null
   try {
     const host = new URL(rawUrl).hostname.toLowerCase().replace(/^www\./, "")
     const parts = host
@@ -362,28 +427,62 @@ export function companyFromHost(rawUrl: string): string | null {
   }
 }
 
-/** Rules only: ATS slug + title patterns. No database, no model. */
-export function extractJobByRules(page: PageInput): JobFacts {
+/**
+ * Rules only: what the page states, its address and title patterns. No database, no model. Only a
+ * source that names the employer fills company: the second part of a window title is often a city,
+ * a site section or the board, so it stays a guess, and the model is asked.
+ */
+export function extractJobByRules(page: PageInput): RuleFacts {
+  // Lever's JSON-LD names "Job&amp;Talent", escaped twice (read 2026-11-01).
+  const given = decodeEntities(page.company ?? "").trim() || null
+  const stated = given && !isPlatformName(given, page.url) ? given : null
+  const role = decodeEntities(page.role ?? "").trim() || null
   const slug = atsCompanySlug(page.url)
   const hints = [page.siteName ?? "", page.title ?? ""].filter(Boolean)
   const slugCompany = slug ? companyFromSlug(slug, hints) : null
-  const siteName = page.siteName?.trim() || null
-  const companyHint = slugCompany ?? siteName
-  const parsed = parseTitle(page.title ?? "", companyHint)
+  const siteName = siteCompany(page)
+  const hostCompany = companyFromHost(page.url)
+  const parsed = parseTitle(page.title ?? "", stated ?? siteName ?? slugCompany ?? hostCompany)
   const fromUrl = atsUrlFacts(page.url)
+  const board = boardUrlFacts(page.url)
   // "SRE at TikTok" names the company outright, which beats a slug like "tiktok-eu". Elsewhere the
   // slug wins: in "Staff Engineer - Warsaw" the second part is not a company.
-  const explicit = /\s(?:at|@|w firmie)\s/i.test(cleanTitle(page.title ?? ""))
-    ? parsed.company
-    : null
+  const explicit =
+    /\s(?:at|@|w firmie)\s/i.test(cleanTitle(page.title ?? "")) &&
+    parsed.company &&
+    couldBeCompany(parsed.company, page.url)
+      ? parsed.company
+      : null
   const spelled = slug && explicit ? squash(explicit).includes(squash(slug)) : false
-  const company = (spelled ? slugCompany : explicit) ?? slugCompany ?? parsed.company ?? siteName
+  // A part of the title that the address spells too: "Web & SEO Manager | Job offers in IT |
+  // Comarch" on career.comarch.com, where the second part is not the company.
+  const inTitleAndHost =
+    parsed.company && hostCompany && squash(parsed.company).startsWith(squash(hostCompany))
+      ? parsed.company
+      : null
+  const company =
+    stated ??
+    board.company ??
+    siteName ??
+    (spelled ? slugCompany : explicit) ??
+    slugCompany ??
+    inTitleAndHost
+  const guess =
+    !company &&
+    parsed.company &&
+    !aboutNoOffer(page.url) &&
+    !ROLE_WORDS.test(parsed.company) &&
+    couldBeCompany(parsed.company, page.url)
+      ? parsed.company
+      : null
   let title = parsed.title
   if (title && company && squash(title) === squash(company)) title = null
+  if (title && (GENERIC_TITLE.test(title) || isPlatformName(title, page.url))) title = null
   return {
     company: company || null,
-    title: fromUrl.title ?? title ?? null,
-    location: fromUrl.location ?? null,
+    title: role || fromUrl.title || title || board.title || null,
+    location: fromUrl.location ?? board.location ?? null,
+    ...(guess ? { companyGuess: guess } : {}),
   }
 }
 
@@ -399,7 +498,7 @@ const ModelSchema = z.object({
 const SYSTEM = [
   "You read a job application page and name the hiring company, the job title, the job location and the pay.",
   'Return JSON: {"company": string|null, "title": string|null, "location": string|null, "salary": string|null}.',
-  "Use the exact spelling from the page. Use null when the page does not say. Never guess a company from a job board's own name.",
+  "Use the exact spelling from the page. Use null when the page does not say. company is the employer: never a job board or the recruitment software the page runs on, such as LinkedIn, Pracuj.pl, Workable, BambooHR or eRecruiter, and never a city, a workplace (an office, a warehouse, a logistics centre) or a section of the site. A careers site on its own domain belongs to the employer, so the domain helps tell the employer from a workplace.",
   'salary is the pay for this job as the page writes it, with the currency and period, e.g. "20 000 - 28 000 PLN brutto / mies.". Null for anything else, such as a bonus or a benefit.',
 ].join("\n")
 
@@ -421,6 +520,7 @@ export async function extractJobByModel(page: PageInput): Promise<ModelFacts | n
   const user = [
     wrapUntrusted("page_url", page.url.slice(0, 500)),
     wrapUntrusted("page_title", (page.title ?? "").slice(0, 300)),
+    ...(page.siteName ? [wrapUntrusted("page_site_name", page.siteName.slice(0, 200))] : []),
     wrapUntrusted("page_text", (page.text ?? "").slice(0, 4000)),
     ...(pay ? [wrapUntrusted("page_pay_lines", pay)] : []),
   ].join("\n")
@@ -434,8 +534,9 @@ export async function extractJobByModel(page: PageInput): Promise<ModelFacts | n
     })
     if (!result) return null
     const clean = (value: string | null | undefined) => value?.replace(/\s+/g, " ").trim() || null
+    const company = clean(result.data.company)
     return {
-      company: clean(result.data.company),
+      company: company && couldBeCompany(company, page.url) ? company : null,
       title: clean(result.data.title),
       location: clean(result.data.location),
       salaryText: clean(result.data.salary),
@@ -501,19 +602,29 @@ export function isComplete(value: JobFacts | null): boolean {
   return Boolean(value?.company && value?.title)
 }
 
+/** The model reads the page only for what the rules lack, and only a page about one job. */
+export function needsModel(page: PageInput, rules: JobFacts): boolean {
+  return !isComplete(rules) && !aboutNoOffer(page.url)
+}
+
 /** Rules first, the model fills the gaps. */
-export function mergeFacts(rules: JobFacts, model: JobFacts | null): JobFacts {
+export function mergeFacts(rules: RuleFacts, model: RuleFacts | null): RuleFacts {
   if (!model) return rules
+  const companyGuess = rules.companyGuess ?? model.companyGuess
   return {
     company: rules.company ?? model.company,
     title: rules.title ?? model.title,
     location: rules.location ?? model.location,
+    ...(companyGuess ? { companyGuess } : {}),
   }
 }
 
-/** Falls back to the host name and the page title; null only when a page has neither. */
-export function finishJob(page: PageInput, facts: JobFacts): ExtractedJob | null {
-  const company = facts.company ?? companyFromHost(page.url)
+/**
+ * Falls back to the host name, a guess from the title and the page title. Null without a company,
+ * so a board's or an ATS vendor's name never stands in for the employer.
+ */
+export function finishJob(page: PageInput, facts: RuleFacts): ExtractedJob | null {
+  const company = facts.company ?? companyFromHost(page.url) ?? facts.companyGuess
   const title = facts.title ?? (page.title ? cleanTitle(page.title) : null)
   if (!company || !title) return null
   return {
@@ -534,6 +645,6 @@ export async function extractJob(
   if (indexed) return indexed
   const rules = extractJobByRules(input)
   const model =
-    !isComplete(rules) && input.useModel !== false ? await extractJobByModel(input) : null
+    needsModel(input, rules) && input.useModel !== false ? await extractJobByModel(input) : null
   return finishJob(input, mergeFacts(rules, model))
 }

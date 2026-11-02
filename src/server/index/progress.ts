@@ -1,3 +1,4 @@
+import { workerAlive } from "src/server/setup/steps"
 import { INDEXING_NOTE } from "./store"
 
 /** A started read with no finish after this is treated as stopped, not in progress. */
@@ -56,7 +57,10 @@ function slow(provider: string): boolean {
   return SLOW_PROVIDERS.has(provider)
 }
 
-function reading(board: ProgressBoard, now: Date): boolean {
+function reading(
+  board: Pick<ProgressBoard, "fetchNote" | "lastCheckedAt" | "lastSuccessfulFetchAt">,
+  now: Date
+): boolean {
   if (board.fetchNote !== INDEXING_NOTE || !board.lastCheckedAt) return false
   if (now.getTime() - board.lastCheckedAt.getTime() > INDEX_STALE_MS) return false
   if (board.lastSuccessfulFetchAt && board.lastSuccessfulFetchAt >= board.lastCheckedAt) return false
@@ -181,5 +185,117 @@ export function buildCrawlSnapshot(args: {
     recent,
     failures,
     activeSearches,
+  }
+}
+
+/** Company names listed under the bar. The counts stay exact past this. */
+const NAMES_SHOWN = 12
+
+export type FetchBoard = Pick<
+  ProgressBoard,
+  | "company"
+  | "lastSuccessfulFetchAt"
+  | "lastCheckedAt"
+  | "nextCheckAt"
+  | "indexComplete"
+  | "lastErrorCode"
+  | "fetchNote"
+> & {
+  /** Set when the person asking watches this company. */
+  watchedCompanyId: string | null
+}
+
+export type FetchPhase = "stopped" | "reading" | "paused" | "queued" | "gaps" | "done"
+
+export type FetchProgress = {
+  phase: FetchPhase
+  total: number
+  ready: number
+  percent: number
+  waiting: number
+  current: string | null
+  failed: { count: number; names: string[] }
+  partial: { count: number; names: string[] }
+  watched: { total: number; ready: number }
+  lastFetchedAt: string | null
+  nextCheckAt: string | null
+}
+
+/**
+ * Where one board stands right now. A due board counts as waiting even after a failure,
+ * because the worker is about to try it again.
+ */
+function fetchState(board: FetchBoard, now: Date): "reading" | "waiting" | "failed" | "partial" | "ready" {
+  if (reading(board, now)) return "reading"
+  if (!board.nextCheckAt || board.nextCheckAt <= now) return "waiting"
+  if (board.lastErrorCode) return "failed"
+  return board.indexComplete ? "ready" : "partial"
+}
+
+function named(boards: FetchBoard[]): { count: number; names: string[] } {
+  const watchedFirst = [...boards].sort(
+    (a, b) => Number(Boolean(b.watchedCompanyId)) - Number(Boolean(a.watchedCompanyId))
+  )
+  const names = [...new Set(watchedFirst.map((board) => board.company))]
+  return { count: boards.length, names: names.slice(0, NAMES_SHOWN) }
+}
+
+/**
+ * The answer to "is the worker still working, or is everything fetched?". The worker never
+ * finishes for good: boards come due again every day, so "done" means nothing is due right now.
+ * It is reported only when every board is complete; failed or capped boards report "gaps".
+ */
+export function buildFetchProgress(args: {
+  now: Date
+  boards: FetchBoard[]
+  activeSearches: number
+  workerSeenAt: Date | null
+}): FetchProgress {
+  const { now, boards, activeSearches, workerSeenAt } = args
+  const states = boards.map((board) => ({ board, state: fetchState(board, now) }))
+  const inState = (state: ReturnType<typeof fetchState>) =>
+    states.filter((item) => item.state === state).map((item) => item.board)
+  const readingNow = inState("reading").sort(
+    (a, b) => b.lastCheckedAt!.getTime() - a.lastCheckedAt!.getTime()
+  )
+  const waiting = inState("waiting").length
+  const failed = inState("failed")
+  const partial = inState("partial")
+  const ready = inState("ready").length
+
+  let phase: FetchPhase = "done"
+  if (!workerAlive(workerSeenAt, now)) phase = "stopped"
+  else if (readingNow.length) phase = "reading"
+  else if (waiting && activeSearches) phase = "paused"
+  else if (waiting) phase = "queued"
+  else if (failed.length || partial.length) phase = "gaps"
+
+  const watched = new Map<string, boolean>()
+  for (const { board, state } of states) {
+    if (!board.watchedCompanyId) continue
+    watched.set(board.watchedCompanyId, (watched.get(board.watchedCompanyId) ?? true) && state === "ready")
+  }
+  const edge = (dates: Date[], pick: (...times: number[]) => number) =>
+    dates.length ? new Date(pick(...dates.map((date) => date.getTime()))).toISOString() : null
+
+  return {
+    phase,
+    total: boards.length,
+    ready,
+    // Rounded down: 100% has to mean every board is in.
+    percent: boards.length ? Math.floor((ready / boards.length) * 100) : 0,
+    waiting,
+    current: readingNow[0]?.company ?? null,
+    failed: named(failed),
+    partial: named(partial),
+    watched: { total: watched.size, ready: [...watched.values()].filter(Boolean).length },
+    lastFetchedAt: edge(
+      boards.flatMap((board) => board.lastSuccessfulFetchAt ?? []),
+      Math.max
+    ),
+    nextCheckAt: edge(
+      boards.flatMap((board) => (board.nextCheckAt && board.nextCheckAt > now ? board.nextCheckAt : [])),
+      Math.min
+    ),
   }
 }

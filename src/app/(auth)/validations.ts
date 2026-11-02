@@ -18,8 +18,12 @@ export const Signup = z.object({
 
 export const Login = z.object({
   email,
-  password: z.string(),
+  // Capped so nobody makes the server hash megabytes per guess.
+  password: z.string().max(200),
 })
+
+/** AuthenticationError message from login when the attempt limit is reached. */
+export const LOGIN_LIMITED = "too-many-attempts"
 
 export const ForgotPassword = z.object({
   email,

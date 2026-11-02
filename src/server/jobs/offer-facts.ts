@@ -291,6 +291,18 @@ export function polandNeedles(): string[] {
   return [...needles]
 }
 
+/** Prisma filter for offers located in Poland. */
+export function inPolandWhere() {
+  return {
+    OR: [
+      { countryCode: "PL" },
+      ...polandNeedles().map((needle) => ({
+        locationText: { contains: needle, mode: "insensitive" as const },
+      })),
+    ],
+  }
+}
+
 /** Substrings for a place outside Poland. Used only to narrow a database scan. */
 export function abroadNeedles(): string[] {
   const needles = new Set([

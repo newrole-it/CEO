@@ -1,18 +1,24 @@
 import { resolver } from "@blitzjs/rpc"
 import { AuthenticationError } from "blitz"
-import db from "db"
 import { z } from "zod"
-import { claimGuest, sessionRole } from "src/server/auth/accounts"
-import { consumeMagicLink } from "src/server/auth/magic-link"
+import { sessionRole } from "src/server/auth/accounts"
+import { takeLinkRequest } from "src/server/auth/link-request"
+import { signInWithMagicLink } from "src/server/auth/sign-in-link"
 
+/**
+ * Called from the button on /login/verify, never on page load: the page first shows which account
+ * the link opens. Marks the email verified on first use; see signInWithMagicLink for guest data.
+ */
 export default resolver.pipe(
   resolver.zod(z.object({ token: z.string().min(20).max(200) })),
   async ({ token }, ctx) => {
-    const email = await consumeMagicLink(token)
-    const user = email ? await db.user.findUnique({ where: { email } }) : null
-    if (!user) throw new AuthenticationError()
-    const guestId = ctx.session.userId
-    if (guestId && guestId !== user.id) await claimGuest(guestId, user.id)
+    const signedIn = await signInWithMagicLink({
+      token,
+      sessionUserId: ctx.session.userId,
+      linkRequestCookie: await takeLinkRequest(),
+    })
+    if (!signedIn) throw new AuthenticationError()
+    const { user } = signedIn
     await ctx.session.$create({ userId: user.id, role: sessionRole(user.role) })
     return { ok: true }
   }

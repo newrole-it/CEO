@@ -2,6 +2,7 @@ import type { LookupAddress, LookupOptions } from "dns"
 import { lookup } from "dns/promises"
 import { isIP } from "net"
 import { Agent } from "undici"
+import { reserveHostSlot } from "src/server/crawler/host-pace"
 import { fetchUserAgent } from "src/server/crawler/hygiene"
 import { assertSourcePolicy } from "./source-policy"
 import { assertPublicAddresses, assertSafeUrl, UnsafeUrlError } from "./url-safety"
@@ -59,6 +60,14 @@ const defaultLookup: LookupFn = async (hostname) => {
 async function waitForHost(host: string, minIntervalMs: number): Promise<void> {
   const interval = HOST_INTERVAL_MS[host] ?? minIntervalMs
   if (interval <= 0) return
+  if (!process.env.VITEST) {
+    try {
+      // Shared by every process on the database; the in-memory slot below is the fallback.
+      const delay = await reserveHostSlot(host, interval)
+      if (delay > 0) await sleep(delay)
+      return
+    } catch {}
+  }
   const now = Date.now()
   const slot = nextHostSlot.get(host) ?? now
   const start = Math.max(now, slot)
@@ -190,7 +199,8 @@ export async function safeFetch(
           signal: AbortSignal.timeout(timeoutMs),
           ...(agent ? { dispatcher: agent } : {}),
         } as RequestInit)
-        if (response.status >= 300 && response.status < 400) {
+        // A 304 answers a conditional request: the caller keeps what it has, nothing to follow.
+        if (response.status >= 300 && response.status < 400 && response.status !== 304) {
           const location = response.headers.get("location")
           if (!location) throw new UnsafeUrlError("Redirect missing location")
           const next = new URL(location, url)
@@ -202,7 +212,9 @@ export async function safeFetch(
             method: sameHost ? options?.method : "GET",
             headers: sameHost ? options?.headers : undefined,
             redirectCount: redirectCount + 1,
-            fetchImpl,
+            // Only the caller's own fetchImpl: passing the resolved global fetch would make the
+            // next hop skip pinAgent, and that hop's host could re-resolve to a private address.
+            fetchImpl: options?.fetchImpl,
             lookupImpl,
             minIntervalMs,
           })

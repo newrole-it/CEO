@@ -3,6 +3,7 @@ import {
   extractJobByModel,
   extractJobByRules,
   finishJob,
+  GENERIC_TITLE,
   mergeFacts,
   normalizePostingUrl,
   postingUrlCandidates,
@@ -70,9 +71,6 @@ function pageInput(url: string, html: string): PageInput {
     text: stripPersonalData(htmlToText(html)),
   }
 }
-
-/** A page title that names the site's section rather than a job. */
-const GENERIC_TITLE = /^(?:home|strona główna|kariera|careers?|jobs?|praca|oferty pracy|welcome)$/i
 
 /** A page with no structured data. The model reads it unless the page opts out of AI use. */
 async function readPage(

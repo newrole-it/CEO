@@ -1,12 +1,22 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("src/server/llm/client", () => ({ createLlmClient: vi.fn(() => null) }))
+
+import { createLlmClient } from "src/server/llm/client"
 import {
   atsCompanySlug,
   atsUrlFacts,
   boardUrlFacts,
+  cleanTitle,
   companyFromHost,
   companyFromSlug,
+  extractJobByModel,
   extractJobByRules,
   extractJobFromIndex,
+  finishJob,
+  isComplete,
+  mergeFacts,
+  needsModel,
   normalizePostingUrl,
   parseTitle,
   postingUrlCandidates,
@@ -146,6 +156,183 @@ describe("extractJobByRules", () => {
   })
 })
 
+// BambooHR, eRecruiter, Workable, Comarch and Sii: read on the live pages, 2026-11-01. The LinkedIn
+// addresses are from saved applications; their window titles are what those saved rows imply.
+describe("whose name a page gives", () => {
+  it("takes the site name over a slug that is no name", () => {
+    expect(
+      extractJobByRules({
+        url: "https://zefirex.bamboohr.com/careers/115",
+        title: "Head of Development",
+        siteName: "Zefirex Sp. z o.o.",
+      })
+    ).toMatchObject({ company: "Zefirex Sp. z o.o.", title: "Head of Development" })
+  })
+
+  it("does not take the software's name for the company or the role", () => {
+    const erecruiter = {
+      url: "https://skk.erecruiter.pl/Offer.aspx?oid=5015379",
+      title: "DevOps Engineering Manager (m/f), Grupa Pracuj, Warszawa",
+      siteName: "eRecruiter",
+    }
+    expect(extractJobByRules(erecruiter).company).toBeNull()
+    expect(needsModel(erecruiter, extractJobByRules(erecruiter))).toBe(true)
+
+    const bamboo = { url: "https://zefirex.bamboohr.com/careers/115", title: "BambooHR" }
+    expect(extractJobByRules(bamboo).title).toBeNull()
+
+    const workable = { url: "https://apply.workable.com/j/00BC97A541", title: "Workable" }
+    expect(extractJobByRules(workable)).toMatchObject({ company: null, title: null })
+    expect(finishJob(workable, { company: null, title: "SRE", location: null })).toBeNull()
+  })
+
+  it("finds the part of the title that the address spells", () => {
+    expect(
+      extractJobByRules({
+        url: "https://career.comarch.com/job-offers/web-seo-manager/",
+        title: "Web & SEO Manager | Job offers in IT | Comarch",
+      })
+    ).toMatchObject({ company: "Comarch", title: "Web & SEO Manager" })
+  })
+
+  it("takes the site name when the title's parts do not name the company", () => {
+    expect(
+      extractJobByRules({
+        url: "https://sii.pl/oferty-pracy/id/38553/senior-aem-developer-banking-domain",
+        title: "Senior AEM Developer – banking domain (f/m/x) - Oferty pracy - Job in Sii",
+        siteName: "Sii",
+      }).company
+    ).toBe("Sii")
+  })
+
+  it("trusts the page's own data first, unless it names the platform", () => {
+    const page = {
+      url: "https://jobs.lever.co/acme/1",
+      title: "Acme - Staff Engineer",
+      company: "Acme Robotics S.A.",
+      role: "Staff Platform Engineer",
+    }
+    expect(extractJobByRules(page)).toMatchObject({
+      company: "Acme Robotics S.A.",
+      title: "Staff Platform Engineer",
+    })
+    expect(extractJobByRules({ ...page, company: "Lever" }).company).toBe("Acme")
+    expect(extractJobByRules({ ...page, company: "Job&amp;Talent" }).company).toBe("Job&Talent")
+  })
+
+  it("keeps the name LinkedIn's list leaves in the address, in full", () => {
+    expect(
+      extractJobByRules({
+        url: "https://www.linkedin.com/jobs/view/4478971728/?companyName=Swift+Harbor+Solutions+-+Executive+%26+Direct+Search+Services",
+        title:
+          "Director of Software Engineering | Swift Harbor Solutions - Executive & Direct Search Services | LinkedIn",
+      })
+    ).toMatchObject({
+      company: "Swift Harbor Solutions - Executive & Direct Search Services",
+      title: "Director of Software Engineering",
+    })
+  })
+
+  it("reads no company off a LinkedIn page with no offer, and does not ask the model", () => {
+    for (const page of [
+      { url: "https://www.linkedin.com/feed/", title: "(3) Kanał informacji | LinkedIn" },
+      {
+        url: "https://www.linkedin.com/jobs-tracker/?stage=clicked_apply",
+        title: "Narzędzie śledzenia ofert pracy | LinkedIn",
+        siteName: "LinkedIn",
+      },
+    ]) {
+      const rules = extractJobByRules(page)
+      expect(rules.company).toBeNull()
+      expect(rules.companyGuess).toBeUndefined()
+      expect(needsModel(page, rules)).toBe(false)
+      expect(finishJob(page, rules)).toBeNull()
+    }
+    expect(cleanTitle("(3) Kanał informacji | LinkedIn")).toBe("Kanał informacji")
+  })
+})
+
+describe("a guess from the window title", () => {
+  const onVendor = { url: "https://apply.workable.com/j/ABC123", title: "Senior Engineer - Acme" }
+
+  it("does not count as knowing the company, so the model is asked", () => {
+    const rules = extractJobByRules(onVendor)
+    expect(rules).toMatchObject({ company: null, companyGuess: "Acme" })
+    expect(isComplete(rules)).toBe(false)
+    expect(needsModel(onVendor, rules)).toBe(true)
+  })
+
+  it("gives way to the model, and stands in when the model has no answer", () => {
+    const rules = extractJobByRules(onVendor)
+    const read = { company: "Acme Robotics", title: null, location: null }
+    expect(finishJob(onVendor, mergeFacts(rules, read))?.company).toBe("Acme Robotics")
+    expect(finishJob(onVendor, mergeFacts(rules, null))?.company).toBe("Acme")
+  })
+
+  it("gives way to the company's own host", () => {
+    const page = { url: "https://careers.acme.com/1", title: "Staff Engineer - Platform Team" }
+    expect(finishJob(page, extractJobByRules(page))?.company).toBe("Acme")
+  })
+
+  it.each([
+    ["Staff Engineer - Warsaw"],
+    ["Senior Backend Developer | Remote"],
+    ["Application form | Apply now"],
+    ["Senior AEM Developer - banking domain (f/m/x)"],
+    ["Senior Engineer - Backend"],
+    ["Kanał informacji - Oferty pracy"],
+  ])("is never a place, a site section or a part of the role: %s", (title) => {
+    expect(
+      extractJobByRules({ url: "https://apply.workable.com/j/ABC123", title }).companyGuess
+    ).toBeUndefined()
+  })
+})
+
+describe("extractJobByModel", () => {
+  afterEach(() => {
+    vi.mocked(createLlmClient).mockReset()
+    vi.mocked(createLlmClient).mockReturnValue(null)
+  })
+
+  function modelSays(company: string) {
+    const completeJson = vi.fn(async () => ({
+      data: { company, title: "Head of Development", location: null, salary: null },
+      tokenInput: 0,
+      tokenOutput: 0,
+      cached: false,
+    }))
+    vi.mocked(createLlmClient).mockReturnValue({
+      model: "test",
+      completeJson,
+      completeText: vi.fn(),
+    } as never)
+    return completeJson
+  }
+
+  it("shows the model the site name", async () => {
+    const completeJson = modelSays("Zefirex")
+    const facts = await extractJobByModel({
+      url: "https://zefirex.bamboohr.com/careers/115",
+      title: "BambooHR",
+      siteName: "Zefirex Sp. z o.o.",
+      text: "About Zefirex",
+    })
+    expect(facts?.company).toBe("Zefirex")
+    expect(JSON.stringify(completeJson.mock.calls[0])).toContain("Zefirex Sp. z o.o.")
+  })
+
+  it.each([
+    ["BambooHR", "https://zefirex.bamboohr.com/careers/115"],
+    ["Warszawa", "https://careers.acme.com/1"],
+    ["Oferty pracy", "https://careers.acme.com/1"],
+  ])("drops %s when the model names it as the company", async (company, url) => {
+    modelSays(company)
+    const facts = await extractJobByModel({ url, title: "x", text: "y" })
+    expect(facts?.company).toBeNull()
+    expect(facts?.title).toBe("Head of Development")
+  })
+})
+
 describe("normalizePostingUrl", () => {
   it("maps application pages to their posting", () => {
     const cases: [string, string][] = [
@@ -198,6 +385,20 @@ describe("index lookup and fallbacks", () => {
     expect(companyFromHost("https://www.acme.com/jobs/1")).toBe("Acme")
     expect(companyFromHost("https://careers.acme.co.uk/jobs/1")).toBe("Acme")
     expect(companyFromHost("https://jobs.acme.com.au/1")).toBe("Acme")
+  })
+
+  it.each([
+    "https://www.linkedin.com/feed/",
+    "https://apply.workable.com/j/ABC",
+    "https://zefirex.bamboohr.com/careers/115",
+    "https://skk.erecruiter.pl/Offer.aspx?oid=1",
+    "https://acme.taleo.net/careersection/2/jobapply.ftl",
+    "https://fa-abc.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/job/1",
+    "https://boards.eu.greenhouse.io/x",
+    "https://www.pracuj.pl/praca/x,oferta,1",
+    "https://justjoin.it/job-offer/x",
+  ])("names no company after a platform's own host: %s", (url) => {
+    expect(companyFromHost(url)).toBeNull()
   })
 })
 
@@ -273,9 +474,9 @@ describe("boardUrlFacts", () => {
 
   it("reads the company LinkedIn's own lists put in the address", () => {
     const url =
-      "https://www.linkedin.com/jobs/view/4478971728/?companyName=Fast+Forward+Solutions+-+Executive+%26+Direct+Search+Services&refId=x"
+      "https://www.linkedin.com/jobs/view/4478971728/?companyName=Swift+Harbor+Solutions+-+Executive+%26+Direct+Search+Services&refId=x"
     expect(boardUrlFacts(url)).toEqual({
-      company: "Fast Forward Solutions - Executive & Direct Search Services",
+      company: "Swift Harbor Solutions - Executive & Direct Search Services",
       title: null,
       location: null,
     })

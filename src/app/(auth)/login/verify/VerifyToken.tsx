@@ -1,36 +1,44 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import { useRouter } from "next/navigation"
-import { CircleAlert, LoaderCircle } from "lucide-react"
+import { CircleAlert } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { ButtonLink } from "src/app/components/ds/Button"
+import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { safeReturnTo } from "src/shared/return-to"
 import consumeLoginToken from "../../mutations/consumeLoginToken"
 
-export function VerifyToken({ token, next }: { token: string; next?: string | null }) {
+/** Asks before signing in: the person sees which account the link opens and clicks. */
+export function VerifyToken({
+  token,
+  next,
+  account,
+  switching,
+}: {
+  token: string
+  next?: string | null
+  account: string | null
+  switching: boolean
+}) {
   const { t } = useCopy()
-  const [consume] = useMutation(consumeLoginToken)
+  const [consume, { isPending }] = useMutation(consumeLoginToken)
   const router = useRouter()
-  const [failed, setFailed] = useState(false)
-  const started = useRef(false)
+  const [failed, setFailed] = useState(!account)
   const destination = safeReturnTo(next) ?? "/jobs"
 
-  useEffect(() => {
-    if (started.current) return
-    started.current = true
+  function signIn() {
     consume({ token })
       .then(() => {
         router.refresh()
         router.replace(destination)
       })
       .catch(() => setFailed(true))
-  }, [consume, destination, router, token])
+  }
 
   return (
     <div className="card auth-card" role="status">
-      {failed ? (
+      {failed || !account ? (
         <>
           <p className="row" style={{ color: "var(--danger)" }}>
             <CircleAlert width={20} height={20} aria-hidden /> {t("li.toast.expired")}
@@ -42,10 +50,18 @@ export function VerifyToken({ token, next }: { token: string; next?: string | nu
           </div>
         </>
       ) : (
-        <p className="row muted">
-          <LoaderCircle className="spin" width={20} height={20} aria-hidden style={{ animation: "spin 1s linear infinite" }} />
-          {t("login.verifying")}
-        </p>
+        <>
+          <div className="stack-sm">
+            <h1 className="t-h1">{t("login.confirm.title", { email: account })}</h1>
+            {switching ? <p className="muted">{t("login.confirm.switch")}</p> : null}
+            <p className="muted">{t("login.confirm.notYou")}</p>
+          </div>
+          <div>
+            <Button variant="primary" onClick={signIn} loading={isPending} disabled={isPending}>
+              {isPending ? t("login.verifying") : t("login.confirm.cta")}
+            </Button>
+          </div>
+        </>
       )}
     </div>
   )

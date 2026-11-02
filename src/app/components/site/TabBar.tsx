@@ -7,14 +7,23 @@ import { Building2, ClipboardList, Heart, Rows3, UserRound } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 
 /** Mobile bottom tab bar for people with a profile or an account. Hidden ≥ 768 px. */
-export function TabBar({ liked, newAtWatched }: { liked: number; newAtWatched: number }) {
+export function TabBar({
+  liked,
+  newAtWatched,
+  offerIndex,
+}: {
+  liked: number
+  newAtWatched: number
+  /** False with OFFER_INDEX=off: only the tabs that do not need offers stay */
+  offerIndex: boolean
+}) {
   const { t } = useCopy()
   const pathname = usePathname()
   useEffect(() => {
     document.body.classList.add("has-tabbar")
     return () => document.body.classList.remove("has-tabbar")
   }, [])
-  const items = [
+  const all = [
     {
       href: "/jobs",
       label: t("nav.forYou"),
@@ -33,6 +42,9 @@ export function TabBar({ liked, newAtWatched }: { liked: number; newAtWatched: n
     { href: "/companies", label: t("nav.companies"), icon: Building2, on: pathname.startsWith("/companies"), badge: newAtWatched },
     { href: "/profile", label: t("nav.profile"), icon: UserRound, on: pathname.startsWith("/profile"), badge: 0 },
   ]
+  const items = offerIndex
+    ? all
+    : all.filter(({ href }) => href === "/applications" || href === "/profile")
   return (
     <nav className="tabbar" aria-label={t("nav.main")}>
       {items.map(({ href, label, icon: Icon, on, badge }) => (

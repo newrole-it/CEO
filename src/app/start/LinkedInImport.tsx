@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
+import { useMutation } from "@blitzjs/rpc"
 import {
   Check,
   CircleAlert,
@@ -17,6 +18,7 @@ import type { CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
 import { Dropzone } from "src/app/components/ds/interactive"
 import { Badge, Banner } from "src/app/components/ds/primitives"
+import ensureGuest from "src/app/profile/mutations/ensureGuest"
 import type { ProfileDraft } from "src/server/profile/schema"
 import { BROWSER_IMPORT_HEADER, LINKEDIN_BROWSER_STAGES } from "src/shared/linkedin-import"
 
@@ -50,6 +52,7 @@ export function LinkedInImport({
 }) {
   const { t } = useCopy()
   const [state, setState] = useState<State>({ kind: "idle" })
+  const [ensureSession] = useMutation(ensureGuest)
   const timer = useRef<number | null>(null)
   const alive = useRef(true)
 
@@ -65,6 +68,8 @@ export function LinkedInImport({
     setState({ kind: "running", stage: "connecting" })
     let jobId: string
     try {
+      // The import runs for a session only, and a first visit has none yet.
+      await ensureSession(null)
       const response = await fetch("/api/profile/linkedin-browser", {
         method: "POST",
         headers: { [BROWSER_IMPORT_HEADER]: "1" },

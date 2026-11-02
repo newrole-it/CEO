@@ -14,7 +14,7 @@ Getting your profile needs no LinkedIn app and no keys. `/start` → "Pobierz z 
 
 This reads only your own profile, in your own browser, when you start it. Nowa Rola does not crawl LinkedIn. In Claude Code, the `onboard` MCP prompt follows the same rules, and `profile_import` takes `text`, `pdfPath`, or `zipPath`.
 
-A PDF is written to a temporary file, read, and deleted before the request continues. It is not stored. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so a CV can be created from them. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source. Model replies from the CV are cached under the user and removed with the profile.
+A PDF is parsed in memory (`src/server/profile/pdf.ts`): it never touches the disk and is not stored. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so a CV can be created from them. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source. Model replies from the CV are cached under the user and removed with the profile.
 
 ### Sign in with LinkedIn (optional)
 
@@ -27,11 +27,11 @@ Sign-in uses the official OpenID Connect flow, scopes `openid`, `profile`, and `
 
 ## Deciding on offers
 
-Reject and Interested sit on each offer, with J or ← and K or →, and Z to undo several steps. On a narrow screen the same offers are a swipe stack: left rejects, right marks interested. Decided offers leave the main list until you turn on Show decided. A guest's decisions are stored in this browser and merged into the account at sign-in. Results can filter by industry and a minimum monthly salary; the minimum hides undisclosed salaries.
+"Not for me" and "I like it" sit on each offer, with J or ← and K or →, A marks it applied, and Z undoes several steps. On a narrow screen the same offers are a swipe stack: left is "Not for me", right is "I like it". Decided offers leave the For you list and are listed under Saved (`/jobs/saved`: liked, applied, passed). Deciding without an account creates a guest account on the server; its decisions move to your account when you sign in. Results can filter by industry and a minimum monthly salary; the minimum hides undisclosed salaries.
 
 ## Profile and CV audit
 
-The LinkedIn profile audit (`/profile/audit`, and the extension on your own profile page) gives a 0–100 score with what to change: keyword gaps counted from the offers in your saved searches, vague wording, invisible seniority, date gaps and form, each with text to paste.
+The LinkedIn profile audit (the extension on your own profile page) gives a 0–100 score with what to change: keyword gaps counted from the offers in your saved searches, vague wording, invisible seniority, date gaps and form, each with text to paste. `/profile/audit` no longer shows it: it opens the CV audit below for the first editable CV in your list (the default CV comes first), or for an uploaded PDF when none is editable, asks a guest to sign in, and without any CV points to `/cv`.
 
 The CV audit runs in the CV editor (`/cv/<id>?audit=1`, or the Audit button). It underlines exact phrases on the sheet, puts a comment beside each one, and where the wording can be proposed, offers it to apply in one click. A note is tied to its words: once they change, the note is done, and undo brings it back. Marks are CSS highlights, so nothing reaches the saved CV or the PDF. Keyword notes use the latest successful search for each saved role: a phrase becomes a note only when at least five matched offers contain it, that share is at least 15%, and the CV never says it. The model cannot supply a score or a percentage; a suggestion with a number the CV does not have is dropped and replaced with a placeholder such as `[liczba]`. Without a model, the notes come from rules, with no suggested wording.
 

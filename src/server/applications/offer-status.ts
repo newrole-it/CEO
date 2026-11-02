@@ -168,10 +168,7 @@ export function matchOffer<Row extends Comparable>(
         .filter((row) => row !== exact && !isPlatformName(row.company, row.url))
         .map((row) => ({
           row,
-          verdict: compareCompanies(
-            company,
-            identifyCompany(row.company, map, row.job?.companyId)
-          ),
+          verdict: compareCompanies(company, identifyCompany(row.company, map, row.job?.companyId)),
         }))
     : []
   const title = offer.title
@@ -270,7 +267,11 @@ export async function offerStatus(userId: number, page: OfferPage): Promise<Offe
   const map = facts.company
     ? await companyMapFor([facts.company, ...rows.map((row) => row.company)])
     : new Map<string, string[]>()
-  const { applied, sameCompany } = matchOffer(rows, { url: page.url, jobId: job?.id, ...facts }, map)
+  const { applied, sameCompany } = matchOffer(
+    rows,
+    { url: page.url, jobId: job?.id, ...facts },
+    map
+  )
   return {
     applied: applied
       ? {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { COMPANY_ALIASES } from "config/company-aliases"
 import { companyKey } from "src/server/gmail/allowlist"
 import { planCompanyAliases } from "./aliases"
-import { companyKeys } from "./names"
+import { companyNameKey } from "./names"
 
 function keysOf(rows: ReturnType<typeof planCompanyAliases>, companyId: string) {
   return rows
@@ -12,27 +12,19 @@ function keysOf(rows: ReturnType<typeof planCompanyAliases>, companyId: string) 
 }
 
 describe("planCompanyAliases", () => {
-  it("writes the key of each company's name and its second names", () => {
+  it("writes the key of each company's name, and nothing from its brackets", () => {
     const rows = planCompanyAliases({
       companies: [
         { id: "a", name: "Techland S.A." },
-        { id: "b", name: "Exadel (acquired Codete)" },
+        { id: "b", name: "Mangopay (incl. Nethone)" },
       ],
       boards: [],
       curated: [],
     })
-    expect(rows).toContainEqual({
-      companyId: "a",
-      alias: "Techland S.A.",
-      normalizedAlias: "techland",
-      confidence: 1,
-    })
-    expect(rows).toContainEqual({
-      companyId: "b",
-      alias: "Codete",
-      normalizedAlias: "codete",
-      confidence: 0.8,
-    })
+    expect(rows).toEqual([
+      { companyId: "a", alias: "Techland S.A.", normalizedAlias: "techland", confidence: 1 },
+      { companyId: "b", alias: "Mangopay", normalizedAlias: "mangopay", confidence: 1 },
+    ])
   })
 
   it("gives two index rows of one company the same key, without touching them", () => {
@@ -56,12 +48,12 @@ describe("planCompanyAliases", () => {
       ],
       boards: [],
       curated: [
-        { company: "Text", aliases: ["LiveChat"] },
+        { company: "Text", aliases: ["LiveChat Software"] },
         { company: "Nobody", aliases: ["Nobody Else"] },
       ],
     })
-    expect(keysOf(rows, "a")).toEqual(["livechat", "text"])
-    expect(keysOf(rows, "b")).toEqual(["livechat", "text"])
+    expect(keysOf(rows, "a")).toEqual(["livechatsoftware", "text"])
+    expect(keysOf(rows, "b")).toEqual(["livechatsoftware", "text"])
     expect(rows.map((row) => row.normalizedAlias)).not.toContain("nobodyelse")
   })
 
@@ -101,10 +93,20 @@ describe("planCompanyAliases", () => {
 })
 
 describe("the curated list", () => {
-  it("has entries that say something and tie no two companies together", () => {
+  it.each(COMPANY_ALIASES.map((entry) => [entry.company, entry] as const))(
+    "%s says what its source says, and where it was read",
+    (_company, entry) => {
+      expect(entry.source).toMatch(/^https:\/\/[^/]+\.[^/]+/)
+      expect(entry.fact.length).toBeGreaterThan(20)
+      expect(entry.checked).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(entry.aliases.length).toBeGreaterThan(0)
+    }
+  )
+
+  it("ties no two companies together, and says more than the spelling does", () => {
     const owner = new Map<string, string>()
     for (const entry of COMPANY_ALIASES) {
-      const company = companyKeys(entry.company)[0]!
+      const company = companyNameKey(entry.company)
       expect(company, entry.company).toBeTruthy()
       for (const alias of entry.aliases) {
         const key = companyKey(alias)

@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import db from "db"
 import { linkedInCredentials } from "src/server/auth/linkedin"
 import { isLocalInstall } from "src/server/local-install"
+import { offerIndexEnabled } from "src/server/offer-index"
 import { listWatched } from "src/server/watchlist/watch"
 import { translator, type Locale } from "src/app/i18n/copy"
 import { MergeDecisions } from "src/app/searches/MergeDecisions"
@@ -99,11 +100,18 @@ export async function SiteFrame({
               newAtWatched={counts.newAtWatched}
               app={app}
               setup={isLocalInstall()}
+              offerIndex={offerIndexEnabled()}
             />
           )}
           {main}
           {kind === "focus" ? null : <SiteFooter locale={locale} />}
-          {app && kind !== "focus" ? <TabBar liked={counts.liked} newAtWatched={counts.newAtWatched} /> : null}
+          {app && kind !== "focus" ? (
+            <TabBar
+              liked={counts.liked}
+              newAtWatched={counts.newAtWatched}
+              offerIndex={offerIndexEnabled()}
+            />
+          ) : null}
         </div>
       </ToastProvider>
     </LinkedInSignInProvider>

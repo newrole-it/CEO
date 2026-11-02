@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { intlLocale } from "src/app/i18n/copy"
+import { intlLocale, translator, type Locale, type T } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { IndexProgress } from "./IndexProgress"
@@ -10,12 +10,14 @@ import { OpsPanel } from "./OpsPanel"
 import getCoverage from "./queries/getCoverage"
 import getOps from "./queries/getOps"
 
-export const metadata = { title: "Pobieranie" }
+export async function generateMetadata() {
+  return { title: translator(await getLocale())("nav.coverage") }
+}
 
-function formatWhen(value: Date | null, overdueLabel?: string): string {
-  if (!value) return "Not yet"
-  if (overdueLabel && value.getTime() <= Date.now()) return overdueLabel
-  return new Intl.DateTimeFormat("en-GB", {
+function formatWhen(value: Date | null, locale: Locale, t: T, overdue = false): string {
+  if (!value) return t("cov.notYet")
+  if (overdue && value.getTime() <= Date.now()) return t("cov.dueNow")
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -24,10 +26,10 @@ function formatWhen(value: Date | null, overdueLabel?: string): string {
   }).format(value)
 }
 
-function policyLabel(policy: string): string {
-  if (policy === "enabled") return "Allowed"
-  if (policy === "limited") return "Allowed with limits"
-  return "Link-only"
+function policyLabel(policy: string, t: T): string {
+  if (policy === "enabled") return t("cov.policy.enabled")
+  if (policy === "limited") return t("cov.policy.limited")
+  return t("cov.policy.linkOnly")
 }
 
 export default async function CoveragePage() {
@@ -37,6 +39,7 @@ export default async function CoveragePage() {
   const [coverage, ops] = await Promise.all([invoke(getCoverage, null), invoke(getOps, null)])
   const rows = coverage.rows
   const pl = locale === "pl"
+  const t = translator(locale)
   return (
     <SiteFrame user={user} locale={locale}>
       <OpsPanel ops={ops} locale={locale} />
@@ -58,20 +61,20 @@ export default async function CoveragePage() {
         <Link href="/">{pl ? "Nowe wyszukiwanie" : "New search"}</Link>
       </div>
       {rows.length === 0 ? (
-        <div className="empty-card">No employers are configured.</div>
+        <div className="empty-card">{t("cov.empty")}</div>
       ) : (
         <div className="coverage-wrap">
           <table className="coverage-table">
             <thead>
               <tr>
-                <th>Employer</th>
-                <th>Platform</th>
-                <th>Policy</th>
-                <th>Index</th>
-                <th>Last crawl</th>
-                <th>Next crawl</th>
-                <th>Jobs</th>
-                <th>Reason</th>
+                <th>{t("cov.th.employer")}</th>
+                <th>{t("cov.th.platform")}</th>
+                <th>{t("cov.th.policy")}</th>
+                <th>{t("cov.th.index")}</th>
+                <th>{t("cov.th.lastCrawl")}</th>
+                <th>{t("cov.th.nextCrawl")}</th>
+                <th>{t("cov.th.jobs")}</th>
+                <th>{t("cov.th.reason")}</th>
               </tr>
             </thead>
             <tbody>
@@ -88,19 +91,21 @@ export default async function CoveragePage() {
                   </td>
                   <td>{row.platform}</td>
                   <td>
-                    <span className={`policy ${row.policy}`}>{policyLabel(row.policy)}</span>
+                    <span className={`policy ${row.policy}`}>{policyLabel(row.policy, t)}</span>
                   </td>
                   <td>
                     {row.policy === "link_only" ? (
-                      <span className="policy link_only">Not crawled</span>
+                      <span className="policy link_only">{t("cov.index.notCrawled")}</span>
                     ) : row.incomplete ? (
-                      <span className="policy incomplete">Incomplete</span>
+                      <span className="policy incomplete">{t("cov.index.incomplete")}</span>
                     ) : (
-                      <span className="policy">Complete</span>
+                      <span className="policy">{t("cov.index.complete")}</span>
                     )}
                   </td>
-                  <td>{formatWhen(row.lastFetch)}</td>
-                  <td>{row.policy === "link_only" ? "—" : formatWhen(row.nextFetch, "Due now")}</td>
+                  <td>{formatWhen(row.lastFetch, locale, t)}</td>
+                  <td>
+                    {row.policy === "link_only" ? "—" : formatWhen(row.nextFetch, locale, t, true)}
+                  </td>
                   <td>
                     {row.jobCount}
                     {row.listedCount > row.jobCount ? ` / ${row.listedCount}` : ""}
@@ -111,7 +116,7 @@ export default async function CoveragePage() {
                     {row.termsUrl ? (
                       <div>
                         <a href={row.termsUrl} target="_blank" rel="noreferrer noopener">
-                          Terms
+                          {t("cov.terms")}
                         </a>
                       </div>
                     ) : null}

@@ -30,7 +30,7 @@ type PanelDoc = {
   content: CvContent
   language: CvLanguage
   flush: () => Promise<boolean>
-  replace: (next: { content: CvContent; language: CvLanguage }) => void
+  replace: (next: { content: CvContent; language: CvLanguage }, updatedAt: Date) => void
   undo: () => void
 }
 
@@ -167,7 +167,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
     try {
       await doc.flush()
       const result = await invoke(restoreCvVersion, { id, versionId: version.id })
-      doc.replace({ content: result.content, language: result.language })
+      doc.replace({ content: result.content, language: result.language }, result.updatedAt)
       await load(result.content)
       setCompare(null)
       toast.show({
@@ -400,7 +400,7 @@ function ReviewTab({
         ? await invoke(generateCoverLetter, input)
         : await invoke(tailorCvForJob, { ...input, locale })
       if (!result) throw new Error("no result")
-      doc.replace({ content: result.content, language: result.language })
+      doc.replace({ content: result.content, language: result.language }, result.updatedAt)
       onNotes(result.notes)
       toast.show({
         message: t("tl.r.done"),

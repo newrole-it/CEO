@@ -4,6 +4,10 @@ import db from "db"
 import {BlitzLogger} from "blitz"
 import {RpcServerPlugin} from "@blitzjs/rpc"
 import {authConfig} from "./blitz-auth-config"
+import {assertSafeProductionEnv} from "src/server/security/env-check"
+import {RPC_LOGGING} from "src/server/security/rpc-logging"
+
+assertSafeProductionEnv()
 
 const {api, getBlitzContext, useAuthenticatedBlitzContext, invoke,withBlitzAuth} = setupBlitzServer({
   plugins: [
@@ -12,7 +16,7 @@ const {api, getBlitzContext, useAuthenticatedBlitzContext, invoke,withBlitzAuth}
       storage: PrismaStorage(db),
       isAuthorized: simpleRolesIsAuthorized,
     }),
-    RpcServerPlugin({}),
+    RpcServerPlugin({logging: RPC_LOGGING}),
   ],
   logger: BlitzLogger({}),
 })

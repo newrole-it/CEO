@@ -2,6 +2,7 @@
  * Service worker: the only place that talks to the app and holds the token. Content scripts ask
  * it through messages and never see the token. See docs/product/plan-aplikacje.md §5.3 and §5.4.
  */
+import { isGmail, parseMailDate, readOpenMail } from "./gmail.js"
 import { linkedInJobId, statusLine } from "./offer.js"
 
 const DEFAULT_APP = "http://127.0.0.1:43123"
@@ -253,6 +254,32 @@ async function runInTab(tabId, type) {
   }
 }
 
+// ---------------------------------------------------------------------- Gmail
+
+/**
+ * Reads the message open in the Gmail tab and asks the app what it says. Only after a click in
+ * the popup: activeTab is what lets the script in, and only this once.
+ */
+async function readMailInTab(tabId) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null)
+  if (!isGmail(tab?.url)) return { ok: false, error: "not-gmail" }
+  let read
+  try {
+    const [first] = await chrome.scripting.executeScript({ target: { tabId }, func: readOpenMail })
+    read = first?.result
+  } catch (_error) {
+    return { ok: false, error: "restricted" }
+  }
+  if (!read?.ok) return { ok: false, error: read?.error || "no-mail" }
+  const { date, fromSelection, ...rest } = read.mail
+  const mail = { ...rest, receivedAt: parseMailDate(date) }
+  const result = await api("/api/ext/mail", { method: "POST", body: JSON.stringify(mail) })
+  if (!result.ok) return result
+  // The popup sends the same message back with the person's choice; the text stays behind.
+  const { text: _text, ...kept } = mail
+  return { ok: true, data: result.data, mail: kept, fromSelection }
+}
+
 // ---------------------------------------------------------------------- toast after navigation
 
 /** A submission usually navigates away; the next page in the tab shows what the old one could not. */
@@ -403,6 +430,22 @@ async function handle(message, sender) {
     case "saveTab":
       if (!fromExtensionPage(sender)) return { ok: false, error: "forbidden" }
       return runInTab(message.tabId, message.type === "fillTab" ? "nr:fill" : "nr:save")
+    case "mailTab":
+      if (!fromExtensionPage(sender)) return { ok: false, error: "forbidden" }
+      return readMailInTab(message.tabId)
+    case "useMail":
+      if (!fromExtensionPage(sender)) return { ok: false, error: "forbidden" }
+      return api("/api/ext/mail/use", {
+        method: "POST",
+        body: JSON.stringify({
+          mail: message.mail,
+          applicationId: message.applicationId,
+          status: message.status || null,
+          signal: message.signal,
+          reader: message.reader,
+          evidence: message.evidence ?? null,
+        }),
+      })
     default:
       return { ok: false, error: "unknown-message" }
   }

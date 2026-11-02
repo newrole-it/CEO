@@ -1,6 +1,8 @@
 import { createHash } from "crypto"
 
-const TRACKING = /^(utm_|gh_|lever-|source|ref|trk|mc_|fbclid|gclid|igshid)/i
+// gh_src is Greenhouse's referral tag. gh_jid is the job id on employer-hosted Greenhouse
+// boards (stripe.com/jobs/search?gh_jid=...), so it must stay or every job shares one URL.
+const TRACKING = /^(utm_|gh_src$|lever-|source|ref|trk|mc_|fbclid|gclid|igshid)/i
 
 export function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex")

@@ -1,14 +1,16 @@
 import { getBlitzContext } from "src/app/blitz-server"
 import { CvError, MAX_CV_PDF_BYTES, uploadCvPdf } from "src/server/cv/service"
+import { crossSiteRefused, isSameAppRequest } from "src/server/security/origin"
 
 /** Stores an uploaded PDF as it is. Multipart: file, optional title and language. */
 export async function POST(request: Request) {
+  // getBlitzContext copies the anti-CSRF cookie into the header itself, so it checks nothing here.
+  if (!isSameAppRequest(request)) return crossSiteRefused()
   let userId: number | null | undefined
   try {
     const ctx = await getBlitzContext()
     userId = ctx.session.userId
   } catch {
-    // a missing or wrong anti-CSRF token ends up here
     return Response.json({ error: "Sign in required.", code: "auth" }, { status: 401 })
   }
   if (!userId) return Response.json({ error: "Sign in required.", code: "auth" }, { status: 401 })

@@ -2,12 +2,12 @@ import { Prisma } from "@prisma/client"
 import db from "db"
 import { indexNextDue } from "src/server/index/run"
 import { maybeSyncOfferSearch } from "src/server/discovery/offer-sync"
+import { offerIndexEnabled } from "src/server/offer-index"
 import { maybeExpandSimilar, maybeHuntHiddenOffers } from "src/server/discovery/hidden-offers"
 import { executeSearch } from "src/server/search/pipeline"
 import { enqueueSearch, GMAIL_SYNC, INDEX_WATCHED, SHEET_SYNC } from "src/server/queue/enqueue"
 import { syncSheet } from "src/server/applications/sheet"
 import { maybeSyncCompanyAliases } from "src/server/companies/aliases"
-import { maybeSyncGmail, syncGmail } from "src/server/gmail/sync"
 import { beat } from "src/server/setup/heartbeat"
 import { indexNextWatched, indexWatchedPage } from "src/server/watchlist/index-watched"
 
@@ -182,10 +182,8 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
       const result = await syncSheet(userId)
       if (result.status === "failed") throw new Error(result.message)
     } else if (task.type === GMAIL_SYNC) {
-      const userId = payloadNumber(task.payload, "userId")
-      if (!userId) throw new Error("Task is missing userId")
-      // A failure is recorded on the link and shown in settings; the next interval tries again.
-      await syncGmail(userId)
+      // The mailbox is no longer searched: a message is used only when the person picks it in the
+      // extension. A task queued before that change finishes without doing anything.
     } else {
       throw new Error(`Unknown task type ${task.type}`)
     }
@@ -228,16 +226,16 @@ export async function workerLoop(signal?: { stopped: boolean }) {
       }
       const did = await workOnce(signal)
       backoff = 1000
+      const indexing = offerIndexEnabled()
       if (!did && !signal?.stopped) {
         // Watched companies first, then the seed catalog.
-        const indexed = (await indexNextWatched()) || (await indexNextDue())
+        const indexed = indexing && ((await indexNextWatched()) || (await indexNextDue()))
         if (!indexed) await sleep(5000)
       }
-      if (!signal?.stopped) await maybeSyncOfferSearch()
-      if (!signal?.stopped) await maybeHuntHiddenOffers()
-      if (!signal?.stopped) await maybeExpandSimilar()
-      if (!signal?.stopped) await maybeSyncGmail()
-      if (!signal?.stopped) await maybeSyncCompanyAliases()
+      if (indexing && !signal?.stopped) await maybeSyncOfferSearch()
+      if (indexing && !signal?.stopped) await maybeHuntHiddenOffers()
+      if (indexing && !signal?.stopped) await maybeExpandSimilar()
+      if (indexing && !signal?.stopped) await maybeSyncCompanyAliases()
     } catch (error) {
       console.error("Worker loop error", error)
       await sleep(backoff)

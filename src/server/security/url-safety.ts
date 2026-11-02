@@ -47,45 +47,52 @@ function isBlockedIpv4(ip: string): boolean {
   return false
 }
 
+/**
+ * Decided on the eight numeric groups, not on the spelling: ::7f00:1, ::ffff:0:7f00:1 and
+ * 0:0:0:0:0:ffff:127.0.0.1 are all ways to write an address that ends up at 127.0.0.1.
+ */
 function isBlockedIpv6(ip: string): boolean {
-  const value = ip.toLowerCase()
-  if (value === "::1" || value === "::" || value === "0:0:0:0:0:0:0:1") return true
-  if (
-    value.startsWith("fe80:") ||
-    value.startsWith("fe8") ||
-    value.startsWith("fe9") ||
-    value.startsWith("fea") ||
-    value.startsWith("feb")
-  ) {
-    return true
+  const g = ipv6Groups(ip)
+  if (!g) return true
+  // ::ffff:a.b.c.d, IPv4-mapped: exactly as safe as that IPv4 address.
+  if (g.slice(0, 5).every((group) => group === 0) && g[5] === 0xffff) {
+    return isBlockedIpv4(`${g[6] >> 8}.${g[6] & 0xff}.${g[7] >> 8}.${g[7] & 0xff}`)
   }
-  // Unique local fc00::/7 and link-local / multicast.
-  if (value.startsWith("fc") || value.startsWith("fd") || value.startsWith("ff")) return true
-  const mapped = value.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-  if (mapped) return isBlockedIpv4(mapped[1])
-  if (value.startsWith("::ffff:")) {
-    const hex = value.slice("::ffff:".length)
-    const v4 = ipv4FromMappedHex(hex)
-    if (v4) return isBlockedIpv4(v4)
-  }
-  if (value.startsWith("2002:")) return true
-  if (value.startsWith("64:ff9b:") || value === "64:ff9b::") return true
-  if (/^fe[c-f]/.test(value)) return true
-  if (/^::(\d+\.\d+\.\d+\.\d+)$/.test(value)) return true
-  if (/^0:0:0:0:0:0:\d+\.\d+\.\d+\.\d+$/.test(value)) return true
+  // Only 2000::/3 is global unicast. Everything else is loopback, unspecified, IPv4-compatible
+  // (::/96), IPv4-translated (::ffff:0:0/96), NAT64 (64:ff9b::/96), discard (100::/64),
+  // unique local (fc00::/7), link- and site-local (fe80::/10, fec0::/10) or multicast (ff00::/8).
+  if ((g[0] & 0xe000) !== 0x2000) return true
+  // 2001::/23 holds Teredo (2001::/32), which tunnels to an IPv4 address, and other IETF ranges.
+  if (g[0] === 0x2001 && g[1] < 0x0200) return true
+  // Documentation (2001:db8::/32, 3fff::/20) and 6to4 (2002::/16), which embeds an IPv4 address.
+  if (g[0] === 0x2001 && g[1] === 0x0db8) return true
+  if (g[0] === 0x3fff && g[1] < 0x1000) return true
+  if (g[0] === 0x2002) return true
   return false
 }
 
-function ipv4FromMappedHex(hex: string): string | null {
-  const parts = hex.split(":")
-  if (parts.length !== 2) return null
-  const nums = parts.map((part) => Number.parseInt(part, 16))
-  if (nums.some((num) => !Number.isFinite(num) || num < 0 || num > 0xffff)) return null
-  const a = (nums[0] >> 8) & 0xff
-  const b = nums[0] & 0xff
-  const c = (nums[1] >> 8) & 0xff
-  const d = nums[1] & 0xff
-  return `${a}.${b}.${c}.${d}`
+/** The eight 16-bit groups of an IPv6 address, or null when it is not one. */
+function ipv6Groups(ip: string): number[] | null {
+  let value = ip.toLowerCase().split("%")[0]
+  // A dotted IPv4 tail (::ffff:1.2.3.4) is the last two groups.
+  const dotted = value.match(/^(.*:)(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+  if (dotted) {
+    const bytes = dotted.slice(2).map(Number)
+    if (bytes.some((byte) => byte > 255)) return null
+    const hi = ((bytes[0] << 8) | bytes[1]).toString(16)
+    const lo = ((bytes[2] << 8) | bytes[3]).toString(16)
+    value = `${dotted[1]}${hi}:${lo}`
+  }
+  const halves = value.split("::")
+  if (halves.length > 2) return null
+  const head = halves[0] ? halves[0].split(":") : []
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : []
+  const missing = 8 - head.length - tail.length
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return null
+  const filler = new Array<string>(halves.length === 2 ? missing : 0).fill("0")
+  const groups = [...head, ...filler, ...tail]
+  if (groups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))) return null
+  return groups.map((group) => Number.parseInt(group, 16))
 }
 
 export function assertSafeUrl(raw: string): URL {

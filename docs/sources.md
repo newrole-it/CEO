@@ -16,7 +16,7 @@ Between searches the same worker indexes the full allowed catalog: one request p
 
 ## Crawler rules
 
-The crawler sends `NowaRolaBot/0.1` with a contact URL on `APP_URL`, waits at least 5 seconds between requests to a host, fetches at most 200 job pages per host per day, refreshes sitemaps daily, and honors robots.txt. Stored text is a short excerpt plus the canonical link. When a person tailors a CV to an offer, or `job_get` is called with `fullText`, the whole text of that one offer is read under the same rules, held in memory for 15 minutes, and not stored ([product/plan-p0.md](product/plan-p0.md)). Recruiter names, emails, and phone numbers are dropped. Pages that opt out of AI input or training, or reserve text-and-data mining, are scored with the rules and are not sent to the model. Logins and bot walls are not bypassed.
+The crawler sends `NowaRolaBot/0.1` with a link to [`/bot`](../src/app/bot/page.tsx) on `APP_URL`, which says how a site opts out, waits at least 5 seconds between requests to a host, fetches at most 200 job pages per host per day, refreshes sitemaps daily, and honors robots.txt. Stored text is a short excerpt plus the canonical link. When a person tailors a CV to an offer, or `job_get` is called with `fullText`, the whole text of that one offer is read under the same rules, held in memory for 15 minutes, and not stored ([product/plan-p0.md](product/plan-p0.md)). Recruiter names, emails, and phone numbers are dropped. Pages that opt out of AI input or training, or reserve text-and-data mining, are scored with the rules and are not sent to the model. Logins and bot walls are not bypassed.
 
 Watched companies (added in the app or by Claude through MCP) follow the same rules: source policy, robots.txt, 5 seconds per host, 200 detail pages per host per day, and no aggregators or LinkedIn. Resolving a new company reads at most 8 pages.
 
@@ -28,7 +28,7 @@ All unauthenticated GETs:
 - **Lever** Postings API (`mode=json`). Boards marked `eu:` try `api.eu.lever.co` first (XTB, OLX). A 404 on the preferred host tries the other host once
 - **Ashby** public job posting API (`includeCompensation=true`, `workplaceType` over `isRemote`)
 - **Workable** widget API on `apply.workable.com` (`details=true`). An empty `jobs` array is not a real board
-- **SmartRecruiters** Posting API, filtered with `country=pl` and `locationType=REMOTE`, paginated. `totalFound: 0` is not a real company. Set `SMARTRECRUITERS_POSTING_API=off` to stop it while the robots.txt decision is open
+- **SmartRecruiters** Posting API, filtered with `country=pl` and `locationType=REMOTE`, paginated. `totalFound: 0` is not a real company. Off by default, because robots.txt on `api.smartrecruiters.com` disallows other crawlers; `SMARTRECRUITERS_POSTING_API=on` turns it on
 - **Teamtailor** public RSS (`/jobs.rss`, with `offset` and `per_page`). A slug that already contains a dot is a custom domain
 - **Recruitee** `GET /api/offers/`. Open without a token until 10 February 2027. After that, or on HTTP 401, the board is skipped. Set `RECRUITEE_CAREERS_TOKEN` (`X-Careers-Sites-Token`)
 - **Personio** public XML (`/xml?language=en`, `.jobs.personio.de` then `.com`)
@@ -44,7 +44,7 @@ Company career pages may be read for schema.org `JobPosting` JSON-LD. Enterprise
 
 - **SuccessFactors** employer sites such as jobs.gft.com and careers.allegro.eu are read from the sitemap and job-page microdata. The legacy Allegro host career55.sapsf.eu stays link-only
 - **Workday** tenants (Intive, Motorola Solutions, Mastercard, Visa, Samsung, Thomson Reuters) are read from the sitemap and JSON-LD, with a short Poland cxs query only when the sitemap is capped
-- **iCIMS**, Phenom on employer domains, Avature RSS, eRecruiter employer pages, and Jobvite are allowed with the same limits
+- Phenom on employer domains, Avature RSS, eRecruiter employer pages, and Jobvite are allowed with the same limits. **iCIMS** is link-only: its terms ban robots
 - Callstack is the Recruitee board `callstackpl`. Grupa Pracuj is the published `jobs.feed.json` feed. Sii, Żabka, Bolt, Comarch, EPAM, and Brand24 are employer-domain sitemaps or listings
 - Wirtualna Polska and Packhelp are listing-only: titles and links are stored, detail pages are not fetched. Synerise job pages come from web search plus JSON-LD, because `/api/` is disallowed
 - jobs.sap.com, Oracle Recruiting (including Nokia), Taleo, careers.phenom.com, Siemens job pages, HiBob, Dynatrace, Codility, Oviva, Revolut, Future Processing, Saleor, Billtech, and JPMorganChase stay link-only

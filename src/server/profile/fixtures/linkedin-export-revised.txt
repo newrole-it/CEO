@@ -11,7 +11,7 @@ Acme
 Head of Engineering
 Jan 2020 - Present
 Warsaw
-Led a team of engineers. Owned hiring, the roadmap, and budget ownership for the adtech platform.
+Led a team of engineers. Owned hiring, the roadmap, and budget ownership for the logistics platform.
 
 Beta
 Engineering Manager

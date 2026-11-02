@@ -8,6 +8,7 @@ import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
 import { isUniqueViolation } from "src/server/jobs/prisma-errors"
 import { saveDiscoveredJob } from "src/server/index/store"
+import { offerIndexEnabled } from "src/server/offer-index"
 import { enqueueIndexWatched } from "src/server/queue/enqueue"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import { companyDomain, hostOf } from "src/server/discovery/careers-detect"
@@ -190,6 +191,9 @@ function defaultSearch(http: HttpClient) {
  * Resolves the source, stores Company + CareerPage, and queues an index run.
  */
 export async function watchCompany(input: WatchInput, deps: WatchDeps = {}): Promise<WatchResult> {
+  if (!offerIndexEnabled()) {
+    return { status: "not-found", message: "This server keeps no index of offers." }
+  }
   const now = deps.now ?? new Date()
   const http = deps.http ?? createHttpClient()
   const url = input.url?.trim() || undefined

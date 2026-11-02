@@ -64,6 +64,27 @@ export function boardFromPage(page: CareerPage, company: Company): SeedBoard {
   }
 }
 
+/**
+ * Canonical URLs of stored offers whose link is on the careers page now. Known links are not
+ * read again, and a row can be stored under its JSON-LD url while the page links another form
+ * of it, so a row counts when either its canonical or its original URL is linked. A stored row
+ * whose link is gone is not covered, so it steps to closed.
+ */
+async function coveredOnSite(careerPageId: string, links: string[]): Promise<string[]> {
+  const linked = new Set(links.map(safeCanonicalUrl))
+  const rows = await db.job.findMany({
+    where: { careerPageId, status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] } },
+    select: { canonicalUrl: true, originalUrl: true },
+  })
+  const covered = new Set(linked)
+  for (const row of rows) {
+    if (linked.has(row.canonicalUrl) || linked.has(safeCanonicalUrl(row.originalUrl))) {
+      covered.add(row.canonicalUrl)
+    }
+  }
+  return [...covered]
+}
+
 /** Read a company careers page and its job pages for schema.org JobPosting data. */
 export async function refreshCareerSite(
   page: CareerPage,
@@ -118,7 +139,8 @@ export async function refreshCareerSite(
     sourceType: "GENERIC_HTML" as const,
     sourceBoardId: board.boardId,
   }))
-  const complete = !budgetExhausted
+  // jobLinks stops at 200, so a full list of links may hide more offers.
+  const complete = !budgetExhausted && links.length < 200
   await storeBoardInventory({
     board,
     listed: {
@@ -128,7 +150,7 @@ export async function refreshCareerSite(
       listedCount: Math.max(links.length, stamped.length),
       complete,
       budgetExhausted,
-      coveredUrls: complete ? [...links.map(safeCanonicalUrl), ...known] : undefined,
+      coveredUrls: complete ? await coveredOnSite(page.id, links) : undefined,
       note: `Company site, JSON-LD. ${fetched} job pages read this run.`,
     },
     now,

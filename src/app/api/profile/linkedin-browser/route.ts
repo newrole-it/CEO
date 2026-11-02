@@ -1,38 +1,32 @@
-import { headers } from "next/headers"
 import { getBlitzContext } from "src/app/blitz-server"
-import { appOrigin } from "src/server/auth/email"
 import { draftFromProfileText } from "src/server/profile/import"
 import { linkedInBrowserAvailable, readLinkedInViaClaude } from "src/server/profile/linkedin-browser"
 import { linkedInJobs } from "src/server/profile/linkedin-jobs"
+import { isAppHostRequest, isSameAppRequest } from "src/server/security/origin"
 import { BROWSER_IMPORT_HEADER } from "src/shared/linkedin-import"
 
-async function owner(): Promise<{ key: string; userId?: number }> {
+/**
+ * The import reads the person's own LinkedIn in their Chrome, so only they may start it or see the
+ * result: a session is required (Onboarding starts a guest one), and the job is keyed to it.
+ */
+async function owner(): Promise<{ key: string; userId: number } | null> {
   try {
     const ctx = await getBlitzContext()
     if (ctx.session.userId) return { key: `user:${ctx.session.userId}`, userId: ctx.session.userId }
   } catch {
-    // no session yet: fall back to the address
+    // no usable session
   }
-  const list = await headers()
-  const ip = list.get("x-forwarded-for")?.split(",")[0]?.trim() || list.get("x-real-ip") || "local"
-  return { key: `ip:${ip}` }
+  return null
 }
 
-/** The Origin must be this app: the Host the browser used, or APP_ORIGIN. */
-function sameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin")
-  if (!origin) return true
-  try {
-    const host = new URL(origin).host
-    return host === request.headers.get("host") || host === new URL(appOrigin()).host
-  } catch {
-    return false
-  }
-}
+const refused = () => Response.json({ error: "Start the import from Nowa Rola." }, { status: 403 })
+const signInFirst = () =>
+  Response.json({ error: "Sign in required.", code: "auth" }, { status: 401 })
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request) || request.headers.get(BROWSER_IMPORT_HEADER) !== "1") {
-    return Response.json({ error: "Start the import from Nowa Rola." }, { status: 403 })
+  // A DNS-rebinding page is same-origin with the name it chose, so the Host must be this app's.
+  if (!isSameAppRequest(request) || request.headers.get(BROWSER_IMPORT_HEADER) !== "1") {
+    return refused()
   }
   if (!linkedInBrowserAvailable()) {
     return Response.json(
@@ -41,6 +35,7 @@ export async function POST(request: Request) {
     )
   }
   const who = await owner()
+  if (!who) return signInFirst()
   const { id } = linkedInJobs().start(who.key, async ({ stage }) => {
     const read = await readLinkedInViaClaude({ onStage: stage })
     if (read.status !== "ok" || !read.text) return { status: read.status, message: read.message }
@@ -52,9 +47,11 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  if (!isAppHostRequest(request)) return refused()
   const id = new URL(request.url).searchParams.get("id")
   if (!id) return Response.json({ error: "Missing id." }, { status: 400 })
   const who = await owner()
+  if (!who) return signInFirst()
   const job = linkedInJobs().get(id, who.key)
   if (!job) return Response.json({ error: "No such import." }, { status: 404 })
   return Response.json(job)

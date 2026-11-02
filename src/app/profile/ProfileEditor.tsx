@@ -16,6 +16,7 @@ import { TasteChip } from "src/app/jobs/components/Taste"
 import type { PreferenceSummary } from "src/server/preferences/model"
 import { FEEDBACK_ASPECTS } from "src/shared/feedback-aspects"
 import { emptyProfileDraft, type ProfileDraft } from "src/server/profile/schema"
+import ensureGuest from "./mutations/ensureGuest"
 import saveProfile from "./mutations/saveProfile"
 import { ProfileReview, cleanDraft, fieldsFrom, salaryError, type DraftField } from "./ProfileReview"
 
@@ -32,6 +33,7 @@ export function ProfileEditor({
   const router = useRouter()
   const toast = useToast()
   const [save, { isPending }] = useMutation(saveProfile)
+  const [ensureSession] = useMutation(ensureGuest)
   const [draft, setDraft] = useState<ProfileDraft>(initial ?? emptyProfileDraft())
   const [fromCv, setFromCv] = useState<Set<DraftField>>(new Set())
   const [key, setKey] = useState(0)
@@ -49,6 +51,7 @@ export function ProfileEditor({
     try {
       const body = new FormData()
       body.set("file", file)
+      await ensureSession(null)
       const response = await fetch("/api/profile/import", { method: "POST", body })
       const payload = (await response.json()) as { draft?: ProfileDraft; error?: string }
       if (!response.ok || !payload.draft) {

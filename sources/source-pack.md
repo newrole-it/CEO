@@ -1,6 +1,6 @@
 # Jobscanner – Verified Source Pack (v1)
 
-- **For:** one person's own job search
+- **Scope:** tech and engineering roles, Poland / EU / remote
 - **Checked:** 2026-10-10 (Europe/Warsaw). Every endpoint below was called live from the box with curl/python on that date; docs were fetched the same day.
 - **Convention:** **UNVERIFIED** = could not confirm from an official source or a live call; the reason is given.
 - **Companion files:** `seed-companies.json` (seed boards) · `scripts/candidates.py` (input list) · `scripts/verify_slugs.py` (probe) · `scripts/build_seed.py` (pick + identity check) · `scripts/add_region_stats.py` (PL/remote counts) · `scripts/raw_probe.json` (raw probe output)

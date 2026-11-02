@@ -8,6 +8,7 @@ import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { companySuggestions, type CompanySuggestions } from "src/server/discovery/similar-companies"
 import { listWatched } from "src/server/watchlist/watch"
 import { Companies } from "./Companies"
+import { FetchProgress } from "./FetchProgress"
 
 export async function generateMetadata() {
   const t = translator(await getLocale())
@@ -34,6 +35,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         <h1 className="t-h1">{t("co.title")}</h1>
         <p>{t("co.sub")}</p>
       </header>
+      {user ? <FetchProgress /> : null}
       <Companies
         focus={params.focus ?? null}
         hasSeen={Boolean(since)}

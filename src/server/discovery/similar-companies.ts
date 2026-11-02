@@ -1,11 +1,16 @@
 /**
- * Companies like the ones a person liked. Deterministic suggestions come from the
- * index; the optional Claude expansion proposes new employers and resolves each
- * through watchCompany, at most five a day per person.
+ * Companies worth watching. Deterministic suggestions come from the index: like the
+ * companies a person liked, else fitting their profile, else hiring the most in Poland.
+ * The optional Claude expansion proposes new employers and resolves each through
+ * watchCompany, at most five a day per person.
  */
 import db from "db"
+import { techScopeWhere } from "src/server/classify/scope"
+import { inPolandWhere, placeFacts } from "src/server/jobs/offer-facts"
 import { normalizeCompanyName, titleTokens } from "src/server/jobs/normalize"
 import { findClaudeBinary, runClaudePrompt, extractJson } from "src/server/llm/claude-cli"
+import { asStringList } from "src/server/profile/schema"
+import { canonicalSkill } from "src/server/profile/skills"
 import { watchCompany } from "src/server/watchlist/watch"
 import { claudeSearchEnabled } from "./claude-search"
 import { searchProvider } from "./web-search"
@@ -28,7 +33,21 @@ export type CompanyProfile = {
   roles: Set<string>
 }
 
-export type Suggestion = { companyId: string; name: string; reason: string; score: number }
+/** Why a company is suggested, as data, so the page can say it in the reader's language. */
+export type SuggestionWhy =
+  | { kind: "liked-stack"; company: string; terms: string[] }
+  | { kind: "liked-roles"; company: string; terms: string[] }
+  | { kind: "liked-industry"; company: string }
+  | { kind: "profile"; matching: number; terms: string[] }
+  | { kind: "hiring" }
+
+export type Suggestion = {
+  companyId: string
+  name: string
+  reason: string
+  why: SuggestionWhy
+  score: number
+}
 
 const TECH_TERMS = [
   "java",
@@ -121,14 +140,55 @@ function escape(term: string): string {
   return term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
+/** A whole word, spelled exactly so: "AI", not "ai" or "OpenAI". */
+const exactly = (word: string) => new RegExp(`(^|[^A-Za-z0-9+#.])${word}($|[^A-Za-z0-9+#])`)
+
+const GO_WORD = "Go(?![A-Za-z0-9+#])"
+
+/**
+ * Terms that are also everyday words: "on the go", "data entry", "react quickly", "5 ml". In a
+ * title or summary they count only spelled as the technology, or next to words that make it one.
+ */
+const STRICT_TERMS: Record<string, RegExp> = {
+  go: new RegExp(
+    [
+      `(^|[^A-Za-z0-9])(in|with|using|and|or|w|oraz)\\s+${GO_WORD}`,
+      `[(,/+&|]\\s*${GO_WORD}`,
+      `(^|[^A-Za-z0-9])Go\\s*[,/)+&|]`,
+      "(^|[^A-Za-z0-9])Go\\s+([Dd]evelop|[Ee]ngineer|[Pp]rogramm|[Dd]ev\\b|[Bb]ackend|[Mm]icroservice)",
+    ].join("|")
+  ),
+  data: /(^|[^a-z0-9])(big data|data[ -]?(engineer|scien|platform|warehous|pipeline|analy|lake|ops\b|mesh|architect|model|infrastructure|governance|quality|processing|integration))/i,
+  ai: exactly("AI"),
+  ml: exactly("ML"),
+  qa: exactly("QA"),
+  sap: exactly("SAP"),
+  sre: exactly("SRE"),
+  node: /(^|[^A-Za-z0-9+#.])(Node|node\.?js|Node\.?js|NodeJS)($|[^A-Za-z0-9+#])/,
+  react: exactly("React"),
+  spark: exactly("Spark"),
+  swift: exactly("Swift"),
+  rust: exactly("Rust"),
+  unity: exactly("Unity"),
+  vue: exactly("Vue"),
+}
+
 const TERM_PATTERNS = TECH_TERMS.map((term) => ({
   term,
-  pattern: new RegExp(`(^|[^a-z0-9+#.])${escape(term)}($|[^a-z0-9+#])`, "i"),
+  pattern: STRICT_TERMS[term] ?? new RegExp(`(^|[^a-z0-9+#.])${escape(term)}($|[^a-z0-9+#])`, "i"),
 }))
 
 /** Tech terms named in a job title or summary. */
 export function skillsIn(text: string): string[] {
   return TERM_PATTERNS.filter((item) => item.pattern.test(text)).map((item) => item.term)
+}
+
+/** Terms of one skill from a profile's list, where a bare "go" or "data" means the skill. */
+function termsOfSkill(skill: string): string[] {
+  const bare = skill.trim().toLowerCase()
+  const found = skillsIn(skill)
+  const strict = Object.prototype.hasOwnProperty.call(STRICT_TERMS, bare)
+  return strict && !found.includes(bare) ? [...found, bare] : found
 }
 
 /** Role words of a title without seniority, places, or gender tags. */
@@ -151,6 +211,10 @@ export function buildProfile(
 
 function shared(left: Set<string>, right: Set<string>): string[] {
   return [...left].filter((item) => right.has(item))
+}
+
+function termLabel(term: string): string {
+  return canonicalSkill(term)?.label ?? term
 }
 
 /**
@@ -188,10 +252,16 @@ export function scoreSimilar(
       if (score < 2) continue
       const rounded = Math.round(score * 100) / 100
       if (!best || rounded > best.score) {
+        const why: SuggestionWhy = stack.length
+          ? { kind: "liked-stack", company: source.name, terms: stack.slice(0, 3).map(termLabel) }
+          : roles.length
+            ? { kind: "liked-roles", company: source.name, terms: roles.slice(0, 3) }
+            : { kind: "liked-industry", company: source.name }
         best = {
           companyId: candidate.companyId,
           name: candidate.name,
           reason: reasons.join("; "),
+          why,
           score: rounded,
         }
       }
@@ -201,6 +271,78 @@ export function scoreSimilar(
   return out
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
     .slice(0, limit)
+}
+
+export type ProfileSignals = { skills: Set<string>; roles: Set<string> }
+
+/** What a profile says about the person's work, in the same vocabulary as company profiles. */
+export function profileSignals(profile: {
+  currentTitle?: string | null
+  pastTitles?: unknown
+  skills?: unknown
+}): ProfileSignals {
+  const titles = [profile.currentTitle ?? "", ...asStringList(profile.pastTitles)].filter(Boolean)
+  const skills = asStringList(profile.skills).flatMap((skill) => termsOfSkill(skill))
+  return {
+    skills: new Set([...skills, ...titles.flatMap((title) => skillsIn(title))]),
+    roles: new Set(titles.flatMap((title) => roleWords(title))),
+  }
+}
+
+type OpenJob = { companyId: string; title: string; summary: string }
+
+export type ProfilePick = { companyId: string; matching: number; terms: string[] }
+
+/**
+ * Companies by how many open offers fit a profile. An offer fits when it names one of the
+ * person's skills or shares two role words with their titles. Most fitting first.
+ */
+export function rankForProfile(
+  signals: ProfileSignals,
+  jobs: OpenJob[],
+  exclude: Set<string>,
+  limit = 9
+): ProfilePick[] {
+  const byCompany = new Map<string, { matching: number; terms: Map<string, number> }>()
+  for (const job of jobs) {
+    if (exclude.has(job.companyId)) continue
+    const stack = skillsIn(`${job.title} ${job.summary.slice(0, 300)}`).filter((term) =>
+      signals.skills.has(term)
+    )
+    const roles = roleWords(job.title).filter((word) => signals.roles.has(word))
+    if (!stack.length && roles.length < 2) continue
+    const entry = byCompany.get(job.companyId) ?? { matching: 0, terms: new Map<string, number>() }
+    entry.matching += 1
+    for (const term of stack) entry.terms.set(term, (entry.terms.get(term) ?? 0) + 1)
+    byCompany.set(job.companyId, entry)
+  }
+  return [...byCompany.entries()]
+    .sort(([leftId, left], [rightId, right]) => right.matching - left.matching || leftId.localeCompare(rightId))
+    .slice(0, limit)
+    .map(([companyId, entry]) => ({
+      companyId,
+      matching: entry.matching,
+      terms: [...entry.terms.entries()]
+        .sort(([, left], [, right]) => right - left)
+        .slice(0, 3)
+        .map(([term]) => termLabel(term)),
+    }))
+}
+
+/** Companies with the most open offers. */
+export function rankByOpenings(jobs: OpenJob[], exclude: Set<string>, limit = 9): string[] {
+  const counts = openingCounts(jobs)
+  return [...counts.entries()]
+    .filter(([companyId]) => !exclude.has(companyId))
+    .sort(([leftId, left], [rightId, right]) => right - left || leftId.localeCompare(rightId))
+    .slice(0, limit)
+    .map(([companyId]) => companyId)
+}
+
+function openingCounts(jobs: OpenJob[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const job of jobs) counts.set(job.companyId, (counts.get(job.companyId) ?? 0) + 1)
+  return counts
 }
 
 /** Domain of a company's own site, never an ATS or job-board host. */
@@ -280,13 +422,16 @@ export type CompanySuggestion = {
   name: string
   domain: string | null
   reason: string
+  why?: SuggestionWhy
   provider?: string
   openJobs?: number
 }
 
 export type CompanySuggestions = {
-  /** ok: suggestions present; needs-likes: fewer than one liked offer; unavailable: no data and no search/LLM. */
+  /** ok: suggestions present; needs-likes: nothing to suggest and no liked offer; unavailable: no data and no search/LLM. */
   status: "ok" | "needs-likes" | "unavailable"
+  /** What the suggestions rest on. Absent means offers the person liked. */
+  basis?: "profile" | "hiring"
   suggestions: CompanySuggestion[]
   /** True when Claude/web search can propose companies outside the index. */
   canSearch: boolean
@@ -296,15 +441,25 @@ export type CompanySuggestions = {
 /** For /companies: index-based suggestions plus an explicit availability signal. */
 export async function companySuggestions(userId: number, limit = 9): Promise<CompanySuggestions> {
   const canSearch = claudeSearchEnabled() || searchProvider().configured
+  const suggestions = await suggestSimilarCompanies(userId, limit)
+  if (suggestions.length) {
+    return { status: "ok", suggestions, canSearch, message: "Based on offers you liked." }
+  }
+  const fromIndex = await suggestFromIndex(userId, limit)
+  if (fromIndex.suggestions.length) {
+    return {
+      status: "ok",
+      basis: fromIndex.basis,
+      suggestions: fromIndex.suggestions,
+      canSearch,
+      message: fromIndex.basis === "profile" ? "Based on your profile." : "Hiring the most in Poland.",
+    }
+  }
   const liked = await db.offerFeedback.count({
     where: { userId, verdict: { in: ["LIKE", "APPLIED"] } },
   })
   if (!liked) {
     return { status: "needs-likes", suggestions: [], canSearch, message: "Like a few offers first." }
-  }
-  const suggestions = await suggestSimilarCompanies(userId, limit)
-  if (suggestions.length) {
-    return { status: "ok", suggestions, canSearch, message: "Based on offers you liked." }
   }
   return canSearch
     ? {
@@ -366,13 +521,90 @@ export async function suggestSimilarCompanies(
     ...profiles.filter((item) => likedNames.has(normalizeCompanyName(item.name))).map((item) => item.companyId),
   ])
   const picked = scoreSimilar(likedProfiles, profiles, exclude, limit)
-  const pages = await db.careerPage.findMany({
-    where: { companyId: { in: picked.map((item) => item.companyId) }, enabled: true },
-    select: { companyId: true, url: true, provider: true, lastSuccessfulFetchAt: true },
-    orderBy: { lastSuccessfulFetchAt: "desc" },
-  })
+  return describeCompanies(picked, jobCounts)
+}
+
+/** For a person without usable likes: index companies hiring in Poland, for their profile if it says enough. */
+async function suggestFromIndex(
+  userId: number,
+  limit: number
+): Promise<{ basis: "profile" | "hiring"; suggestions: (CompanySuggestion & { companyId: string })[] }> {
+  const [profile, watched, opinions, rows] = await Promise.all([
+    db.candidateProfile.findUnique({
+      where: { userId },
+      select: { currentTitle: true, pastTitles: true, skills: true },
+    }),
+    db.watchedCompany.findMany({ where: { userId }, select: { companyId: true } }),
+    // Liked and disliked alike: a company the person has an opinion on is not news to them.
+    db.offerFeedback.findMany({
+      where: { userId, verdict: { in: ["LIKE", "APPLIED", "DISLIKE"] } },
+      select: { job: { select: { companyId: true } } },
+    }),
+    db.job.findMany({
+      where: { status: "ACTIVE", AND: [techScopeWhere(), inPolandWhere()] },
+      select: {
+        companyId: true,
+        title: true,
+        summary: true,
+        locationText: true,
+        countryCode: true,
+        workplaceType: true,
+      },
+    }),
+  ])
+  // The same test as the browse page (offerMatches), which the database filter only narrows down.
+  const jobs = rows.filter((job) => placeFacts(job).inPoland === true)
+  const exclude = new Set([
+    ...watched.map((row) => row.companyId),
+    ...opinions.map((row) => row.job.companyId),
+  ])
+  const counts = openingCounts(jobs)
+  const fitting = profile ? rankForProfile(profileSignals(profile), jobs, exclude, limit) : []
+  if (fitting.length) {
+    return {
+      basis: "profile",
+      suggestions: await describeCompanies(
+        fitting.map(({ companyId, matching, terms }) => ({
+          companyId,
+          reason: `${matching} open offers in Poland fit your profile${terms.length ? ` (${terms.join(", ")})` : ""}`,
+          why: { kind: "profile" as const, matching, terms },
+        })),
+        counts
+      ),
+    }
+  }
+  return {
+    basis: "hiring",
+    suggestions: await describeCompanies(
+      rankByOpenings(jobs, exclude, limit).map((companyId) => ({
+        companyId,
+        reason: "Many open offers in Poland",
+        why: { kind: "hiring" as const },
+      })),
+      counts
+    ),
+  }
+}
+
+/** Adds what a suggestion card shows about a company: name, domain, source and open offers. */
+async function describeCompanies(
+  picked: { companyId: string; reason: string; why: SuggestionWhy }[],
+  openJobs: Map<string, number>
+): Promise<(CompanySuggestion & { companyId: string })[]> {
+  const ids = picked.map((item) => item.companyId)
+  const [companies, pages] = await Promise.all([
+    db.company.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, canonicalDomain: true },
+    }),
+    db.careerPage.findMany({
+      where: { companyId: { in: ids }, enabled: true },
+      select: { companyId: true, url: true, provider: true, lastSuccessfulFetchAt: true },
+      orderBy: { lastSuccessfulFetchAt: "desc" },
+    }),
+  ])
   const meta = new Map(companies.map((company) => [company.id, company]))
-  return picked.map(({ companyId, name, reason }) => {
+  return picked.map(({ companyId, reason, why }) => {
     const own = pages.filter((page) => page.companyId === companyId)
     const domain =
       meta.get(companyId)?.canonicalDomain ??
@@ -380,11 +612,12 @@ export async function suggestSimilarCompanies(
       null
     return {
       companyId,
-      name,
+      name: meta.get(companyId)?.name ?? "",
       domain,
       reason,
+      why,
       provider: own[0]?.provider,
-      openJobs: jobCounts.get(companyId) ?? 0,
+      openJobs: openJobs.get(companyId) ?? 0,
     }
   })
 }

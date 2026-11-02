@@ -31,7 +31,7 @@ const CAREER_ALLOW = [
 const CAREER_DENY = ["/api/", "/wp-admin/", "/wp-login", "/wp-json/"]
 
 export const SMARTRECRUITERS_API_REASON =
-  "The public Posting API stays on while a policy decision is pending. api.smartrecruiters.com robots.txt allows LinkedInBot on /v1/companies/ and disallows every other crawler. Set SMARTRECRUITERS_POSTING_API=off to stop those calls. jobs.smartrecruiters.com pages stay allowed."
+  "api.smartrecruiters.com robots.txt allows LinkedInBot on /v1/companies/ and disallows every other crawler, so the Posting API is off by default. jobs.smartrecruiters.com pages stay allowed."
 
 function careerPolicy(state: PolicyState, reason: string, termsUrl: string): SourcePolicy {
   return {
@@ -105,12 +105,9 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
   },
   icims: {
     platform: "iCIMS",
-    state: "limited",
-    reason:
-      "Sitemap plus ?in_iframe=1 JSON-LD, at least 5 s between requests. The vendor terms ban robots, so this stays conservative. Login, apply, and referral paths are not fetched.",
+    state: "link_only",
+    reason: "The vendor terms ban robots, so iCIMS boards are linked, not fetched.",
     termsUrl: "https://www.icims.com/legal/terms-of-use/",
-    allowPaths: ["/sitemap", "/jobs/"],
-    denyPaths: ["/login", "/referral", "/connect", "/candidate", "/intro"],
   },
   phenom: {
     platform: "Phenom",
@@ -419,7 +416,7 @@ export const COVERAGE_EMPLOYERS: CoverageEmployer[] = [
   {
     employer: "Kingfisher (iCIMS)",
     platform: "iCIMS",
-    policy: "limited",
+    policy: "link_only",
     reason: PLATFORM_POLICIES.icims.reason,
     termsUrl: PLATFORM_POLICIES.icims.termsUrl,
     href: "https://careers-kingfisher2.icims.com/",
@@ -664,10 +661,18 @@ export function platformKeyForHost(hostname: string): string | null {
   return null
 }
 
-/** Default on. SMARTRECRUITERS_POSTING_API=off, false, or 0 disables the Posting API. */
+/** Default off, as its robots.txt asks. SMARTRECRUITERS_POSTING_API=on turns the Posting API on. */
 export function smartRecruitersPostingApiEnabled(): boolean {
-  const raw = (process.env.SMARTRECRUITERS_POSTING_API ?? "on").trim().toLowerCase()
-  return raw !== "off" && raw !== "false" && raw !== "0"
+  const raw = (process.env.SMARTRECRUITERS_POSTING_API ?? "off").trim().toLowerCase()
+  return raw !== "" && raw !== "off" && raw !== "false" && raw !== "0"
+}
+
+/** A site's owner asked not to be read: CRAWLER_OPT_OUT_HOSTS, comma separated, subdomains count. */
+function optedOut(host: string): boolean {
+  return (process.env.CRAWLER_OPT_OUT_HOSTS ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .some((item) => item && (host === item || host.endsWith(`.${item}`)))
 }
 
 export function coverageRows(): CoverageEmployer[] {
@@ -697,6 +702,14 @@ function pathAllowed(pathAndQuery: string, policy: SourcePolicy): boolean {
 
 export function decideFetch(url: URL): FetchDecision {
   const host = url.hostname.toLowerCase().replace(/\.$/, "")
+  if (optedOut(host)) {
+    return {
+      allow: false,
+      state: "link_only",
+      platform: "Opt-out",
+      reason: "The site's owner asked not to be read. Link out.",
+    }
+  }
   if (host === "api.smartrecruiters.com") {
     const enabled = smartRecruitersPostingApiEnabled()
     if (url.pathname === "/robots.txt" || enabled) {

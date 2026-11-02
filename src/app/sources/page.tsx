@@ -9,12 +9,13 @@ import { SOURCE_CATALOG, type CatalogState } from "src/shared/source-catalog"
 
 export const dynamic = "force-dynamic"
 
-const STATE: Record<CatalogState, { pl: string; en: string; success: boolean }> = {
-  connected: { pl: "Podłączone", en: "Connected", success: true },
-  partial: { pl: "Częściowo", en: "Partial", success: false },
-  unverified: { pl: "Niesprawdzone", en: "Unverified", success: false },
-  link_only: { pl: "Tylko link", en: "Link only", success: false },
-  banned: { pl: "Zablokowane", en: "Blocked", success: false },
+const STATE: Record<CatalogState, { pl: string; en: string; tone: string }> = {
+  connected: { pl: "Podłączone", en: "Connected", tone: " badge--success" },
+  at_risk: { pl: "Podłączone, polityka niepewna", en: "Connected, policy uncertain", tone: " badge--warning" },
+  partial: { pl: "Częściowo", en: "Partial", tone: "" },
+  unverified: { pl: "Niesprawdzone", en: "Unverified", tone: "" },
+  link_only: { pl: "Tylko link", en: "Link only", tone: "" },
+  banned: { pl: "Zablokowane", en: "Blocked", tone: "" },
 }
 
 export async function generateMetadata() {
@@ -64,7 +65,7 @@ export default async function SourcesPage() {
               <tr key={row.name}>
                 <td>{row.name}</td>
                 <td>
-                  <span className={`badge${STATE[row.state].success ? " badge--success" : ""}`}>
+                  <span className={`badge${STATE[row.state].tone}`}>
                     {STATE[row.state][locale]}
                   </span>
                 </td>

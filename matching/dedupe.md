@@ -19,6 +19,7 @@ Every merge is logged with the rule and detail (`merges[]`) so it can be audited
 | nofluffjobs | `/job/{slug}` | `nofluffjobs:{slug}` |
 | pracuj.pl | `…,oferta,{id}` | `pracuj:{id}` |
 | LinkedIn | `/jobs/view/{slug-}{id}` | `linkedin:{id}` |
+| Any other employer system (`company_site`: Traffit, SuccessFactors, career sites, …) | adapter-provided id | `company_site:{board}:{id}` (ids are only unique per employer) |
 
    The key comes from the URL, not from `source`, so a web-search hit pointing at a Teamtailor page dedupes with the Teamtailor adapter's record (fixture p24 → p11).
 2. **Canonical URL** (`canonicalizeUrl`) — https, lowercase host, no `www.`, no fragment, tracking params removed (`utm_*`, `gh_src`, `lever-source/origin`,

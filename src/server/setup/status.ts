@@ -171,7 +171,6 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
       cvCount: 0,
       mcp: { lastSeenAt: null, command },
       sheet: { connected: false, lastSyncedAt: null, lastError: null },
-      gmail: { connected: false, lastSyncedAt: null, lastErrorCode: null },
     }
   }
   const [workerSeen, mcpSeen, index, user, profile] = await Promise.all([
@@ -181,7 +180,7 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
     userFacts(userId),
     hasProfile(userId),
   ])
-  const [applicant, cvCount, tokens, sheet, gmail] = userId
+  const [applicant, cvCount, tokens, sheet] = userId
     ? await Promise.all([
         getApplicant(userId),
         db.cvDocument.count({ where: { userId, docType: "CV" } }),
@@ -191,12 +190,8 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
           orderBy: { lastUsedAt: { sort: "desc", nulls: "last" } },
         }),
         db.sheetLink.findUnique({ where: { userId } }),
-        db.gmailLink.findUnique({
-          where: { userId },
-          select: { lastSyncedAt: true, lastErrorCode: true },
-        }),
       ])
-    : [null, 0, [], null, null]
+    : [null, 0, [], null]
   return {
     ...base,
     db: database,
@@ -220,11 +215,6 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
       connected: Boolean(sheet?.webhookUrl),
       lastSyncedAt: sheet?.lastSyncedAt ?? null,
       lastError: sheet?.webhookUrl ? sheet.lastError ?? null : null,
-    },
-    gmail: {
-      connected: Boolean(gmail),
-      lastSyncedAt: gmail?.lastSyncedAt ?? null,
-      lastErrorCode: gmail?.lastErrorCode ?? null,
     },
   }
 }

@@ -24,7 +24,7 @@ export function newLoginToken(): string {
   return randomBytes(32).toString("base64url")
 }
 
-async function takeSlot(key: string, limit: number, now: Date): Promise<boolean> {
+export async function takeSlot(key: string, limit: number, now: Date): Promise<boolean> {
   const windowStart = new Date(now.getTime() - MAGIC_LINK_WINDOW_MS)
   const existing = await db.authRateLimit.findUnique({ where: { key } })
   if (!existing || existing.windowStart < windowStart) {
@@ -83,4 +83,31 @@ export async function consumeMagicLink(token: string, now = new Date()): Promise
   })
   if (updated.count !== 1) return null
   return row.email
+}
+
+/** The email a token would sign in, without using it up. The page shows it before the click. */
+export async function peekMagicLink(token: string, now = new Date()): Promise<string | null> {
+  const row = await db.loginLink.findUnique({ where: { hashedToken: hashLoginToken(token) } })
+  if (!row || row.usedAt || row.expiresAt <= now) return null
+  return row.email
+}
+
+/** "jo•••@example.com": enough to recognise your own address, not to harvest someone else's. */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@")
+  if (at < 1) return "•••"
+  const local = email.slice(0, at)
+  const shown = local.length > 4 ? local.slice(0, 2) : local.slice(0, 1)
+  return `${shown}•••${email.slice(at)}`
+}
+
+export const LOGIN_EMAIL_LIMIT = 10
+export const LOGIN_IP_LIMIT = 50
+
+/** Password guesses per account and per address, in the same hourly window as magic links. */
+export async function assertLoginRateLimit(email: string, ip: string, now = new Date()) {
+  const ipOk = await takeSlot(`login-ip:${ip}`, LOGIN_IP_LIMIT, now)
+  if (!ipOk) throw new AuthRateLimitError("ip")
+  const emailOk = await takeSlot(`login:${email}`, LOGIN_EMAIL_LIMIT, now)
+  if (!emailOk) throw new AuthRateLimitError("email")
 }

@@ -171,6 +171,7 @@ export function registerAnswerTools(server: McpServer) {
       description:
         "Save the final wording of an answer to the person's bank (origin mcp). Pass `id` to update that answer. Without `id` it creates one: the same answer to the same question only counts one more use, and a different answer to the same question becomes a variant. Save only what the person approved. Do not save contact data, consents or EEO answers.",
       inputSchema: saveInput,
+      annotations: { destructiveHint: true },
     },
     guard(
       async (args: {
@@ -206,6 +207,7 @@ export function registerAnswerTools(server: McpServer) {
         'A question with reader "none" has no draft because no model was available: write it with the person yourself, using answers_search and profile_get, and never invent experience, employers, numbers or certificates.',
       ].join("\n"),
       inputSchema: draftInput,
+      annotations: { readOnlyHint: true },
     },
     guard(
       async (args: {

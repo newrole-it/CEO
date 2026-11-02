@@ -39,6 +39,92 @@ function roleScore(title: string, haystack: string): number {
   return Math.round((30 * hits) / words.length)
 }
 
+/** Words every title has, which say nothing about which role it is. */
+const GENERIC_ROLE_WORDS = new Set([
+  "senior",
+  "junior",
+  "mid",
+  "regular",
+  "lead",
+  "principal",
+  "staff",
+  "intern",
+  "trainee",
+  "engineer",
+  "developer",
+  "specialist",
+  "manager",
+  "expert",
+  "position",
+  "role",
+  "job",
+  "opening",
+  "vacancy",
+  "the",
+  "this",
+  "that",
+  "your",
+  "our",
+  "an",
+  "of",
+  "and",
+  "for",
+  "in",
+  "at",
+  "to",
+  "on",
+  "with",
+  "open",
+  "inzynier",
+  "programista",
+  "programistka",
+  "specjalista",
+  "specjalistka",
+  "starszy",
+  "mlodszy",
+  "stanowisko",
+])
+
+/** "Application for the Data Engineer role", "na stanowisko Tester": the role a message names. */
+const ROLE_NAMED: RegExp[] = [
+  /\b(?:application|applying|applied|candidacy|interest)\s+for\s+(?:the\s+|our\s+|an?\s+)?(?:(?:position|role)\s+(?:of\s+)?)?(.{2,80}?)(?:\s+(?:position|role|opening|vacancy|job)\b|\s+(?:at|with|in)\s|\s+[-–|]\s|\s*[,.;:!?\n(]|$)/,
+  /\bfor the (.{2,80}?) (?:position|role|opening|vacancy)\b/,
+  /\bna stanowisk\w*:?\s+(.{2,80}?)(?:\s+w\s|\s+[-–|]\s|\s*[,.;:!?\n(]|$)/,
+  /\b(?:position|role|stanowisko)\s*:\s*(.{2,80}?)(?:\s+[-–|]\s|\s*[,.;!?\n(]|$)/,
+]
+
+function rolesNamed(subject: string, head: string): string[] {
+  const found: string[] = []
+  for (const text of [subject, head]) {
+    for (const pattern of ROLE_NAMED) {
+      const role = pattern.exec(text)?.[1]?.trim()
+      if (role) found.push(role)
+    }
+  }
+  return found
+}
+
+function distinctWords(title: string, company: string[]): string[] {
+  return titleWords(title).filter(
+    (word) => !GENERIC_ROLE_WORDS.has(word) && !company.includes(word)
+  )
+}
+
+/**
+ * The message names a role and none of it is this application's: "Data Engineer" against
+ * "Platform Engineer". A rejection for the other role must not close this one alone.
+ */
+function namesOtherRole(app: ScopedApp, named: string[]): boolean {
+  const company = titleWords(`${app.company} ${app.slug ?? ""}`)
+  const own = distinctWords(app.title, company)
+  if (!own.length) return false
+  const others = named
+    .map((role) => distinctWords(role, company))
+    .filter((words) => words.length > 0)
+  if (!others.length) return false
+  return !others.some((words) => words.some((word) => own.includes(word)))
+}
+
 function companyEvidence(
   app: ScopedApp,
   args: { sender: Sender; tier: Tier; subject: string; head: string }
@@ -50,15 +136,16 @@ function companyEvidence(
   if (app.domains.includes(domain)) return { score: 100, certain: true }
   // Spelling the company proves little: anyone can register acme.xyz. Worth asking, though.
   if (key.length >= 3 && key === domainLabel(domain)) return { score: 90, certain: false }
-  // An ATS's domain is shared and its sender name is free text, so the name alone proves nothing.
-  // It counts only on the system this very posting is on, which an impostor has to match too.
+  // An ATS's domain is shared and its sender name is free text: anyone with an account on the same
+  // system can type "Acme Hiring". On the posting's own system it finds the application, and the
+  // person confirms the change.
   if (
     args.tier !== "company" &&
     app.ats &&
     app.ats === systemOf(args.sender.domain) &&
     (startsWithName(name, app.company) || Boolean(app.slug && startsWithName(name, app.slug)))
   ) {
-    return { score: 85, certain: true }
+    return { score: 85, certain: false }
   }
   // A common word in a subject is no proof: "Next steps…" is not about a company called Next.
   const named =
@@ -71,12 +158,22 @@ function companyEvidence(
 }
 
 export function matchApplication(
-  message: { sender: Sender; tier: Tier; subject: string; text: string; receivedAt: Date },
+  message: {
+    sender: Sender
+    tier: Tier
+    subject: string
+    text: string
+    receivedAt: Date
+    /** The role as the model read it, when it did */
+    title?: string | null
+  },
   apps: ScopedApp[]
 ): MatchResult {
   const subject = fold(message.subject)
   const head = fold(message.text.slice(0, HEAD_CHARS))
   const haystack = `${subject}\n${head}`
+  const named = rolesNamed(subject, head)
+  if (message.title) named.push(fold(message.title))
   const scored = apps
     // Mail from before the application is about an earlier process at that company.
     .filter((app) => message.receivedAt.getTime() >= app.appliedAt.getTime() - DAY)
@@ -88,9 +185,8 @@ export function matchApplication(
         head,
       })
       if (!company) return []
-      return [
-        { app, certain: company.certain, score: company.score + roleScore(app.title, haystack) },
-      ]
+      const certain = company.certain && !namesOtherRole(app, named)
+      return [{ app, certain, score: company.score + roleScore(app.title, haystack) }]
     })
     .sort((a, b) => b.score - a.score)
   const candidates = scored.map((item) => item.app)

@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY matching/package.json matching/package-lock.json ./matching/
 RUN npm ci && npm ci --prefix matching
 
@@ -16,5 +16,9 @@ RUN DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner \
 
 ENV NODE_ENV=production
 EXPOSE 43123
+
+# The node image ships an unprivileged "node" user; the app and the worker need no root.
+RUN chown -R node:node /app
+USER node
 
 CMD ["sh", "scripts/docker-start.sh"]

@@ -117,6 +117,21 @@ export async function upsertLinkedInUser(identity: {
   })
 }
 
+/**
+ * After a password is set or changed, whoever knew the old one keeps nothing: every other session
+ * ends and every extension token stops working, so the extension has to be connected again.
+ */
+export async function revokeOtherAccess(userId: number, keepSessionHandle: string | null) {
+  const now = new Date()
+  const [sessions, tokens] = await Promise.all([
+    db.session.deleteMany({
+      where: { userId, ...(keepSessionHandle ? { handle: { not: keepSessionHandle } } : {}) },
+    }),
+    db.apiToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } }),
+  ])
+  return { sessions: sessions.count, tokens: tokens.count }
+}
+
 export function sessionRole(role: string): Role {
   if (role === "ADMIN" || role === "GUEST" || role === "USER") return role
   return "USER"

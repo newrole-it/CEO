@@ -12,7 +12,6 @@ vi.mock("src/server/answers/compose", () => ({ composeDrafts: vi.fn() }))
 vi.mock("./user", () => ({
   currentUser: vi.fn(async () => ({ id: 7, email: "a@b.c", name: null, how: "test" })),
   NoUserError: class NoUserError extends Error {},
-  NO_PROFILE_HINT: "",
 }))
 // Only the three helpers are used; the real module pulls in the whole job search.
 vi.mock("./tools", () => ({

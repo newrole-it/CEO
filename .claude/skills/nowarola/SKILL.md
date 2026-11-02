@@ -48,8 +48,9 @@ Never scrape or fetch LinkedIn, justjoin.it, nofluffjobs, pracuj.pl, theprotocol
 - Not connected and they want a sheet now → `applications_export` (CSV), then the Google Drive connector `create_file { title, textContent: <csv>, contentMimeType: "text/csv" }` creates a NEW Google Sheet. It is a snapshot: the Drive connector cannot rewrite an existing sheet, so suggest connecting the Apps Script for in-place updates.
 
 ## Gmail
-- When connected (Settings → Gmail), the worker reads job-related mail every 15 minutes and updates statuses by itself. `gmail_status` shows the connection and which applications have a message waiting for confirmation on `/applications`. `gmail_sync` checks now. Neither returns the mail's text, on purpose: do not ask for it.
-- Not connected and they want it → send them to Settings → Gmail, which walks through creating their own Google OAuth client.
+- Nowa Rola never searches the mailbox. When a company writes ("przeszedłem dalej", "odrzucili mnie"), the person opens that mail in Gmail, clicks the Nowa Rola extension → „Użyj tego maila w aplikacji”, and picks the application and the status. The mail's subject goes on the timeline.
+- `gmail_status` explains this, lists anything an earlier mailbox check left waiting on `/applications`, and says when a mailbox connected in an earlier version should be disconnected (Settings → Gmail) to revoke its token. It never returns the mail's text, on purpose: do not ask for it.
+- The person told you about a reply in chat → just `application_update`.
 
 ## CV
 - `cv_list`, `cv_get` (default CV when no id). Tailoring for an offer: read the whole posting with `job_get { jobId, fullText: true }` (the index keeps only an excerpt; if it returns no text, ask them to paste the requirements), propose concrete edits first, change only facts already in the CV or profile, save with `cv_update` (`section` / `item` / `remove` / `content`; `copyAs: "<Firma>"` writes to a copy when they ask), then `cv_export_pdf` (writes a PDF file, default ~/Downloads). The editor is at http://127.0.0.1:43123/cv.

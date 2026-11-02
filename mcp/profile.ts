@@ -8,6 +8,7 @@ import { parseLinkedInProfile } from "src/server/profile/linkedin"
 import { linkedInExportText, MAX_ZIP_BYTES } from "src/server/profile/linkedin-export"
 import { extractPdfText } from "src/server/profile/pdf"
 import { asStringList, type ProfileDraft } from "src/server/profile/schema"
+import { mcpHost } from "./host"
 
 /** Profile import for MCP: same extraction as /api/profile/import, saved like saveProfile. */
 
@@ -81,11 +82,22 @@ export async function importProfile(args: {
   zipPath?: string
   preferences?: ProfilePreferences
 }) {
+  const { localInstall } = mcpHost()
+  if (!localInstall && (args.pdfPath || args.zipPath)) {
+    throw new Error(
+      "This server is not on the person's machine and reads no files. Pass the CV as text."
+    )
+  }
   let text = (args.text ?? "").slice(0, MAX_TEXT)
   if (args.pdfPath) text = `${text}\n${await readCvPdf(args.pdfPath)}`.trim()
   if (args.zipPath) text = `${text}\n${await readLinkedInZip(args.zipPath)}`.trim()
-  if (text.trim().length < 20)
-    throw new Error("Pass the CV text (at least a few lines), pdfPath, or zipPath.")
+  if (text.trim().length < 20) {
+    throw new Error(
+      localInstall
+        ? "Pass the CV text (at least a few lines), pdfPath, or zipPath."
+        : "Pass the CV text (at least a few lines)."
+    )
+  }
   const llm = createLlmClient()
   const started = Date.now()
   const draft = await extractProfileFromText(text, llm, args.userId)

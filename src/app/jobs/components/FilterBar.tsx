@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Building2, ChevronDown, Clock, House, Keyboard, MapPin, Search, TrendingUp, Wallet, X } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "src/app/components/ds/Button"
-import { Modal, ModalHead, useIsMobile } from "src/app/components/ds/interactive"
+import { Modal, ModalHead, useIsMobile, usePopoverFocus } from "src/app/components/ds/interactive"
 import { cx } from "src/app/components/ds/cx"
 import { LEVELS, filtersQuery, type FeedFilters, type Level } from "../feed-filters"
 import type { FeedTab } from "../types"
@@ -32,6 +32,10 @@ export function FilterBar({
   const [draft, setDraft] = useState<FeedFilters>(filters)
   const [q, setQ] = useState(filters.q)
   const barRef = useRef<HTMLDivElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  // desktop popover: focus goes in when it opens and back to its pill when it closes
+  usePopoverFocus(popoverRef, mobile ? null : open, triggerRef)
 
   useEffect(() => {
     setDraft(filters)
@@ -202,42 +206,42 @@ export function FilterBar({
           <div key={pill.id} className="rel" style={{ flex: "none" }}>
             <button
               type="button"
-              className={cx("pill", pill.value && "is-active")}
+              className={cx("pill", pill.value && "is-active", pill.value && "pill--clearable")}
               aria-haspopup="dialog"
               aria-expanded={open === pill.id}
-              onClick={() => {
+              onClick={(event) => {
+                triggerRef.current = event.currentTarget
                 setDraft(filters)
                 setOpen(open === pill.id ? null : pill.id)
               }}
             >
               {pill.icon}
               <span>{pill.value ?? pill.label}</span>
-              {pill.value ? (
-                <span
-                  className="pill__x"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={t("filter.remove", { name: pill.label })}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    apply({ ...filters, ...clearOne[pill.id] })
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      apply({ ...filters, ...clearOne[pill.id] })
-                    }
-                  }}
-                >
-                  <X width={14} height={14} aria-hidden />
-                </span>
-              ) : (
-                <ChevronDown aria-hidden />
-              )}
+              {pill.value ? null : <ChevronDown aria-hidden />}
             </button>
+            {/* a sibling of the pill, not inside it: a button cannot hold another button */}
+            {pill.value ? (
+              <button
+                type="button"
+                className="pill__x"
+                aria-label={t("filter.remove", { name: pill.label })}
+                onClick={(event) => {
+                  // this button goes away with the filter; keep focus on its pill
+                  ;(event.currentTarget.previousElementSibling as HTMLElement | null)?.focus()
+                  apply({ ...filters, ...clearOne[pill.id] })
+                }}
+              >
+                <X aria-hidden />
+              </button>
+            ) : null}
             {open === pill.id && !mobile ? (
-              <div className="popover" role="dialog" aria-label={pill.label}>
+              <div
+                ref={popoverRef}
+                className="popover"
+                role="dialog"
+                aria-label={pill.label}
+                tabIndex={-1}
+              >
                 <div className="popover__body">{body[pill.id]}</div>
                 {footer(pill.id)}
               </div>

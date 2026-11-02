@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { conditionalHttp, NotModifiedError } from "src/server/index/conditional"
 import { pinnedLookup, safeFetch } from "./safe-fetch"
 
 describe("safeFetch policy on redirects", () => {
@@ -49,6 +50,31 @@ describe("safeFetch policy on redirects", () => {
     expect(seen[1].accept).toBeTruthy()
     expect(seen[1].url).toContain("example.org")
   })
+
+  it("hands a 304 back to the caller: it is not a redirect and has no location", async () => {
+    const etag = 'W/"unchanged"'
+    const seen: Array<string | null> = []
+    const fetchImpl = async (_url: string, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get("if-none-match"))
+      return new Response(null, { status: 304, headers: { etag } })
+    }
+    const { client } = conditionalHttp(
+      {
+        get: (url, opts) =>
+          safeFetch(url, {
+            ...opts,
+            fetchImpl: fetchImpl as typeof fetch,
+            lookupImpl: async () => ["1.1.1.1"],
+          }),
+        post: () => Promise.reject(new Error("not used")),
+      },
+      { etag }
+    )
+    await expect(client.get("https://boards-api.greenhouse.io/v1/boards/acme/jobs")).rejects.toBeInstanceOf(
+      NotModifiedError
+    )
+    expect(seen).toEqual([etag])
+  })
 })
 
 describe("pinned DNS lookup", () => {
@@ -59,5 +85,34 @@ describe("pinned DNS lookup", () => {
       if (Array.isArray(address)) hits.push(...address)
     })
     expect(hits).toEqual([{ address: "93.184.216.34", family: 4 }])
+  })
+
+  it("pins every redirect hop to the address that was checked, not only the first", async () => {
+    const original = globalThis.fetch
+    const hops: Array<{ url: string; pinned: boolean }> = []
+    globalThis.fetch = (async (url: string, init?: RequestInit & { dispatcher?: unknown }) => {
+      hops.push({ url, pinned: Boolean(init?.dispatcher) })
+      if (url.includes("example.com")) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://example.org/jobs" },
+        })
+      }
+      return new Response("ok", { status: 200 })
+    }) as typeof fetch
+    try {
+      const response = await safeFetch("https://example.com/jobs", {
+        lookupImpl: async () => ["93.184.216.34"],
+        minIntervalMs: 0,
+      })
+      expect(response.status).toBe(200)
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(hops.map((hop) => hop.url)).toEqual([
+      "https://example.com/jobs",
+      "https://example.org/jobs",
+    ])
+    expect(hops.every((hop) => hop.pinned)).toBe(true)
   })
 })

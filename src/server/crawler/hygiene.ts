@@ -2,8 +2,10 @@ import { publicAppUrl } from "src/server/site-url"
 
 export const EXCERPT_CHARS = 300
 
+/** CRAWLER_NOTE says who runs this crawler and why, when that is not one person's own job search. */
 export function fetchUserAgent(): string {
-  return `NowaRolaBot/0.1 (+${publicAppUrl()}/bot; contact: rafal@jobscanner.local; personal non-commercial job search)`
+  const note = process.env.CRAWLER_NOTE?.trim() || "personal non-commercial job search"
+  return `NowaRolaBot/0.1 (+${publicAppUrl()}/bot; ${note})`
 }
 
 /**

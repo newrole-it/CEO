@@ -106,6 +106,8 @@ export type TailorResult = {
   content: CvContent
   language: CvLanguage
   notes: TailorNotes
+  /** The document's updatedAt after this write, for the editor's next save */
+  updatedAt: Date
 }
 
 /** What the editor shows around a tailored document. */
@@ -292,10 +294,10 @@ async function storeGenerated(input: {
   content: CvContent
   notes: TailorNotes
   base?: { id: string | null; content: CvContent; language: CvLanguage } | null
-}): Promise<string> {
+}): Promise<{ id: string; updatedAt: Date }> {
   const { userId, job, docType, language, content, notes, base } = input
   const write = () =>
-    db.$transaction(async (tx) => {
+    db.$transaction(async (tx): Promise<{ id: string; updatedAt: Date }> => {
       const existing = await tx.cvDocument.findUnique({
         where: { userId_jobId_docType: { userId, jobId: job.id, docType } },
         select: { id: true, content: true, language: true },
@@ -312,14 +314,16 @@ async function storeGenerated(input: {
         pdfUpdatedAt: null,
       }
       let id: string
+      let updatedAt: Date
       if (existing) {
         await keepCurrentState(tx, existing)
-        await tx.cvDocument.update({
+        const written = await tx.cvDocument.update({
           where: { id: existing.id },
           data: { ...fields, ...(base?.id ? { baseCvId: base.id } : {}) },
-          select: { id: true },
+          select: { updatedAt: true },
         })
         id = existing.id
+        updatedAt = written.updatedAt
       } else {
         const created = await tx.cvDocument.create({
           data: {
@@ -332,9 +336,10 @@ async function storeGenerated(input: {
             isDefault: false,
             baseCvId: base?.id ?? null,
           },
-          select: { id: true },
+          select: { id: true, updatedAt: true },
         })
         id = created.id
+        updatedAt = created.updatedAt
         if (base) {
           await appendVersion(tx, {
             documentId: id,
@@ -345,7 +350,7 @@ async function storeGenerated(input: {
         }
       }
       await appendVersion(tx, { documentId: id, content, language, origin: "generated" })
-      return id
+      return { id, updatedAt }
     })
   try {
     return await write()
@@ -429,7 +434,7 @@ export async function tailorCvForJob(input: {
     usedJobText: Boolean(job.text || note?.trim()),
     offerText: offerTextNote(job, note),
   }
-  const id = await storeGenerated({
+  const { id, updatedAt } = await storeGenerated({
     userId,
     job,
     docType: "CV",
@@ -443,7 +448,7 @@ export async function tailorCvForJob(input: {
     where: { userId, jobId, cvDocumentId: null },
     data: { cvDocumentId: id },
   })
-  return { id, content: tailored.content, language, notes }
+  return { id, content: tailored.content, language, notes, updatedAt }
 }
 
 /**
@@ -525,6 +530,13 @@ export async function generateLetterForJob(input: {
     usedJobText: Boolean(job.text || note?.trim()),
     offerText: offerTextNote(job, note),
   }
-  const id = await storeGenerated({ userId, job, docType: "LETTER", language, content, notes })
-  return { id, content, language, notes }
+  const { id, updatedAt } = await storeGenerated({
+    userId,
+    job,
+    docType: "LETTER",
+    language,
+    content,
+    notes,
+  })
+  return { id, content, language, notes, updatedAt }
 }

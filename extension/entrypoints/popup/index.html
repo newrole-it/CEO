@@ -20,6 +20,22 @@
       <button id="fill" class="btn" type="button">Wypełnij formularz na tej stronie</button>
       <button id="save" class="btn alt" type="button">Zapisz tę stronę jako aplikację</button>
       <button id="audit" class="btn hidden" type="button">Oceń ten profil LinkedIn</button>
+      <button id="readMail" class="btn hidden" type="button">Użyj tego maila w aplikacji</button>
+      <form id="mailForm" class="stack hidden">
+        <p id="mailSubject" class="applied"></p>
+        <p id="mailMeta" class="muted"></p>
+        <p id="mailReading" class="muted"></p>
+        <p id="mailUsed" class="err hidden"></p>
+        <label class="field">
+          Której aplikacji dotyczy
+          <select id="mailApp" required></select>
+        </label>
+        <label class="field">
+          Status
+          <select id="mailStatus"></select>
+        </label>
+        <button id="useMail" class="btn" type="submit">Zapisz w trackerze</button>
+      </form>
       <p id="message" class="muted hidden" role="status"></p>
       <label class="toggle">
         <input id="autoTrack" type="checkbox" />

@@ -8,10 +8,9 @@ import { formatDate } from "./page.js"
 
 const LINKEDIN_HOST = /(^|\.)linkedin\.com$/
 const LINKEDIN_VIEW = /\/jobs\/view\/(?:[^/]*-)?(\d+)\/?$/
-const LINKEDIN_ROLE =
-  ".job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, .top-card-layout__title"
-const LINKEDIN_COMPANY =
-  ".job-details-jobs-unified-top-card__company-name, .jobs-unified-top-card__company-name, .topcard__org-name-link"
+/** Seen in LinkedIn's public offer page, 2026-10-31. The signed-in page has not been checked. */
+const LINKEDIN_ROLE = ".top-card-layout__title"
+const LINKEDIN_COMPANY = ".topcard__org-name-link"
 const MAX_FACT = 300
 
 /** The offer a LinkedIn address shows: /jobs/view/…-123, or ?currentJobId=123 on any job list. */
@@ -64,7 +63,11 @@ export function jobPosting(doc) {
   return null
 }
 
-/** LinkedIn's markup is not an API, so the window title backs it up: "Rola | Firma | LinkedIn". */
+/**
+ * LinkedIn's markup is not an API, so the window title backs it up. "Rola | Firma | LinkedIn" is an
+ * assumption, not confirmed on a signed-in page; it only fits what the tracker stored from one. If
+ * it is wrong nothing matches here, and the address still works.
+ */
 export function linkedInFacts(doc) {
   const title = clean(doc.querySelector(LINKEDIN_ROLE)?.textContent)
   const company = clean(doc.querySelector(LINKEDIN_COMPANY)?.textContent)

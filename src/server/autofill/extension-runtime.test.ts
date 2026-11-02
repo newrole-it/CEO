@@ -72,7 +72,15 @@ function panelButton(text: string): HTMLButtonElement {
   return button as HTMLButtonElement
 }
 
+/** requestSubmit makes the browser fire a trusted submit event, as a person's click does. */
 function submit() {
+  const form = document.getElementById("application_form") as HTMLFormElement
+  form.addEventListener("submit", (event) => event.preventDefault(), { once: true })
+  form.requestSubmit()
+}
+
+/** What a hostile page can do: dispatch its own, untrusted submit event. */
+function syntheticSubmit() {
   const form = document.getElementById("application_form") as HTMLFormElement
   form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
 }
@@ -167,6 +175,46 @@ describe("lib/content.js", () => {
     await loadContent()
     expect(panelText()).not.toContain("Już aplikowano")
     expect(seen).not.toContain("status")
+  })
+
+  it("sends the company and role the page's own data names", async () => {
+    const posting = document.createElement("script")
+    posting.type = "application/ld+json"
+    posting.textContent = JSON.stringify({
+      "@type": "JobPosting",
+      title: "Staff Engineer",
+      hiringOrganization: { name: "Acme Robotics S.A." },
+    })
+    document.head.append(posting)
+    const seen: Message[] = []
+    stubChrome((message) => {
+      seen.push(message)
+      if (message.type === "config") return connected()
+      if (message.type === "takeToast") return { ok: true, data: null }
+      if (message.type === "fill") {
+        return { ok: true, data: { values: [], job: null, applied: null } }
+      }
+      if (message.type === "submitted") {
+        return {
+          ok: true,
+          data: { application: { id: "a1", company: "Acme Robotics S.A.", title: "Staff Engineer" } },
+        }
+      }
+      return { ok: false, error: "unexpected" }
+    })
+    await loadContent()
+    panelButton("Wypełnij z Nowa Rola").click()
+    await flush()
+    panelButton("Zapisz jako aplikację").click()
+    await flush()
+    posting.remove()
+
+    for (const type of ["fill", "submitted"]) {
+      expect(seen.find((message) => message.type === type)?.page).toMatchObject({
+        company: "Acme Robotics S.A.",
+        role: "Staff Engineer",
+      })
+    }
   })
 
   it("fills through the panel, marks fields and never touches EEO or consent", async () => {
@@ -316,6 +364,10 @@ describe("lib/content.js", () => {
     setValue("email", "rafal@example.com")
     setValue("q1", "Bo tak.")
     setValue("gender", "m")
+
+    syntheticSubmit()
+    await flush()
+    expect(submitted).toHaveLength(0)
 
     submit()
     await flush()

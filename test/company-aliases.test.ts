@@ -19,6 +19,8 @@ after(async () => {
   await db.$disconnect()
 })
 
+const sync = (curated?: { company: string; aliases: string[] }[]) => syncCompanyAliases({ curated })
+
 test("the sync fills the company map, and a row switched off stays off", async () => {
   const one = await db.company.create({
     data: { name: Acme, normalizedName: `${stamp}-one` },
@@ -26,11 +28,12 @@ test("the sync fills the company map, and a row switched off stays off", async (
   const two = await db.company.create({
     data: { name: `${Acme} - English`, normalizedName: `${stamp}-two` },
   })
+  const mine = () => db.companyAlias.count({ where: { companyId: { in: [one.id, two.id] } } })
 
-  const first = await syncCompanyAliases()
-  assert.ok(first.added >= 2)
-  const again = await syncCompanyAliases()
-  assert.equal(again.added, 0, "a second run adds nothing")
+  await sync()
+  assert.equal(await mine(), 2)
+  await sync()
+  assert.equal(await mine(), 2, "a second run adds nothing")
 
   const key = Acme.toLowerCase()
   const map = await companyMapFor([Acme])
@@ -40,13 +43,45 @@ test("the sync fills the company map, and a row switched off stays off", async (
     where: { companyId: two.id, normalizedAlias: key },
     data: { confidence: 0 },
   })
-  await syncCompanyAliases()
+  await sync()
   const after = await companyMapFor([Acme])
   assert.deepEqual([...(after.get(key) ?? [])], [one.id])
   const row = await db.companyAlias.findFirst({
     where: { companyId: two.id, normalizedAlias: key },
   })
   assert.equal(row?.confidence, 0, "the sync does not bring it back")
+})
+
+test("an alias the plan no longer makes is switched off, the pipeline's own row stays", async () => {
+  const name = `Mangopay${stamp}`
+  const company = await db.company.create({
+    data: { name, normalizedName: `mangopay ${stamp}` },
+  })
+  // What the search pipeline writes for a company it creates: keyed by normalizedName.
+  await db.companyAlias.create({
+    data: { companyId: company.id, alias: name, normalizedAlias: `mangopay ${stamp}` },
+  })
+  const alias = `nethone${stamp}`
+  const curated = [{ company: name, aliases: [`Nethone${stamp}`] }]
+  const row = (normalizedAlias: string) =>
+    db.companyAlias.findUniqueOrThrow({
+      where: { companyId_normalizedAlias: { companyId: company.id, normalizedAlias } },
+    })
+
+  await sync(curated)
+  assert.equal((await row(alias)).confidence, 1)
+  assert.deepEqual([...((await companyMapFor([`Nethone${stamp}`])).get(alias) ?? [])], [company.id])
+
+  // Taken out of config/company-aliases.ts.
+  const result = await sync([])
+  assert.ok(result.switchedOff >= 1)
+  assert.equal((await row(alias)).confidence, 0)
+  assert.equal((await companyMapFor([`Nethone${stamp}`])).get(alias), undefined)
+  assert.equal((await row(`mangopay ${stamp}`)).confidence, 1, "the pipeline's row stays")
+  assert.equal((await row(name.toLowerCase())).confidence, 1, "the name row stays")
+
+  await sync(curated)
+  assert.equal((await row(alias)).confidence, 0, "switched off for good, like a wrong row")
 })
 
 test("an offer finds the application through the map, a role and an address", async () => {

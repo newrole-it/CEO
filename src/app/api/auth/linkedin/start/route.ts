@@ -8,16 +8,17 @@ import {
 } from "src/server/auth/linkedin"
 import { safeReturnTo } from "src/shared/return-to"
 
-const cookie = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  path: "/",
-  maxAge: 600,
-}
-
 export async function GET(request: Request) {
   const requested = new URL(request.url)
   const origin = appOrigin()
+  // Secure outside plain-http loopback, like the Gmail state cookie.
+  const cookie = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: origin.startsWith("https:"),
+    path: "/",
+    maxAge: 600,
+  }
   // The state cookie must live on the host LinkedIn returns to. Opening the app on
   // localhost while APP_ORIGIN says 127.0.0.1 would otherwise always fail the state check.
   if (requested.host !== new URL(origin).host) {

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
+import { mcpHost } from "./host"
 
 /** Server instructions and the three playbooks Claude Code shows as /mcp__nowarola__* commands. */
 
@@ -7,7 +8,7 @@ export const INSTRUCTIONS = `Nowa Rola is the person's local tech job finder. It
 Workflow: profile_get first. No profile -> profile_import (CV PDF path, pasted CV, or their LinkedIn page text read via Claude in Chrome). Then jobs_for_me or jobs_search.
 Learning: when the person likes an offer and has not said why, call job_get and ask "Co Ci się w niej podoba?" offering its suggested tags; then job_feedback with aspects/tags. Offer jobs_similar afterwards.
 Hidden offers: discovery_brief, then web-search company career pages for the target roles, then companies_watch (whole company) or offer_ingest (one offer). Never scrape LinkedIn, justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it or bulldogjob; links only.
-Gmail: when connected, statuses update from job mail by themselves. gmail_status shows what waits for the person's confirmation, gmail_sync checks now.
+Gmail: the mailbox is never searched. The person opens a company's mail in Gmail and picks it in the Nowa Rola extension; gmail_status explains this and shows what an earlier check left waiting.
 
 Applications: applications_list / application_get answer "where am I with X"; record changes with application_update (status, stage label, next step and date). After changes, sheet_sync mirrors the table into the person's Google Sheet when it is connected.
 CV and answers: cv_get / cv_update / cv_export_pdf edit and print their CV (never invent experience); answers_search before answer_draft, and save the final wording with answer_save. Prompts: apply (one offer end to end), pipeline (weekly review).
@@ -17,7 +18,13 @@ function user(text: string) {
   return { messages: [{ role: "user" as const, content: { type: "text" as const, text } }] }
 }
 
+const onboardFile = {
+  pdfPath: z.string().optional().describe("Absolute path to a CV PDF, if you have one"),
+}
+
 export function registerPrompts(server: McpServer) {
+  const { localInstall } = mcpHost()
+
   server.registerPrompt(
     "hunt",
     {
@@ -32,7 +39,17 @@ export function registerPrompts(server: McpServer) {
       },
     },
     ({ focus }) =>
-      user(`Znajdź mi oferty pracy spoza agregatorów${focus ? `, z naciskiem na: ${focus}` : ""}.
+      !localInstall
+        ? user(`Znajdź mi oferty pracy spoza agregatorów${focus ? `, z naciskiem na: ${focus}` : ""}.
+
+Plan:
+1. Wywołaj discovery_brief. Zapamiętaj role docelowe, stack, to co lubię i zasady.
+2. Wymyśl 8–15 firm pasujących do mojego profilu (branża, stack, wielkość, tryb pracy).
+3. Swoim wyszukiwaniem znajdź strony kariery tych firm i oferty dla moich ról: zapytania typu "<firma> careers", "<rola> <miasto> site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com OR site:*.teamtailor.com OR site:*.recruitee.com". Nie otwieraj LinkedIn ani polskich agregatorów (justjoin.it, nofluffjobs, pracuj.pl, theprotocol.it, bulldogjob).
+4. Otwórz tylko stronę kariery lub ATS danej firmy i przeczytaj oferty. Mało zapytań na domenę.
+5. Pokaż mi pasujące oferty: stanowisko, firma, pensja, tryb, link i powód.
+6. Gdy powiem, że zaaplikowałem, zapisz to przez application_add.`)
+        : user(`Znajdź mi oferty pracy spoza agregatorów${focus ? `, z naciskiem na: ${focus}` : ""}.
 
 Plan:
 1. Wywołaj discovery_brief. Zapamiętaj role docelowe, stack, to co lubię, obserwowane firmy, knownDomains i zasady.
@@ -69,16 +86,18 @@ Plan:
     "onboard",
     {
       title: "Załóż profil z CV albo LinkedIn",
-      description: "Import the profile from a CV PDF path, pasted text, or LinkedIn via Chrome.",
-      argsSchema: {
-        pdfPath: z.string().optional().describe("Absolute path to a CV PDF, if you have one"),
-      },
+      description: localInstall
+        ? "Import the profile from a CV PDF path, pasted text, or LinkedIn via Chrome."
+        : "Import the profile from the text of a CV or of the person's own LinkedIn profile.",
+      argsSchema: localInstall ? onboardFile : ({} as typeof onboardFile),
     },
     ({ pdfPath }) =>
       user(`Załóżmy mój profil w Nowej Roli.
 
 ${
-  pdfPath
+  !localInstall
+    ? "1. Poproś o tekst mojego CV albo mojego profilu LinkedIn (mogę go wkleić albo załączyć plik) i przekaż go jako text do profile_import."
+    : pdfPath
     ? `1. Wywołaj profile_import z pdfPath: ${pdfPath}.`
     : `1. Zapytaj, skąd wziąć profil:
    a) mój LinkedIn w Chrome (domyślnie) — przez Claude in Chrome: tabs_context_mcp; nowa karta (tabs_create_mcp); otwórz https://www.linkedin.com/in/me/ i get_page_text; potem na moim profilu /details/experience/, /details/skills/, /details/education/, /details/certifications/, /details/languages/ (pomiń brakujące), każdą przez get_page_text; zamknij kartę. Jeśli widzisz ekran logowania, poproś, żebym zalogował się do LinkedIn w Chrome. Nigdy nie klikaj, nie pisz, nie otwieraj innych profili, feedu, ofert ani wiadomości. Tekst stron przekaż jako text do profile_import.
@@ -87,7 +106,11 @@ ${
 }
 2. Przed zapisem zapytaj o minimalne wynagrodzenie miesięczne (PLN), umowę (uop/b2b), tryb pracy (zdalnie/hybrydowo/stacjonarnie) i miasto, i przekaż je w preferences.
 3. Pokaż odczytany profil (rola, seniority, stack, branże) i zapytaj, czy coś poprawić. Popraw, wywołując profile_import ponownie z poprawionym tekstem lub preferencjami.
-4. Pokaż pierwsze dopasowania: jobs_for_me (limit 8).`)
+4. ${
+        localInstall
+          ? "Pokaż pierwsze dopasowania: jobs_for_me (limit 8)."
+          : "Zaproponuj, że poszukasz dla mnie ofert (prompt hunt)."
+      }`)
   )
 
   server.registerPrompt(
@@ -109,8 +132,16 @@ ${
     ({ offer, questions }) =>
       user(`Pomóż mi zaaplikować na: ${offer}
 
-1. Ustal ofertę: job id → job_get z fullText: true, żeby znać całą treść; URL → jobs_search albo offer_ingest, jeśli jej nie ma; sprawdź applications_list, czy już nie aplikowałem.
-2. CV: cv_list, potem cv_get domyślnego. Porównaj z wymaganiami oferty i zaproponuj 3–5 konkretnych zmian (które punkty wyeksponować, co skrócić). Niczego nie wymyślaj: tylko to, co jest w CV i profilu. Po mojej zgodzie zapisz zmiany przez cv_update (najlepiej na kopii z tytułem „<Firma>”, jeśli o to poproszę) i wygeneruj PDF przez cv_export_pdf.
+1. Ustal ofertę: ${
+        localInstall
+          ? "job id → job_get z fullText: true, żeby znać całą treść; URL → jobs_search albo offer_ingest, jeśli jej nie ma"
+          : "przeczytaj sam całą stronę oferty"
+      }; sprawdź applications_list, czy już nie aplikowałem.
+2. CV: cv_list, potem cv_get domyślnego. Porównaj z wymaganiami oferty i zaproponuj 3–5 konkretnych zmian (które punkty wyeksponować, co skrócić). Niczego nie wymyślaj: tylko to, co jest w CV i profilu. Po mojej zgodzie zapisz zmiany przez cv_update (najlepiej na kopii z tytułem „<Firma>”, jeśli o to poproszę) i ${
+        localInstall
+          ? "wygeneruj PDF przez cv_export_pdf"
+          : "daj mi link do edytora CV, z którego pobiorę PDF"
+      }.
 3. Pytania z formularza${
         questions ? `:\n${questions}\n` : " (zapytaj mnie o nie, jeśli ich nie ma)."
       }

@@ -1,4 +1,5 @@
 /** Popup: connection state, actions for the current tab, and the switches. */
+import { isGmail } from "./gmail.js"
 import { linkedInJobId, statusLine } from "./offer.js"
 
 const ALL_SITES = "https://*/*"
@@ -12,6 +13,24 @@ const ERRORS = {
   busy: "Już nad tym pracuję.",
   "not-profile": "Otwórz swój profil LinkedIn (linkedin.com/in/…) i spróbuj ponownie.",
   "no-sections": "Nie widzę sekcji profilu. Przewiń stronę i spróbuj ponownie.",
+  "not-gmail": "Otwórz mail w Gmailu i spróbuj ponownie.",
+  "no-mail":
+    "Nie widzę otwartego maila. Otwórz jedną wiadomość (nie listę) albo zaznacz jej treść i spróbuj ponownie.",
+  "no-sender": "Nie widzę adresu nadawcy. Rozwiń wiadomość w wątku i spróbuj ponownie.",
+  "already-used": "Ten mail jest już zapisany w trackerze.",
+}
+
+/** What the app read from the mail, in the popup's words. */
+const SIGNALS = {
+  CONFIRMATION: "potwierdzenie złożenia aplikacji",
+  NEXT_STAGE: "kolejny etap",
+  SCREENING: "rozmowa z rekruterem",
+  INTERVIEW: "zaproszenie na rozmowę",
+  TASK: "zadanie",
+  FINAL: "rozmowa finałowa",
+  OFFER: "oferta",
+  REJECTED: "odrzucenie",
+  OTHER: "nie widzę tu decyzji",
 }
 
 const LINKEDIN_PROFILE = /^https:\/\/www\.linkedin\.com\/in\/[^/?#]+\/?(?:[?#].*)?$/
@@ -37,7 +56,7 @@ async function activeTab() {
 }
 
 async function showApplied(tab) {
-  if (!tab?.url || !/^https?:/.test(tab.url)) return
+  if (!tab?.url || !/^https?:/.test(tab.url) || isGmail(tab.url)) return
   if (/^https:\/\/www\.linkedin\.com\//.test(tab.url) && !linkedInJobId(tab.url)) return
   // The script on the page also read the company and role; the address alone may not match.
   const fromPage = await chrome.tabs.sendMessage(tab.id, { type: "nr:offer" }).catch(() => null)
@@ -72,6 +91,90 @@ async function auditProfile(button) {
     return
   }
   say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+}
+
+function option(value, label) {
+  const node = document.createElement("option")
+  node.value = value
+  node.textContent = label
+  return node
+}
+
+/** Reads the open mail, then lets the person pick the application and the status. */
+async function readMail(button) {
+  const tab = await activeTab()
+  if (!tab?.id) return say(ERRORS.restricted, "err")
+  button.disabled = true
+  show("mailForm", false)
+  say("Czytam ten mail…")
+  const result = await ask({ type: "mailTab", tabId: tab.id })
+  button.disabled = false
+  if (!result?.ok) {
+    return say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+  }
+  say("")
+
+  const { data, mail } = result
+  const date = new Date(data.mail.receivedAt).toLocaleString("pl-PL")
+  $("mailSubject").textContent = data.mail.subject
+  $("mailMeta").textContent = `${data.mail.from} · ${date}${
+    result.fromSelection ? " · z zaznaczonego tekstu" : ""
+  }`
+  const reading = SIGNALS[data.reading.signal] || data.reading.signal
+  $("mailReading").textContent = data.reading.evidence
+    ? `Odczyt: ${reading}. „${data.reading.evidence}”`
+    : `Odczyt: ${reading}.`
+  const used = data.used
+  $("mailUsed").textContent = used
+    ? `Ten mail jest już zapisany${used.company ? ` przy: ${used.company} · ${used.title}` : ""}.`
+    : ""
+  show("mailUsed", Boolean(used))
+
+  const apps = $("mailApp")
+  const empty = data.choices.length ? "Wybierz aplikację" : "Brak aplikacji w trackerze"
+  apps.replaceChildren(option("", empty))
+  for (const choice of data.choices) {
+    const mark = choice.likely ? "★ " : ""
+    const label = `${mark}${choice.company} · ${choice.title} (${choice.statusLabel})`
+    apps.append(option(choice.id, label))
+  }
+  apps.value = data.suggestion.applicationId || ""
+
+  const statuses = $("mailStatus")
+  statuses.replaceChildren(option("", "Bez zmiany, tylko wpis na osi czasu"))
+  for (const status of data.statuses) statuses.append(option(status.value, status.label))
+  statuses.value = data.suggestion.status || ""
+
+  const form = $("mailForm")
+  form.onsubmit = async (event) => {
+    event.preventDefault()
+    if (!apps.value) return say("Wybierz aplikację, której dotyczy ten mail.", "err")
+    $("useMail").disabled = true
+    say("Zapisuję…")
+    const saved = await ask({
+      type: "useMail",
+      mail,
+      applicationId: apps.value,
+      status: statuses.value || null,
+      signal: data.reading.signal,
+      reader: data.reading.reader,
+      evidence: data.reading.evidence,
+    })
+    $("useMail").disabled = false
+    if (!saved?.ok) {
+      return say(ERRORS[saved?.error] || saved?.error || "Coś poszło nie tak.", "err")
+    }
+    const app = saved.data.application
+    show("mailForm", false)
+    say(
+      saved.data.changed
+        ? `Zapisano: ${app.company} · ${app.title} → ${statuses.selectedOptions[0].textContent}`
+        : `Dodano mail do osi czasu: ${app.company} · ${app.title}`,
+      "ok"
+    )
+  }
+  $("useMail").disabled = Boolean(used)
+  show("mailForm", true)
 }
 
 async function act(type, button, working) {
@@ -130,10 +233,14 @@ async function init() {
   // On a LinkedIn profile the form actions make no sense; the audit takes their place.
   const tab = await activeTab()
   const onProfile = LINKEDIN_PROFILE.test(tab?.url || "")
-  show("fill", !onProfile)
-  show("save", !onProfile)
+  // In Gmail the only thing to do is to use the open message.
+  const onMail = isGmail(tab?.url)
+  show("fill", !onProfile && !onMail)
+  show("save", !onProfile && !onMail)
   show("audit", onProfile)
+  show("readMail", onMail)
   $("audit").addEventListener("click", () => void auditProfile($("audit")))
+  $("readMail").addEventListener("click", () => void readMail($("readMail")))
 
   $("autoTrack").checked = config.data.autoTrack
   $("autoTrack").addEventListener("change", (event) => {

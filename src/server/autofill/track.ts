@@ -9,7 +9,7 @@ import {
 } from "src/server/applications/service"
 import type { FormAnswer } from "src/server/applications/types"
 import { classifyField, FIELD_KINDS, QUESTION_KINDS, type FieldKind } from "./fields"
-import { extractJob, normalizePostingUrl, type PageInput } from "./job-extract"
+import { cleanTitle, extractJob, normalizePostingUrl, type PageInput } from "./job-extract"
 
 /** POST /api/ext/submitted (docs/product/plan-aplikacje.md §5.3, E5.3). */
 
@@ -27,6 +27,9 @@ export type TrackResult = {
 }
 
 export const RESENT_NOTE = "Wysłano ponownie przez rozszerzenie"
+
+/** Better than the host: "linkedin.com" would read as the employer, here and in later matching. */
+export const UNKNOWN_COMPANY = "Nieznana firma"
 
 /** Kinds whose answers go to the answer bank. Contact details, EEO, consents and secrets never do. */
 const BANK_KINDS: readonly FieldKind[] = [
@@ -168,9 +171,12 @@ export async function trackSubmission(input: {
     const result = await createApplication({
       userId,
       url: page.url,
-      company: given?.company?.trim() || extracted?.company || hostLabel(page.url),
+      company: given?.company?.trim() || extracted?.company || UNKNOWN_COMPANY,
       title:
-        given?.title?.trim() || extracted?.title || page.title?.trim().slice(0, 200) || "Aplikacja",
+        given?.title?.trim() ||
+        extracted?.title ||
+        cleanTitle(page.title ?? "").slice(0, 200) ||
+        "Aplikacja",
       location: extracted?.location ?? null,
       source: "extension",
       channel: "extension",
@@ -214,13 +220,5 @@ export async function trackSubmission(input: {
     },
     created,
     answers: { saved: answers.saved, reused: answers.reused },
-  }
-}
-
-function hostLabel(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "")
-  } catch {
-    return "Nieznana firma"
   }
 }

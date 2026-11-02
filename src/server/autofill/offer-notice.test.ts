@@ -208,11 +208,11 @@ describe("jobPosting", () => {
 })
 
 describe("linkedInFacts", () => {
-  it("reads the top card", () => {
+  it("reads the top card of the public page", () => {
     setPage(
       "LinkedIn",
-      `<h1 class="job-details-jobs-unified-top-card__job-title">Staff Engineer</h1>
-       <div class="job-details-jobs-unified-top-card__company-name"><a>Acme</a></div>`
+      `<h1 class="top-card-layout__title">Staff Engineer</h1>
+       <a class="topcard__org-name-link">Acme</a>`
     )
     expect(linkedInFacts(document)).toEqual({ company: "Acme", title: "Staff Engineer" })
   })

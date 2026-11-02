@@ -107,6 +107,8 @@ export async function listTraffit(
 ): Promise<BoardList> {
   const jobs: ListedJob[] = []
   const seen = new Set<string>()
+  // Stays true only if the loop ran out of pages before the board said it had ended.
+  let capped = true
   for (let page = 1; page <= MAX_PAGES; page++) {
     const response = await http.get(traffitListUrl(boardId), {
       maxBytes: 8_000_000,
@@ -116,11 +118,11 @@ export async function listTraffit(
         "X-Request-Current-Page": String(page),
       },
     })
-    if (response.status === 404 || response.status === 503) {
-      if (page === 1)
-        return { jobs: [], proven: false, companyName, note: `Traffit ${boardId} was not found` }
-      break
+    if (page === 1 && (response.status === 404 || response.status === 503)) {
+      return { jobs: [], proven: false, companyName, note: `Traffit ${boardId} was not found` }
     }
+    // A later page that fails leaves a partial list. Returned as proven, it would close every
+    // job past page 1, so the whole board fails and is retried.
     if (response.status >= 400) throw new Error(`Traffit ${boardId} returned ${response.status}`)
     let payload: unknown
     try {
@@ -148,8 +150,10 @@ export async function listTraffit(
       page >= totalPages ||
       added === 0 ||
       parsed.length < PAGE_SIZE
-    )
+    ) {
+      capped = false
       break
+    }
   }
   if (jobs.length === 0) {
     return {
@@ -161,10 +165,16 @@ export async function listTraffit(
         : "Traffit payload has no company name",
     }
   }
+  const notes = [
+    companyName ? "" : "Traffit payload has no company name; identity is the slug",
+    capped ? `Read the first ${MAX_PAGES} pages only, so nothing is closed` : "",
+  ].filter(Boolean)
   return {
     jobs,
     proven: true,
     companyName,
-    note: companyName ? undefined : "Traffit payload has no company name; identity is the slug",
+    note: notes.length ? notes.join(". ") : undefined,
+    listedCount: jobs.length,
+    complete: !capped,
   }
 }

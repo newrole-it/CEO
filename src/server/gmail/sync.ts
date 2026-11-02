@@ -173,7 +173,7 @@ async function handleMessage(
   })
   if (!reading) return false
   const match = matchApplication(
-    { sender, tier, subject, text, receivedAt: head.receivedAt },
+    { sender, tier, subject, text, receivedAt: head.receivedAt, title: reading.title },
     context.apps
   )
   const rule = reading.signal === "CONFIRMATION" ? factsFromMail(subject, sender.name) : null
@@ -275,6 +275,7 @@ export async function syncGmail(userId: number, deps: SyncDeps = {}): Promise<Sy
     const budget = deps.budgetMs ?? WORKER_BUDGET_MS
     let cutShortAt: Date | null = null
     let waitingAt: Date | null = null
+    let failedAt: Date | null = null
     for (const head of heads) {
       if (known.has(head.id)) continue
       const gate = gateMessage(head, { mailbox: link.email, apps: context.apps })
@@ -294,24 +295,33 @@ export async function syncGmail(userId: number, deps: SyncDeps = {}): Promise<Sy
         if (!handled) waitingAt = waitingAt ?? head.receivedAt
       } catch (error) {
         if (error instanceof GmailError) throw error
-        // One odd message must not hold up every message after it, pass after pass. A log row
-        // keeps it from being read and retried forever. Name only: the error could quote the mail.
+        // Name only: the error could quote the mail.
         console.error("Gmail message failed", error instanceof Error ? error.name : "unknown")
-        await db.mailEvent
-          .create({
-            data: {
-              userId,
-              messageId: head.id,
-              fromAddress: gate.sender.address,
-              subject: redact(head.subject.slice(0, 300)),
-              receivedAt: head.receivedAt,
-              signal: "OTHER",
-              reader: "rules",
-              outcome: "IGNORED",
-              authenticated: false,
-            },
-          })
-          .catch(() => undefined)
+        // Most failures pass (the database, a timeout), so the cursor stays before this message and
+        // the next pass reads it again. One odd message must not hold the cursor back for ever, so
+        // once it is as old as the model's wait, a log row ends the retries.
+        const giveUp = started.getTime() - head.receivedAt.getTime() > MODEL_RETRY_MS
+        const logged =
+          giveUp &&
+          (await db.mailEvent
+            .create({
+              data: {
+                userId,
+                messageId: head.id,
+                fromAddress: gate.sender.address,
+                subject: redact(head.subject.slice(0, 300)),
+                receivedAt: head.receivedAt,
+                signal: "OTHER",
+                reader: "rules",
+                outcome: "IGNORED",
+                authenticated: false,
+              },
+            })
+            .then(
+              () => true,
+              () => false
+            ))
+        if (!logged) failedAt = failedAt ?? head.receivedAt
       }
     }
 
@@ -320,12 +330,16 @@ export async function syncGmail(userId: number, deps: SyncDeps = {}): Promise<Sy
       where: { userId, createdAt: { lt: new Date(finished.getTime() - MAIL_RETENTION_MS) } },
     })
     const soon = cutShortAt || (waitingAt && !context.modelDown)
+    // Both are the first such message in an oldest-first pass; the earlier one holds the cursor.
+    const behind =
+      waitingAt && failedAt ? (waitingAt < failedAt ? waitingAt : failedAt) : waitingAt ?? failedAt
     const saved = await db.gmailLink.updateMany({
       where: { userId },
       data: {
-        // Everything before the start of this search is done, unless a limit or the model left
-        // something behind. Messages after that point are in the log, so they are not read again.
-        cursorAt: waitingAt ?? cutShortAt ?? started,
+        // Everything before the start of this search is done, unless a limit, the model or a
+        // failure left something behind. Messages after that point are in the log, so they are not
+        // read again.
+        cursorAt: behind ?? cutShortAt ?? started,
         lastSyncedAt: finished,
         lastErrorCode: null,
         lastStats: stats,

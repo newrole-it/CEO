@@ -3,6 +3,7 @@ import { SecurePassword } from "@blitzjs/auth/secure-password"
 import { seedBoards } from "../config/seed-boards"
 import { canonicalUrl } from "../src/server/jobs/dedupe"
 import { normalizeCompanyName } from "../src/server/jobs/normalize"
+import { assertSafeProductionEnv } from "../src/server/security/env-check"
 
 const db = new PrismaClient()
 
@@ -106,9 +107,11 @@ const SOURCES = [
 ]
 
 async function main() {
-  const email = (process.env.OWNER_EMAIL || "rafal@jobscanner.local").toLowerCase()
+  const email = (process.env.OWNER_EMAIL || "owner@nowarola.local").toLowerCase()
   const password = process.env.OWNER_PASSWORD || "jobscanner-local"
-  const name = process.env.OWNER_NAME || "Rafał"
+  // The owner row keeps its first password, so a public server must not create it with the sample.
+  assertSafeProductionEnv({ ...process.env, OWNER_PASSWORD: password })
+  const name = process.env.OWNER_NAME || "Owner"
   if (password.length < 10) throw new Error("OWNER_PASSWORD must be at least 10 characters")
   const hashedPassword = await SecurePassword.hash(password)
   const existing = await db.user.findUnique({ where: { email } })

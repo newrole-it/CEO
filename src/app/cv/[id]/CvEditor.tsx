@@ -66,6 +66,7 @@ function fieldHost(node: Node | null): HTMLElement | null {
 export function CvEditor({
   id,
   initial,
+  loadedAt,
   initialAudit,
   startAudit,
   isLetter = false,
@@ -73,6 +74,8 @@ export function CvEditor({
 }: {
   id: string
   initial: { title: string; language: CvLanguage; content: CvContent }
+  /** The CV's updatedAt when the page loaded (ISO), so a save from a stale tab is refused */
+  loadedAt: string
   initialAudit: CvAudit | null
   /** Arrived from the "CV audit" link: the audit is what the person came for */
   startAudit: boolean
@@ -83,7 +86,7 @@ export function CvEditor({
 }) {
   const { t } = useCopy()
   const toast = useToast()
-  const doc = useCvDocument(id, initial)
+  const doc = useCvDocument(id, initial, new Date(loadedAt))
   const { content, edit, undo, redo } = doc
 
   const [keep, setKeep] = useState<ReadonlySet<string>>(() => new Set())
@@ -661,6 +664,22 @@ function SaveStatus({
   onRetry: () => void
 }) {
   const { t } = useCopy()
+  if (state === "conflict") {
+    return (
+      <span className="cve-save cve-save--error" role="alert">
+        <CircleAlert aria-hidden />
+        <span>{t("cv.ed.conflict")}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<RotateCcw />}
+          onClick={() => window.location.reload()}
+        >
+          {t("cv.ed.reload")}
+        </Button>
+      </span>
+    )
+  }
   if (state === "error") {
     return (
       <span className="cve-save cve-save--error" role="alert">

@@ -1,4 +1,5 @@
 import db from "db"
+import { mcpHost } from "./host"
 
 export type McpUser = { id: number; email: string; name: string | null; how: string }
 
@@ -42,6 +43,8 @@ let resolved: McpUser | null = null
 export class NoUserError extends Error {}
 
 export async function currentUser(): Promise<McpUser> {
+  const hosted = mcpHost().currentUser
+  if (hosted) return hosted()
   if (resolved) return resolved
   const users = await db.user.findMany({
     where: { deletedAt: null, role: { not: "GUEST" } },
@@ -58,6 +61,3 @@ export async function currentUser(): Promise<McpUser> {
   }
   return resolved
 }
-
-export const NO_PROFILE_HINT =
-  "No profile yet. Call profile_import with the CV text or a PDF path (pdfPath), or open the person's LinkedIn profile in Chrome, copy the visible text and pass it as text. The web app works too: http://127.0.0.1:43123/profile."

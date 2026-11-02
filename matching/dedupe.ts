@@ -70,8 +70,13 @@ export function extractAtsKey(url: string, source: Source, atsJobId?: string, at
   if (host.endsWith("pracuj.pl") && (m = path.match(/oferta,(\d+)/))) return `pracuj:${m[1]}`;
   if (host.endsWith("linkedin.com") && (m = path.match(/\/jobs\/view\/(?:[^/]*-)?(\d{6,})/))) return `linkedin:${m[1]}`;
   if (atsJobId) {
-    const scoped = source === "workable" || source === "teamtailor";
-    return `${source}:${scoped && atsBoard ? `${atsBoard.toLowerCase()}:` : ""}${atsJobId}`;
+    // company_site covers dozens of vendors and career sites whose ids are only unique per tenant:
+    // Traffit "106" at one employer and "106" at another are different jobs.
+    const scoped = source === "workable" || source === "teamtailor" || source === "company_site";
+    const board = atsBoard?.toLowerCase();
+    // The search pipeline passes ids it has already scoped ("tutlo:106"); do not scope twice.
+    const prefix = scoped && board && !atsJobId.toLowerCase().startsWith(`${board}:`) ? `${board}:` : "";
+    return `${source}:${prefix}${atsJobId}`;
   }
   return null;
 }

@@ -5,7 +5,10 @@ import { CvContent } from "src/shared/cv/schema"
 import { requireMember } from "src/app/feedback/guard"
 import { rethrowCv } from "../guard"
 
-/** Autosave from the editor: title, language and/or the whole content. */
+/**
+ * Autosave from the editor: title, language and/or the whole content. `baseUpdatedAt` is the
+ * version the editor holds; a newer stored CV fails with the message "conflict".
+ */
 export default resolver.pipe(
   resolver.zod(
     z.object({
@@ -13,6 +16,7 @@ export default resolver.pipe(
       title: z.string().max(200).optional(),
       language: z.enum(["pl", "en"]).optional(),
       content: CvContent.optional(),
+      baseUpdatedAt: z.date().optional(),
     })
   ),
   async ({ id, ...patch }, ctx) => {

@@ -3,8 +3,8 @@ import type { PageGeometry } from "./paginate"
 /**
  * The one stylesheet for a CV page, used by the editor and by the print/PDF HTML, so both
  * lay text out identically. Everything is scoped under .cv-doc and every property that the
- * app's global CSS touches is set explicitly. Values reproduce the reference layout
- * (Rafal_Testowy_CV_PL.html): A4, Helvetica Neue 9.6pt, ink #172333, muted #536273,
+ * app's global CSS touches is set explicitly. Values reproduce the reference layout:
+ * A4, Helvetica Neue 9.6pt, ink #172333, muted #536273,
  * accent #175c72, rules #d8e0e7. Spacing between atoms is their top padding (see ./flow).
  */
 

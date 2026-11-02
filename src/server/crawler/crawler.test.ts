@@ -58,10 +58,10 @@ describe("source policy", () => {
     expect(decideFetch(new URL("https://example.myworkday.com/site/job/1")).allow).toBe(true)
   })
 
-  it("allows iCIMS job pages, Phenom employer domains, Avature feeds, and Siemens RSS only", () => {
+  it("links iCIMS without fetching, allows Phenom employer domains, Avature feeds, Siemens RSS", () => {
     expect(
       decideFetch(new URL("https://careers-kingfisher2.icims.com/jobs/1/job?in_iframe=1")).allow
-    ).toBe(true)
+    ).toBe(false)
     expect(decideFetch(new URL("https://careers-kingfisher2.icims.com/jobs/1/login")).allow).toBe(
       false
     )
@@ -103,14 +103,24 @@ describe("source policy", () => {
     delete process.env.SMARTRECRUITERS_POSTING_API
     expect(
       decideFetch(new URL("https://api.smartrecruiters.com/v1/companies/acme/postings")).allow
-    ).toBe(true)
-    process.env.SMARTRECRUITERS_POSTING_API = "off"
-    expect(
-      decideFetch(new URL("https://api.smartrecruiters.com/v1/companies/acme/postings")).allow
     ).toBe(false)
     expect(decideFetch(new URL("https://api.smartrecruiters.com/robots.txt")).allow).toBe(true)
+    process.env.SMARTRECRUITERS_POSTING_API = "on"
+    expect(
+      decideFetch(new URL("https://api.smartrecruiters.com/v1/companies/acme/postings")).allow
+    ).toBe(true)
     if (previous === undefined) delete process.env.SMARTRECRUITERS_POSTING_API
     else process.env.SMARTRECRUITERS_POSTING_API = previous
+  })
+
+  it("stops reading a site whose owner opted out, subdomains included", () => {
+    const previous = process.env.CRAWLER_OPT_OUT_HOSTS
+    process.env.CRAWLER_OPT_OUT_HOSTS = " acme.example , other.example"
+    expect(decideFetch(new URL("https://acme.example/careers")).allow).toBe(false)
+    expect(decideFetch(new URL("https://jobs.acme.example/1")).allow).toBe(false)
+    expect(decideFetch(new URL("https://notacme.example/careers")).allow).toBe(true)
+    if (previous === undefined) delete process.env.CRAWLER_OPT_OUT_HOSTS
+    else process.env.CRAWLER_OPT_OUT_HOSTS = previous
   })
 })
 

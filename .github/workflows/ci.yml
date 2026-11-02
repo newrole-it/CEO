@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jobscanner
+          POSTGRES_PASSWORD: jobscanner
+          POSTGRES_DB: jobscanner
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobscanner -d jobscanner"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner
+      SESSION_SECRET_KEY: ci-only-session-secret-not-used-anywhere-else
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix matching
+      - run: npx prisma generate
+      - run: npm run test:db
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm test --prefix matching
+      - run: npm run test:flow
+      - run: npm run build

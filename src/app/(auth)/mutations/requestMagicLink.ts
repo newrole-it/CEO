@@ -3,18 +3,10 @@ import db from "db"
 import { z } from "zod"
 import { claimGuest, sessionRole } from "src/server/auth/accounts"
 import { magicLinkUrl, sendMagicLinkEmail } from "src/server/auth/email"
+import { rememberLinkRequest } from "src/server/auth/link-request"
 import { AuthRateLimitError, issueMagicLink } from "src/server/auth/magic-link"
-
-/**
- * The caller's IP for the per-IP limit. The session has no headers, so read the request's.
- * Imported on call: LoginForm imports this file, and a static next/headers import fails the
- * client-layer build.
- */
-async function clientIp(): Promise<string> {
-  const { headers } = await import("next/headers")
-  const list = await headers()
-  return list.get("x-forwarded-for")?.split(",")[0]?.trim() || list.get("x-real-ip") || "local"
-}
+import { isLocalInstall } from "src/server/local-install"
+import { requestClientIp } from "src/server/security/client-ip"
 
 export default resolver.pipe(
   resolver.zod(z.object({ email: z.string().trim().email().max(180) })),
@@ -23,7 +15,10 @@ export default resolver.pipe(
     const existing = await db.user.findUnique({ where: { email: normalized } })
     const sessionUserId = ctx.session.userId ?? null
 
-    if (!existing || (sessionUserId === existing.id && existing.role === "GUEST")) {
+    // Locally the first email simply opens the account. On a server others use, an address has to
+    // prove it is yours first, or anyone could take someone else's.
+    const instant = isLocalInstall()
+    if (instant && (!existing || (sessionUserId === existing.id && existing.role === "GUEST"))) {
       if (sessionUserId) {
         const current = await db.user.findUnique({ where: { id: sessionUserId } })
         if (current?.role === "GUEST") {
@@ -48,11 +43,14 @@ export default resolver.pipe(
       return { status: "signed-in" as const }
     }
 
-    if (sessionUserId === existing.id) return { status: "signed-in" as const }
+    if (existing && sessionUserId === existing.id) return { status: "signed-in" as const }
+
+    if (!existing) await db.user.create({ data: { email: normalized, role: "USER" } })
 
     try {
-      const token = await issueMagicLink(normalized, await clientIp())
+      const token = await issueMagicLink(normalized, await requestClientIp())
       await sendMagicLinkEmail(normalized, magicLinkUrl(token))
+      await rememberLinkRequest(normalized)
     } catch (error) {
       if (error instanceof AuthRateLimitError) return { status: "limited" as const }
       throw error

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react"
 import { createPortal } from "react-dom"
 import { Check, Copy, X } from "lucide-react"
@@ -232,6 +233,33 @@ export function Modal({
     </>,
     document.body
   )
+}
+
+/**
+ * Modal's focus handling for a non-modal popover: when `open` turns truthy (or changes), focus
+ * moves to the first control inside `ref` (or the popover itself), unless something inside, such
+ * as an autoFocus field, already has it. On close it returns to `trigger`, or to whatever was
+ * focused before, unless the person already moved focus somewhere else. Tab is not trapped.
+ */
+export function usePopoverFocus(
+  ref: RefObject<HTMLElement | null>,
+  open: unknown,
+  trigger?: RefObject<HTMLElement | null>
+) {
+  useEffect(() => {
+    if (!open) return
+    const node = ref.current
+    const active = document.activeElement as HTMLElement | null
+    const previous = trigger?.current ?? (active && !node?.contains(active) ? active : null)
+    if (node && !node.contains(document.activeElement)) {
+      ;(node.querySelector<HTMLElement>(FOCUSABLE) ?? node).focus()
+    }
+    return () => {
+      const now = document.activeElement
+      const lost = !now || now === document.body || Boolean(node?.contains(now))
+      if (lost && previous && document.contains(previous)) previous.focus()
+    }
+  }, [open, ref, trigger])
 }
 
 function SheetHandle({ onClose }: { onClose: () => void }) {

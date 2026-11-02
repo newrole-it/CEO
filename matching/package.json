@@ -2,6 +2,7 @@
   "name": "@jobscanner/matching",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "description": "Jobscanner matching pack: query expansion, normalization, dedupe, explainable scoring, match explanation.",
   "scripts": {

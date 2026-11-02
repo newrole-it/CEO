@@ -1,6 +1,6 @@
-import { mkdir, writeFile } from "fs/promises"
+import { lstat, mkdir, open, writeFile } from "fs/promises"
 import { homedir } from "os"
-import { dirname, isAbsolute, join } from "path"
+import { basename, dirname, extname, isAbsolute, join } from "path"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
 import { findChrome } from "src/server/cv/render"
@@ -16,6 +16,7 @@ import {
 } from "src/server/cv/service"
 import { applyCvPatch } from "src/shared/cv/patch"
 import { cvContentError, parseCvContent } from "src/shared/cv/schema"
+import { appLink, mcpHost } from "./host"
 import { failure, guard, reply, type ToolResult } from "./tools"
 import { currentUser } from "./user"
 
@@ -54,10 +55,39 @@ export function exportPath(
   if (!value) return join(home, "Downloads", fileName)
   const expanded = value === "~" || value.startsWith("~/") ? join(home, value.slice(1)) : value
   if (!isAbsolute(expanded)) return { error: `path must be absolute, got "${value}".` }
-  return /\.pdf$/i.test(expanded) ? expanded : join(expanded, fileName)
+  // "notes.txt" is a file someone meant, not a folder to put the PDF in.
+  const extension = extname(expanded).toLowerCase()
+  if (extension && extension !== ".pdf") {
+    return { error: `path must be a folder or a .pdf file, got "${value}".` }
+  }
+  const target = extension === ".pdf" ? expanded : join(expanded, fileName)
+  if (!/\.pdf$/i.test(basename(target))) return { error: "the file name must end in .pdf." }
+  return target
 }
 
-const NO_CV = "Brak CV. Utwórz je na http://127.0.0.1:43123/cv."
+/** Why an existing file must not be replaced, or null: only a PDF (or nothing) may be. */
+export async function notReplaceable(target: string): Promise<string | null> {
+  let info
+  try {
+    info = await lstat(target)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null
+    throw error
+  }
+  if (info.isSymbolicLink()) return `${target} is a link. Give the path of a plain file.`
+  if (!info.isFile()) return `${target} exists and is not a file.`
+  const handle = await open(target, "r")
+  try {
+    const head = new Uint8Array(5)
+    await handle.read(head, 0, 5, 0)
+    if (Buffer.from(head).toString("latin1") !== "%PDF-") {
+      return `${target} exists and is not a PDF, so it is left as it is. Choose another path.`
+    }
+  } finally {
+    await handle.close()
+  }
+  return null
+}
 
 /** The CV a tool works on: the given id, else the default (★), else the newest. */
 async function resolveCv(
@@ -68,7 +98,7 @@ async function resolveCv(
   if (!cvId) {
     const cvs = await listCvs(userId)
     cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
-    if (!cvId) return { error: failure(NO_CV) }
+    if (!cvId) return { error: failure(`Brak CV. Utwórz je na ${appLink("/cv")}.`) }
   }
   const cv = await getCv(userId, cvId)
   return cv ? { cv } : { error: failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`) }
@@ -89,7 +119,7 @@ export function registerCvTools(server: McpServer) {
       const cvs = await listCvs(user.id)
       if (!cvs.length) {
         return reply(
-          "Brak CV. Utwórz je na http://127.0.0.1:43123/cv (z profilu, puste, import HTML albo PDF).",
+          `Brak CV. Utwórz je na ${appLink("/cv")} (z profilu, puste, import HTML albo PDF).`,
           { cvs: [] }
         )
       }
@@ -171,6 +201,7 @@ export function registerCvTools(server: McpServer) {
           .optional()
           .describe("Delete a section, or one item in it"),
       },
+      annotations: { destructiveHint: true },
     },
     guard(
       async (args: {
@@ -231,7 +262,9 @@ export function registerCvTools(server: McpServer) {
         })
         const where = args.copyAs ? `Utworzono kopię „${saved.title}”` : `Zapisano „${saved.title}”`
         return reply(
-          `${where} (id ${saved.id}). PDF: cv_export_pdf, edycja: http://127.0.0.1:43123/cv/${saved.id}`,
+          `${where} (id ${saved.id}). ${
+            mcpHost().localInstall ? "PDF: cv_export_pdf, edycja" : "Edycja i PDF"
+          }: ${appLink(`/cv/${saved.id}`)}`,
           {
             cv: viewData(saved),
           }
@@ -248,8 +281,15 @@ export function registerCvTools(server: McpServer) {
         "Write a CV as a PDF file and return its path, by default ~/Downloads/<Name>_CV.pdf. Without an id it exports the default CV. Editable CVs are rendered with the local Chrome in the same layout as the editor; uploaded PDFs are written as they were uploaded. Fails clearly when Chrome is missing (set CHROME_PATH).",
       inputSchema: {
         id: z.string().max(64).optional().describe("CV id from cv_list; omit for the default CV"),
-        path: z.string().max(1000).optional().describe("Absolute file or folder path"),
+        path: z
+          .string()
+          .max(1000)
+          .optional()
+          .describe(
+            "Absolute path of a folder or a .pdf file; an existing file that is not a PDF is never replaced"
+          ),
       },
+      annotations: { destructiveHint: true },
     },
     guard(async ({ id, path }: { id?: string; path?: string }) => {
       const user = await currentUser()
@@ -260,16 +300,22 @@ export function registerCvTools(server: McpServer) {
       if (!pdf) {
         if (cv.kind === "EDITABLE" && !findChrome()) {
           return failure(
-            `Nie znaleziono Chrome, więc nie mogę wygenerować PDF. Ustaw CHROME_PATH albo otwórz http://127.0.0.1:43123/cv/${cv.id}/print i wydrukuj do PDF.`
+            `Nie znaleziono Chrome, więc nie mogę wygenerować PDF. Ustaw CHROME_PATH albo otwórz ${appLink(
+              `/cv/${cv.id}/print`
+            )} i wydrukuj do PDF.`
           )
         }
         return failure(
-          `Nie udało się wygenerować PDF dla „${cv.title}”. Spróbuj z http://127.0.0.1:43123/cv/${cv.id}/print.`
+          `Nie udało się wygenerować PDF dla „${cv.title}”. Spróbuj z ${appLink(
+            `/cv/${cv.id}/print`
+          )}.`
         )
       }
       // cvPdf names the file for both kinds (and adds the letter suffix for a cover letter)
       const target = exportPath(path, pdf.name)
       if (typeof target !== "string") return failure(target.error)
+      const refused = await notReplaceable(target)
+      if (refused) return failure(refused)
       await mkdir(dirname(target), { recursive: true })
       await writeFile(target, new Uint8Array(pdf.bytes))
       return reply(`Zapisano PDF: ${target}`, { path: target, bytes: pdf.bytes.length, id: cv.id })

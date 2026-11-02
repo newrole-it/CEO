@@ -47,13 +47,12 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "Nowa Rola",
       locale: pl ? "pl_PL" : "en_US",
       alternateLocale: pl ? ["en_US"] : ["pl_PL"],
-      url: "/",
+      // No url or canonical here: every page inherits them, so each would point at the home page.
       title,
       description,
       images: [{ url: ogImage, width: 1200, height: 630, alt: ogAlt, type: "image/png" }],
     },
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
-    alternates: { canonical: "/" },
   }
 }
 

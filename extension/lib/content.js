@@ -3,7 +3,7 @@
  * records the submission. It never submits a form. Logic that needs no chrome.* is in form.js.
  */
 import * as F from "./form.js"
-import { statusLine } from "./offer.js"
+import { readOffer, statusLine } from "./offer.js"
 import { connectionError, element, formatDate, send, session } from "./page.js"
 
 export function startContent() {
@@ -207,6 +207,13 @@ export function startContent() {
     return connectionError(result) ?? (result.error || "Coś poszło nie tak. Spróbuj ponownie.")
   }
 
+  /** The page for the server, with the company and role its own data names, when it does. */
+  function pageFacts() {
+    const info = F.pageInfo(document, location.href)
+    const offer = readOffer(document, location.href)
+    return offer?.company ? { ...info, company: offer.company, role: offer.title } : info
+  }
+
   async function runFill() {
     if (state.busy) return { ok: false, error: "busy" }
     const root = currentRoot(true)
@@ -230,7 +237,7 @@ export function startContent() {
         return { ok: false, error: "no-fields" }
       }
       say("Uzupełniam z Twoich danych. Pytania otwarte mogą potrwać kilka sekund…")
-      const result = await send("fill", { page: F.pageInfo(document, location.href), fields })
+      const result = await send("fill", { page: pageFacts(), fields })
       if (!result.ok) {
         if (result.status === 401) await refreshConfig()
         say(errorText(result), "error")
@@ -328,7 +335,7 @@ export function startContent() {
 
   async function report(fields) {
     const result = await send("submitted", {
-      page: F.pageInfo(document, location.href),
+      page: pageFacts(),
       job: state.job || undefined,
       fields,
     })
@@ -418,6 +425,8 @@ export function startContent() {
   document.addEventListener(
     "submit",
     (event) => {
+      // A page can dispatch a synthetic submit to plant an application and answers.
+      if (event.isTrusted === false) return
       const root = state.root
       if (root && event.target && (root === event.target || root.contains(event.target)))
         onSubmission(root)

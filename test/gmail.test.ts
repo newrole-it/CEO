@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import appDb from "../db"
 import { GMAIL_SCOPE } from "../src/server/gmail/oauth"
 import { sealToken } from "../src/server/gmail/token-crypto"
 import {
@@ -411,8 +412,11 @@ test("a sync reads only job mail and updates the tracker", async () => {
   assert.equal((await eventFor("rejection")).outcome, "APPLIED")
   assert.equal((await eventFor("rejection")).reader, "rules")
 
-  // "Next stage" through an ATS, from SCREENING.
-  assert.equal(await status("globex"), "INTERVIEW")
+  // "Next stage" through an ATS, from SCREENING: anyone on Lever can type "Globex Hiring Team", so
+  // it finds the application and waits for the person.
+  assert.equal(await status("globex"), "SCREENING")
+  assert.equal((await eventFor("next-stage")).outcome, "PENDING")
+  assert.equal((await eventFor("next-stage")).toStatus, "INTERVIEW")
 
   // A forged Authentication-Results header below Gmail's own fail changes nothing.
   assert.equal(await status("initech"), "APPLIED")
@@ -518,6 +522,7 @@ test("the person can undo, apply and dismiss", async () => {
   assert.deepEqual(
     inbox.pending.map((item) => item.subject).length,
     [
+      "next-stage",
       "forged",
       "offer",
       "new-confirmation",
@@ -576,6 +581,80 @@ test("another account cannot touch these messages", async () => {
   assert.equal((await mailInbox(other.id)).pending.length, 0)
 })
 
+test("a message that fails to save is read again, not marked ignored", async () => {
+  const flaky: Mail = {
+    id: "flaky",
+    from: "Wayne HR <hr@wayne.com>",
+    subject: "Twoja aplikacja",
+    text: `${BODY_SECRET}\nDziękujemy za przesłanie aplikacji.`,
+    ageHours: 2,
+    auth: [good("wayne.com")],
+  }
+  const stale: Mail = { ...flaky, id: "flaky-old", ageHours: 5 * 24 }
+  await db.gmailLink.update({
+    where: { userId },
+    data: { cursorAt: new Date(Date.now() - 6 * 24 * HOUR) },
+  })
+  // A database that refuses these two rows for one pass, the way a dropped connection would.
+  const delegate = appDb.mailEvent as unknown as { create: (args: unknown) => Promise<unknown> }
+  const original = delegate.create
+  delegate.create = async (args) => {
+    const id = (args as { data: { messageId: string } }).data.messageId
+    if (id.startsWith("flaky")) throw new Error("connection lost")
+    return original.call(delegate, args)
+  }
+  try {
+    const first = fakeGoogle([...mailbox, flaky, stale])
+    assert.equal((await syncGmail(userId, { fetchImpl: first.fetchImpl, llm })).status, "synced")
+  } finally {
+    delegate.create = original
+  }
+  assert.equal(await db.mailEvent.count({ where: { userId, messageId: "flaky" } }), 0)
+  const link = await db.gmailLink.findUniqueOrThrow({ where: { userId } })
+  assert.ok(link.cursorAt!.getTime() < Date.now() - 4 * 24 * HOUR, "the cursor moved past them")
+
+  const second = fakeGoogle([...mailbox, flaky, stale])
+  await syncGmail(userId, { fetchImpl: second.fetchImpl, llm })
+  assert.deepEqual(second.bodiesRead().sort(), ["flaky", "flaky-old"])
+  assert.equal((await eventFor("flaky")).outcome, "NOTED")
+  // Old enough to give up on, but the row that would have ended it failed too: read again.
+  assert.equal((await eventFor("flaky-old")).outcome, "NOTED")
+  const moved = await db.gmailLink.findUniqueOrThrow({ where: { userId } })
+  assert.ok(moved.cursorAt!.getTime() > Date.now() - HOUR, "the cursor did not move on")
+})
+
+test("a message that keeps failing for days is logged once and left alone", async () => {
+  const broken: Mail = {
+    id: "broken-old",
+    from: "Wayne HR <hr@wayne.com>",
+    subject: "Twoja aplikacja",
+    text: `${BODY_SECRET}\nDziękujemy za przesłanie aplikacji.`,
+    ageHours: 4 * 24,
+    auth: [good("wayne.com")],
+  }
+  await db.gmailLink.update({
+    where: { userId },
+    data: { cursorAt: new Date(Date.now() - 5 * 24 * HOUR) },
+  })
+  // Fails inside the handling, and the log row that ends the retries still gets written.
+  const delegate = appDb.mailEvent as unknown as { create: (args: unknown) => Promise<unknown> }
+  const original = delegate.create
+  delegate.create = async (args) => {
+    const data = (args as { data: { messageId: string; outcome: string } }).data
+    if (data.messageId === "broken-old" && data.outcome !== "IGNORED") throw new Error("odd")
+    return original.call(delegate, args)
+  }
+  try {
+    const google = fakeGoogle([...mailbox, broken])
+    assert.equal((await syncGmail(userId, { fetchImpl: google.fetchImpl, llm })).status, "synced")
+  } finally {
+    delegate.create = original
+  }
+  assert.equal((await eventFor("broken-old")).outcome, "IGNORED")
+  const link = await db.gmailLink.findUniqueOrThrow({ where: { userId } })
+  assert.ok(link.cursorAt!.getTime() > Date.now() - HOUR, "an old failure held the cursor back")
+})
+
 test("an expired grant stops the worker and asks to reconnect", async () => {
   const fetchImpl = async () => ({
     ok: false,
@@ -624,7 +703,7 @@ test("disconnecting revokes at Google and wipes the log, not the tracker", async
   assert.deepEqual(google.revoked, [REFRESH])
   assert.equal(await db.gmailLink.count({ where: { userId } }), 0)
   assert.equal(await db.mailEvent.count({ where: { userId } }), 0)
-  assert.equal(await status("globex"), "INTERVIEW")
+  assert.equal(await status("globex"), "SCREENING")
   assert.equal((await gmailStatus(userId)).connected, false)
 })
 

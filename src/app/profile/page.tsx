@@ -18,8 +18,13 @@ export default async function ProfilePage() {
   const t = translator(locale)
   const [profile, summary] = user
     ? await Promise.all([
-        invoke(getProfile, null).catch(() => null),
-        getPreferenceSummary(user.id, locale).catch(() => null),
+        // no profile comes back as { draft: null }; a database error goes to error.tsx
+        invoke(getProfile, null),
+        // the taste summary is extra: without it the page still shows the profile
+        getPreferenceSummary(user.id, locale).catch((error: unknown) => {
+          console.error("taste summary failed", error instanceof Error ? error.message : error)
+          return null
+        }),
       ])
     : [null, null]
   const signedIn = Boolean(user && user.role !== "GUEST")

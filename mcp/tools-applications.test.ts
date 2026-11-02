@@ -61,7 +61,6 @@ describe("application tools", () => {
       "applications_list",
       "applications_stats",
       "gmail_status",
-      "gmail_sync",
       "sheet_status",
       "sheet_sync",
     ])
@@ -104,7 +103,7 @@ describe("application tools", () => {
           },
           {
             id: "a2",
-            company: "OLX",
+            company: "Acme",
             title: "Head of Engineering",
             status: "APPLIED",
             closedAtStage: null,
@@ -127,7 +126,7 @@ describe("application tools", () => {
     expect(text).toContain("odpowiedzi 50%")
     expect(text).toContain("Lejek: Aplikowano 2 → Rozmowa z rekruterem 1 (50%) → Rozmowy 1 (100%)")
     expect(text).toContain("Gdzie odpadam: Rozmowy: 1 odrzuc.")
-    expect(text).toContain("Najdłużej bez odpowiedzi: OLX · Head of Engineering (30 dni, id a2)")
+    expect(text).toContain("Najdłużej bez odpowiedzi: Acme · Head of Engineering (30 dni, id a2)")
     expect(text).toContain("zapisane automatycznie 50% (1 z 2)")
     expect(text).toContain("z powodem 100% (1 z 1)")
   })
@@ -206,11 +205,11 @@ describe("helpers", () => {
     const rows = [
       app({ id: "old", status: "REJECTED", appliedAt: new Date("2026-05-01") }),
       app({ id: "live", status: "INTERVIEW", title: "Head of Engineering" }),
-      app({ id: "olx", company: "OLX" }),
+      app({ id: "acme", company: "Acme" }),
     ]
     const picked = pickApplication(rows, { company: "allegro" })
     expect("match" in picked && picked.match.id).toBe("live")
-    expect("none" in pickApplication(rows, { company: "Docplanner" })).toBe(true)
+    expect("none" in pickApplication(rows, { company: "Beta" })).toBe(true)
     const two = pickApplication([...rows, app({ id: "live2", status: "SCREENING" })], {
       company: "Allegro",
     })
