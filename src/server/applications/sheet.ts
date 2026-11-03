@@ -85,6 +85,8 @@ export type SyncResult = {
    * service is not added to the script, "error" when Google refused; null from an older script.
    */
   table?: "ok" | "no-service" | "error" | null
+  /** Google's reason when the table could not be made */
+  tableDetail?: string | null
 }
 
 /** Failure kinds stored as the "code: " prefix of SheetLink.lastError (the settings screen translates them). */
@@ -396,6 +398,7 @@ export async function syncSheet(userId: number): Promise<SyncResult> {
     rows: outcome.rows,
     imported,
     table: outcome.table,
+    tableDetail: outcome.tableDetail,
     message: `Arkusz zaktualizowany: ${outcome.rows} ${outcome.rows === 1 ? "wiersz" : "wierszy"}.`,
   }
 }

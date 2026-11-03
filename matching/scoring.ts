@@ -29,6 +29,8 @@ export const PENALTIES = {
   locationIneligible: -20,
   /** whole published range below the salary floor */
   belowSalaryFloor: -15,
+  /** the source's own posting date is more than a year old: an opening still listed long after it was posted */
+  postedOverYearAgo: -10,
 };
 
 /** Relevance gate: non-title points are multiplied by g = min(1, GATE_BASE + GATE_SLOPE × titleValue).
@@ -52,7 +54,8 @@ export interface ScorePenalty {
     | "excluded_description_keyword"
     | "contract_not_accepted"
     | "location_ineligible"
-    | "below_salary_floor";
+    | "below_salary_floor"
+    | "posted_over_year_ago";
   points: number;
   reason: string;
 }
@@ -278,6 +281,11 @@ export function scorePosting(posting: NormalizedPosting, profile: MatchProfile, 
   const contracts = (posting.salary?.ranges ?? []).map((r) => r.contract).filter((c) => c !== "unknown");
   if (contracts.length && !contracts.some((c) => profile.salary.acceptedContracts.includes(c)))
     penalties.push({ id: "contract_not_accepted", points: PENALTIES.contractNotAccepted, reason: `contract ${[...new Set(contracts)].join("/")} not in accepted ${profile.salary.acceptedContracts.join("/")}` });
+
+  if (posting.postedAt) {
+    const days = Math.floor((now.getTime() - Date.parse(posting.postedAt)) / 86_400_000);
+    if (days > 365) penalties.push({ id: "posted_over_year_ago", points: PENALTIES.postedOverYearAgo, reason: `posted ${days} days ago — over a year` });
+  }
 
   for (const p of penalties) score += p.points;
   score = Math.max(0, score);

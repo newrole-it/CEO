@@ -15,6 +15,8 @@ export type OfferView = {
   id: string
   title: string
   company: string
+  /** `company` is a recruiter or job platform publishing for an employer it does not name. */
+  viaIntermediary: boolean
   url: string
   excerpt: string
   description: string

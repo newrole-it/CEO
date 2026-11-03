@@ -15,20 +15,35 @@ import {
   SENIORITY_RANK,
   type ContractType,
   type MatchProfile,
+  type Region,
   type Seniority,
 } from "../../../matching/types"
+import { regionCovers } from "../../../matching/places"
 import examples from "../../../matching/query-expansion.examples.json"
 import type { LlmClient } from "src/server/llm/client"
+import { nbpTable } from "src/server/fx/nbp"
 
 const CONTRACTS: ContractType[] = ["b2b", "uop", "uz", "uod", "employment_foreign", "unknown"]
 const STOP = new Set(["the", "and", "for", "of", "ds", "do", "dla", "oraz", "with", "role"])
 
 type ExampleRow = { input?: { phrase?: string }; modelOutput?: unknown }
 
-/** FX and hours stay overridable. DEFAULT_CONFIG itself is never mutated (matching tests depend on it). */
+/**
+ * FX and hours stay overridable. DEFAULT_CONFIG itself is never mutated (matching tests depend on it).
+ * Rates come from NBP table A once a process has read it (ensureFxRates); FX_*_PLN still wins.
+ */
 export function liveMatchingConfig(): MatchingConfig {
   const toPln = { ...DEFAULT_CONFIG.fx.toPln }
   let source = DEFAULT_CONFIG.fx.source
+  let asOf = DEFAULT_CONFIG.fx.asOf
+  const nbp = nbpTable()
+  if (nbp) {
+    for (const code of Object.keys(toPln) as (keyof typeof toPln)[]) {
+      if (code !== "PLN" && nbp.rates[code]) toPln[code] = nbp.rates[code]
+    }
+    source = `NBP table A ${nbp.no}`
+    asOf = nbp.effectiveDate
+  }
   const apply = (code: keyof typeof toPln, envName: string) => {
     const raw = process.env[envName]
     if (!raw) return
@@ -47,7 +62,7 @@ export function liveMatchingConfig(): MatchingConfig {
       ...DEFAULT_CONFIG.fx,
       toPln,
       source,
-      asOf: process.env.FX_AS_OF?.trim() || DEFAULT_CONFIG.fx.asOf,
+      asOf: process.env.FX_AS_OF?.trim() || asOf,
     },
   }
 }
@@ -71,24 +86,43 @@ function windowFor(level: Seniority): { min: Seniority; max: Seniority } {
   }
 }
 
+const REMOTE_REGIONS: Region[] = ["PL", "US", "EU", "EMEA", "AMERICAS", "APAC"]
+
+/** The remote regions that cover a country, plus WORLD: PL → PL, EU, EMEA, WORLD. */
+export function remoteRegionsFor(country: string): Region[] {
+  const regions = REMOTE_REGIONS.filter((region) => regionCovers(region, country))
+  return [...regions, "WORLD"]
+}
+
 /**
  * Neutral profile. fixtures/profile.json is an example (30k PLN floor, Warsaw-only)
  * and is nobody's live preference. Salary floor defaults to 1 PLN so a missing
  * salary stays neutral and any disclosed salary clears the floor.
+ * The country is the one the search names, else MATCH_HOME_COUNTRY (PL). Home and hybrid
+ * cities apply only in that home country; elsewhere the country itself is what counts.
  */
-export function liveProfile(expansion: QueryExpansion): MatchProfile {
+export function liveProfile(
+  expansion: QueryExpansion,
+  options: { country?: string | null } = {}
+): MatchProfile {
+  const homeCountry = (process.env.MATCH_HOME_COUNTRY?.trim() || "PL").slice(0, 2).toUpperCase()
+  const country = (options.country || homeCountry).slice(0, 2).toUpperCase()
+  const atHome = country === homeCountry
   const titles = unique([expansion.canonicalRole.titleEn, expansion.canonicalRole.titlePl])
   const contracts = (process.env.MATCH_ACCEPTED_CONTRACTS || "")
     .split(",")
     .map((item) => item.trim())
     .filter((item): item is ContractType => (CONTRACTS as string[]).includes(item))
-  const cities = (
-    process.env.MATCH_HYBRID_CITIES ||
-    "Warsaw,Kraków,Krakow,Wrocław,Wroclaw,Gdańsk,Gdansk,Poznań,Poznan,Łódź,Lodz,Katowice"
-  )
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
+  const defaultCities =
+    homeCountry === "PL"
+      ? "Warsaw,Kraków,Krakow,Wrocław,Wroclaw,Gdańsk,Gdansk,Poznań,Poznan,Łódź,Lodz,Katowice"
+      : ""
+  const cities = atHome
+    ? (process.env.MATCH_HYBRID_CITIES || defaultCities)
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
   return {
     label: "neutral-defaults",
     targetTitles: titles.length ? titles : [expansion.inputPhrase],
@@ -98,9 +132,11 @@ export function liveProfile(expansion: QueryExpansion): MatchProfile {
     })),
     seniority: windowFor(expansion.canonicalRole.seniority),
     location: {
-      homeCity: process.env.MATCH_HOME_CITY?.trim() || "Warsaw",
-      homeCountry: (process.env.MATCH_HOME_COUNTRY?.trim() || "PL").slice(0, 2).toUpperCase(),
-      remoteRegions: ["PL", "EU", "EMEA", "WORLD"],
+      homeCity: atHome
+        ? process.env.MATCH_HOME_CITY?.trim() || (homeCountry === "PL" ? "Warsaw" : "")
+        : "",
+      homeCountry: country,
+      remoteRegions: remoteRegionsFor(country),
       hybridCities: cities,
       onsiteCities: cities,
       relocationOk: process.env.MATCH_RELOCATION_OK?.trim().toLowerCase() !== "false",

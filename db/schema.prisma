@@ -350,7 +350,14 @@ model Job {
   descriptionText    String        @db.Text
   locationText       String?
   normalizedLocation String?
+  /// The first of `countries`: the country an offer is listed under.
   countryCode        String?
+  /// ISO 3166-1 alpha-2 codes, blocked countries removed. Written by every ingest.
+  countries          String[]      @default([])
+  /// Remote regions the location names (EU, EMEA, WORLD, ...). UNKNOWN is not stored.
+  remoteRegions      String[]      @default([])
+  /// structured (the ATS field) | location (the location text) | board (the board's only country)
+  countrySource      String?
   workplaceType      WorkplaceType @default(UNKNOWN)
   employmentType     String?
   salaryMin          Float?
@@ -374,6 +381,8 @@ model Job {
   seniorityLevel     String?
   isTechRole         Boolean?
   classifiedAt       DateTime?
+  /// Listed by a recruiter or job platform for an employer it does not name as the offer's company.
+  viaIntermediary    Boolean       @default(false)
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -384,6 +393,9 @@ model Job {
   cvDocuments  CvDocument[]
 
   @@index([fingerprint])
+  /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
+  @@index([lastSeenAt, id])
+  @@index([countries], type: Gin)
   @@index([status, classifiedAt])
   @@index([canonicalUrl])
   @@index([companyId])
@@ -790,6 +802,39 @@ model HarvestImport {
   error      String?
 
   @@index([startedAt])
+}
+
+/// A board imported from an outside list (freehire's MIT board catalog). It reaches the index
+/// only after its own check against the platform: proven, the same company, IT jobs, a country.
+model CatalogBoard {
+  id              String     @id @default(cuid())
+  provider        SourceType
+  providerBoardId String
+  /// The company name the outside list gave. The platform's own name wins once checked.
+  listedName      String
+  /// freehire@<commit>
+  origin          String
+  /// candidate | verified | rejected
+  status          String     @default("candidate")
+  /// Why a check refused it: not_found, no_jobs, identity, no_it_jobs, no_country, blocked_country, junk_name, error
+  reason          String?
+  note            String?
+  companyName     String?
+  /// Jobs the platform listed, and how many passed the IT and country checks.
+  listedJobs      Int        @default(0)
+  itJobs          Int        @default(0)
+  countries       String[]   @default([])
+  checkedAt       DateTime?
+  verifiedAt      DateTime?
+  /// Every read of a verified board is a new check. Null on a candidate never checked.
+  nextCheckAt     DateTime?
+  checks          Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@unique([provider, providerBoardId])
+  @@index([status, checkedAt])
+  @@index([nextCheckAt])
 }
 
 /// Where the applications table is mirrored: a Google Apps Script web app bound to the person's sheet.

@@ -4,7 +4,8 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { loadInsightsInput } from "src/server/applications/service"
-import { parseRange, StatsScreen } from "./StatsScreen"
+import { parseRange } from "./range"
+import { StatsScreen } from "./StatsScreen"
 
 export async function generateMetadata() {
   const t = translator(await getLocale())

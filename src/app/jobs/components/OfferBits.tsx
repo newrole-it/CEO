@@ -1,10 +1,29 @@
-import { BadgeCheck, Building2, Check, ExternalLink, Heart, House, Info, Link2, MapPin, Minus, Repeat, SquareTerminal } from "lucide-react"
-import type { Locale, T } from "src/app/i18n/copy"
+import {
+  BadgeCheck,
+  Building2,
+  Check,
+  ExternalLink,
+  Heart,
+  House,
+  Info,
+  Link2,
+  MapPin,
+  Minus,
+  Repeat,
+  SquareTerminal,
+} from "lucide-react"
+import { intlLocale, type Locale, type T } from "src/app/i18n/copy"
 import { Badge } from "src/app/components/ds/primitives"
 import type { CardOffer, FeedReason } from "../types"
-import { freshness, payInfo, placeText } from "../format"
+import { freshness, payInfo, placeText, postedAge, shortDate } from "../format"
 
-export function SourceBadge({ offer, t }: { offer: Pick<CardOffer, "sourceKind" | "provider">; t: T }) {
+export function SourceBadge({
+  offer,
+  t,
+}: {
+  offer: Pick<CardOffer, "sourceKind" | "provider">
+  t: T
+}) {
   switch (offer.sourceKind) {
     case "company-site":
       return (
@@ -14,7 +33,10 @@ export function SourceBadge({ offer, t }: { offer: Pick<CardOffer, "sourceKind" 
       )
     case "ats":
       return (
-        <Badge icon={<Link2 aria-hidden />} tip={t("src.ats.tip", { ats: offer.provider ?? "ATS" })}>
+        <Badge
+          icon={<Link2 aria-hidden />}
+          tip={t("src.ats.tip", { ats: offer.provider ?? "ATS" })}
+        >
           {offer.provider ?? "ATS"}
         </Badge>
       )
@@ -31,7 +53,43 @@ export function SourceBadge({ offer, t }: { offer: Pick<CardOffer, "sourceKind" 
   }
 }
 
-export function Freshness({ iso, t, locale }: { iso: string | null | undefined; t: T; locale: Locale }) {
+/** An intermediary's offer names no employer, so the employer shows as unknown. */
+export function CompanyName({
+  offer,
+  t,
+}: {
+  offer: Pick<CardOffer, "company" | "viaIntermediary">
+  t: T
+}) {
+  if (!offer.viaIntermediary) return <strong>{offer.company}</strong>
+  return <strong title={t("via.tip", { name: offer.company })}>{t("via.unknown")}</strong>
+}
+
+/** Who publishes an intermediary's offer, beside the source badge. */
+export function IntermediaryBadge({
+  offer,
+  t,
+}: {
+  offer: Pick<CardOffer, "company" | "viaIntermediary">
+  t: T
+}) {
+  if (!offer.viaIntermediary) return null
+  return (
+    <Badge tone="warning" className="badge--via" tip={t("via.tip", { name: offer.company })}>
+      <span>{t("via.badge", { name: offer.company })}</span>
+    </Badge>
+  )
+}
+
+export function Freshness({
+  iso,
+  t,
+  locale,
+}: {
+  iso: string | null | undefined
+  t: T
+  locale: Locale
+}) {
   const info = freshness(iso, t, locale)
   if (!info) return null
   if (info.isNew)
@@ -43,6 +101,37 @@ export function Freshness({ iso, t, locale }: { iso: string | null | undefined; 
   return (
     <span className="t-caption subtle" title={info.title} style={{ whiteSpace: "nowrap" }}>
       {info.label}
+    </span>
+  )
+}
+
+/** The employer's posting date, beside the first time this index saw the offer. */
+export function PostedAge({
+  iso,
+  firstSeenIso,
+  t,
+  locale,
+}: {
+  iso: string | null | undefined
+  firstSeenIso: string | null | undefined
+  t: T
+  locale: Locale
+}) {
+  const age = postedAge(iso, t)
+  if (!age) return null
+  const date = new Date(iso as string).toLocaleDateString(intlLocale(locale), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+  const seen = shortDate(firstSeenIso, locale) ?? "—"
+  return (
+    <span
+      className={`t-caption ${age.stale ? "badge badge--warning" : "subtle"}`}
+      title={t("card.postedTitle", { date, seen })}
+      style={{ whiteSpace: "nowrap" }}
+    >
+      {age.label}
     </span>
   )
 }
@@ -112,7 +201,13 @@ export function Reasons({ reasons, max = 3 }: { reasons: FeedReason[]; max?: num
             key={`${index}-${reason.text}`}
             className={`reason${neutral ? " reason--neutral" : ""}${taste ? " reason--taste" : ""}`}
           >
-            {taste ? <Heart aria-hidden /> : neutral ? <Minus aria-hidden /> : <Check aria-hidden />}
+            {taste ? (
+              <Heart aria-hidden />
+            ) : neutral ? (
+              <Minus aria-hidden />
+            ) : (
+              <Check aria-hidden />
+            )}
             <span title={reason.text}>{reason.text}</span>
           </li>
         )

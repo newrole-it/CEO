@@ -31,6 +31,9 @@ import {
 import { APP_TO_SOURCE, SOURCE_TO_APP } from "src/server/matching/sources"
 import { publishIndexedMatches, RELEVANCE_FLOOR } from "src/server/index/query"
 import { boardsAwaitingIndex } from "src/server/index/run"
+import { resolveJobCountries } from "src/server/geo/countries"
+import { countryFromQuery } from "src/server/jobs/offer-facts"
+import { ensureFxRates } from "src/server/fx/nbp"
 import { nextCrawlAt } from "src/server/index/schedule"
 import { noteIndexStart, storeBoardInventory } from "src/server/index/store"
 import { mapPool } from "src/server/queue/pool"
@@ -96,6 +99,7 @@ function providerName(provider: SourceType): string {
 }
 
 export async function executeSearch(searchRunId: string, deps: SearchDeps = {}): Promise<void> {
+  if (!deps.http) await ensureFxRates()
   const http = deps.http ?? createHttpClient()
   const llm = deps.llm === undefined ? createLlmClient() : deps.llm
   const now = deps.now ?? new Date()
@@ -329,7 +333,9 @@ export async function executeSearch(searchRunId: string, deps: SearchDeps = {}):
       const raw = toRaw(job, now)
       return raw ? [raw] : []
     })
-    const profile = liveProfile(expansion)
+    const profile = liveProfile(expansion, {
+      country: countryFromQuery(run.savedSearch.locationHint ?? ""),
+    })
     const matched = runMatching(raws, profile, now, liveMatchingConfig())
     const byId = new Map(matched.postings.map((posting) => [posting.id, posting]))
     const ranked = matched.ranked.filter((score) => score.score >= RELEVANCE_FLOOR)
@@ -793,7 +799,7 @@ async function upsertJob(args: {
     normalizedLocation: posting.location.cities[0]
       ? `${posting.location.cities[0].city}, ${posting.location.cities[0].country}`
       : posting.raw.location,
-    countryCode: posting.location.countries.find((country) => country.length === 2),
+    ...searchCountryFields(posting.raw.location, workplaceOf(posting), listed?.countryCodes),
     workplaceType: workplaceOf(posting),
     employmentType: listed?.employmentType,
     salaryMin: range?.min ?? undefined,
@@ -885,4 +891,19 @@ function careerUrl(provider: SourceType, boardId: string): string {
     if (match) return `https://${match[1]}.wd${match[2]}.myworkdayjobs.com/${match[3]}`
   }
   return `https://example.com/${boardId}`
+}
+
+/** The same country columns a board read writes, for an offer a search found. */
+function searchCountryFields(
+  locationText: string | undefined,
+  workplaceType: string,
+  structured: string[] | undefined
+) {
+  const place = resolveJobCountries({ locationText, workplaceType, structured })
+  return {
+    countries: place.countries,
+    countryCode: place.countries[0] ?? null,
+    remoteRegions: place.remoteRegions,
+    countrySource: place.source,
+  }
 }

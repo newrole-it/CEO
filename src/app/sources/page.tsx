@@ -13,9 +13,7 @@ const STATE: Record<CatalogState, { pl: string; en: string; tone: string }> = {
   connected: { pl: "Podłączone", en: "Connected", tone: " badge--success" },
   at_risk: { pl: "Podłączone, polityka niepewna", en: "Connected, policy uncertain", tone: " badge--warning" },
   partial: { pl: "Częściowo", en: "Partial", tone: "" },
-  unverified: { pl: "Niesprawdzone", en: "Unverified", tone: "" },
   link_only: { pl: "Tylko link", en: "Link only", tone: "" },
-  banned: { pl: "Zablokowane", en: "Blocked", tone: "" },
 }
 
 export async function generateMetadata() {

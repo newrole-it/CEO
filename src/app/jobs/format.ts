@@ -114,6 +114,32 @@ export function freshness(
   return { isNew: false, label: relativeTime(iso, t, now) ?? "", title, old: age > 30 * DAY }
 }
 
+/**
+ * The age the employer's own posting date gives. Days up to a month, then months, then "over a
+ * year" with `stale` set, so a years-old opening that is still listed is visible as one.
+ */
+export function postedAge(
+  iso: string | null | undefined,
+  t: T,
+  now = Date.now()
+): { label: string; days: number; stale: boolean } | null {
+  if (!iso) return null
+  const at = new Date(iso).getTime()
+  if (!Number.isFinite(at)) return null
+  const days = Math.max(0, Math.floor((now - at) / DAY))
+  if (days > 365)
+    return { label: t("card.posted", { when: t("card.postedYear") }), days, stale: true }
+  if (days > 30) {
+    const months = Math.floor(days / 30)
+    return {
+      label: t("card.posted", { when: t("card.postedMonths", { n: months }) }),
+      days,
+      stale: false,
+    }
+  }
+  return { label: t("card.posted", { when: relativeTime(iso, t, now) ?? "" }), days, stale: false }
+}
+
 export function shortDate(iso: string | null | undefined, locale: Locale): string | null {
   if (!iso) return null
   const at = new Date(iso)

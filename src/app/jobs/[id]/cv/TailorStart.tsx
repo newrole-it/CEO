@@ -54,7 +54,7 @@ export function TailorStart({
     job.withheld ? { origin: "withheld", chars: 0 } : null
   )
 
-  // the first read can take seconds (5 s per host), so the page does not wait for it
+  // the first read can take seconds (1 s per host), so the page does not wait for it
   useEffect(() => {
     if (job.withheld) return
     let live = true
@@ -110,7 +110,11 @@ export function TailorStart({
         <div aria-live="polite" className="stack-sm">
           <ol className="cvt-steps">
             <li aria-current={phase === "cv" ? "step" : undefined}>
-              {phase === "cv" ? <LoaderCircle className="spin" aria-hidden /> : <Check aria-hidden />}
+              {phase === "cv" ? (
+                <LoaderCircle className="spin" aria-hidden />
+              ) : (
+                <Check aria-hidden />
+              )}
               {t("tl.progress.cv")}
             </li>
             {withLetter ? (

@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import { indexNextDue } from "src/server/index/run"
+import { indexNextCatalog } from "src/server/catalog/run"
+import { ensureFxRates } from "src/server/fx/nbp"
 import { maybeSyncOfferSearch } from "src/server/discovery/offer-sync"
 import { offerIndexEnabled } from "src/server/offer-index"
 import { maybeExpandSimilar, maybeHuntHiddenOffers } from "src/server/discovery/hidden-offers"
@@ -246,12 +248,16 @@ export async function workerLoop(signal?: { stopped: boolean }) {
         await enqueueHarvestImport()
         lastHarvestCheck = Date.now()
       }
+      // NBP rates for salary comparison; a no-op until the 12-hour refresh is due.
+      if (offerIndexEnabled()) await ensureFxRates()
       const did = await workOnce(signal)
       backoff = 1000
       const indexing = offerIndexEnabled()
       if (!did && !signal?.stopped) {
-        // Watched companies first, then the seed catalog.
-        const indexed = indexing && ((await indexNextWatched()) || (await indexNextDue()))
+        // Watched companies first, then the seed catalog, then the checked outside catalog.
+        const indexed =
+          indexing &&
+          ((await indexNextWatched()) || (await indexNextDue()) || (await indexNextCatalog()))
         if (!indexed) await sleep(5000)
       }
       if (indexing && !signal?.stopped) await maybeSyncOfferSearch()

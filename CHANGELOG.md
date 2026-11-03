@@ -8,6 +8,17 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- The index holds IT offers only, and all of them: QA, developers, DevOps, data, security, product, design, IT project and program managers, analysts, IT support, directors and VPs. Offers outside IT, test posts and candidate pools are left out on every read.
+- Every offer stores its countries and remote regions, from the ATS's own fields where it has them, then from the location text (with a GeoNames list of large cities). An offer that says nowhere it is is left out.
+- BLOCKED_COUNTRIES: countries whose offers never enter the index. Russia and Belarus by default.
+- An outside board catalog: npm run catalog imports freehire's board list as candidates and checks each board on its own platform (it exists, it is the company, it has placed IT offers) before it reaches the index, and again on every daily read.
+- Offer cards show the date the employer posted an offer beside the day the index first saw it, and mark an offer posted over a year ago. Such an offer loses 10 points in the ranking.
+- Salaries convert with NBP table A rates, read every 12 hours, for every currency NBP lists.
+- Workday tenants are read from the career site's own job search, every posting instead of the first 100 in the sitemap, and freehire's list of 7,587 Workday tenants is imported as catalog candidates.
+- Personio companies that turned their XML feed off are read from their career page's search, so their offers are no longer missed as "not found".
+- npm run catalog -- discover finds boards in Common Crawl's URL index (Traffit, Workday, Teamtailor, Recruitee, Personio, BambooHR, Breezy, Pinpoint, Greenhouse, Lever, Ashby, Workable) and adds them as candidates; each is checked on its platform before it reaches the index.
+- Offers a recruiter or job platform lists for an employer it does not name are marked: the card shows "Firma nieznana" and "Pośrednik: name", the offer page explains it, and Claude's tools say so.
+
 - A Sync tab (/sync): whether the worker runs, what it reads now, what waits, what failed, every board's last and next read, the task queue, and the offers cloud agents brought in.
 - Offers can be read while this computer is off: a scheduled Claude Code, Cursor or Codex task runs npm run harvest, which pushes the offers to a private git branch, and the worker brings them in when it runs again. /sync gives the prompt and the hosts to allow.
 - Search in a country: the list shows offers there plus remote roles open to people there. Your profile's country is the default, or your browser's region before you have a profile. Pick another country in the Where filter, type it in the search ("w USA", "Germany"), or choose All countries. Claude's jobs_search and jobs_for_me take a country too.
@@ -18,6 +29,12 @@ When you change something people can notice, add a line under Unreleased in the 
 - OFFER_INDEX=off runs newrole.it without an index of offers, for a service run for other people.
 
 ### Changed
+
+- The crawler waits 1 second between requests to one host instead of 5 (longer when robots.txt sets a Crawl-delay).
+- Candidate pools and standing posts ("Talent Pipeline", "(Evergreen)", "Future Openings", "Open Applications", "Spontanansökan", "(Internal Only)") and freelance AI-training, data-annotation and data-collection gigs are left out, as are roles that only borrow an IT word (PLC programmer, marketing automation, account manager, landscape architect).
+- ERP and CRM consultants (Dynamics 365, SAP, Salesforce, ServiceNow, NetSuite) count as IT even when the title names a finance module, and Polish titles such as "Ekspert ds. Cyberbezpieczeństwa" and "Analityk Biznesowo-Systemowy" are recognised.
+- Electrical and hardware engineering are no longer IT offers. Design counts only for the web, UI/UX, apps, 3D and games; graphic, brand and industrial design are left out. A title that says only "Engineer" ("Project Engineer", "Senior Engineer") counts as IT only at a company whose offers are mostly IT.
+- Query expansion and the neutral profile no longer assume a technology leader in Poland: any IT role, and the country the search names.
 
 - The product is now called newrole.it, and the repository is github.com/newrole-it/CEO. The MCP server is now called newrole: if you added it as nowarola, run claude mcp remove nowarola -s user, then claude mcp add newrole -s user -- npm --prefix /path/to/newrole.it run --silent mcp (inside the repo, approve newrole once). NOWAROLA_USER_EMAIL still works; the new name is NEWROLE_USER_EMAIL. Reload the Chrome extension at chrome://extensions after npm run go rebuilds it. The crawler now sends NewRoleBot, and robots.txt rules for NowaRolaBot still apply.
 - The interface opens in your browser's language: Polish for a Polish browser, English for any other. The switch in the header still overrides it.
@@ -39,6 +56,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Fixed
 
+- The offer list in a country loads in milliseconds instead of seconds: the database keeps the offers in newest-first order, and the country filter reads the stored countries instead of matching dozens of place names in every offer's location text.
 - Importing a CV or a pasted profile reads the expected salary: the minimum, the target, the currency and the contract. A yearly amount is saved as a monthly one, also when you confirm a draft that came in yearly.
 - Workable and SmartRecruiters offers with an empty department, city or contract type are kept instead of skipped.
 - npm run go works on a fresh clone again: packages install from package-lock.json, the site starts with webpack, and sign-in no longer fails on a package that was removed.

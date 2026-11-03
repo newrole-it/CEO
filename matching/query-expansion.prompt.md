@@ -1,6 +1,7 @@
-# Query-expansion prompt (qe-v1)
+# Query-expansion prompt (qe-v2)
 
-Turns one role phrase typed by the person (English or Polish, e.g. `Head of Engineering`, `Kierownik działu IT`)
+Turns one IT role phrase typed by the person (English or Polish, e.g. `QA Engineer`, `Programista Java`, `IT Project Manager`,
+`Head of Engineering`, `Kierownik działu IT`)
 into a structured expansion: canonical role, related titles, seniority variants, PL/EN synonyms, exclusions
 and free-form web queries. **`site:`-scoped ATS/board queries are built in code** by
 `buildSearchQueries()` in `query-expansion.schema.ts`, so search syntax never depends on the model.
@@ -18,7 +19,8 @@ and free-form web queries. **`site:`-scoped ATS/board queries are built in code*
 
 <!-- prompt:system:start -->
 ```text
-You are the query-expansion component of a personal job-search tool for a technology leader based in Poland.
+You are the query-expansion component of a job-search tool for IT professionals in any country.
+The person may look for any IT role at any level: software, QA and testing, DevOps and infrastructure, data and AI, security, product, UX/UI design, IT project and program management, business and systems analysis, IT support, architecture, and IT leadership up to CTO, CIO or VP.
 Your only job: given ONE role phrase, return a JSON object describing which job titles to search for and which to exclude.
 
 INPUT
@@ -40,7 +42,7 @@ WHAT TO PRODUCE
 6. exclusions: titleKeywords that look similar but are a different job (e.g. "Sales Engineer", "Kierownik budowy", "Mechanical", "Recruiter", "Intern"),
    descriptionKeywords that disqualify (keep short and specific), and a one-sentence rationale.
    Never exclude a word that also appears in canonicalRole or relatedTitles (e.g. do not exclude "Engineering" for Head of Engineering).
-7. webQueries (1–6): plain web-search strings combining the strongest titles with job-search words ("job", "praca", "oferta pracy", "remote", "Polska").
+7. webQueries (1–6): plain web-search strings combining the strongest titles with job-search words ("job", "careers", "remote") and, when a <location_hint> is given, that place in the language people there search in (e.g. "praca" and "Polska" for Poland, "Stellenangebot" and "Deutschland" for Germany). Without a hint, use no country.
    Do NOT include site: operators, URLs, or minus-operators — the application adds those.
 
 RULES
@@ -53,7 +55,7 @@ RULES
 {
   "inputPhrase": string,
   "detectedLanguage": "en" | "pl" | "mixed",
-  "canonicalRole": { "titleEn": string, "titlePl": string, "function": "engineering"|"it"|"product"|"data"|"security"|"infrastructure"|"design"|"other", "seniority": <seniority>, "track": "executive"|"management"|"individual_contributor" },
+  "canonicalRole": { "titleEn": string, "titlePl": string, "function": "engineering"|"it"|"product"|"data"|"security"|"infrastructure"|"design"|"qa"|"project_management"|"analysis"|"it_support"|"leadership"|"other", "seniority": <seniority>, "track": "executive"|"management"|"individual_contributor" },
   "relatedTitles": [ { "title": string, "lang": "en"|"pl", "relation": "equivalent"|"adjacent"|"step_up"|"step_down", "weight": number } ],
   "seniorityVariants": [ { "title": string, "lang": "en"|"pl", "seniority": <seniority> } ],
   "synonyms": { "en": string[], "pl": string[] },
@@ -85,4 +87,6 @@ Return the JSON object now.
   Where a source has a public JSON API (Greenhouse/Lever/Ashby board APIs, justjoin), JS Sources should prefer the API and
   use these titles as filters instead of web search.
 
-Worked examples: `query-expansion.examples.json` (generated and validated by `scripts/gen-examples.ts`).
+Worked examples: `query-expansion.examples.json` (generated and validated by `scripts/gen-examples.ts`). They were
+generated with the qe-v1 prompt (a technology leader in Poland) and carry the qe-v2 version only because the output shape
+did not change; regenerate them to see qe-v2 output.

@@ -35,6 +35,8 @@ export type RankedOffer = {
   id: string
   title: string
   company: string
+  /** `company` is a recruiter or job platform publishing for an employer it does not name. */
+  viaIntermediary: boolean
   location: string | null
   workplace: OfferWorkMode
   salary: string | null
@@ -53,6 +55,8 @@ export type OfferForScoring = {
   companyIndustry?: string | null
   locationText?: string | null
   countryCode?: string | null
+  countries?: string[] | null
+  remoteRegions?: string[] | null
   workplaceType?: string | null
   salaryMin?: number | null
   salaryMax?: number | null

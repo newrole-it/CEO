@@ -9,7 +9,7 @@ import { extractJsonObject, loadPromptBlock, type ChatMessage } from "./prompts"
 import { fold } from "./text";
 import { SeniorityEnum, SourceEnum, type Source } from "./types";
 
-export const QUERY_EXPANSION_VERSION = "qe-v1";
+export const QUERY_EXPANSION_VERSION = "qe-v2";
 
 const Lang = z.enum(["en", "pl"]);
 const Phrase = z.string().trim().min(1).max(80);
@@ -27,7 +27,21 @@ export const ExpansionLLMOutputSchema = z.object({
   canonicalRole: z.object({
     titleEn: Phrase,
     titlePl: Phrase,
-    function: z.enum(["engineering", "it", "product", "data", "security", "infrastructure", "design", "other"]),
+    function: z.enum([
+      "engineering",
+      "it",
+      "product",
+      "data",
+      "security",
+      "infrastructure",
+      "design",
+      "qa",
+      "project_management",
+      "analysis",
+      "it_support",
+      "leadership",
+      "other",
+    ]),
     seniority: SeniorityEnum,
     track: z.enum(["executive", "management", "individual_contributor"]),
   }),

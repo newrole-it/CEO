@@ -49,13 +49,15 @@ const PROVIDERS: Record<string, SourceType> = {
   workday: "WORKDAY",
 }
 
+/**
+ * Scan order for a search that tops up unread boards. Every IT role counts the same, so a board
+ * ranks by the offers it had at check time, with the Polish ones it had still counted a little,
+ * since the seed list was checked from Poland.
+ */
 function priorityOf(company: RawCompany): number {
-  const leadership = company.has_pl_eng_leadership_role_at_check ? 1000 : 0
-  const remote = company.has_eu_remote_eng_leadership_role_at_check ? 400 : 0
-  const either = company.has_pl_or_remote_eng_leadership_role_at_check ? 100 : 0
-  const plJobs = Math.min(company.pl_located_jobs_at_check ?? 0, 80) * 5
-  const open = Math.min(company.open_jobs_count_at_check ?? 0, 40)
-  return leadership + remote + either + plJobs + open
+  const open = Math.min(company.open_jobs_count_at_check ?? 0, 200) * 5
+  const plJobs = Math.min(company.pl_located_jobs_at_check ?? 0, 80)
+  return open + plJobs
 }
 
 function boardIdOf(company: RawCompany): string {
@@ -204,7 +206,7 @@ export function workdayOutboundLinks(): WorkdayBoardLink[] {
 /**
  * Boards fetched on one scan. The catalog stays the full verified list.
  * SCAN_SEED_LIMIT=0 reads every board; the default keeps a run inside public rate limits
- * and prefers Poland / EU-remote engineering-leadership boards.
+ * and prefers the boards with the most offers.
  */
 export function selectSeedBoards(
   boards: SeedBoard[] = seedBoards,

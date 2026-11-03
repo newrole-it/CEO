@@ -3,6 +3,7 @@ import {
   areasToMention,
   classifyCompany,
   classifyRole,
+  classifyTechRole,
   examplePhrases,
   inTechScope,
   pickMixedPreview,
@@ -25,7 +26,7 @@ describe("seniority classifier", () => {
 describe("tech role classifier", () => {
   it("keeps technology functions in and other functions out", () => {
     expect(classifyRole("Junior Software Engineer").isTechRole).toBe(true)
-    expect(classifyRole("Product Designer").isTechRole).toBe(true)
+    expect(classifyRole("UX Designer").isTechRole).toBe(true)
     expect(classifyRole("Data Engineer").isTechRole).toBe(true)
     expect(classifyRole("Security Engineer").isTechRole).toBe(true)
     expect(classifyRole("Engineering Manager").isTechRole).toBe(true)
@@ -43,6 +44,78 @@ describe("tech role classifier", () => {
     expect(classifyRole("People Generalist").isTechRole).toBe(false)
     expect(classifyRole("Financial Manager").isTechRole).toBe(false)
     expect(classifyRole("Senior Marketing Analyst").isTechRole).toBe(false)
+  })
+
+  it("keeps every IT role in, at any level and in any IT function", () => {
+    for (const title of [
+      "QA Engineer",
+      "Manual Tester",
+      "Programista Java",
+      "Senior Backend Developer",
+      "IT Project Manager",
+      "Technical Program Manager",
+      "Kierownik projektów IT",
+      "Director of Engineering",
+      "VP of Engineering",
+      "Head of Data",
+      "CTO",
+      "CISO",
+      "IT Director",
+      "Business Analyst",
+      "Database Administrator",
+      "Service Desk Analyst",
+      "Scrum Master",
+      "Product Owner",
+      "Salesforce Developer",
+      "SAP Consultant",
+      "Sales Engineer",
+      "Solutions Architect",
+      "Customer Success Engineer",
+      "Logistics Software Engineer",
+      "Marketing Data Engineer",
+    ]) {
+      expect(classifyRole(title).isTechRole, title).toBe(true)
+    }
+  })
+
+  it("keeps engineering outside IT out", () => {
+    for (const title of [
+      "Mechanical Engineer",
+      "Civil Engineer",
+      "Process Engineer",
+      "Field Service Engineer",
+      "Maintenance Technician",
+      "HVAC Engineer",
+    ]) {
+      expect(classifyRole(title).isTechRole, title).toBe(false)
+    }
+  })
+
+  it("reads titles from the outside catalog in other languages and by product name", () => {
+    for (const title of [
+      "Développeur Java spécialisé en intégration",
+      "Softwareentwickler (m/w/d)",
+      "Kaufmann/-frau für IT-Systeme bzw. Informatik (m/w/d)",
+      "SAP Basis Administrator (SAP HANA & Azure Cloud)",
+      "Functional Consultant – Dynamics 365 & Power Platform",
+      "C++ Developer",
+      "Ingénieur·e HPC & Calcul distribué – GPU, Cloud, IA (H/F)",
+      "Site Reliability Engineer",
+    ]) {
+      expect(classifyRole(title).isTechRole, title).toBe(true)
+    }
+    for (const title of [
+      "Zahnarzt (m/w/d) in Augsburg",
+      "Butikssäljare till Synsam Örebro 80%",
+      "Chauffeur livreur polyvalent H/F",
+      "Elektromonteur Beveiligingsinstallaties",
+      "Business Developer / Sales - Commercial terrain H/F",
+      "Accounts Payable Specialist",
+      "Fire Protection Engineer, R&D",
+      "Mechanical Design Engineer",
+    ]) {
+      expect(classifyRole(title).isTechRole, title).toBe(false)
+    }
   })
 
   it("leaves a general title undecided so the company can decide", () => {
@@ -76,6 +149,95 @@ describe("seniority affinity", () => {
     expect(seniorityAffinity("senior", "lead")).toBe(3)
     expect(seniorityAffinity("junior", "c_level")).toBe(0)
     expect(seniorityAffinity(null, "director")).toBe(0)
+  })
+})
+
+describe("electrical, hardware and design roles", () => {
+  it("keeps electrical and hardware engineering out, firmware and embedded software in", () => {
+    for (const title of [
+      "Staff Electrical Engineer – Test Systems",
+      "Senior Power Engineer Analogue Design",
+      "Senior Hardware Test Engineer",
+      "Avionics Systems Engineer (Starship)",
+      "FPGA Engineer",
+      "ASIC Design Verification Engineer",
+      "SoC Design Engineer",
+      "Controls Engineer",
+    ]) {
+      expect(classifyTechRole(title), title).toBe(false)
+    }
+    for (const title of [
+      "Firmware Engineer",
+      "Embedded Software Engineer",
+      "Power Platform Engineer",
+      "Optical Network Engineer",
+      "SOC Engineer",
+      "Security Controls Engineer",
+    ]) {
+      expect(classifyTechRole(title), title).toBe(true)
+    }
+  })
+
+  it("counts design as IT for the web, apps, 3D and games only", () => {
+    for (const title of [
+      "Website Designer",
+      "Sr. UI/UX Designer (m/f/d)",
+      "Web Graphic Designer",
+      "3D Artist",
+      "Motion Designer / 3D Artist",
+      "Environment Artist",
+      "Level Designer",
+      "Projektant UX",
+    ]) {
+      expect(classifyTechRole(title), title).toBe(true)
+    }
+    for (const title of [
+      "Graphic Designer",
+      "Brand Designer",
+      "Creative Designer (BBS879)",
+      "Industrial Designer",
+      "Junior SOLIDWORKS Designer",
+      "Instructional Designer",
+      "Motion Designer",
+      "Grafik",
+    ]) {
+      expect(classifyTechRole(title), title).toBe(false)
+    }
+    // Left to the board: on an IT board a product designer designs its screens.
+    expect(classifyTechRole("Product Designer")).toBeNull()
+    expect(classifyTechRole("Designer")).toBeNull()
+  })
+
+  it("keeps out roles that only borrow an IT word, and AI-training gigs", () => {
+    for (const title of [
+      "Automatyk/Programista PLC",
+      "CRM & Marketing Automation Specialist",
+      "Partner Account Manager - Poland (Cybersecurity)",
+      "Senior Landscape Architect",
+      "Senior Solutions Engineer, Injection Molding",
+      "B1 Licensed Aircraft Engineer",
+      "Analytics Consultant, AI Trainer",
+    ]) {
+      expect(classifyTechRole(title), title).toBe(false)
+    }
+    expect(classifyTechRole("Technical Account Manager")).toBe(true)
+    expect(classifyTechRole("HSO International - Dynamics 365 F&O Finance Lead Consultant")).toBe(
+      true
+    )
+    expect(classifyTechRole("Ekspert ds. Cyberbezpieczeństwa (GRC & SecOps)")).toBe(true)
+    expect(classifyTechRole("Analityk Biznesowo-Systemowy Aplikacji Mobilnych")).toBe(true)
+    expect(classifyTechRole("Cinematic Animator")).toBe(true)
+    expect(classifyTechRole("Finance Manager")).toBe(false)
+    expect(classifyTechRole("Software Engineers - Platform")).toBe(true)
+    expect(classifyTechRole("Regulatory Engineering - Software Engineering")).toBe(true)
+  })
+
+  it("leaves a bare engineer title to the board", () => {
+    expect(classifyTechRole("Senior Engineer")).toBeNull()
+    expect(classifyTechRole("Production Engineer")).toBeNull()
+    expect(classifyTechRole("Principal Bridge Engineer")).toBeNull()
+    expect(classifyTechRole("Staff Engineer, Test Automation")).toBe(true)
+    expect(classifyTechRole("Senior Rust Engineer")).toBe(true)
   })
 })
 

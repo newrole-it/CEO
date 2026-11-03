@@ -62,9 +62,13 @@ describe("discovery", () => {
     const picked = selectSeedBoards(boards, 40)
     expect(picked).toHaveLength(40)
     expect(picked[0].priority).toBeGreaterThanOrEqual(picked[39].priority)
-    expect(
-      picked.some((board) => ["TEAMTAILOR", "TRAFFIT", "BREEZY"].includes(board.provider))
-    ).toBe(true)
+    // Every IT role counts the same now: the boards with the most offers go first.
+    const most = Math.max(
+      ...boards
+        .filter((board) => board.provider !== "CAREER_SITE")
+        .map((board) => board.openJobsAtCheck)
+    )
+    expect(picked.some((board) => board.openJobsAtCheck === most)).toBe(true)
   })
 
   it("caps discovery to live ATS hosts and never queries Polish boards or Workday", () => {

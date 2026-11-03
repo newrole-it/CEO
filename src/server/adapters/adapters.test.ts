@@ -6,7 +6,7 @@ import { parseAshbyJobs } from "./ashby"
 import { isBlockedSlug, namesAgree } from "./blocked"
 import { parseBreezyPositions } from "./breezy"
 import { leverPostingUrls } from "./lever"
-import { parsePersonioXml } from "./personio"
+import { listPersonio, parsePersonioXml } from "./personio"
 import { pinpointAcceptsBoard } from "./pinpoint"
 import { listRecruitee, parseRecruiteeOffers, recruiteeAuthBlock } from "./recruitee"
 import { parseTeamtailorRss } from "./teamtailor"
@@ -84,6 +84,24 @@ describe("ATS adapters", () => {
 
   it("treats an empty Workable account as having no jobs", () => {
     expect(parseWorkableJobs({ name: "Workable", jobs: [] }, "madeup").jobs).toEqual([])
+  })
+
+  it("reads a Workable posting listed once per location as one offer in every place", () => {
+    const entry = (city: string, country: string, countryCode: string) => ({
+      title: "QA Engineer",
+      shortcode: "QA1",
+      url: "https://apply.workable.com/acme/j/QA1/",
+      city,
+      country,
+      locations: [{ city, country, countryCode }],
+    })
+    const { jobs } = parseWorkableJobs(
+      { name: "Acme", jobs: [entry("Berlin", "Germany", "DE"), entry("Warsaw", "Poland", "PL")] },
+      "acme"
+    )
+    expect(jobs).toHaveLength(1)
+    expect(jobs[0].locationText).toBe("Berlin, Germany | Warsaw, Poland")
+    expect(jobs[0].countryCodes).toEqual(["DE", "PL", "Germany"])
   })
 
   it("keeps Workable and SmartRecruiters postings whose unset fields are null", () => {
@@ -340,5 +358,43 @@ describe("ATS adapters", () => {
     expect(leverPostingUrls("eu:xtb")[0]).toContain("https://api.eu.lever.co/v0/postings/xtb")
     expect(leverPostingUrls("gitlab")[0]).toContain("https://api.lever.co/v0/postings/gitlab")
     expect(leverPostingUrls("gitlab")[1]).toContain("https://api.eu.lever.co/")
+  })
+})
+
+describe("Personio without an XML feed", () => {
+  it("reads the career page's search.json when /xml answers 404 on both domains", async () => {
+    const http = {
+      async post() {
+        throw new Error("post is unused")
+      },
+      async get(url: string) {
+        const ok = (body: string) => ({ url, status: 200, body, contentType: "application/json" })
+        if (url.endsWith("/robots.txt")) return ok("User-agent: *\nAllow: /\n")
+        if (url === "https://live-nation.jobs.personio.de/search.json") {
+          return ok(
+            JSON.stringify([
+              {
+                id: 465755,
+                name: "Data Engineer (x/w/m)",
+                employment_type: "Festanstellung",
+                schedule: "Vollzeit",
+                office: "Berlin",
+                offices: ["Berlin"],
+                subcompany: "Live Nation GmbH",
+              },
+            ])
+          )
+        }
+        return { url, status: 404, body: "", contentType: "text/html" }
+      },
+    }
+    const listed = await listPersonio("live-nation", http as never)
+    expect(listed.proven).toBe(true)
+    expect(listed.publishedName).toBe("Live Nation GmbH")
+    expect(listed.jobs[0]).toMatchObject({
+      externalId: "465755",
+      locationText: "Berlin",
+      originalUrl: "https://live-nation.jobs.personio.de/job/465755",
+    })
   })
 })

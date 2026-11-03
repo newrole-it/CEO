@@ -100,6 +100,8 @@ export const sourceJobSchema = z.object({
   title: z.string().min(1),
   companyName: z.string().min(1).optional(),
   locationText: z.string().optional(),
+  /** Countries the ATS states in its own fields (ISO codes or names). The location text is read too. */
+  countryCodes: z.array(z.string()).optional(),
   employmentType: z.string().optional(),
   workplaceType: workplaceTypeSchema,
   descriptionText: z.string().optional(),

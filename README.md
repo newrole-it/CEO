@@ -23,7 +23,7 @@ newrole.it is a job finder that runs on your machine. It reads the public career
 ## Features
 
 - 💻 **Runs on your machine.** Postgres in Docker, Node, and that is it. No billing, no API keys required.
-- 🌍 **Global index, local results.** Search in a country and you get its offers plus remote roles open to people there. Your profile's country is the default; write another one in the phrase or pick it in the filter.
+- 🌍 **Global index of IT offers, local results.** Every IT role at every level, and only IT roles. Each offer carries its countries, so you can open the index country by country; Russia and Belarus are left out by design (`BLOCKED_COUNTRIES`). Search in a country and you get its offers plus remote roles open to people there. Your profile's country is the default; write another one in the phrase or pick it in the filter.
 - 🏢 **Offers from the source, not aggregators.** Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Teamtailor, Recruitee, Personio, Traffit, Pinpoint, Workday and SuccessFactors employer sites, plus schema.org JobPosting on company career pages. Every result links to the original posting. [Every source and its policy](docs/sources.md) is public in the app.
 - 👀 **Watch the companies you care about.** Name a company or paste its careers URL and newrole.it keeps reading it. Suggestions work from the first minute: companies like the ones you liked, and until likes give enough to go on, companies with offers in your profile's country that fit your profile or hire the most there.
 - 🎯 **A deterministic match score with reasons.** Role, seniority, location, salary (compared in monthly PLN, with the Polish UoP and B2B contracts normalised), freshness and source. The model may explain a score; it cannot change it.
@@ -35,7 +35,7 @@ newrole.it is a job finder that runs on your machine. It reads the public career
 - 💬 **Answer bank.** Every answer you gave to an application question, grouped by question with per-company variants, and Claude drafts from them.
 - 🧩 **Chrome extension.** Fills application forms from your details, CV and answer bank on known ATS hosts, records the application when you submit, turns the Gmail message you have open into a stage change after you confirm it, and scores your LinkedIn profile 0–100. It never fills passwords or consents and never submits for you.
 - 🤖 **An MCP server for Claude Code.** 30 tools and 5 prompts: search, profile, taste, watched companies, applications, Gmail, CV, answers. Model calls run through `claude -p` on your own subscription.
-- 🛡️ **Polite by design.** robots.txt, one request per 5 seconds per host across the worker, the web app and the MCP server, 200 detail pages per host per day, no logins or bot walls, no LinkedIn or Polish aggregators crawled, no recruiter contact data stored.
+- 🛡️ **Polite by design.** robots.txt, one request per second per host across the worker, the web app and the MCP server, 200 detail pages per host per day, no logins or bot walls, no LinkedIn or Polish aggregators crawled, no recruiter contact data stored.
 
 ## Screenshots
 
@@ -145,14 +145,14 @@ Claude never fetches LinkedIn or the Polish boards. Offers Claude adds go throug
 
 ```mermaid
 flowchart LR
-  A["ATS APIs and career pages<br/>(robots.txt, 5 s/host, 200 pages/day)"] -->|worker crawls and refreshes daily| B[("Postgres<br/>local offer index")]
+  A["ATS APIs and career pages<br/>(robots.txt, 1 s/host, 200 pages/day)"] -->|worker crawls and refreshes daily| B[("Postgres<br/>local offer index")]
   B --> C["Web app<br/>feed · tracker · CV · answers"]
   B --> D["MCP server<br/>Claude Code"]
   C <--> E["Chrome extension<br/>autofill · track · LinkedIn score"]
   F["claude -p (optional)<br/>expand queries, explain scores,<br/>read CVs, draft text"] -.-> C
 ```
 
-1. **Index.** The worker keeps a local copy of every open job on allowed boards and career pages: title, location, workplace, salary, a short excerpt and the canonical link. Closed jobs are detected on the next complete crawl.
+1. **Index.** The worker keeps a local copy of every open IT job on allowed boards and career pages: title, location with its countries, workplace, salary, a short excerpt and the canonical link. Each offer passes one gate on every read (an IT role, a real posting, a country outside `BLOCKED_COUNTRIES`). Boards come from the seed list, watched companies and an outside catalog that each board must pass on its own platform first ([docs/configuration.md](docs/configuration.md#the-outside-board-catalog)). Closed jobs are detected on the next complete crawl.
 2. **Expand.** A search phrase becomes related titles, seniority, synonyms and exclusions. Site queries are built in code; the model never writes them.
 3. **Score.** Each offer gets a deterministic 0–100 score: title 30, seniority 15, location 25, salary 15, freshness 10, source 5. With a profile, salary floor, industry and seniority rank on top of the query.
 4. **Decide.** Reject, like, apply, or tailor a CV. Decisions feed the ranking. Applications land in the tracker, answers in the bank.

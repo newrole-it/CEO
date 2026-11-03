@@ -108,6 +108,16 @@ export async function listBamboo(
   if (response.status === 404 || response.status === 302) {
     return { jobs: [], proven: false, companyName, note: `BambooHR ${boardId} was not found` }
   }
+  // An account without a public careers page redirects to login.php or to a suspended-account
+  // page, which answers 401 (seen on 110 catalog boards, 2026-11-03).
+  if (response.status === 401) {
+    return {
+      jobs: [],
+      proven: false,
+      companyName,
+      note: `BambooHR ${boardId} has no public careers page (not found)`,
+    }
+  }
   if (response.status >= 400) throw new Error(`BambooHR ${boardId} returned ${response.status}`)
   let payload: unknown
   try {

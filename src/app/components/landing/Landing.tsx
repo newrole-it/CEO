@@ -3,7 +3,18 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
-import { ArrowRight, BadgeCheck, Check, Code, Factory, FileUp, House, Link2, Lock, SquareTerminal } from "lucide-react"
+import {
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  Code,
+  Factory,
+  FileUp,
+  House,
+  Link2,
+  Lock,
+  SquareTerminal,
+} from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { numberFormat } from "src/app/i18n/copy"
 import { Button, ButtonLink } from "src/app/components/ds/Button"
@@ -24,6 +35,7 @@ function demoOffer(locale: "pl" | "en"): CardOffer {
     id: "demo",
     title: "Senior Kotlin Developer",
     company: "Allegro",
+    viaIntermediary: false,
     url: "",
     excerpt: "",
     description: "",
@@ -46,11 +58,24 @@ function demoOffer(locale: "pl" | "en"): CardOffer {
     firstSeenAt: new Date(Date.now() - DAY).toISOString(),
     lastSeenAt: new Date().toISOString(),
     lastVerifiedAt: null,
+    publishedAt: null,
     score: 87,
     reasons: [
-      { kind: "ok", origin: "profile", text: pl ? "Kotlin i Spring jak w Twoim stacku" : "Kotlin and Spring, like your stack" },
-      { kind: "ok", origin: "profile", text: pl ? "Widełki powyżej Twojego minimum" : "Salary above your minimum" },
-      { kind: "ok", origin: "feedback", text: pl ? "Podobna do polubionej oferty w Revolut" : "Like an offer you liked at Revolut" },
+      {
+        kind: "ok",
+        origin: "profile",
+        text: pl ? "Kotlin i Spring jak w Twoim stacku" : "Kotlin and Spring, like your stack",
+      },
+      {
+        kind: "ok",
+        origin: "profile",
+        text: pl ? "Widełki powyżej Twojego minimum" : "Salary above your minimum",
+      },
+      {
+        kind: "ok",
+        origin: "feedback",
+        text: pl ? "Podobna do polubionej oferty w Revolut" : "Like an offer you liked at Revolut",
+      },
     ],
   }
 }
@@ -117,7 +142,12 @@ export function Landing({
                     <Button variant="primary" size="lg" icon={<FileUp />} onClick={open}>
                       {finish ? t("hero.finish") : t("hero.upload")}
                     </Button>
-                    <ButtonLink href={liHref} variant="outline" size="lg" icon={<LinkedInMark size={20} />}>
+                    <ButtonLink
+                      href={liHref}
+                      variant="outline"
+                      size="lg"
+                      icon={<LinkedInMark size={20} />}
+                    >
                       {t("lix.title")}
                     </ButtonLink>
                   </div>
@@ -247,9 +277,31 @@ export function Landing({
           </div>
           <div className="demo demo-watch" aria-hidden>
             {[
-              { name: "Allegro", domain: "allegro.pl/praca", badge: <Badge icon={<Link2 />}>SuccessFactors</Badge>, jobs: 42, fresh: 3 },
-              { name: "Synerise", domain: "synerise.com/careers", badge: <Badge tone="success" icon={<BadgeCheck />}>{t("co.read.site")}</Badge>, jobs: 7, fresh: 0 },
-              { name: "Booksy", domain: "booksy.com/careers", badge: <Badge icon={<Link2 />}>Greenhouse</Badge>, jobs: 12, fresh: 1 },
+              {
+                name: "Allegro",
+                domain: "allegro.pl/praca",
+                badge: <Badge icon={<Link2 />}>SuccessFactors</Badge>,
+                jobs: 42,
+                fresh: 3,
+              },
+              {
+                name: "Synerise",
+                domain: "synerise.com/careers",
+                badge: (
+                  <Badge tone="success" icon={<BadgeCheck />}>
+                    {t("co.read.site")}
+                  </Badge>
+                ),
+                jobs: 7,
+                fresh: 0,
+              },
+              {
+                name: "Booksy",
+                domain: "booksy.com/careers",
+                badge: <Badge icon={<Link2 />}>Greenhouse</Badge>,
+                jobs: 12,
+                fresh: 1,
+              },
             ].map((row) => (
               <div key={row.name} className="watch-row">
                 <CompanyInitial name={row.name} />
@@ -260,7 +312,9 @@ export function Landing({
                 <div className="watch-row__meta">
                   {row.badge}
                   <span className="num">{t("co.jobs.many", { n: row.jobs })}</span>
-                  {row.fresh ? <span className="badge badge--new">{t("co.newJobs", { n: row.fresh })}</span> : null}
+                  {row.fresh ? (
+                    <span className="badge badge--new">{t("co.newJobs", { n: row.fresh })}</span>
+                  ) : null}
                 </div>
               </div>
             ))}

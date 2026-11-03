@@ -4,6 +4,8 @@ export type BoardList = {
   jobs: ListedJob[]
   proven: boolean
   companyName?: string
+  /** A company name the platform itself published, when the adapter read one apart from the caller's. */
+  publishedName?: string
   note?: string
   /** URLs or postings the source reported, including ones already stored. */
   listedCount?: number
@@ -14,6 +16,13 @@ export type BoardList = {
   /** Canonical URLs still on the source. Set when `complete` is true. */
   coveredUrls?: string[]
 }
+
+/**
+ * Byte cap for one platform list call. Large boards run past 8 MB: measured on 2026-11-03,
+ * Recruitee dpgmedia 41.2 MB, Ashby bjakcareer 33.9 MB, Greenhouse pulse 21.1 MB,
+ * Lever paytmpayments 13.8 MB and veeva 12.1 MB, Workable huzzle 11.1 MB.
+ */
+export const LIST_MAX_BYTES = 48_000_000
 
 /**
  * boards-api.eu.greenhouse.io has no DNS record (NXDOMAIN on 2026-10-31, also via 1.1.1.1),

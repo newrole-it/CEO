@@ -1,4 +1,6 @@
 import { Prisma } from "@prisma/client"
+import { ensureFxRates } from "src/server/fx/nbp"
+import { isBlockedCountry } from "src/server/geo/countries"
 import db from "db"
 import { fold } from "matching/text"
 import { sourceOf, type BreakdownProfile, type SourceKind } from "src/server/preferences/breakdown"
@@ -38,7 +40,6 @@ const BEST_FIT_MIN = 56
 export const FOR_YOU_POOL = 600
 const FOR_YOU_BATCH = 200
 const CITY_SCAN = 2000
-const COUNTRY_SCAN = 5000
 
 const REMOTE_WORDS = new Set(["remote", "zdalnie", "zdalna", "zdalny"])
 const HYBRID_WORDS = new Set(["hybrid", "hybryda", "hybrydowo"])
@@ -76,6 +77,8 @@ export type FeedOffer = OfferView & {
   firstSeenAt: string
   lastSeenAt: string
   lastVerifiedAt: string | null
+  /** The posting date the source states. Null when it states none. */
+  publishedAt: string | null
 }
 
 export type ForYouOffer = FeedOffer & {
@@ -111,6 +114,8 @@ const jobSelect = {
   descriptionText: true,
   locationText: true,
   countryCode: true,
+  countries: true,
+  remoteRegions: true,
   workplaceType: true,
   salaryMin: true,
   salaryMax: true,
@@ -126,6 +131,7 @@ const jobSelect = {
   sourceBoardId: true,
   employmentType: true,
   seniorityLevel: true,
+  viaIntermediary: true,
   company: { select: { name: true, industry: true } },
 } satisfies Prisma.JobSelect
 
@@ -327,6 +333,8 @@ export async function scanUntilPage<T>(args: {
 function listWhere(filters: ResolvedBrowse, cursor: BrowseCursor | null): Prisma.JobWhereInput {
   const and: Prisma.JobWhereInput[] = []
   if (cursor) {
+    // The bare bound lets the (lastSeenAt, id) index start at the cursor instead of the newest row.
+    and.push({ lastSeenAt: { lte: cursor.at } })
     and.push({
       OR: [{ lastSeenAt: { lt: cursor.at } }, { lastSeenAt: cursor.at, id: { lt: cursor.id } }],
     })
@@ -377,6 +385,8 @@ function toOfferView(
   const parsed = placeFacts({
     locationText: job.locationText,
     countryCode: job.countryCode,
+    countries: job.countries,
+    remoteRegions: job.remoteRegions,
     workplaceType: job.workplaceType,
   })
   const place: PlaceFacts =
@@ -404,10 +414,12 @@ function toOfferView(
     }),
     firstSeenAt: job.firstSeenAt.toISOString(),
     lastSeenAt: job.lastSeenAt.toISOString(),
+    publishedAt: job.publishedAt?.toISOString() ?? null,
     lastVerifiedAt: job.lastVerifiedAt?.toISOString() ?? null,
     id: job.id,
     title: job.title,
     company: job.company.name,
+    viaIntermediary: job.viaIntermediary,
     url: job.originalUrl || job.canonicalUrl,
     excerpt: descriptionExcerpt(description),
     description,
@@ -434,6 +446,7 @@ function rowAccepted(row: JobRow, filters: ResolvedBrowse): boolean {
 }
 
 export async function listOfferPage(input: BrowseInput, locale: "pl" | "en"): Promise<OfferPage> {
+  await ensureFxRates()
   const filters = resolveBrowse(input)
   const scanned = await scanUntilPage({
     maxBatches: browseScanCap(filters),
@@ -534,6 +547,7 @@ export async function listForYou(
   userId: number | null,
   locale: "pl" | "en"
 ): Promise<ForYouPage> {
+  await ensureFxRates()
   const page = parsePage(input.page)
   const empty: ForYouPage = {
     offers: [],
@@ -630,6 +644,7 @@ export async function scoreOfferForUser(
   hasProfile: boolean
   hasFeedback: boolean
 } | null> {
+  await ensureFxRates()
   const [row, profile, model] = await Promise.all([
     db.job.findUnique({ where: { id: jobId }, select: jobSelect }),
     userId ? db.candidateProfile.findUnique({ where: { userId } }) : null,
@@ -675,11 +690,24 @@ export async function jobsPathForSavedSearch(
 export async function countOpenOffers(country: string | null = null): Promise<number> {
   const open = { status: { in: ["ACTIVE" as const, "POSSIBLY_CLOSED" as const] } }
   if (!country) return db.job.count({ where: open })
-  const rows = await db.job.findMany({
-    where: { ...open, ...inCountryWhere(country) },
-    select: { locationText: true, countryCode: true, workplaceType: true },
-  })
-  return rows.filter((row) => placeInCountry(placeFacts(row), country)).length
+  if (isBlockedCountry(country)) return 0
+  // An offer stored with the country is in it (placeInCountry), so the GIN index counts those;
+  // only the rest, the remote candidates, need the location test.
+  const stored = { countries: { has: country } }
+  const [inCountry, rest] = await Promise.all([
+    db.job.count({ where: { ...open, ...stored } }),
+    db.job.findMany({
+      where: { ...open, AND: [inCountryWhere(country), { NOT: stored }] },
+      select: {
+        locationText: true,
+        countryCode: true,
+        countries: true,
+        remoteRegions: true,
+        workplaceType: true,
+      },
+    }),
+  ])
+  return inCountry + rest.filter((row) => placeInCountry(placeFacts(row), country)).length
 }
 
 /** The most common cities among the newest offers, in one country when given. */
@@ -691,7 +719,13 @@ export async function listBrowseCities(
       status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] },
       ...(country ? inCountryWhere(country, { remote: false }) : {}),
     },
-    select: { locationText: true, countryCode: true, workplaceType: true },
+    select: {
+      locationText: true,
+      countryCode: true,
+      countries: true,
+      remoteRegions: true,
+      workplaceType: true,
+    },
     orderBy: { lastSeenAt: "desc" },
     take: CITY_SCAN,
   })
@@ -707,20 +741,18 @@ export async function listBrowseCities(
 }
 
 /** Countries with open offers, most offers first, counted over the newest offers. */
+/**
+ * Every country with open offers and how many. Every write stores the countries, so this counts
+ * the whole index; a scan of the newest 5,000 rows showed the US at 1,375 of its 64,710 offers.
+ */
 export async function listBrowseCountries(): Promise<{ country: string; count: number }[]> {
-  const rows = await db.job.findMany({
-    where: { status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] } },
-    select: { locationText: true, countryCode: true, workplaceType: true },
-    orderBy: { lastSeenAt: "desc" },
-    take: COUNTRY_SCAN,
-  })
-  const counts = new Map<string, number>()
-  for (const row of rows) {
-    for (const country of placeFacts(row).countries) {
-      counts.set(country, (counts.get(country) ?? 0) + 1)
-    }
-  }
-  return [...counts.entries()]
-    .map(([country, count]) => ({ country, count }))
+  const rows = await db.$queryRaw<{ country: string; count: bigint }[]>`
+    SELECT c AS country, COUNT(*) AS count
+    FROM "Job", unnest(countries) AS c
+    WHERE status IN ('ACTIVE', 'POSSIBLY_CLOSED')
+    GROUP BY c`
+  return rows
+    .filter((row) => !isBlockedCountry(row.country))
+    .map((row) => ({ country: row.country, count: Number(row.count) }))
     .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country))
 }

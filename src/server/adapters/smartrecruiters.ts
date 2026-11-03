@@ -58,6 +58,7 @@ export function parseSmartRecruiters(payload: unknown, boardId: string): ListedJ
       title: job.name,
       companyName: job.company?.name ?? undefined,
       locationText: location || undefined,
+      countryCodes: [job.location?.country],
       employmentType: job.typeOfEmployment?.label ?? undefined,
       workplaceType: workplace,
       publishedAt: asDate(job.releasedDate),

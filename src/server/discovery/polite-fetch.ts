@@ -1,6 +1,6 @@
 /**
  * One page read on behalf of a person: source policy, robots.txt, then safe-fetch.
- * safe-fetch adds URL safety, the size cap, and 5 s per host. Nothing is stored here.
+ * safe-fetch adds URL safety, the size cap, and 1 s per host. Nothing is stored here.
  */
 import { decideFetch } from "config/source-policies"
 import { emptyRobots, parseRobots, robotsAllows, type RobotsRules } from "src/server/crawler/robots"
@@ -33,7 +33,8 @@ export function policyFor(raw: string): { allow: boolean; linkOnly: boolean; rea
     return {
       allow: false,
       linkOnly: true,
-      reason: "Job boards, LinkedIn, and social sites are never fetched. Use the company's own site.",
+      reason:
+        "Job boards, LinkedIn, and social sites are never fetched. Use the company's own site.",
     }
   }
   const decision = decideFetch(url)

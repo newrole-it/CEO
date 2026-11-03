@@ -3,7 +3,7 @@ import type { ListedJob, WorkplaceType } from "src/shared/schemas"
 import { namesAgree } from "./blocked"
 import { isSlugAlias, tenantHost } from "./hosts"
 import { asDate, buildListedJob } from "./parse"
-import type { BoardList } from "./types"
+import { LIST_MAX_BYTES, type BoardList } from "./types"
 import { channelPreamble, tagBlocks, tagText } from "./xml"
 
 const PAGE_SIZE = 100
@@ -77,7 +77,7 @@ export async function listTeamtailor(
   let channelTitle: string | undefined
   for (let page = 0; page < MAX_PAGES; page++) {
     const response = await http.get(teamtailorRssUrl(boardId, page * PAGE_SIZE), {
-      maxBytes: 8_000_000,
+      maxBytes: LIST_MAX_BYTES,
       accept: "application/rss+xml, application/xml, text/xml, */*;q=0.1",
     })
     if (response.status === 404) {

@@ -15,7 +15,7 @@ const en = {
   rules: [
     "On career pages it reads robots.txt first and obeys it, for * and for NewRoleBot. Rules written for its earlier names, NowaRolaBot and JobscannerBot, still apply.",
     "Boards with a documented public API are read through that API.",
-    "It waits at least 5 seconds between requests to a host and reads at most 200 job pages per host per day.",
+    "It waits at least 1 second between requests to a host (longer when robots.txt sets a Crawl-delay) and reads at most 200 job pages per host per day.",
     "It does not log in, get around bot walls, or read LinkedIn or the Polish job boards.",
     "It stores the title, company, place, salary, a short excerpt and the link. Names, e-mails and phone numbers of recruiters are removed. Every result links to the original posting.",
     "A page that opts out of AI input or training is not passed to a language model by this software.",
@@ -34,7 +34,7 @@ const pl: typeof en = {
   rules: [
     "Na stronach kariery najpierw czyta robots.txt i go przestrzega, dla * i dla NewRoleBot. Reguły zapisane dla jego wcześniejszych nazw, NowaRolaBot i JobscannerBot, nadal obowiązują.",
     "Tablice z udokumentowanym publicznym API czyta przez to API.",
-    "Czeka co najmniej 5 sekund między żądaniami do hosta i czyta najwyżej 200 stron ofert na host dziennie.",
+    "Czeka co najmniej 1 sekundę między żądaniami do hosta (dłużej, gdy robots.txt podaje Crawl-delay) i czyta najwyżej 200 stron ofert na host dziennie.",
     "Nie loguje się, nie obchodzi zabezpieczeń przed botami, nie czyta LinkedIn ani polskich agregatorów.",
     "Zapisuje stanowisko, firmę, miejsce, wynagrodzenie, krótki fragment i link. Nazwiska, e-maile i telefony rekruterów są usuwane. Każdy wynik prowadzi do oryginalnego ogłoszenia.",
     "Strona, która zastrzega się przed użyciem przez AI, nie trafia z tego oprogramowania do modelu językowego.",

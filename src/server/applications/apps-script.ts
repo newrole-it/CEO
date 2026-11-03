@@ -69,7 +69,7 @@ function doPost(e) {
     return json_({ ok: false, error: "unknown-action" });
   } catch (err) {
     // Google answers an uncaught error with an HTML page; newrole.it shows this text instead.
-    return json_({ ok: false, error: "exception: " + String(err && err.message ? err.message : err).slice(0, 300) });
+    return json_({ ok: false, error: "exception: " + errorText_(err) });
   } finally {
     lock.releaseLock();
   }
@@ -127,7 +127,7 @@ function write_(body) {
 
   // Overwrite in place and clear only what is left over, so a failed write never empties the tab.
   var range = sheet.getRange(1, 1, values.length, width);
-  range.setNumberFormat("@");
+  asText_(range);
   range.setValues(values);
   var lastRow = sheet.getLastRow();
   var lastColumn = sheet.getLastColumn();
@@ -193,12 +193,16 @@ function format_(sheet, header, count, statusColumn) {
 function table_(book, sheet, header, count, statusColumn, options) {
   var dataRows = Math.max(1, count);
   if (typeof Sheets === "undefined") {
-    // Old rules (a strict list typed by hand) would reject the rows; the Status list only warns.
-    sheet.getRange(2, 1, dataRows, header.length).clearDataValidations();
-    if (statusColumn >= 0 && options.length) {
-      sheet.getRange(2, statusColumn + 1, dataRows, 1).setDataValidation(
-        SpreadsheetApp.newDataValidation().requireValueInList(options, true).setAllowInvalid(true).build()
-      );
+    try {
+      // Old rules (a strict list typed by hand) would reject the rows; the Status list only warns.
+      sheet.getRange(2, 1, dataRows, header.length).clearDataValidations();
+      if (statusColumn >= 0 && options.length) {
+        sheet.getRange(2, statusColumn + 1, dataRows, 1).setDataValidation(
+          SpreadsheetApp.newDataValidation().requireValueInList(options, true).setAllowInvalid(true).build()
+        );
+      }
+    } catch (err) {
+      // A table made by hand: its typed columns take no rules, and only the Sheets service changes them.
     }
     return "no-service";
   }
@@ -246,13 +250,15 @@ function table_(book, sheet, header, count, statusColumn, options) {
       // A table name is unique in the whole spreadsheet; a copy of the tab may hold the first one.
       var name = TABLE_NAME;
       for (var n = 2; names[name]; n++) name = TABLE_NAME + n;
-      sheet.getRange(2, 1, dataRows, header.length).clearDataValidations();
+      try {
+        sheet.getRange(2, 1, dataRows, header.length).clearDataValidations();
+      } catch (err) {}
       request = { addTable: { table: { name: name, range: range, columnProperties: columns } } };
     }
     Sheets.Spreadsheets.batchUpdate({ requests: [request] }, id);
     return "ok";
   } catch (err) {
-    return "error: " + String(err && err.message ? err.message : err).slice(0, 200);
+    return "error: " + errorText_(err);
   }
 }
 
@@ -272,8 +278,25 @@ function onEdit(e) {
   var stamps = [];
   for (var r = first; r <= last; r++) stamps.push([stamp]);
   var target = sheet.getRange(first, column + 1, stamps.length, 1);
-  target.setNumberFormat("@");
+  asText_(target);
   target.setValues(stamps);
+}
+
+/**
+ * Plain-text format, so "02.10.2026" stays as typed. A table column has its own type and refuses a
+ * format ("Tej czynności nie można wykonać na kolumnie, która ma określony typ"); it is left as is.
+ */
+function asText_(range) {
+  try {
+    range.setNumberFormat("@");
+  } catch (err) {}
+}
+
+/** The message with the line it came from, so a failure can be traced to one call. */
+function errorText_(err) {
+  var text = String(err && err.message ? err.message : err);
+  var at = err && err.stack ? String(err.stack).split("\\n")[1] : "";
+  return (text + (at ? " [" + at.trim() + "]" : "")).slice(0, 300);
 }
 
 function doGet() {

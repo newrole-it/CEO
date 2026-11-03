@@ -47,6 +47,17 @@ export function breezyFeedUrl(boardId: string): string {
   return `https://${breezyHost(boardId)}/json`
 }
 
+/** Breezy sends the country as {"id": "UA", "name": "Ukraine"}, or as a bare string. */
+function breezyCountry(value: unknown): string | undefined {
+  if (typeof value === "string") return value
+  if (value && typeof value === "object") {
+    const record = value as { id?: unknown; name?: unknown }
+    if (typeof record.id === "string") return record.id
+    if (typeof record.name === "string") return record.name
+  }
+  return undefined
+}
+
 export function parseBreezyPositions(
   payload: unknown,
   boardId: string,
@@ -71,6 +82,7 @@ export function parseBreezyPositions(
       title: position.name,
       companyName: position.company?.name || resolved,
       locationText: location || undefined,
+      countryCodes: [breezyCountry(position.location?.country)],
       employmentType: position.type?.name ?? undefined,
       workplaceType: position.location?.is_remote ? "REMOTE" : mapWorkplace(undefined, location),
       salaryText: salary || undefined,

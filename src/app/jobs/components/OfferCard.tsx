@@ -10,7 +10,16 @@ import { CompanyInitial } from "src/app/components/ds/primitives"
 import { cx } from "src/app/components/ds/cx"
 import type { CardOffer, Verdict } from "../types"
 import { placeText } from "../format"
-import { Facts, Freshness, Reasons, SourceBadge, orderReasons } from "./OfferBits"
+import {
+  CompanyName,
+  Facts,
+  Freshness,
+  IntermediaryBadge,
+  PostedAge,
+  Reasons,
+  SourceBadge,
+  orderReasons,
+} from "./OfferBits"
 
 export type CardHandlers = {
   onOpen?: (offer: CardOffer) => void
@@ -33,7 +42,20 @@ export const OfferCard = forwardRef<
     swipe?: boolean
   } & CardHandlers
 >(function OfferCard(
-  { offer, verdict, active, showScore = true, leaving, demo, children, swipe, onOpen, onVerdict, onFocusCard, onSwipe },
+  {
+    offer,
+    verdict,
+    active,
+    showScore = true,
+    leaving,
+    demo,
+    children,
+    swipe,
+    onOpen,
+    onVerdict,
+    onFocusCard,
+    onSwipe,
+  },
   ref
 ) {
   const { t, locale } = useCopy()
@@ -41,7 +63,13 @@ export const OfferCard = forwardRef<
   const applied = verdict === "APPLIED"
   const reasons = orderReasons(offer.reasons)
   const href = `/jobs/${offer.id}`
-  const drag = useRef<{ x: number; y: number; at: number; dx: number; locked: boolean | null } | null>(null)
+  const drag = useRef<{
+    x: number
+    y: number
+    at: number
+    dx: number
+    locked: boolean | null
+  } | null>(null)
   const body = useRef<HTMLDivElement>(null)
 
   function open(event: React.MouseEvent) {
@@ -58,7 +86,13 @@ export const OfferCard = forwardRef<
           onPointerDown: (event: React.PointerEvent) => {
             if (event.pointerType === "mouse") return
             if ((event.target as HTMLElement).closest("button, a.fact__info, .like-panel")) return
-            drag.current = { x: event.clientX, y: event.clientY, at: Date.now(), dx: 0, locked: null }
+            drag.current = {
+              x: event.clientX,
+              y: event.clientY,
+              at: Date.now(),
+              dx: 0,
+              locked: null,
+            }
           },
           onPointerMove: (event: React.PointerEvent) => {
             const state = drag.current
@@ -95,7 +129,9 @@ export const OfferCard = forwardRef<
             wrap?.classList.remove("is-dragging")
             const velocity = Math.abs(state.dx) / Math.max(1, Date.now() - state.at)
             const past = Math.abs(state.dx) >= node.offsetWidth * 0.35 || velocity > 0.5
-            wrap?.querySelectorAll<HTMLElement>(".swipe__bg").forEach((bg) => (bg.style.opacity = "0"))
+            wrap
+              ?.querySelectorAll<HTMLElement>(".swipe__bg")
+              .forEach((bg) => (bg.style.opacity = "0"))
             node.style.transform = ""
             if (past) onSwipe(offer, state.dx > 0 ? 1 : -1)
           },
@@ -114,7 +150,11 @@ export const OfferCard = forwardRef<
         else if (ref) ref.current = node
       }}
       className={cx("ocard", active && "is-active", leaving && "is-leaving", demo && "demo")}
-      style={leaving ? ({ ["--leave" as string]: `${leaving * 24}px` } as React.CSSProperties) : undefined}
+      style={
+        leaving
+          ? ({ ["--leave" as string]: `${leaving * 24}px` } as React.CSSProperties)
+          : undefined
+      }
       data-offer={offer.id}
       onClick={(event) => {
         if ((event.target as HTMLElement).closest("button, a, .like-panel, .compact-prompt")) return
@@ -126,14 +166,21 @@ export const OfferCard = forwardRef<
     >
       <div className="ocard__meta">
         <div className="ocard__co">
-          <CompanyInitial name={offer.company} />
-          <strong>{offer.company}</strong>
+          <CompanyInitial name={offer.viaIntermediary ? "?" : offer.company} />
+          <CompanyName offer={offer} t={t} />
           <span aria-hidden>·</span>
           <span className="place">{placeText(offer, t, locale)}</span>
         </div>
         <div className="ocard__tags">
+          <IntermediaryBadge offer={offer} t={t} />
           <SourceBadge offer={offer} t={t} />
           <Freshness iso={offer.firstSeenAt} t={t} locale={locale} />
+          <PostedAge
+            iso={offer.publishedAt}
+            firstSeenIso={offer.firstSeenAt}
+            t={t}
+            locale={locale}
+          />
         </div>
       </div>
       <div className="ocard__body">

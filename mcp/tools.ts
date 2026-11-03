@@ -16,7 +16,14 @@ import { findSimilarOffers } from "src/server/preferences/similar"
 import { listWatched, unwatchCompany, watchCompany } from "src/server/watchlist/watch"
 import { clampLimit, facts, offerList, signed } from "./format"
 import { mcpHost, noProfileHint } from "./host"
-import { cardFromFeed, feedForUser, searchJobs, sinceDate, targetWords } from "./jobs"
+import {
+  cardFromFeed,
+  companyFields,
+  feedForUser,
+  searchJobs,
+  sinceDate,
+  targetWords,
+} from "./jobs"
 import { importProfile, loadProfile, profileSummary } from "./profile"
 import { currentUser, NoUserError } from "./user"
 
@@ -345,8 +352,9 @@ export function registerTools(server: McpServer) {
       const ok = detail.reasons.filter((item) => item.kind === "ok").map((item) => item.text)
       const warn = detail.reasons.filter((item) => item.kind === "warn").map((item) => item.text)
       const text = [
-        `${offer.title} · ${offer.company}`,
+        `${offer.title} · ${card.company}`,
         facts([
+          ["Pośrednik", card.intermediary],
           ["Lokalizacja", card.location],
           ["Tryb", offer.workMode],
           ["Wynagrodzenie", offer.payLabel ? `${offer.payLabel}/mies.` : "nie podano"],
@@ -470,7 +478,7 @@ export function registerTools(server: McpServer) {
       const offers = result.offers.map((offer) => ({
         id: offer.id,
         title: offer.title,
-        company: offer.company,
+        ...companyFields(offer),
         url: offer.url,
         location: offer.location ?? null,
         workMode: String(offer.workplace ?? "unknown").toLowerCase(),

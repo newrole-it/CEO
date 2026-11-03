@@ -17,7 +17,7 @@ import type { OfferDetail as Detail } from "src/server/preferences/detail"
 import type { RankedOffer } from "src/server/preferences/types"
 import type { Verdict } from "../types"
 import { shortDate } from "../format"
-import { Facts, Freshness, Reasons, SourceBadge } from "./OfferBits"
+import { Facts, Freshness, IntermediaryBadge, PostedAge, Reasons, SourceBadge } from "./OfferBits"
 import { MiniCard } from "./Similar"
 import { useFeedback } from "../useFeedback"
 
@@ -75,12 +75,17 @@ export function OfferDetailView({
     setCompany(null)
     setSimilar(null)
     setHasTailoredCv(false)
-    void invoke(getCompanyForJob, { jobId }).then((info) => live && setCompany(info), () => {})
+    void invoke(getCompanyForJob, { jobId }).then(
+      (info) => live && setCompany(info),
+      () => {}
+    )
     void invoke(getJobDocuments, { jobId }).then(
       (documents) => live && setHasTailoredCv(Boolean(documents.cvId)),
       () => {}
     )
-    void feedback.similar(jobId).then((result) => live && setSimilar(result?.offers.slice(0, 4) ?? []))
+    void feedback
+      .similar(jobId)
+      .then((result) => live && setSimilar(result?.offers.slice(0, 4) ?? []))
     return () => {
       live = false
     }
@@ -124,7 +129,14 @@ export function OfferDetailView({
           icon={mobile ? <ChevronDown /> : <X />}
         />
         <div className="od__nav">
-          <Button variant="ghost" size="sm" iconOnly aria-label={t("od.share")} onClick={() => void share()} icon={<Share2 />} />
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            aria-label={t("od.share")}
+            onClick={() => void share()}
+            icon={<Share2 />}
+          />
           {onPrev !== undefined ? (
             <Button variant="ghost" size="sm" disabled={!onPrev} onClick={() => onPrev?.()}>
               {t("od.prev")}
@@ -174,9 +186,18 @@ export function OfferDetailView({
       <header className="od__head">
         <div className="stack-sm" style={{ minWidth: 0 }}>
           <div className="od__co">
-            <CompanyInitial name={offer.company} size="lg" />
-            {company ? (
-              <Link className="link" href={`/companies?focus=${company.companyId}`} style={{ color: "var(--text)" }}>
+            <CompanyInitial name={offer.viaIntermediary ? "?" : offer.company} size="lg" />
+            {offer.viaIntermediary ? (
+              <>
+                <span>{t("via.unknown")}</span>
+                <IntermediaryBadge offer={offer} t={t} />
+              </>
+            ) : company ? (
+              <Link
+                className="link"
+                href={`/companies?focus=${company.companyId}`}
+                style={{ color: "var(--text)" }}
+              >
                 {offer.company}
               </Link>
             ) : (
@@ -190,6 +211,12 @@ export function OfferDetailView({
           <div className="row">
             <SourceBadge offer={offer} t={t} />
             <Freshness iso={offer.firstSeenAt} t={t} locale={locale} />
+            <PostedAge
+              iso={offer.publishedAt}
+              firstSeenIso={offer.firstSeenAt}
+              t={t}
+              locale={locale}
+            />
           </div>
         </div>
         {detail.hasProfile || detail.hasFeedback ? (
@@ -235,7 +262,13 @@ export function OfferDetailView({
           {t(hasTailoredCv ? "tl.act.open" : "tl.act")}
         </ButtonLink>
         {offer.url ? (
-          <ButtonLink href={offer.url} external variant="primary" size="sm" iconRight={<ExternalLink />}>
+          <ButtonLink
+            href={offer.url}
+            external
+            variant="primary"
+            size="sm"
+            iconRight={<ExternalLink />}
+          >
             {t("od.openPosting").replace(" ↗", "")}
           </ButtonLink>
         ) : null}
@@ -245,7 +278,9 @@ export function OfferDetailView({
       <section className="od__sec" aria-labelledby={`${titleId}-why`}>
         <h2 id={`${titleId}-why`}>
           {t("od.why")}
-          {detail.hasProfile ? <span className="t-sm muted num">{t("od.scoreOf", { n: detail.score })}</span> : null}
+          {detail.hasProfile ? (
+            <span className="t-sm muted num">{t("od.scoreOf", { n: detail.score })}</span>
+          ) : null}
         </h2>
         {!detail.hasProfile && !detail.hasFeedback ? (
           <p className="muted">
@@ -259,14 +294,21 @@ export function OfferDetailView({
             <div className="score-bars">
               {detail.parts.map((part) => (
                 <div key={part.id} className="score-bar">
-                  <span className="score-bar__label">{t(PART_KEY[part.id] ?? "od.part.title")}</span>
+                  <span className="score-bar__label">
+                    {t(PART_KEY[part.id] ?? "od.part.title")}
+                  </span>
                   <span className="score-bar__track" aria-hidden>
-                    <span className="score-bar__fill" style={{ width: `${Math.round(part.value * 100)}%` }} />
+                    <span
+                      className="score-bar__fill"
+                      style={{ width: `${Math.round(part.value * 100)}%` }}
+                    />
                   </span>
                   <span className="score-bar__val">
                     {Math.round(part.points)}/{part.max}
                   </span>
-                  <span className="score-bar__why">{locale === "en" ? part.reason.en : part.reason.pl}</span>
+                  <span className="score-bar__why">
+                    {locale === "en" ? part.reason.en : part.reason.pl}
+                  </span>
                 </div>
               ))}
               {pref.delta ? (
@@ -277,7 +319,12 @@ export function OfferDetailView({
                   </span>
                   <span />
                   <span className="score-bar__why">
-                    <Heart width={12} height={12} aria-hidden style={{ display: "inline", fill: "var(--primary)", color: "var(--primary)" }} />{" "}
+                    <Heart
+                      width={12}
+                      height={12}
+                      aria-hidden
+                      style={{ display: "inline", fill: "var(--primary)", color: "var(--primary)" }}
+                    />{" "}
                     {(pref.reasonsI18n?.length
                       ? pref.reasonsI18n.map((reason) => (locale === "en" ? reason.en : reason.pl))
                       : pref.reasons
@@ -288,7 +335,9 @@ export function OfferDetailView({
               {detail.industryDelta ? (
                 <div className="score-bar">
                   <span className="score-bar__label">{t("od.part.industry")}</span>
-                  <span className={`score-bar__delta ${detail.industryDelta > 0 ? "is-up" : "is-down"}`}>
+                  <span
+                    className={`score-bar__delta ${detail.industryDelta > 0 ? "is-up" : "is-down"}`}
+                  >
                     {detail.industryDelta > 0 ? `+${detail.industryDelta}` : detail.industryDelta}
                   </span>
                   <span />
@@ -354,7 +403,10 @@ export function OfferDetailView({
       ) : null}
 
       <section className="od__sec">
-        <h2>{t("od.company")}</h2>
+        <h2>{offer.viaIntermediary ? t("via.company") : t("od.company")}</h2>
+        {offer.viaIntermediary ? (
+          <p className="t-sm muted">{t("via.tip", { name: offer.company })}</p>
+        ) : null}
         {company ? (
           <div className="row row--between" style={{ alignItems: "center", gap: 12 }}>
             <div className="stack-sm t-sm">
@@ -367,7 +419,12 @@ export function OfferDetailView({
                   <Badge>{t("src.link")}</Badge>
                 ) : null}
                 {company.careerPageUrl ? (
-                  <a className="link link--quiet" href={company.careerPageUrl} target="_blank" rel="noreferrer noopener">
+                  <a
+                    className="link link--quiet"
+                    href={company.careerPageUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
                     {hostOf(company.careerPageUrl)}
                   </a>
                 ) : null}
@@ -413,7 +470,9 @@ export function OfferDetailView({
 function hostOf(url: string): string {
   try {
     const parsed = new URL(url)
-    return `${parsed.host.replace(/^www\./, "")}${parsed.pathname === "/" ? "" : parsed.pathname}`.slice(0, 48)
+    return `${parsed.host.replace(/^www\./, "")}${
+      parsed.pathname === "/" ? "" : parsed.pathname
+    }`.slice(0, 48)
   } catch {
     return url
   }

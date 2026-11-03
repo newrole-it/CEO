@@ -13,14 +13,7 @@ import { CHANNELS, statusLabel, type Channel } from "src/shared/applications"
 import { StatusPill } from "../StatusSelect"
 import { dayLabel, longDate, sourceKey } from "../rows"
 import { DropOffBars, Funnel, Meter, StackedColumns, type Series } from "./charts"
-
-export type RangeKey = "4" | "12" | "26" | "52" | "all"
-const RANGES: RangeKey[] = ["4", "12", "26", "52", "all"]
-const DEFAULT_RANGE: RangeKey = "12"
-
-export function parseRange(value: string | undefined): RangeKey {
-  return (RANGES as string[]).includes(value ?? "") ? (value as RangeKey) : DEFAULT_RANGE
-}
+import { DEFAULT_RANGE, RANGES, type RangeKey } from "./range"
 
 function pct(value: number | null): string {
   return value == null ? "—" : `${Math.round(value * 100)}%`

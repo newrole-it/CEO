@@ -3,7 +3,7 @@ import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { isBlockedSlug, namesAgree } from "./blocked"
 import { asDate, buildListedJob, itemsFrom, readJson } from "./parse"
-import type { BoardList } from "./types"
+import { LIST_MAX_BYTES, type BoardList } from "./types"
 
 const jobSchema = z
   .object({
@@ -83,7 +83,7 @@ export async function listGreenhouse(
     }
   }
   const response = await http.get(greenhouseListUrl(boardId), {
-    maxBytes: 8_000_000,
+    maxBytes: LIST_MAX_BYTES,
     accept: "application/json",
   })
   if (response.status === 404)

@@ -4,21 +4,16 @@
  */
 import { DEFAULT_CONFIG } from "matching/config"
 import { CITY_ALIASES, normalizeLocation } from "matching/normalization"
-import {
-  COUNTRY_ALIASES,
-  COUNTRY_NAMES,
-  SUBDIVISIONS,
-  countryFromText,
-  countryName,
-  remoteOpenTo,
-} from "matching/places"
+import { countryFromText, remoteOpenTo } from "matching/places"
 import { fold } from "matching/text"
+import { blockedCountries, isBlockedCountry } from "src/server/geo/countries"
+import { plnPerUnit } from "src/server/fx/nbp"
 import type { NormalizedLocation } from "matching/types"
 import type { OfferWorkMode, PayNote } from "src/shared/offer-view"
 
 /**
- * Approximate mid-market rates into PLN. Same figures as matching/config.ts (asOf 2026-10-01).
- * Not a live NBP feed and not a paid FX API. Refresh both tables together if the rates change.
+ * Rates into PLN: FX_<CODE>_PLN, else NBP table A (src/server/fx/nbp.ts, read by ensureFxRates),
+ * else the defaults in matching/config.ts. Any currency NBP lists converts.
  */
 export const PLN_PER_UNIT = DEFAULT_CONFIG.fx.toPln
 
@@ -30,8 +25,7 @@ export const HOURS_PER_MONTH = DEFAULT_CONFIG.hoursPerMonth
 export const DAYS_PER_MONTH = DEFAULT_CONFIG.daysPerMonth
 export const MONTHS_PER_YEAR = DEFAULT_CONFIG.monthsPerYear
 
-const CURRENCIES = ["PLN", "EUR", "USD", "GBP", "CHF"] as const
-type Currency = (typeof CURRENCIES)[number]
+type Currency = string
 type Period = "hour" | "day" | "month" | "year"
 
 export type PlaceFacts = {
@@ -101,7 +95,7 @@ function parseMoneyTag(raw: string | null): { currency: Currency; period: Period
   const match = compact.match(/^([a-z]{3})(?:\/([a-z]+))?$/)
   if (!match) return null
   const currency = match[1].toUpperCase()
-  if (!CURRENCIES.includes(currency as Currency)) return null
+  if (plnPerUnit(currency) == null) return null
   if (!match[2]) return { currency: currency as Currency, period: null }
   const period = PERIOD_WORD[match[2]]
   if (!period) return null
@@ -144,7 +138,7 @@ export function monthlyBasePln(input: {
   const period = parsed.period ?? assumePeriod(sample, parsed.currency)
   // Bare "PLN" on a month-sized amount is the stored form of an explicit month, not a guess.
   const assumed = parsed.period == null && period !== "month"
-  const rate = PLN_PER_UNIT[parsed.currency]
+  const rate = plnPerUnit(parsed.currency) ?? 1
   const convert = (amount: number) => Math.round(toMonthly(amount, period) * rate)
   const monthlyMin = convert(min ?? max!)
   const monthlyMax = convert(max ?? min!)
@@ -256,19 +250,46 @@ export function placeFacts(input: {
   locationText: string | null
   countryCode: string | null
   workplaceType: string | null
+  /** Countries stored with the offer at ingest. */
+  countries?: string[] | null
+  /** Remote regions stored with the offer at ingest ("Home based - EMEA" → EMEA). */
+  remoteRegions?: string[] | null
 }): PlaceFacts {
   const hint =
     input.workplaceType && input.workplaceType.toUpperCase() !== "UNKNOWN"
       ? input.workplaceType.toLowerCase()
       : ""
-  const parsed = normalizeLocation(input.locationText ?? "", hint)
-  const countries = new Set(parsed.countries.map((code) => code.toUpperCase()))
+  const read = normalizeLocation(input.locationText ?? "", hint)
+  const stored = (input.remoteRegions ?? []).filter(
+    (region): region is NormalizedLocation["remoteRegions"][number] =>
+      region !== "UNKNOWN" && REGIONS.has(region)
+  )
+  // A region the ingest found ("Home based - EMEA") makes the offer remote there even when the
+  // location text alone does not say "remote".
+  const parsed: NormalizedLocation = stored.length
+    ? {
+        ...read,
+        remoteRegions: [
+          ...new Set([...read.remoteRegions.filter((region) => region !== "UNKNOWN"), ...stored]),
+        ],
+        workModes: read.workModes.includes("remote")
+          ? read.workModes
+          : [...read.workModes.filter((mode) => mode !== "unknown"), "remote"],
+        workMode: read.workMode === "unknown" ? "remote" : read.workMode,
+      }
+    : read
+  const countries = new Set<string>()
+  for (const code of input.countries ?? []) countries.add(code.toUpperCase())
+  for (const code of parsed.countries) countries.add(code.toUpperCase())
   const column = input.countryCode?.trim().toUpperCase() ?? ""
   if (/^[A-Z]{2}$/.test(column)) countries.add(column)
+  // Countries refused by design never show, even when the location text names one.
+  for (const code of blockedCountries()) countries.delete(code)
   const city = parsed.cities[0]?.city ?? null
   const inPoland = countries.has("PL") ? true : countries.size > 0 ? false : null
   // A country stored with the offer wins; otherwise the first one the text names.
-  const countryCode = /^[A-Z]{2}$/.test(column) ? column : [...countries][0] ?? null
+  const countryCode =
+    /^[A-Z]{2}$/.test(column) && !isBlockedCountry(column) ? column : [...countries][0] ?? null
   const workMode: OfferWorkMode =
     parsed.workMode === "remote" || parsed.workMode === "hybrid" || parsed.workMode === "onsite"
       ? parsed.workMode
@@ -277,7 +298,10 @@ export function placeFacts(input: {
 }
 
 /** In the country, or remote and open to people there. */
+const REGIONS = new Set(["PL", "EU", "EMEA", "US", "AMERICAS", "APAC", "WORLD"])
+
 export function placeInCountry(place: PlaceFacts, country: string): boolean {
+  if (isBlockedCountry(country)) return false
   return place.countries.includes(country) || remoteOpenTo(place.location, country)
 }
 
@@ -303,9 +327,9 @@ export function cityNeedles(city: string): string[] {
   return [...needles]
 }
 
-const NAME_LOCALES = ["en", "pl", "de", "fr", "es", "it", "pt", "nl"]
 // The words matching/normalization reads as remote work (RE_REMOTE). Only narrows the database
-// scan; placeInCountry decides.
+// scan; placeInCountry decides. A text "Remote" on an offer stored with another country and no
+// region still reads as open to every country (85 open offers in the list for Poland, 2026-11-03).
 const REMOTE_NEEDLES = [
   "remote",
   "zdaln",
@@ -318,42 +342,29 @@ const REMOTE_NEEDLES = [
 ]
 
 /**
- * Substrings that may mean the offer is in this country: its names in the languages the matcher
- * reads (with and without accents), its cities and its states or provinces. A superset only.
+ * Prisma filter that keeps every offer in the country or remote; placeInCountry decides.
+ * Every write stores the countries (index/store.ts, index/reconcile.ts, search/pipeline.ts), so
+ * the stored columns find every offer in a country. Matching the country's names and cities in
+ * the location text found nothing more on 2026-11-03 (151,100 open offers, 182 countries) and
+ * cost about a second per query: dozens of ILIKE patterns on every row of the table.
  */
-export function countryNeedles(country: string): string[] {
-  const needles = new Set<string>(COUNTRY_NAMES[country] ?? [])
-  for (const [alias, code] of Object.entries(COUNTRY_ALIASES))
-    if (code === country) needles.add(alias)
-  for (const locale of NAME_LOCALES) {
-    const name = countryName(country, locale)
-    if (name) needles.add(name)
-  }
-  for (const [alias, [city, code]] of Object.entries(CITY_ALIASES)) {
-    if (code !== country) continue
-    needles.add(alias)
-    needles.add(city)
-  }
-  for (const [code, short, ...names] of SUBDIVISIONS) {
-    if (code !== country) continue
-    needles.add(`, ${short}`)
-    for (const name of names) needles.add(name)
-  }
-  // "Zielona Góra, PL": the matcher also reads a country code in a comma part.
-  needles.add(`, ${country}`)
-  return [...needles].filter((needle) => needle.trim().length >= 2)
-}
-
-/** Prisma filter that keeps every offer in the country or remote; placeInCountry decides. */
 export function inCountryWhere(country: string, { remote = true } = {}) {
   const contains = (needle: string) => ({
     locationText: { contains: needle, mode: "insensitive" as const },
   })
+  // A blocked country matches nothing.
+  if (isBlockedCountry(country)) return { id: { in: [] as string[] } }
   return {
     OR: [
+      { countries: { has: country } },
       { countryCode: country },
-      ...countryNeedles(country).map(contains),
-      ...(remote ? [{ workplaceType: "REMOTE" as const }, ...REMOTE_NEEDLES.map(contains)] : []),
+      ...(remote
+        ? [
+            { workplaceType: "REMOTE" as const },
+            { remoteRegions: { isEmpty: false } },
+            ...REMOTE_NEEDLES.map(contains),
+          ]
+        : []),
     ],
   }
 }

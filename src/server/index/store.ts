@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import type { BoardList } from "src/server/adapters/types"
-import { excerpt } from "src/server/crawler/hygiene"
+import { excerpt, wellFormed } from "src/server/crawler/hygiene"
 import { safeCanonicalUrl, sha256 } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
 import { isUniqueViolation } from "src/server/jobs/prisma-errors"
@@ -11,6 +11,32 @@ import { classificationFields, rememberCompanyTech } from "src/server/classify/p
 import { keepExternalPay } from "src/server/discovery/offer-search"
 import { APP_TO_SOURCE } from "src/server/matching/sources"
 import { nextStatus } from "./schedule"
+import {
+  boardCountry,
+  resolveJobCountries,
+  withBoardCountry,
+  type JobCountries,
+} from "src/server/geo/countries"
+import { boardIsTech, describeRejections, gateJob, type GateCounts } from "src/server/jobs/gate"
+import { boardIsIntermediary, viaIntermediary } from "src/server/jobs/intermediary"
+
+/** Where an offer is, from the ATS's own fields and its location text. */
+export function placeOf(job: ListedJob): JobCountries {
+  return resolveJobCountries({
+    locationText: job.locationText,
+    workplaceType: job.workplaceType,
+    structured: job.countryCodes,
+  })
+}
+
+function countryFields(place: JobCountries) {
+  return {
+    countries: place.countries,
+    countryCode: place.countries[0] ?? null,
+    remoteRegions: place.remoteRegions,
+    countrySource: place.source,
+  }
+}
 
 export type IndexBoard = {
   provider: SourceType
@@ -59,6 +85,14 @@ async function companyFor(name: string) {
   const companyName = normalizeWhitespace(name) || "Unknown company"
   const normalizedName = normalizeCompanyName(companyName) || companyName.toLowerCase()
   const existing = await db.company.findUnique({ where: { normalizedName } })
+  // A company first stored under its slug ("fortil") takes the properly written name once one comes.
+  if (
+    existing &&
+    existing.name === existing.name.toLowerCase() &&
+    companyName !== companyName.toLowerCase()
+  ) {
+    return db.company.update({ where: { id: existing.id }, data: { name: companyName } })
+  }
   if (existing) return existing
   try {
     return await db.company.create({ data: { name: companyName, normalizedName } })
@@ -115,7 +149,14 @@ export async function knownCanonicals(careerPageId: string): Promise<Set<string>
   return urls
 }
 
-async function writeJob(job: ListedJob, careerPageId: string, companyId: string, now: Date) {
+async function writeJob(
+  job: ListedJob,
+  careerPageId: string,
+  companyId: string,
+  now: Date,
+  place: JobCountries = placeOf(job),
+  intermediaryBoard = false
+) {
   const canonical = safeCanonicalUrl(job.originalUrl)
   const identityKey = identityFor(job)
   const existing =
@@ -126,12 +167,14 @@ async function writeJob(job: ListedJob, careerPageId: string, companyId: string,
   const description = excerpt(job.descriptionText || "") || existing?.descriptionText || ""
   await rememberCompanyTech(companyId, { sourceType: job.sourceType })
   const classified = await classificationFields(job.title, description)
+  const title = wellFormed(job.title)
   const data = {
-    title: job.title,
-    normalizedTitle: normalizeWhitespace(job.title),
-    summary: excerpt(description || job.title).slice(0, 280),
+    title,
+    normalizedTitle: normalizeWhitespace(title),
+    summary: wellFormed(excerpt(description || title).slice(0, 280)),
     descriptionText: description,
-    locationText: job.locationText,
+    locationText: job.locationText == null ? job.locationText : wellFormed(job.locationText),
+    ...countryFields(place),
     workplaceType: job.workplaceType,
     employmentType: job.employmentType,
     salaryMin: job.salaryMin,
@@ -152,6 +195,7 @@ async function writeJob(job: ListedJob, careerPageId: string, companyId: string,
     careerPageId,
     companyId,
     llmOptOut: job.llmOptOut ?? false,
+    viaIntermediary: viaIntermediary(description, intermediaryBoard),
     ...classified,
     ...(job.variants ? { variants: job.variants as unknown as Prisma.InputJsonValue } : {}),
   }
@@ -199,7 +243,15 @@ export async function saveDiscoveredJob(job: ListedJob, now: Date) {
     companyName,
     now
   )
-  return writeJob({ ...job, sourceBoardId: boardId, companyName }, page.id, page.companyId, now)
+  const intermediary = boardIsIntermediary(companyName, [excerpt(job.descriptionText || "")])
+  return writeJob(
+    { ...job, sourceBoardId: boardId, companyName },
+    page.id,
+    page.companyId,
+    now,
+    undefined,
+    intermediary
+  )
 }
 
 /** One updateMany per 1,000 ids instead of one query per row. */
@@ -216,28 +268,58 @@ export async function storeBoardInventory(args: {
   etag?: string | null
   lastModified?: string | null
   nextCheckAt: Date
-}): Promise<{ stored: number; closed: number; complete: boolean }> {
+}): Promise<{ stored: number; closed: number; complete: boolean; rejected: GateCounts }> {
   const companyName = args.listed.companyName || args.board.companyName
   const page = await ensureCareerPage(args.board, companyName, args.now)
   const companyId = page.companyId
   const seenKeys = new Set<string>()
   const coveredUrls = new Set<string>(args.listed.coveredUrls ?? [])
   const writtenUrls = new Set<string>()
+  // Every offer passes the gate on every read: an IT role, a real posting, and a place that is
+  // not on the blocked list. A board in one country lends it to the offers that name none.
+  const techBoard = boardIsTech(args.listed.jobs.map((job) => job.title))
+  const places = args.listed.jobs.map(placeOf)
+  const lent = boardCountry(places)
+  // A recruiter's board marks all its offers, the ones that do not say so too.
+  const intermediary = boardIsIntermediary(
+    companyName,
+    args.listed.jobs.map((job) => excerpt(job.descriptionText || ""))
+  )
+  const rejected: GateCounts = {}
+  const rejectedKeys = new Set<string>()
   let stored = 0
-  for (const job of args.listed.jobs) {
-    const saved = await writeJob(
-      {
-        ...job,
-        companyName: job.companyName || companyName,
-        sourceBoardId: job.sourceBoardId || args.board.boardId,
-      },
-      page.id,
-      companyId,
-      args.now
-    )
+  for (const [index, listedJob] of args.listed.jobs.entries()) {
+    const job = {
+      ...listedJob,
+      companyName: listedJob.companyName || companyName,
+      sourceBoardId: listedJob.sourceBoardId || args.board.boardId,
+    }
+    const place = withBoardCountry(places[index], lent)
+    const reason = gateJob(job, place, { boardIsTech: techBoard })
+    if (reason) {
+      rejected[reason] = (rejected[reason] ?? 0) + 1
+      rejectedKeys.add(identityFor(job))
+      continue
+    }
+    const saved = await writeJob(job, page.id, companyId, args.now, place, intermediary)
     seenKeys.add(saved.identityKey)
     writtenUrls.add(saved.canonicalUrl)
     stored += 1
+  }
+  // A stored offer the gate now refuses closes at once, whether or not the read was complete.
+  let refused = 0
+  if (rejectedKeys.size) {
+    const keys = [...rejectedKeys]
+    for (let start = 0; start < keys.length; start += 1000) {
+      const result = await db.job.updateMany({
+        where: {
+          identityKey: { in: keys.slice(start, start + 1000) },
+          status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] },
+        },
+        data: { status: "CLOSED", closedAt: args.now, lastVerifiedAt: args.now },
+      })
+      refused += result.count
+    }
   }
 
   const complete = args.listed.complete === true
@@ -278,6 +360,7 @@ export async function storeBoardInventory(args: {
     await updateJobs(gone, { status: "CLOSED", closedAt: at, lastVerifiedAt: at })
     closed = missing.length + gone.length
   }
+  closed += refused
 
   const active = await db.job.count({ where: { careerPageId: page.id, status: "ACTIVE" } })
   await db.careerPage.update({
@@ -287,14 +370,16 @@ export async function storeBoardInventory(args: {
       lastSuccessfulFetchAt: args.now,
       nextCheckAt: args.nextCheckAt,
       lastErrorCode: null,
-      fetchNote: args.listed.note?.slice(0, 500) ?? null,
+      fetchNote:
+        [args.listed.note, describeRejections(rejected)].filter(Boolean).join(". ").slice(0, 500) ||
+        null,
       etag: args.etag ?? undefined,
       lastModified: args.lastModified ?? undefined,
       listedCount: args.listed.listedCount ?? args.listed.jobs.length,
       indexComplete: complete,
     },
   })
-  return { stored, closed, complete: complete && active >= 0 }
+  return { stored, closed, complete: complete && active >= 0, rejected }
 }
 
 export async function noteUnchanged(args: {

@@ -945,6 +945,14 @@ button.chip:hover {
   background: var(--warning-soft);
   color: var(--warning);
 }
+.badge--via {
+  max-width: 240px;
+}
+.badge--via > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .badge--count {
   height: 18px;
   min-width: 18px;

@@ -25,10 +25,18 @@ export function stripPersonalData(text: string): string {
     .trim()
 }
 
+/**
+ * Drops lone UTF-16 surrogates: half an emoji left by a cut, or by a broken feed. Postgres and the
+ * Prisma engine refuse such a string, and the whole board's write fails with it.
+ */
+export function wellFormed(text: string): string {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "")
+}
+
 export function excerpt(text: string): string {
-  const clean = stripPersonalData(text).replace(/\s+/g, " ").trim()
+  const clean = wellFormed(stripPersonalData(text)).replace(/\s+/g, " ").trim()
   if (clean.length <= EXCERPT_CHARS) return clean
-  return `${clean.slice(0, EXCERPT_CHARS - 1).trimEnd()}…`
+  return `${wellFormed(clean.slice(0, EXCERPT_CHARS - 1)).trimEnd()}…`
 }
 
 const TDM_HOSTS = new Set(["jobs.sap.com", "careers.phenom.com", "jobs.siemens.com"])

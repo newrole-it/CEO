@@ -207,9 +207,18 @@ export function freshnessValue(days: number): number {
   return 0
 }
 
+/** Taken off the base when the offer's own posting date is more than a year old. */
+export const STALE_POSTING_PENALTY = 10
+
 function freshnessPart(seenAt: Date | null, now: Date): ScorePart {
   if (!seenAt) return part("freshness", 0.3, { pl: "Data nieznana", en: "Date unknown" })
   const days = Math.max(0, Math.floor((now.getTime() - seenAt.getTime()) / 86_400_000))
+  if (days > 365) {
+    return part("freshness", 0, {
+      pl: `Opublikowana ${days} dni temu, ponad rok (−${STALE_POSTING_PENALTY} pkt)`,
+      en: `Posted ${days} days ago, over a year (−${STALE_POSTING_PENALTY} pts)`,
+    })
+  }
   return part("freshness", freshnessValue(days), {
     pl: days === 0 ? "Nowa dzisiaj" : `Widziana pierwszy raz ${days} dni temu`,
     en: days === 0 ? "New today" : `First seen ${days} days ago`,
@@ -251,7 +260,11 @@ export function feedBreakdown(args: {
     freshnessPart(seen, now),
     sourcePart(args.sourceKind, args.provider),
   ]
-  const base = Math.round(parts.reduce((sum, item) => sum + item.points, 0))
+  const stale =
+    args.publishedAt != null && now.getTime() - args.publishedAt.getTime() > 365 * 86_400_000
+  const base = Math.round(
+    parts.reduce((sum, item) => sum + item.points, 0) - (stale ? STALE_POSTING_PENALTY : 0)
+  )
   return { parts, base }
 }
 

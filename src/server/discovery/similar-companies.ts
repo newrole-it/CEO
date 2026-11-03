@@ -600,6 +600,8 @@ async function suggestFromIndex(
         summary: true,
         locationText: true,
         countryCode: true,
+        countries: true,
+        remoteRegions: true,
         workplaceType: true,
       },
     }),

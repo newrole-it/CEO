@@ -4,7 +4,7 @@ import type { ListedJob } from "src/shared/schemas"
 import { isBlockedSlug, isGenericWorkableName, namesAgree } from "./blocked"
 import { asDate, buildListedJob, itemsFrom, readJson } from "./parse"
 import { parseJsonLdJobs } from "./jsonld"
-import type { BoardList } from "./types"
+import { LIST_MAX_BYTES, type BoardList } from "./types"
 
 const jobSchema = z
   .object({
@@ -47,7 +47,26 @@ export function parseWorkableJobs(
     .passthrough()
     .safeParse(payload)
   if (!root.success) return { jobs: [] }
-  const jobs = itemsFrom(root.data.jobs ?? [], jobSchema).flatMap((job) => {
+  // The widget lists a posting once per location under one shortcode (cxg on 2026-11-03: 1,469
+  // entries, 554 shortcodes, 15 of them in more than one country). One posting keeps them all.
+  const byCode = new Map<string, z.infer<typeof jobSchema>>()
+  for (const job of itemsFrom(root.data.jobs ?? [], jobSchema)) {
+    const places = job.locations?.length
+      ? job.locations
+      : [{ city: job.city, country: job.country }]
+    const seen = byCode.get(job.shortcode)
+    if (!seen) {
+      byCode.set(job.shortcode, { ...job, locations: [...places] })
+      continue
+    }
+    for (const place of places) {
+      const known = (seen.locations ?? []).some(
+        (item) => item.city === place.city && item.country === place.country
+      )
+      if (!known) seen.locations = [...(seen.locations ?? []), place]
+    }
+  }
+  const jobs = [...byCode.values()].flatMap((job) => {
     const fromLocations = (job.locations ?? [])
       .map((item) => [item.city, item.country].filter(Boolean).join(", "))
       .filter(Boolean)
@@ -58,6 +77,7 @@ export function parseWorkableJobs(
       title: job.title,
       companyName: root.data.name,
       locationText: location || undefined,
+      countryCodes: [...(job.locations ?? []).map((item) => item.countryCode), job.country],
       employmentType: job.employment_type ?? undefined,
       workplaceType: job.telecommuting ? "REMOTE" : undefined,
       descriptionHtml: job.description ?? undefined,
@@ -91,7 +111,7 @@ export async function listWorkable(
     }
   }
   const response = await http.get(workableListUrl(boardId), {
-    maxBytes: 8_000_000,
+    maxBytes: LIST_MAX_BYTES,
     accept: "application/json",
   })
   if (response.status === 404)

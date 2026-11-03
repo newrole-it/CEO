@@ -402,6 +402,8 @@ export function profileOffer(offer: OfferForScoring): OfferProfile {
   const place = placeFacts({
     locationText: offer.locationText ?? null,
     countryCode: offer.countryCode ?? null,
+    countries: offer.countries ?? null,
+    remoteRegions: offer.remoteRegions ?? null,
     workplaceType: offer.workplaceType ?? null,
   })
   if (place.workMode !== "unknown") {

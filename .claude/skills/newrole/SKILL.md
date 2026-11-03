@@ -13,7 +13,7 @@ The `newrole` MCP server reads the local index of offers taken straight from emp
 2. "Oferty dla mnie" / "co nowego" → `jobs_for_me` (`onlyNew: true` for the last 7 days).
 3. A concrete role → `jobs_search` with short title words ("senior backend", "engineering manager") plus `location`, `workplace`, `minMonthlyPln`.
 
-Show each offer as: score, title · company, salary/month, work mode, one reason, link. Keep lists to 5–10.
+Show each offer as: score, title · company, salary/month, work mode, one reason, link. Keep lists to 5–10. An offer with `intermediary` comes from a recruiter or job platform: write the company as unknown and name the intermediary ("firma nieznana, przez pośrednika Jobgether").
 
 ## Onboarding
 

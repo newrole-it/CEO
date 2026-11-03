@@ -348,7 +348,7 @@
         "\"Director of Engineering\" remote Europe job",
         "\"Head of Software Development\" oferta pracy"
       ],
-      "version": "qe-v1",
+      "version": "qe-v2",
       "searchQueries": {
         "web": [
           "\"Head of Engineering\" job remote Poland -\"Sales Engineer\" -\"Solutions Engineer\" -\"Pre-sales\"",
@@ -762,7 +762,7 @@
         "\"Dyrektor ds. Technologii\" oferta pracy",
         "startup CTO hiring Europe remote"
       ],
-      "version": "qe-v1",
+      "version": "qe-v2",
       "searchQueries": {
         "web": [
           "CTO job Poland remote -\"CTO Office Assistant\" -\"Office of the CTO Intern\" -\"Field CTO\"",
@@ -1180,7 +1180,7 @@
         "\"Software Engineering Manager\" remote Europe",
         "\"Kierownik Zespołu Programistów\" oferta pracy"
       ],
-      "version": "qe-v1",
+      "version": "qe-v2",
       "searchQueries": {
         "web": [
           "\"Engineering Manager\" job remote Poland -\"Sales Engineer\" -\"Solutions Engineer\" -\"Pre-sales\"",
@@ -1619,7 +1619,7 @@
         "\"Head of IT\" Warszawa job",
         "\"Dyrektor IT\" praca"
       ],
-      "version": "qe-v1",
+      "version": "qe-v2",
       "searchQueries": {
         "web": [
           "\"Kierownik Działu IT\" praca Warszawa -\"Kierownik budowy\" -\"Kierownik sklepu\" -\"Kierownik produkcji\"",
@@ -1967,7 +1967,7 @@
         "\"VP Engineering\" Poland",
         "\"Vice President of Engineering\" remote EMEA"
       ],
-      "version": "qe-v1",
+      "version": "qe-v2",
       "searchQueries": {
         "web": [
           "\"VP of Engineering\" remote Europe job -\"Sales Engineer\" -\"Solutions Engineer\" -\"Pre-sales\"",

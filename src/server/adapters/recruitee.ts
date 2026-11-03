@@ -3,7 +3,7 @@ import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob, WorkplaceType } from "src/shared/schemas"
 import { tenantHost } from "./hosts"
 import { asDate, buildListedJob, itemsFrom, readJson } from "./parse"
-import type { BoardList } from "./types"
+import { LIST_MAX_BYTES, type BoardList } from "./types"
 
 /** After this instant, Recruitee careers calls without X-Careers-Sites-Token return 401. */
 export const RECRUITEE_TOKEN_DEADLINE = "2027-02-10T00:00:00.000Z"
@@ -15,6 +15,11 @@ const offerSchema = z
     location: z.string().nullable().optional(),
     city: z.string().nullable().optional(),
     country: z.string().nullable().optional(),
+    country_code: z.string().nullable().optional(),
+    locations: z
+      .array(z.object({ country_code: z.string().nullish() }).passthrough())
+      .nullish()
+      .catch(null),
     remote: z.boolean().nullable().optional(),
     hybrid: z.boolean().nullable().optional(),
     on_site: z.boolean().nullable().optional(),
@@ -104,6 +109,10 @@ export function parseRecruiteeOffers(
       title: offer.title,
       companyName: offer.company_name || companyName,
       locationText: location.join(", ") || undefined,
+      countryCodes: [
+        offer.country_code,
+        ...(offer.locations ?? []).map((place) => place.country_code),
+      ],
       employmentType: offer.employment_type_code ?? undefined,
       workplaceType: workplace(offer),
       descriptionHtml: description || undefined,
@@ -127,7 +136,7 @@ export async function listRecruitee(
   const block = recruiteeAuthBlock(now, token)
   if (block) return { jobs: [], proven: false, companyName, note: block }
   const response = await http.get(recruiteeOffersUrl(boardId), {
-    maxBytes: 8_000_000,
+    maxBytes: LIST_MAX_BYTES,
     accept: "application/json",
     headers: token?.trim() ? { "X-Careers-Sites-Token": token.trim() } : undefined,
   })

@@ -44,7 +44,8 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 type LookupFn = (hostname: string) => Promise<string[]>
 
 const nextHostSlot = new Map<string, number>()
-const MIN_INTERVAL_MS = 5_000
+/** One request per second per host, across every process (host-pace.ts). robots.txt Crawl-delay can only raise it. */
+const MIN_INTERVAL_MS = 1_000
 const HOST_INTERVAL_MS: Record<string, number> = {}
 const MAX_RETRIES = 3
 

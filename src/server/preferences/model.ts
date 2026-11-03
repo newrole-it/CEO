@@ -296,6 +296,8 @@ export const feedbackJobSelect = {
   descriptionText: true,
   locationText: true,
   countryCode: true,
+  countries: true,
+  remoteRegions: true,
   workplaceType: true,
   salaryMin: true,
   salaryMax: true,
@@ -311,6 +313,8 @@ export function jobToOffer(job: {
   descriptionText: string
   locationText: string | null
   countryCode: string | null
+  countries?: string[]
+  remoteRegions?: string[]
   workplaceType: string
   salaryMin: number | null
   salaryMax: number | null
@@ -327,6 +331,8 @@ export function jobToOffer(job: {
     companyIndustry: job.company.industry,
     locationText: job.locationText,
     countryCode: job.countryCode,
+    countries: job.countries,
+    remoteRegions: job.remoteRegions,
     workplaceType: job.workplaceType,
     salaryMin: job.salaryMin,
     salaryMax: job.salaryMax,

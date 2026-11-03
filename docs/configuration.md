@@ -12,6 +12,7 @@
 | `npm run dev` / `npm run worker`        | Web and worker separately. A scan does nothing until the worker runs                                                                                                               |
 | `npm run build && npm start`            | Production build on the same port                                                                                                                                                  |
 | `npm run mcp`                           | The MCP server over stdio (Claude Code starts it for you)                                                                                                                          |
+| `npm run catalog -- <command>`          | The outside board catalog: `import`, `check`, `reconcile`, `guess "<company>"`, `status`. See below                                                                                |
 | `npm run harvest`                       | Reads the due board APIs and pushes them to a harvest branch, for a scheduled cloud agent. See below                                                                               |
 | `npm run ext:build` / `npm run ext:dev` | Rebuild the Chrome extension into `extension/.output/chrome-mv3`, or run WXT's dev mode                                                                                            |
 
@@ -32,7 +33,7 @@ Open http://127.0.0.1:43123. Search is public. The owner account is `OWNER_EMAIL
 
 ### Offers read in the cloud while this computer is off
 
-The worker reads boards only while it runs. A scheduled agent task in the cloud can read them in the meantime: it runs `npm run harvest`, which reads the due board APIs with the worker's own adapters, schedule and 5-second pace per host, writes the offers to a branch ending in `newrole-harvest` (`harvest/manifest.json` plus one file per board, descriptions cut to the stored excerpt) and pushes it. It needs no database. Career sites, SuccessFactors and Workday are left to the local worker, because their 200-pages-per-host daily cap lives in the local database.
+The worker reads boards only while it runs. A scheduled agent task in the cloud can read them in the meantime: it runs `npm run harvest`, which reads the due board APIs with the worker's own adapters, schedule and 1-second pace per host, writes the offers to a branch ending in `newrole-harvest` (`harvest/manifest.json` plus one file per board, descriptions cut to the stored excerpt) and pushes it. It needs no database. Career sites, SuccessFactors and Workday are left to the local worker, because their 200-pages-per-host daily cap lives in the local database.
 
 While the worker runs, it checks the remote every 10 minutes (a `HARVEST_IMPORT` task) and writes each board's newest cloud read into the index through the same code as a local read, when it is newer than the local one and its file matches the hash in the manifest. `/sync` shows what is read now, what waits, every board's last and next read, the queue, the cloud runs, and the prompt and network allowlist for Claude Code, Cursor or Codex.
 
@@ -45,6 +46,19 @@ npm run harvest -- --dry-run --minutes 2        # read and report, commit nothin
 Use it with a private repository only: the branch holds the offer index.
 
 What the providers' docs said on 2 November 2026: Claude Code cloud scheduled tasks run with the laptop closed, at most hourly, and their default Trusted network blocks the ATS hosts until they are added under Custom ([scheduled tasks](https://code.claude.com/docs/en/routines), [cloud environments](https://code.claude.com/docs/en/cloud-environments)). Cursor Automations run in a cloud VM on a preset or cron schedule and can open pull requests; the page does not say whether they push to a branch directly ([automations](https://cursor.com/docs/cloud-agent/automations)). Codex scheduled tasks in the app need the computer on and the app running ([scheduled tasks](https://learn.chatgpt.com/docs/automations?surface=app)).
+
+### The outside board catalog
+
+`npm run catalog -- import` reads freehire's MIT-licensed board list (company, ATS platform, board id; `sources/freehire-boards-NOTICE.md`) as candidates, Workday included. `npm run catalog -- discover [--crawl CC-MAIN-2026-43]` adds the boards found in Common Crawl's URL index (`sources/commoncrawl-NOTICE.md`): it reads only archived addresses, from the index files on data.commoncrawl.org, a block at a time. Nothing is crawled at either step. `npm run catalog -- check` then reads each candidate's board on its own platform and keeps it only when:
+
+- the board exists and lists jobs;
+- it is the company the list names, or the platform's own name fits the board id (Greenhouse, Workable, Recruitee, Teamtailor, Breezy and Pinpoint publish a name in their API; Ashby and Lever on the board page; Personio in `<subcompany>`; Workday as a posting's hiring organisation; BambooHR and Traffit publish none, so the name has to read as the board id);
+- the name is a name and not an id echoed back ("12jlkfsk");
+- at least one job is an IT role that says where it is, outside `BLOCKED_COUNTRIES`.
+
+A board that passes is stored through the same gate as every other board, and the worker reads it again daily (after watched companies and the seed list), which checks it again: a board that stops passing is turned off and its offers close. A board with no IT offers or no placed offers is looked at weekly; one that is the wrong company, or not on the platform, is not read again. SmartRecruiters is not imported: its API stays off while api.smartrecruiters.com's robots.txt disallows other crawlers.
+
+`check` runs one lane per shared API host (Greenhouse, Ashby, Lever, Workable) and `--lanes` lanes (default 6) for platforms with one host per company, all inside the 1-second-per-host pace. `reconcile` gives every open offer its countries and closes the ones the gate now refuses. `guess "<company>"` tries likely slugs on each platform and adds the ones that verify.
 
 ### Embedding the MCP server
 
@@ -103,7 +117,9 @@ With `claude-cli`, each model call is one `claude -p --output-format json` proce
 | `CRAWLER_OPT_OUT_HOSTS`                                      | no                     | Sites whose owner asked not to be read, comma separated. Subdomains count                                                                                                                                                                  |
 | `RECRUITEE_CAREERS_TOKEN`                                    | no                     | Employer token. Required for Recruitee after 10 February 2027                                                                                                                                                                              |
 | `FETCH_TIMEOUT_MS` / `FETCH_MAX_BYTES`                       | no                     | Per-request timeout (15 s) and response cap (1.5 MB)                                                                                                                                                                                       |
-| `MATCH_SALARY_FLOOR_PLN` and `FX_*_PLN`                      | no                     | Neutral matching defaults and placeholder FX overrides                                                                                                                                                                                     |
+| `BLOCKED_COUNTRIES`                                          | no                     | Countries whose offers never enter the index, ISO codes. Unset means `RU,BY`; an empty value blocks nothing                                                                                                                                |
+| `NBP_RATES`                                                  | no                     | `off` keeps the FX defaults in `matching/config.ts`. Otherwise rates into PLN come from NBP table A, read every 12 hours                                                                                                                   |
+| `MATCH_SALARY_FLOOR_PLN` and `FX_*_PLN`                      | no                     | Neutral matching defaults, and FX overrides that win over NBP                                                                                                                                                                              |
 
 ### Sign-in, mail and integrations
 

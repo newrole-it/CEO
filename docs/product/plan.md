@@ -18,7 +18,7 @@ Podłączasz LinkedIn albo wrzucasz CV, a newrole.it (w przeglądarce albo w Two
 2. **Twoja licencja Claude jest silnikiem.** Bez kluczy API: `LLM_PROVIDER=claude-cli` używa `claude -p` (subskrypcja użytkownika) do rozwijania zapytań, czytania CV i klasyfikacji. Serwer MCP pozwala Claude Code samemu szukać w sieci, czytać strony kariery i dopisywać oferty i firmy do indeksu.
 3. **Pierwsza sekunda = jasny pierwszy krok.** Ekran startowy ma jedno główne wezwanie: „Połącz LinkedIn” albo „Wrzuć CV (PDF)”. Wyszukiwarka bez konta zostaje, ale jako drugi wybór.
 4. **Każda decyzja uczy.** „Podoba mi się” otwiera krótkie pytanie „Co Ci się podoba?” (chipsy z aspektami i konkretnymi tagami z oferty plus opcjonalna notatka). Przy „Nie dla mnie” pytamy „Dlaczego?” (opcjonalnie, jednym kliknięciem).
-5. **Uczciwe źródła.** Obecne zasady crawlowania (robots.txt, 5 s na host, limity dzienne, brak obchodzenia logowania) zostają bez zmian. MCP i Claude CLI też ich przestrzegają.
+5. **Uczciwe źródła.** Obecne zasady crawlowania (robots.txt, 1 s na host (od 3.11.2026, wcześniej 5 s), limity dzienne, brak obchodzenia logowania) zostają bez zmian. MCP i Claude CLI też ich przestrzegają.
 6. **Wynik jest deterministyczny i wyjaśniony.** Preferencje z feedbacku to jawna, ograniczona korekta (±) z wyjaśnieniem, a nie czarna skrzynka.
 
 ## 4. Stan obecny (audyt, 28.10.2026)

@@ -336,7 +336,9 @@ describe("webhook", () => {
       script.indexOf("range.setValues(values)")
     )
     expect(script).not.toContain("clearContents()")
-    expect(script).toContain('error: "exception: "')
+    expect(script).toContain('error: "exception: " + errorText_(err)')
+    // A table column has its own type and refuses a number format: never fatal.
+    expect(script.match(/setNumberFormat\("@"\)/g)).toHaveLength(1)
     const colors = statusColors()
     expect(colors["Odrzucono"]).toEqual(colors["Rejected"])
     expect(Object.keys(colors)).toHaveLength(22)

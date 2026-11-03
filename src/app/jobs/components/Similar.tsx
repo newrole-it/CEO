@@ -37,13 +37,21 @@ export function MiniCard({
   onVerdict: (offer: RankedOffer, verdict: Verdict) => void
 }) {
   const { t } = useCopy()
-  const facts = [offer.salary, modeLabel(offer.workplace, t), offer.location].filter(Boolean).join(" · ")
+  const facts = [offer.salary, modeLabel(offer.workplace, t), offer.location]
+    .filter(Boolean)
+    .join(" · ")
   return (
     <article className="mini">
       <div className="mini__top">
-        <CompanyInitial name={offer.company} />
-        <strong>{offer.company}</strong>
-        <span className="score-pill" data-band={scoreBand(offer.score)} aria-label={t("card.score", { n: offer.score })}>
+        <CompanyInitial name={offer.viaIntermediary ? "?" : offer.company} />
+        <strong title={offer.viaIntermediary ? t("via.tip", { name: offer.company }) : undefined}>
+          {offer.viaIntermediary ? t("via.mini") : offer.company}
+        </strong>
+        <span
+          className="score-pill"
+          data-band={scoreBand(offer.score)}
+          aria-label={t("card.score", { n: offer.score })}
+        >
           {offer.score}
         </span>
       </div>
@@ -112,7 +120,12 @@ export function SimilarRow({
 }) {
   const { t } = useCopy()
   return (
-    <section className="similar" id={`similar-${anchorId}`} aria-label={t("similar.title", { title, company })} tabIndex={-1}>
+    <section
+      className="similar"
+      id={`similar-${anchorId}`}
+      aria-label={t("similar.title", { title, company })}
+      tabIndex={-1}
+    >
       <div className="similar__head">
         <strong>{t("similar.title", { title, company })}</strong>
         {basis ? <span>{trimBasis(basis)}</span> : null}
@@ -148,7 +161,12 @@ export function SimilarRow({
         <div className="row t-sm muted">
           <span>{t("similar.none", { company })}</span>
           {onWatch ? (
-            <Button size="sm" variant={watching ? "soft" : "outline"} onClick={onWatch} disabled={watching}>
+            <Button
+              size="sm"
+              variant={watching ? "soft" : "outline"}
+              onClick={onWatch}
+              disabled={watching}
+            >
               {watching ? t("co.watchingBtn") : t("co.watch")}
             </Button>
           ) : null}

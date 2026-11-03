@@ -19,6 +19,7 @@ import { parseJsonLdJobs } from "./jsonld"
 import { buildListedJob } from "./parse"
 import { parseSuccessFactorsJob } from "./successfactors"
 import type { BoardList } from "./types"
+import { listWorkdayCxs } from "./workday-cxs"
 
 type Platform = "successfactors" | "workday" | "career"
 type DetailKind = "microdata" | "jsonld" | "html" | "none"
@@ -809,6 +810,25 @@ export async function listCareerSite(
     if (blocked.note) notes.push(blocked.note)
     else if (!robotsAllows(blocked.rules, "/")) {
       notes.push(`${target.blockedHost} robots.txt disallows /. Job pages there are not fetched.`)
+    }
+  }
+
+  // Workday's own search lists every posting, where the sitemap stops at 100 (workday-cxs.ts).
+  // The sitemap below stays the fallback when the search is disallowed or does not answer.
+  if (target.platform === "workday" && target.cxs) {
+    const inventory = await listWorkdayCxs(
+      {
+        ...target.cxs,
+        host: target.host,
+        boardId: target.boardId,
+        companyName: target.companyName,
+      },
+      http,
+      robots.rules
+    )
+    if (inventory) {
+      inventory.note = [inventory.note, ...notes].filter(Boolean).join(" ").slice(0, 500)
+      return inventory
     }
   }
 

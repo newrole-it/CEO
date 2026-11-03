@@ -3,7 +3,7 @@ import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { isBlockedSlug } from "./blocked"
 import { asDate, buildListedJob, itemsFrom, mapWorkplace, readJson } from "./parse"
-import type { BoardList } from "./types"
+import { LIST_MAX_BYTES, type BoardList } from "./types"
 
 const jobSchema = z
   .object({
@@ -19,6 +19,30 @@ const jobSchema = z
     isRemote: z.boolean().nullish(),
     workplaceType: z.string().nullish(),
     jobUrl: z.string(),
+    address: z
+      .object({
+        postalAddress: z.object({ addressCountry: z.string().nullish() }).passthrough().nullish(),
+      })
+      .passthrough()
+      .nullish(),
+    secondaryLocations: z
+      .array(
+        z
+          .object({
+            address: z
+              .object({
+                postalAddress: z
+                  .object({ addressCountry: z.string().nullish() })
+                  .passthrough()
+                  .nullish(),
+              })
+              .passthrough()
+              .nullish(),
+          })
+          .passthrough()
+      )
+      .nullish()
+      .catch(null),
     compensation: z
       .object({
         scrapeableCompensationSalarySummary: z.string().nullable().optional(),
@@ -53,6 +77,12 @@ export function parseAshbyJobs(
       title: job.title,
       companyName,
       locationText: location,
+      countryCodes: [
+        job.address?.postalAddress?.addressCountry,
+        ...(job.secondaryLocations ?? []).map(
+          (place) => place.address?.postalAddress?.addressCountry
+        ),
+      ],
       employmentType: job.employmentType ?? undefined,
       workplaceType: workplace,
       descriptionText: job.descriptionPlain ?? undefined,
@@ -82,7 +112,7 @@ export async function listAshby(
     return { jobs: [], proven: false, note: `Ashby slug ${boardId} is a known wrong-company board` }
   }
   const response = await http.get(ashbyListUrl(boardId), {
-    maxBytes: 8_000_000,
+    maxBytes: LIST_MAX_BYTES,
     accept: "application/json",
   })
   if (response.status === 404)

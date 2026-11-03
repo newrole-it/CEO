@@ -84,7 +84,10 @@ export function SheetSettings({ after = null }: { after?: string | null }) {
       })
     if (sync.status === "synced" && (sync.table === "no-service" || sync.table === "error"))
       toast.show({
-        message: t(sync.table === "error" ? "sheet.table.error" : "sheet.table.noService"),
+        message:
+          sync.table === "error"
+            ? t("sheet.table.error", { detail: sync.tableDetail ?? "" })
+            : t("sheet.table.noService"),
         duration: 10000,
       })
   }

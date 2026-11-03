@@ -119,7 +119,7 @@ async function readBoard(board: SeedBoard, http: HttpClient, now: () => Date): P
 
 /**
  * Reads the due boards until the deadline. One queue per host, the queues side by side: the
- * 5-second pace is per host, so this is as fast as the worker's rules allow and no faster.
+ * 1-second pace is per host, so this is as fast as the worker's rules allow and no faster.
  */
 export async function readDueBoards(args: {
   boards: SeedBoard[]

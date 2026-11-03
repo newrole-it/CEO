@@ -1081,7 +1081,9 @@ function SimilarCard({ offer, onOpen }: { offer: RankedOffer; onOpen: (id: strin
   return (
     <button type="button" className="mini" onClick={() => onOpen(offer.id)}>
       <span className="mini__top">
-        <strong>{offer.company}</strong>
+        <strong title={offer.viaIntermediary ? t("via.tip", { name: offer.company }) : undefined}>
+          {offer.viaIntermediary ? t("via.mini") : offer.company}
+        </strong>
         <span className="score-pill">{offer.score}</span>
       </span>
       <span className="mini__title">{offer.title}</span>

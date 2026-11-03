@@ -50,7 +50,13 @@ export type Resolution =
       domain: string | null
       jobs: ListedJob[]
     }
-  | { kind: "link-only"; careersUrl: string; companyName: string | null; domain: string | null; reason: string }
+  | {
+      kind: "link-only"
+      careersUrl: string
+      companyName: string | null
+      domain: string | null
+      reason: string
+    }
   | { kind: "not-found"; message: string }
 
 export type ResolveDeps = {
@@ -69,7 +75,8 @@ const MAX_BOARD_CHECKS = 3
 export function boardUrl(provider: SourceType, boardId: string): string {
   if (provider === "GREENHOUSE") return `https://job-boards.greenhouse.io/${boardId}`
   if (provider === "LEVER") {
-    if (boardId.toLowerCase().startsWith("eu:")) return `https://jobs.eu.lever.co/${boardId.slice(3)}`
+    if (boardId.toLowerCase().startsWith("eu:"))
+      return `https://jobs.eu.lever.co/${boardId.slice(3)}`
     return `https://jobs.lever.co/${boardId}`
   }
   if (provider === "ASHBY") return `https://jobs.ashbyhq.com/${boardId}`
@@ -82,6 +89,10 @@ export function boardUrl(provider: SourceType, boardId: string): string {
   if (provider === "PINPOINT") return `https://${tenantHost(boardId, "pinpointhq.com")}/`
   if (provider === "BREEZY") return `https://${tenantHost(boardId, "breezy.hr")}/`
   if (provider === "BAMBOOHR") return `https://${tenantHost(boardId, "bamboohr.com")}/careers`
+  if (provider === "WORKDAY") {
+    const workday = boardId.match(/^([^/]+)\/wd(\d+)\/(.+)$/)
+    if (workday) return `https://${workday[1]}.wd${workday[2]}.myworkdayjobs.com/${workday[3]}`
+  }
   return `https://${boardId.replace(/^https?:\/\//, "")}/`
 }
 
@@ -138,7 +149,10 @@ type Ctx = {
 }
 
 function pageKey(url: string): string {
-  return url.replace(/[?#].*$/, "").replace(/\/+$/, "").toLowerCase()
+  return url
+    .replace(/[?#].*$/, "")
+    .replace(/\/+$/, "")
+    .toLowerCase()
 }
 
 async function checkBoard(
@@ -242,7 +256,12 @@ async function readPage(ctx: Ctx, url: string, hop: number): Promise<Resolution 
       continue
     }
     const embedded = !/^https?:/.test(marker.evidence)
-    const found = await checkBoard(ctx, marker.provider as LiveAts, marker.boardId, !embedded && hop > 1)
+    const found = await checkBoard(
+      ctx,
+      marker.provider as LiveAts,
+      marker.boardId,
+      !embedded && hop > 1
+    )
     if (found) return found
   }
 
@@ -305,7 +324,11 @@ async function firstJobPage(ctx: Ctx, urls: string[]): Promise<Resolution | null
     ctx.pages += 1
     const page = await politeGet(url, ctx.deps.http, ctx.robots)
     if (!page.ok) continue
-    const jobs = parseJsonLdJobs(page.response.body, page.response.url || url, ctx.name ?? undefined)
+    const jobs = parseJsonLdJobs(
+      page.response.body,
+      page.response.url || url,
+      ctx.name ?? undefined
+    )
     if (jobs.length) return careerSite(ctx, url, jobs)
   }
   return null
@@ -333,13 +356,15 @@ async function fromSitemap(ctx: Ctx, siteUrl: string): Promise<Resolution | null
     })
     if (!page.ok) continue
     const parsed = parseSitemap(page.response.body)
-    const jobs = parsed.urls.map((entry) => entry.loc).filter((loc) => {
-      try {
-        return looksLikeJobPath(new URL(loc).pathname)
-      } catch {
-        return false
-      }
-    })
+    const jobs = parsed.urls
+      .map((entry) => entry.loc)
+      .filter((loc) => {
+        try {
+          return looksLikeJobPath(new URL(loc).pathname)
+        } catch {
+          return false
+        }
+      })
     if (jobs.length) {
       const found = await firstJobPage(ctx, jobs)
       if (found) return found
@@ -422,7 +447,9 @@ export function rankSearchHits(name: string, hits: WebHit[]): string[] {
     }
     const label = compactName(companyDomain(hit.url)?.split(".")[0] ?? "")
     if (!label || !compact) continue
-    const agree = label === compact || (label.length >= 4 && (compact.includes(label) || label.includes(compact)))
+    const agree =
+      label === compact ||
+      (label.length >= 4 && (compact.includes(label) || label.includes(compact)))
     if (!agree) continue
     let score = 3
     try {
@@ -458,7 +485,9 @@ export async function resolveName(name: string, deps: ResolveDeps): Promise<Reso
   } catch (error) {
     return {
       kind: "not-found",
-      message: `Search failed (${error instanceof Error ? error.message : "error"}). Paste the company's website instead.`,
+      message: `Search failed (${
+        error instanceof Error ? error.message : "error"
+      }). Paste the company's website instead.`,
     }
   }
   const robots = deps.robots ?? createRobotsCache()

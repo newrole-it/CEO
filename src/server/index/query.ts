@@ -10,6 +10,7 @@ import { APP_TO_SOURCE } from "src/server/matching/sources"
 import { extractJobIndustry } from "src/server/profile/industry"
 import { rankAgainstProfile, toSignals, bandFor } from "src/server/profile/rank"
 import type { SourceType } from "src/shared/schemas"
+import { countryFromQuery } from "src/server/jobs/offer-facts"
 
 export const RELEVANCE_FLOOR = 40
 /** Industry extraction may call the model for this many matches per run; the rest use rules. */
@@ -77,17 +78,34 @@ export async function publishIndexedMatches(args: {
   floor?: number
 }): Promise<number> {
   const floor = args.floor ?? RELEVANCE_FLOOR
-  const jobs = await db.job.findMany({
-    where: { status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] } },
-    include: { company: true },
-  })
+  // Titles first, then the full rows of the relevant ones: the whole index no longer has to sit in
+  // memory (95,758 rows with descriptions took 4.4 s and about 1 GB on 2026-11-03).
+  const open = { status: { in: ["ACTIVE" as const, "POSSIBLY_CLOSED" as const] } }
+  const titles = await db.job.findMany({ where: open, select: { id: true, title: true } })
+  const relevant = titles
+    .filter((job) => titleIsRelevant(job.title, args.expansion))
+    .map((job) => job.id)
+  const jobs = []
+  for (let start = 0; start < relevant.length; start += 1000) {
+    jobs.push(
+      ...(await db.job.findMany({
+        where: { ...open, id: { in: relevant.slice(start, start + 1000) } },
+        include: { company: true },
+      }))
+    )
+  }
   const raws = jobs.flatMap((job) => {
-    if (!titleIsRelevant(job.title, args.expansion)) return []
     const raw = toRaw(job, args.now)
     return raw ? [raw] : []
   })
   if (!raws.length) return 0
-  const profile = liveProfile(args.expansion)
+  const hint = await db.savedSearch.findUnique({
+    where: { id: args.savedSearchId },
+    select: { locationHint: true },
+  })
+  const profile = liveProfile(args.expansion, {
+    country: countryFromQuery(hint?.locationHint ?? ""),
+  })
   const config = liveMatchingConfig()
   const matched = runMatching(raws, profile, args.now, config)
   const saved = await db.savedSearch.findUnique({

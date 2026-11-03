@@ -318,8 +318,7 @@ export const applicationsPl = {
   "sheet.imported": "Z arkusza: nowe {created}, zmienione {updated}, usunięte {deleted}.",
   "sheet.table.noService":
     "Arkusz zapisany, ale bez tabeli: w Apps Script dodaj usługę Google Sheets API (Usługi → +) i wdróż nową wersję.",
-  "sheet.table.error":
-    "Arkusz zapisany, ale Google nie zamienił zakładki w tabelę. Szczegóły są w logu aplikacji.",
+  "sheet.table.error": "Arkusz zapisany, ale Google nie zamienił zakładki w tabelę: {detail}",
   "sheet.err.generic": "Nie udało się zsynchronizować arkusza.",
 }
 
@@ -635,7 +634,6 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "sheet.imported": "From the sheet: {created} new, {updated} changed, {deleted} deleted.",
   "sheet.table.noService":
     "Sheet written, but not as a table: add the Google Sheets API service in Apps Script (Services → +) and deploy a new version.",
-  "sheet.table.error":
-    "Sheet written, but Google did not turn the tab into a table. The details are in the app log.",
+  "sheet.table.error": "Sheet written, but Google did not turn the tab into a table: {detail}",
   "sheet.err.generic": "Couldn't sync the sheet.",
 }

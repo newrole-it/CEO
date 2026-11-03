@@ -3,7 +3,7 @@ import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { isBlockedSlug } from "./blocked"
 import { asDate, buildListedJob, itemsFrom, mapWorkplace, readJson } from "./parse"
-import type { BoardList } from "./types"
+import { LIST_MAX_BYTES, type BoardList } from "./types"
 
 const postingSchema = z
   .object({
@@ -13,6 +13,7 @@ const postingSchema = z
     applyUrl: z.string().optional(),
     createdAt: z.number().optional(),
     workplaceType: z.string().optional(),
+    country: z.string().nullish(),
     descriptionPlain: z.string().optional(),
     description: z.string().optional(),
     categories: z
@@ -51,6 +52,7 @@ export function parseLeverPostings(
       title: job.text,
       companyName,
       locationText: job.categories?.allLocations?.join(" | ") || job.categories?.location,
+      countryCodes: [job.country],
       employmentType: job.categories?.commitment,
       workplaceType: mapWorkplace(job.workplaceType, job.categories?.location),
       descriptionText: job.descriptionPlain,
@@ -102,7 +104,7 @@ export async function listLever(
     return { jobs: [], proven: false, note: `Lever slug ${slug} is a known wrong-company board` }
   }
   for (const url of leverPostingUrls(boardId)) {
-    const response = await http.get(url, { maxBytes: 8_000_000, accept: "application/json" })
+    const response = await http.get(url, { maxBytes: LIST_MAX_BYTES, accept: "application/json" })
     if (response.status === 404) continue
     if (response.status >= 400) throw new Error(`Lever ${slug} returned ${response.status}`)
     const jobs = parseLeverPostings(readJson(response.body), boardId, companyName)

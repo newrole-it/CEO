@@ -14,6 +14,8 @@ export type OfferCard = {
   id: string
   title: string
   company: string
+  /** The recruiter or job platform publishing the offer. `company` then says the employer is unknown. */
+  intermediary?: string
   url: string
   location: string | null
   workMode: string
@@ -61,11 +63,23 @@ function sourceLabel(offer: FeedOffer): string {
   return offer.sourceKind
 }
 
+export const UNKNOWN_EMPLOYER = "nieznana (ofertę publikuje pośrednik)"
+
+/** An intermediary's offer names no employer: say so, and name who publishes it. */
+export function companyFields(offer: {
+  company: string
+  viaIntermediary: boolean
+}): Pick<OfferCard, "company" | "intermediary"> {
+  return offer.viaIntermediary
+    ? { company: UNKNOWN_EMPLOYER, intermediary: offer.company }
+    : { company: offer.company }
+}
+
 export function cardFromFeed(offer: FeedOffer | ForYouOffer): OfferCard {
   const card: OfferCard = {
     id: offer.id,
     title: offer.title,
-    company: offer.company,
+    ...companyFields(offer),
     url: offer.url,
     location: offer.city ?? (offer.countryCode ? countryName(offer.countryCode, "pl") : null),
     workMode: offer.workMode,

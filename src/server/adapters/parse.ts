@@ -41,6 +41,8 @@ export function buildListedJob(input: {
   title: string
   companyName?: string
   locationText?: string
+  /** Countries the ATS states in its own fields: ISO codes or country names. */
+  countryCodes?: (string | null | undefined)[]
   employmentType?: string
   workplaceType?: WorkplaceType
   descriptionText?: string
@@ -77,6 +79,7 @@ export function buildListedJob(input: {
     title,
     companyName: input.companyName,
     locationText: input.locationText,
+    countryCodes: countryList(input.countryCodes),
     employmentType: normalizeEmployment(input.employmentType),
     workplaceType: workplace,
     descriptionText: description || undefined,
@@ -92,6 +95,11 @@ export function buildListedJob(input: {
     llmOptOut: input.llmOptOut,
     variants: input.variants,
   }
+}
+
+function countryList(values: (string | null | undefined)[] | undefined): string[] | undefined {
+  const kept = [...new Set((values ?? []).map((value) => (value || "").trim()).filter(Boolean))]
+  return kept.length ? kept : undefined
 }
 
 export function readJson(body: string): unknown {

@@ -375,7 +375,12 @@ function basisText(
 /** Ranks scored candidates. Pure, so tests can feed it rows without a database. */
 export function rankCandidates(args: {
   seeds: Seed[]
-  candidates: (OfferForScoring & { id: string; url: string; salaryLabel: string | null })[]
+  candidates: (OfferForScoring & {
+    id: string
+    url: string
+    salaryLabel: string | null
+    viaIntermediary?: boolean
+  })[]
   model: PreferenceModel | null
   locale: Locale
   limit: number
@@ -399,6 +404,7 @@ export function rankCandidates(args: {
       id: candidate.id,
       title: candidate.title,
       company: candidate.company,
+      viaIntermediary: candidate.viaIntermediary ?? false,
       location: profile.city ?? candidate.locationText ?? null,
       workplace: profile.workMode,
       salary: candidate.salaryLabel,
@@ -439,11 +445,18 @@ export async function findSimilarOffers(input: {
   if (!ids.length) return { offers: [], basis }
   const rows = await db.job.findMany({
     where: { id: { in: ids } },
-    select: { ...feedbackJobSelect, originalUrl: true, canonicalUrl: true, salarySourceUrl: true },
+    select: {
+      ...feedbackJobSelect,
+      originalUrl: true,
+      canonicalUrl: true,
+      salarySourceUrl: true,
+      viaIntermediary: true,
+    },
   })
   const candidates = rows.map((row) => ({
     ...jobToOffer(row),
     id: row.id,
+    viaIntermediary: row.viaIntermediary,
     url: row.originalUrl || row.canonicalUrl,
     salaryLabel: offerPayFields(row, locale).card.payLabel,
   }))

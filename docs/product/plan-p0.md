@@ -33,7 +33,7 @@ Otwarcie repozytorium jest na końcu celowo. Dossier wygrywa dokumentami, więc 
 Decyzje i powody:
 
 - **Limit 300 znaków zostaje.** Wynika z ustaleń prawnych w `sources/` (art. 8 ustawy o ochronie baz danych: powtarzające się i systematyczne pobieranie). Pełny tekst żyje w pamięci przez kilkanaście minut i nie trafia do `Job` ani do innej tabeli. Odpowiedzi modelu w `LlmCache` zawierają wynik, nie treść oferty.
-- **Odczyt tylko na prośbę osoby.** Jedna oferta naraz, bez zadań w tle. Te same zasady co crawler: `safe-fetch`, polityka źródeł, 5 s na host, limit stron szczegółów. Strony HTML dodatkowo sprawdzają `robots.txt`.
+- **Odczyt tylko na prośbę osoby.** Jedna oferta naraz, bez zadań w tle. Te same zasady co crawler: `safe-fetch`, polityka źródeł, 1 s na host, limit stron szczegółów. Strony HTML dodatkowo sprawdzają `robots.txt`.
 - **Blokady AI są nadrzędne.** `llmOptOut` w indeksie albo na żywej stronie oznacza, że model nie dostaje treści oferty, nawet jej fragmentu.
 - **Pełnej treści nie pokazujemy w interfejsie.** Wyświetlanie cudzego ogłoszenia to co innego niż jednorazowe przeczytanie go na czyjąś prośbę. Karta oferty zostaje przy fragmencie i linku.
 - **Awaria nie blokuje pracy.** Gdy odczyt się nie uda, model dostaje fragment z indeksu, a ekran mówi to wprost i prosi o wklejenie wymagań.

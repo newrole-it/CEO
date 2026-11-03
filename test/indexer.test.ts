@@ -57,7 +57,7 @@ test("indexer stores every listing and closes jobs that disappear", async () => 
     acme,
     greenhouse([
       { id: 1, title: "Head of Engineering" },
-      { id: 2, title: "Account Executive" },
+      { id: 2, title: "QA Engineer" },
     ]),
     now
   )
@@ -67,7 +67,7 @@ test("indexer stores every listing and closes jobs that disappear", async () => 
   })
   assert.deepEqual(
     stored.map((job) => job.title),
-    ["Account Executive", "Head of Engineering"]
+    ["Head of Engineering", "QA Engineer"]
   )
   const page = await db.careerPage.findUnique({
     where: { provider_providerBoardId: { provider: "GREENHOUSE", providerBoardId: "index-acme" } },
@@ -82,7 +82,7 @@ test("indexer stores every listing and closes jobs that disappear", async () => 
     new Date("2026-10-11T12:00:00.000Z")
   )
   const afterMiss = await db.job.findMany({ where: { sourceBoardId: "index-acme" } })
-  const executive = afterMiss.find((job) => job.title === "Account Executive")
+  const executive = afterMiss.find((job) => job.title === "QA Engineer")
   assert.equal(executive?.status, "POSSIBLY_CLOSED")
 
   await indexBoard(
@@ -91,7 +91,7 @@ test("indexer stores every listing and closes jobs that disappear", async () => 
     new Date("2026-10-12T12:00:00.000Z")
   )
   const closed = await db.job.findFirst({
-    where: { sourceBoardId: "index-acme", title: "Account Executive" },
+    where: { sourceBoardId: "index-acme", title: "QA Engineer" },
   })
   assert.equal(closed?.status, "CLOSED")
   assert.ok(closed?.closedAt)
@@ -110,6 +110,7 @@ test("an incomplete career crawl does not close jobs that were not fetched", asy
   }
   const job = (title: string, url: string): ListedJob => ({
     title,
+    locationText: "Warszawa, Polska",
     companyName: "Index Example",
     originalUrl: url,
     sourceType: "CAREER_SITE",
@@ -120,7 +121,7 @@ test("an incomplete career crawl does not close jobs that were not fetched", asy
   await storeBoardInventory({
     board,
     listed: {
-      jobs: [job("Kept role", "https://index.example/jobs/1")],
+      jobs: [job("Kept developer", "https://index.example/jobs/1")],
       proven: true,
       complete: false,
       listedCount: 2,
@@ -132,7 +133,7 @@ test("an incomplete career crawl does not close jobs that were not fetched", asy
   await storeBoardInventory({
     board,
     listed: {
-      jobs: [job("Second role", "https://index.example/jobs/2")],
+      jobs: [job("Second developer", "https://index.example/jobs/2")],
       proven: true,
       complete: false,
       listedCount: 2,
@@ -173,7 +174,8 @@ test("an index pass reads the live sitemap instead of a short cached listing", a
     listed: {
       jobs: [
         {
-          title: "Cached only",
+          title: "Cached only developer",
+          locationText: "Warsaw, Poland",
           companyName: "GFT Cache Probe",
           originalUrl: "https://jobs.gft.com/job/Cached-Only/9/",
           sourceType: "SUCCESSFACTORS",
@@ -229,7 +231,7 @@ test("an index pass reads the live sitemap instead of a short cached listing", a
   )
   assert.equal(listed.listedCount, 2)
   assert.equal(
-    listed.jobs.some((job) => job.title === "Cached only"),
+    listed.jobs.some((job) => job.title === "Cached only developer"),
     false
   )
   assert.equal(listed.jobs.length, 2)
@@ -287,8 +289,13 @@ function zabkaSite(state: { index: number | Error; childB: number; etag: string 
       if (url.endsWith("/job-b.xml")) return reply(url, state.childB, urlset("kasjer-b"))
       const slug = url.match(/\/oferta-pracy\/(kasjer-[ab])$/)?.[1]
       if (slug) {
-        const title = slug === "kasjer-a" ? "Kasjer A" : "Kasjer B"
-        const json = JSON.stringify({ "@type": "JobPosting", title, url })
+        const title = slug === "kasjer-a" ? "Programista A" : "Programista B"
+        const json = JSON.stringify({
+          "@type": "JobPosting",
+          title,
+          url,
+          jobLocation: { address: { addressLocality: "Warszawa", addressCountry: "PL" } },
+        })
         return reply(url, 200, `<script type="application/ld+json">${json}</script>`)
       }
       return reply(url, 404)
@@ -320,8 +327,8 @@ test("a failed or partial sitemap read never closes a career site", async () => 
       },
     })
   const allActive = [
-    { title: "Kasjer A", status: "ACTIVE" },
-    { title: "Kasjer B", status: "ACTIVE" },
+    { title: "Programista A", status: "ACTIVE" },
+    { title: "Programista B", status: "ACTIVE" },
   ]
 
   assert.equal(await indexBoard(zabkaBoard, site.http, day(0)), "indexed")
@@ -390,7 +397,12 @@ test("a watched site closes an offer whose link is gone and refreshes the ones s
       }
       const slug = url.match(/\/careers\/([a-z-]+)$/)?.[1]
       if (slug) {
-        const json = JSON.stringify({ "@type": "JobPosting", title: slug, url })
+        const json = JSON.stringify({
+          "@type": "JobPosting",
+          title: slug,
+          url,
+          jobLocation: { address: { addressLocality: "Berlin", addressCountry: "DE" } },
+        })
         return html(`<script type="application/ld+json">${json}</script>`)
       }
       return { url, status: 404, body: "", contentType: "text/plain" }
@@ -430,7 +442,8 @@ const ghBoard = {
 }
 const ghJob = (id: string, url: string, descriptionText?: string): ListedJob => ({
   externalId: id,
-  title: `Role ${id}`,
+  title: `Developer ${id}`,
+  locationText: "Warsaw, Poland",
   companyName: ghBoard.companyName,
   originalUrl: url,
   descriptionText,
@@ -489,6 +502,7 @@ test("a listing without text keeps the stored description", async () => {
 const traffitJob = (board: string, id: string): ListedJob => ({
   externalId: id,
   title: `Developer ${board} ${id}`,
+  locationText: "Kraków, Poland",
   companyName: `Index Traffit ${board}`,
   originalUrl: `https://${board}.traffit.com/public/an/${id}`,
   sourceType: "TRAFFIT",
@@ -634,6 +648,52 @@ test("the identity repair script rekeys old rows, skips taken and collided ones,
   assert.equal(again.canonicalFixed, 0)
 })
 
+const agencyJob = (board: string, id: string, descriptionText: string): ListedJob => ({
+  ...traffitJob(board, id),
+  descriptionText,
+})
+
+test("a recruiter's board marks every offer as listed through an intermediary", async () => {
+  const db = (await import("../db")).default
+  const { storeBoardInventory } = await import("../src/server/index/store")
+  const { reconcileIndex } = await import("../src/server/index/reconcile")
+  const now = new Date(Date.UTC(2026, 10, 3, 9))
+  const store = (board: string, jobs: ListedJob[]) =>
+    storeBoardInventory({
+      board: traffitBoard(board),
+      listed: { jobs, proven: true, complete: true },
+      now,
+      nextCheckAt: new Date(Date.UTC(2026, 10, 4, 9)),
+    })
+  await store("idx-agency", [
+    agencyJob("idx-agency", "1", "Our client is a fintech in Kraków looking for a developer."),
+    agencyJob("idx-agency", "2", "Our client, a bank, builds its own payment rails."),
+    agencyJob("idx-agency", "3", "Rust, Postgres and on-call one week in six."),
+  ])
+  await store("idx-house", [
+    agencyJob("idx-house", "1", "We build software for our clients in banking."),
+    agencyJob("idx-house", "2", "This position is listed on behalf of a partner company."),
+  ])
+  const marks = async () =>
+    (
+      await db.job.findMany({
+        where: { sourceBoardId: { in: ["idx-agency", "idx-house"] } },
+        orderBy: [{ sourceBoardId: "asc" }, { externalId: "asc" }],
+        select: { viaIntermediary: true },
+      })
+    ).map((row) => row.viaIntermediary)
+  // idx-agency: two of three offers name a client, so all three are marked. idx-house: a software
+  // house writing "for our clients" is the employer; only the offer that says so is marked.
+  assert.deepEqual(await marks(), [true, true, true, false, true])
+
+  await db.job.updateMany({
+    where: { sourceBoardId: { in: ["idx-agency", "idx-house"] } },
+    data: { viaIntermediary: false },
+  })
+  await reconcileIndex(now)
+  assert.deepEqual(await marks(), [true, true, true, false, true])
+})
+
 after(async () => {
   const db = (await import("../db")).default
   await db.job.deleteMany({
@@ -650,6 +710,8 @@ after(async () => {
               "idx-tutlo",
               "idx-zen",
               "idx-rep-a",
+              "idx-agency",
+              "idx-house",
               "gh",
             ],
           },
@@ -673,6 +735,8 @@ after(async () => {
           "idx-zen",
           "idx-rep-a",
           "idx-rep-b",
+          "idx-agency",
+          "idx-house",
         ],
       },
     },
@@ -694,6 +758,8 @@ after(async () => {
           "Index Traffit idx-zen",
           "Index Traffit idx-rep-a",
           "Index Traffit idx-rep-b",
+          "Index Traffit idx-agency",
+          "Index Traffit idx-house",
         ],
       },
     },
