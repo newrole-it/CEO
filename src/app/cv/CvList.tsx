@@ -20,9 +20,9 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Dropzone, isPdf, Modal, ModalHead, useToast } from "src/app/components/ds/interactive"
-import { Badge, EmptyState } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Dropzone, isPdf, Modal, ModalHead, useToast } from "@newrole/ui/interactive"
+import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "src/app/jobs/format"
 import { importCvHtml } from "@newrole/cv-core/import-html"

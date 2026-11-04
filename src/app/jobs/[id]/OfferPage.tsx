@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useCopy } from "src/app/i18n/Locale"
-import { useToast } from "src/app/components/ds/interactive"
+import { useToast } from "@newrole/ui/interactive"
 import type { OfferDetail } from "src/server/preferences/detail"
 import type { FeedbackPrompt } from "src/server/preferences/types"
 import { LikePanel } from "../components/Feedback"
@@ -17,7 +17,9 @@ export function OfferPage({ detail }: { detail: OfferDetail }) {
   const router = useRouter()
   const toast = useToast()
   const feedback = useFeedback()
-  const [verdict, setVerdict] = useState<Verdict | null>((detail.feedback?.verdict as Verdict) ?? null)
+  const [verdict, setVerdict] = useState<Verdict | null>(
+    (detail.feedback?.verdict as Verdict) ?? null
+  )
   const [liking, setLiking] = useState(false)
   const [prompt, setPrompt] = useState<FeedbackPrompt | null | undefined>(undefined)
   const jobId = detail.offer.id

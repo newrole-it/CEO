@@ -10,7 +10,7 @@ import {
   useState,
   type RefObject,
 } from "react"
-import { useToast } from "src/app/components/ds/interactive"
+import { useToast } from "@newrole/ui/interactive"
 import { useCopy } from "src/app/i18n/Locale"
 import {
   applyNote,

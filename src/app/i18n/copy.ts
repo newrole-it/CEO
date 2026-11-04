@@ -7,8 +7,10 @@ import { gmailEn, gmailPl } from "./copy-gmail"
 import { setupEn, setupPl } from "./copy-setup"
 import { syncEn, syncPl } from "./copy-sync"
 import { tailorEn, tailorPl } from "./copy-tailor"
+import { uiEn, uiPl } from "@newrole/ui/copy"
+import { fmt, intlLocale, type Locale } from "@newrole/ui/i18n"
 
-export type Locale = "pl" | "en"
+export { fmt, intlLocale, type Locale }
 
 /**
  * All interface strings. Keys follow docs/product/ux-spec.md §10 (dotted, grouped by screen).
@@ -49,22 +51,6 @@ const basePl = {
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
   "onb.skip": "Pomiń, przeglądaj oferty",
-  "common.close": "Zamknij",
-  "common.copy": "Kopiuj",
-  "common.copied": "Skopiowano ✓",
-  "common.cancel": "Anuluj",
-  "common.save": "Zapisz",
-  "common.loading": "Wczytuję…",
-  "common.retry": "Spróbuj ponownie",
-  "common.newTab": "(otwiera się w nowej karcie)",
-  "common.more": "+{n} więcej",
-  "common.or": "albo",
-  "common.yesterday": "wczoraj",
-  "common.daysAgo": "{n} dni temu",
-  "common.hoursAgo": "{n} h temu",
-  "common.minutesAgo": "{n} min temu",
-  "common.justNow": "przed chwilą",
-  "common.over30": "> 30 dni",
 
   // landing
   "hero.title1": "Oferty z całego świata.",
@@ -178,7 +164,6 @@ const basePl = {
   "f.languages": "Języki",
   "f.languagesPh": "Np. angielski C1",
   "f.headline": "Nagłówek",
-  "f.remove": "Usuń {item}",
   "sen.intern": "Stażysta",
   "sen.junior": "Junior",
   "sen.mid": "Mid",
@@ -326,7 +311,6 @@ const basePl = {
   "feed.searchLabel": "Szukaj w ofertach",
   "feed.similarTo": "Podobne do: {title}",
   "feed.similarClear": "Pokaż wszystkie",
-  "card.score": "Dopasowanie {n} na 100",
   "card.scoreCaption": "dopasowanie",
   "card.new": "Nowa",
   "card.posted": "Opublikowana {when}",
@@ -734,6 +718,7 @@ const basePl = {
 
 /** Feature strings live in their own files (docs/product/plan-aplikacje.md §6). */
 const pl = {
+  ...uiPl,
   ...basePl,
   ...accountPl,
   ...applicationsPl,
@@ -750,6 +735,7 @@ export type CopyKey = keyof typeof pl
 export type Dict = Record<CopyKey, string>
 
 const en: Dict = {
+  ...uiEn,
   ...accountEn,
   ...applicationsEn,
   ...cvEn,
@@ -792,22 +778,6 @@ const en: Dict = {
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
   "onb.skip": "Skip, browse offers",
-  "common.close": "Close",
-  "common.copy": "Copy",
-  "common.copied": "Copied ✓",
-  "common.cancel": "Cancel",
-  "common.save": "Save",
-  "common.loading": "Loading…",
-  "common.retry": "Try again",
-  "common.newTab": "(opens in a new tab)",
-  "common.more": "+{n} more",
-  "common.or": "or",
-  "common.yesterday": "yesterday",
-  "common.daysAgo": "{n} days ago",
-  "common.hoursAgo": "{n} h ago",
-  "common.minutesAgo": "{n} min ago",
-  "common.justNow": "just now",
-  "common.over30": "> 30 days",
 
   "hero.title1": "Global offers.",
   "hero.title2": "Local search.",
@@ -920,7 +890,6 @@ const en: Dict = {
   "f.languages": "Languages",
   "f.languagesPh": "E.g. English C1",
   "f.headline": "Headline",
-  "f.remove": "Remove {item}",
   "sen.intern": "Intern",
   "sen.junior": "Junior",
   "sen.mid": "Mid",
@@ -1065,7 +1034,6 @@ const en: Dict = {
   "feed.searchLabel": "Search offers",
   "feed.similarTo": "Similar to: {title}",
   "feed.similarClear": "Show all",
-  "card.score": "Match {n} out of 100",
   "card.scoreCaption": "match",
   "card.new": "New",
   "card.posted": "Posted {when}",
@@ -1468,13 +1436,6 @@ export function copy(locale: Locale): Dict {
   return locale === "en" ? en : pl
 }
 
-/** Fill {placeholders}. Missing values stay visible so a bug is easy to spot. */
-export function fmt(template: string, vars: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    name in vars ? String(vars[name]) : whole
-  )
-}
-
 /** Polish plural bucket: 1 → one, 2–4 (not 12–14) → few, everything else → many. */
 export function pluralKind(n: number, locale: Locale): "one" | "few" | "many" {
   if (n === 1) return "one"
@@ -1491,11 +1452,6 @@ export type T = (key: CopyKey, vars?: Record<string, string | number>) => string
 export function translator(locale: Locale): T {
   const dict = copy(locale)
   return (key, vars) => (vars ? fmt(dict[key], vars) : dict[key])
-}
-
-/** The BCP 47 tag the Intl formatters get for a UI locale. */
-export function intlLocale(locale: Locale): "pl-PL" | "en-GB" {
-  return locale === "pl" ? "pl-PL" : "en-GB"
 }
 
 export function numberFormat(locale: Locale): Intl.NumberFormat {

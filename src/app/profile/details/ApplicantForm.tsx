@@ -8,8 +8,8 @@ import { Puzzle } from "lucide-react"
 import saveApplicantDetails from "src/app/profile/mutations/saveApplicantDetails"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { Button } from "src/app/components/ds/Button"
-import { useToast } from "src/app/components/ds/interactive"
+import { Button } from "@newrole/ui/Button"
+import { useToast } from "@newrole/ui/interactive"
 import type { ApplicantField, ApplicantInfo } from "src/shared/applicant"
 
 type Row = { key: ApplicantField; type?: string; autoComplete?: string; wide?: boolean }

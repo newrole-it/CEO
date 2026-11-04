@@ -1,8 +1,8 @@
 "use client"
 
 import { ChevronDown, ChevronUp, Pencil, RotateCcw, Sparkles, X } from "lucide-react"
-import { Button } from "src/app/components/ds/Button"
-import { Banner } from "src/app/components/ds/primitives"
+import { Button } from "@newrole/ui/Button"
+import { Banner } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { intlLocale } from "src/app/i18n/copy"
 import { auditCategories, type CvAuditNote } from "@newrole/cv-core/audit"

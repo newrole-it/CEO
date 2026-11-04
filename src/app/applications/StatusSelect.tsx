@@ -1,7 +1,7 @@
 "use client"
 
 import { useCopy } from "src/app/i18n/Locale"
-import { cx } from "src/app/components/ds/cx"
+import { cx } from "@newrole/ui/cx"
 import {
   ACTIVE_STATUSES,
   CLOSED_STATUSES,

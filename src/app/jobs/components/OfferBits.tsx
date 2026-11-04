@@ -13,7 +13,7 @@ import {
   SquareTerminal,
 } from "lucide-react"
 import { intlLocale, type Locale, type T } from "src/app/i18n/copy"
-import { Badge } from "src/app/components/ds/primitives"
+import { Badge } from "@newrole/ui/primitives"
 import type { CardOffer, FeedReason } from "../types"
 import { freshness, payInfo, placeText, postedAge, shortDate } from "../format"
 

@@ -53,6 +53,7 @@
     "@newrole/cv-core": "0.1.0",
     "@newrole/cv-engine": "0.1.0",
     "@newrole/llm": "0.1.0",
+    "@newrole/ui": "0.1.0",
     "@prisma/client": "5.4.2",
     "ajv": "8.20.0",
     "blitz": "3.0.2",

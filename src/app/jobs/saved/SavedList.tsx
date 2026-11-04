@@ -4,9 +4,9 @@ import Link from "next/link"
 import { useState } from "react"
 import { CheckCheck, CircleCheck, ExternalLink, Heart, RotateCcw, Undo2, X } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { useToast } from "src/app/components/ds/interactive"
-import { Badge, Banner, CompanyInitial, EmptyState, LinkTabs } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { useToast } from "@newrole/ui/interactive"
+import { Badge, Banner, CompanyInitial, EmptyState, LinkTabs } from "@newrole/ui/primitives"
 import { relativeTime } from "../format"
 import { useFeedback } from "../useFeedback"
 
@@ -48,10 +48,13 @@ export function SavedList({
         action: {
           label: t("act.undo"),
           onClick: () => {
-            const verdict = segment === "liked" ? "LIKE" : segment === "applied" ? "APPLIED" : "DISLIKE"
-            void feedback.save({ jobId: row.jobId, verdict }).then(() =>
-              setRows((current) => [row, ...current.filter((item) => item.jobId !== row.jobId)])
-            )
+            const verdict =
+              segment === "liked" ? "LIKE" : segment === "applied" ? "APPLIED" : "DISLIKE"
+            void feedback
+              .save({ jobId: row.jobId, verdict })
+              .then(() =>
+                setRows((current) => [row, ...current.filter((item) => item.jobId !== row.jobId)])
+              )
           },
         },
       })
@@ -77,7 +80,11 @@ export function SavedList({
     <div className="stack">
       <LinkTabs
         label={t("saved.title")}
-        items={[tab("liked", t("saved.liked")), tab("applied", t("saved.applied")), tab("passed", t("saved.passed"))]}
+        items={[
+          tab("liked", t("saved.liked")),
+          tab("applied", t("saved.applied")),
+          tab("passed", t("saved.passed")),
+        ]}
       />
       {segment === "applied" ? (
         <Banner tone="info">
@@ -92,7 +99,13 @@ export function SavedList({
       {rows.length === 0 ? (
         <EmptyState
           icon={segment === "liked" ? <Heart /> : segment === "applied" ? <CheckCheck /> : <X />}
-          title={t(segment === "liked" ? "saved.empty.liked" : segment === "applied" ? "saved.empty.applied" : "saved.empty.passed")}
+          title={t(
+            segment === "liked"
+              ? "saved.empty.liked"
+              : segment === "applied"
+              ? "saved.empty.applied"
+              : "saved.empty.passed"
+          )}
         >
           <ButtonLink href="/jobs" variant="primary">
             {t("saved.goFeed")}
@@ -119,7 +132,12 @@ export function SavedList({
                 {row.tags.length ? (
                   <div className="chips chips--sm" style={{ marginTop: 4 }}>
                     {row.tags.slice(0, 5).map((tag) => (
-                      <span key={tag} className={`chip chip--sm ${segment === "passed" ? "chip--neg" : "chip--pos"}`}>
+                      <span
+                        key={tag}
+                        className={`chip chip--sm ${
+                          segment === "passed" ? "chip--neg" : "chip--pos"
+                        }`}
+                      >
                         {tag}
                       </span>
                     ))}
@@ -129,7 +147,13 @@ export function SavedList({
               </div>
               <div className="saved-row__actions">
                 {segment === "liked" ? (
-                  <Button size="sm" variant="ghost" icon={<CircleCheck />} loading={busy === row.jobId} onClick={() => void act(row, "applied")}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<CircleCheck />}
+                    loading={busy === row.jobId}
+                    onClick={() => void act(row, "applied")}
+                  >
                     {t("saved.markApplied")}
                   </Button>
                 ) : null}
@@ -142,7 +166,13 @@ export function SavedList({
                   {segment === "passed" ? t("saved.restore") : t("act.undo")}
                 </Button>
                 {row.url ? (
-                  <ButtonLink href={row.url} external size="sm" variant="outline" iconRight={<ExternalLink />}>
+                  <ButtonLink
+                    href={row.url}
+                    external
+                    size="sm"
+                    variant="outline"
+                    iconRight={<ExternalLink />}
+                  >
                     {t("act.open").replace(" ↗", "")}
                   </ButtonLink>
                 ) : null}

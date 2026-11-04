@@ -11,9 +11,9 @@ import {
   LoaderCircle,
   PartyPopper,
 } from "lucide-react"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { CodeBlock, Modal, ModalHead } from "src/app/components/ds/interactive"
-import { Banner, Badge } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { CodeBlock, Modal, ModalHead } from "@newrole/ui/interactive"
+import { Banner, Badge } from "@newrole/ui/primitives"
 import { SETUP_SKIP_COOKIE } from "src/app/components/site/links"
 import { useCopy } from "src/app/i18n/Locale"
 import { numberFormat, type CopyKey } from "src/app/i18n/copy"

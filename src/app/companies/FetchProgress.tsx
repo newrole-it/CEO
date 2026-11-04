@@ -6,7 +6,7 @@ import { useQuery } from "@blitzjs/rpc"
 import { ChevronRight, CircleAlert, CircleCheck, LoaderCircle } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { intlLocale, numberFormat, type CopyKey, type Locale, type T } from "src/app/i18n/copy"
-import { cx } from "src/app/components/ds/cx"
+import { cx } from "@newrole/ui/cx"
 import { relativeTime } from "src/app/jobs/format"
 import getFetchProgress from "./queries/getFetchProgress"
 
@@ -36,12 +36,16 @@ function nextCheck(iso: string, locale: Locale): string {
 
 function detail(data: Progress, t: T, locale: Locale): string {
   const queue = data.waiting ? t("co.fetch.queue", { n: data.waiting }) : ""
-  const next = data.nextCheckAt ? t("co.fetch.next", { when: nextCheck(data.nextCheckAt, locale) }) : ""
+  const next = data.nextCheckAt
+    ? t("co.fetch.next", { when: nextCheck(data.nextCheckAt, locale) })
+    : ""
   switch (data.phase) {
     case "stopped":
       return t(data.local ? "co.fetch.stopped.run" : "co.fetch.stopped.b")
     case "reading":
-      return [data.current ? t("co.fetch.current", { company: data.current }) : "", queue].filter(Boolean).join(" ")
+      return [data.current ? t("co.fetch.current", { company: data.current }) : "", queue]
+        .filter(Boolean)
+        .join(" ")
     case "queued":
       return queue
     case "paused":
@@ -74,7 +78,11 @@ export function FetchProgressCard({ data }: { data: Progress }) {
   ].filter(Boolean)
   return (
     <section
-      className={cx("card fetch-card", warn && "fetch-card--warn", data.phase === "done" && "fetch-card--done")}
+      className={cx(
+        "card fetch-card",
+        warn && "fetch-card--warn",
+        data.phase === "done" && "fetch-card--done"
+      )}
       aria-label={t("co.fetch.label")}
     >
       <div className="fetch-card__head">
@@ -110,7 +118,9 @@ export function FetchProgressCard({ data }: { data: Progress }) {
       <p className="fetch-card__facts t-sm muted num">
         <span>{t("co.fetch.companies", { ready: data.ready, total: data.total })}</span>
         {data.watched.total ? (
-          <span>{t("co.fetch.watched", { ready: data.watched.ready, total: data.watched.total })}</span>
+          <span>
+            {t("co.fetch.watched", { ready: data.watched.ready, total: data.watched.total })}
+          </span>
         ) : null}
         <span>{t("co.fetch.offers", { n: numberFormat(locale).format(data.offers) })}</span>
         {last ? <span>{t("co.fetch.last", { when: last })}</span> : null}

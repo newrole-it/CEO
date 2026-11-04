@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, ShieldCheck, Trash2 } from "lucide-react"
-import { Button } from "src/app/components/ds/Button"
+import { Button } from "@newrole/ui/Button"
 import { defaultConsent } from "@newrole/cv-core/blank"
 import { moveSection, updateSection } from "@newrole/cv-core/edit"
 import { atomKey } from "@newrole/cv-core/flow"

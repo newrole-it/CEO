@@ -1,0 +1,33 @@
+{
+  "name": "@newrole/ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "The newrole.it design system for React: tokens and component CSS, buttons, fields, badges, popovers, dialogs, toasts, and the locale context and strings they share.",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./styles.css": "./src/styles.css",
+    "./*": "./src/*.tsx",
+    "./copy": "./src/copy.ts",
+    "./cx": "./src/cx.ts",
+    "./i18n": "./src/i18n.ts",
+    "./time": "./src/time.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "lucide-react": "1.55.0"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "typescript": "5.6.3"
+  }
+}

@@ -15,9 +15,9 @@ import {
 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Dropzone } from "src/app/components/ds/interactive"
-import { Badge, Banner } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Dropzone } from "@newrole/ui/interactive"
+import { Badge, Banner } from "@newrole/ui/primitives"
 import ensureGuest from "src/app/profile/mutations/ensureGuest"
 import type { ProfileDraft } from "src/server/profile/schema"
 import { BROWSER_IMPORT_HEADER, LINKEDIN_BROWSER_STAGES } from "src/shared/linkedin-import"
@@ -85,7 +85,9 @@ export function LinkedInImport({
     const poll = async () => {
       if (!alive.current) return
       try {
-        const response = await fetch(`/api/profile/linkedin-browser?id=${encodeURIComponent(jobId)}`)
+        const response = await fetch(
+          `/api/profile/linkedin-browser?id=${encodeURIComponent(jobId)}`
+        )
         const job = (await response.json()) as {
           state?: string
           stage?: Stage
@@ -159,7 +161,11 @@ export function LinkedInImport({
           </div>
         ) : state.kind === "error" ? (
           <div className="stack">
-            <Banner tone={state.status === "failed" ? "danger" : "warning"} role="alert" icon={<CircleAlert aria-hidden />}>
+            <Banner
+              tone={state.status === "failed" ? "danger" : "warning"}
+              role="alert"
+              icon={<CircleAlert aria-hidden />}
+            >
               {state.status === "not-connected" ? (
                 <>
                   <p>
@@ -168,7 +174,12 @@ export function LinkedInImport({
                   <ol className="lix-fix">
                     <li>
                       {t("lix.err.notConnected.1")}{" "}
-                      <a className="link" href="https://claude.ai/chrome" target="_blank" rel="noreferrer">
+                      <a
+                        className="link"
+                        href="https://claude.ai/chrome"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         claude.ai/chrome
                       </a>
                     </li>
@@ -196,7 +207,12 @@ export function LinkedInImport({
           </div>
         ) : browserImport ? (
           <div>
-            <Button variant="primary" size="lg" icon={<SquareTerminal />} onClick={() => void start()}>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<SquareTerminal />}
+              onClick={() => void start()}
+            >
               {t("lix.claude.cta")}
             </Button>
           </div>
@@ -224,7 +240,13 @@ export function LinkedInImport({
                 <span>{t(key)}</span>
                 {index === 0 ? (
                   <div>
-                    <ButtonLink href={EXPORT_URL} external variant="outline" size="sm" iconRight={<ExternalLink />}>
+                    <ButtonLink
+                      href={EXPORT_URL}
+                      external
+                      variant="outline"
+                      size="sm"
+                      iconRight={<ExternalLink />}
+                    >
                       {t("lix.zip.open")}
                     </ButtonLink>
                   </div>
@@ -233,7 +255,11 @@ export function LinkedInImport({
             </li>
           ))}
         </ol>
-        <Dropzone onFile={onFile} className="dropzone dropzone--compact" accept=".zip,application/zip">
+        <Dropzone
+          onFile={onFile}
+          className="dropzone dropzone--compact"
+          accept=".zip,application/zip"
+        >
           {(open) => (
             <Button variant="outline" icon={<FileArchive />} onClick={open} disabled={running}>
               {t("lix.zip.choose")}

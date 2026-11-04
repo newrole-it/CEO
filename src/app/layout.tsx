@@ -1,3 +1,5 @@
+import "./styles/tailwind.css"
+import "@newrole/ui/styles.css"
 import "./styles/app.css"
 import "./styles/applications.css"
 import "./styles/cv.css"

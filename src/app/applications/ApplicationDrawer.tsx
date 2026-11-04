@@ -6,9 +6,9 @@ import { invoke } from "@blitzjs/rpc"
 import { ExternalLink, Trash2, X } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Modal, useToast } from "src/app/components/ds/interactive"
-import { Banner, Field, Skeleton } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Modal, useToast } from "@newrole/ui/interactive"
+import { Banner, Field, Skeleton } from "@newrole/ui/primitives"
 import {
   STAGE_RECORDING_STATUSES,
   statusLabel,

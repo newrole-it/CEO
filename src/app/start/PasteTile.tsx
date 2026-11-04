@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRight, ClipboardPaste } from "lucide-react"
-import { Button } from "src/app/components/ds/Button"
+import { Button } from "@newrole/ui/Button"
 import { useCopy } from "src/app/i18n/Locale"
 
 /** The "paste text" tile on the first onboarding step; expands into the textarea. */

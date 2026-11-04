@@ -16,8 +16,8 @@ import {
   RotateCcw,
   Undo2,
 } from "lucide-react"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { useToast } from "src/app/components/ds/interactive"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { useToast } from "@newrole/ui/interactive"
 import { useCopy } from "src/app/i18n/Locale"
 import type { TailorContext } from "src/server/cv/tailor"
 import type { CvAudit } from "@newrole/cv-core/audit"

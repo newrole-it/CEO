@@ -1,6 +1,10 @@
 import { intlLocale, type CopyKey, type Locale, type T } from "src/app/i18n/copy"
 import type { OfferView } from "src/shared/offer-view"
 
+import { relativeTime } from "@newrole/ui/time"
+
+export { relativeTime }
+
 const DAY = 86_400_000
 
 function k(n: number): string {
@@ -74,24 +78,6 @@ export function placeText(
     return offer.workMode === "remote" ? t("loc.remoteIn", { country }) : country
   }
   return offer.workMode === "remote" ? t("mode.remote") : t("loc.unknown")
-}
-
-export function relativeTime(
-  iso: string | Date | null | undefined,
-  t: T,
-  now = Date.now()
-): string | null {
-  if (!iso) return null
-  const at = new Date(iso).getTime()
-  if (!Number.isFinite(at)) return null
-  const diff = Math.max(0, now - at)
-  if (diff < 60_000) return t("common.justNow")
-  if (diff < 3_600_000) return t("common.minutesAgo", { n: Math.floor(diff / 60_000) })
-  if (diff < DAY) return t("common.hoursAgo", { n: Math.floor(diff / 3_600_000) })
-  const days = Math.floor(diff / DAY)
-  if (days === 1) return t("common.yesterday")
-  if (days > 30) return t("common.over30")
-  return t("common.daysAgo", { n: days })
 }
 
 /** "Nowa" for < 48 h, else "3 dni temu"; `title` is the absolute date. */

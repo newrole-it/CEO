@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { Plus, Trash2 } from "lucide-react"
-import { Button } from "src/app/components/ds/Button"
+import { Button } from "@newrole/ui/Button"
 import { updateHeader } from "@newrole/cv-core/edit"
 import { normalizeHref } from "@newrole/cv-core/sanitize"
 import type { CvLink } from "@newrole/cv-core/schema"

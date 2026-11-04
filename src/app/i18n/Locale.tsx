@@ -1,25 +1,12 @@
 "use client"
 
-import { createContext, useContext, useMemo } from "react"
+import { useMemo } from "react"
+import { useLocale } from "@newrole/ui/locale"
 import { translator, type Locale, type T } from "./copy"
 
 export type { T }
-
-const LocaleContext = createContext<Locale>("pl")
-
-export function LocaleProvider({
-  locale,
-  children,
-}: {
-  locale: Locale
-  children: React.ReactNode
-}) {
-  return <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>
-}
-
-export function useLocale(): Locale {
-  return useContext(LocaleContext)
-}
+// One context for the app and the packages' components (@newrole/ui, @newrole/cv-editor).
+export { LocaleProvider, useLocale } from "@newrole/ui/locale"
 
 export function useCopy(): { locale: Locale; t: T } {
   const locale = useLocale()

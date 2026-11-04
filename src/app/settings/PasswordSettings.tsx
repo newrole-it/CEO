@@ -6,8 +6,8 @@ import { AuthenticationError } from "blitz"
 import { KeyRound } from "lucide-react"
 import setPassword from "src/app/(auth)/mutations/setPassword"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button } from "src/app/components/ds/Button"
-import { useToast } from "src/app/components/ds/interactive"
+import { Button } from "@newrole/ui/Button"
+import { useToast } from "@newrole/ui/interactive"
 
 /** Settings → Password: optional for every account; sign-in links keep working. */
 export function PasswordSettings({ hasPassword }: { hasPassword: boolean }) {

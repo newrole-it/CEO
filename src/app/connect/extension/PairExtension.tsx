@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { CircleCheck, ClipboardList, FileText, Hand, Puzzle, TriangleAlert } from "lucide-react"
-import { Button } from "src/app/components/ds/Button"
-import { CodeBlock } from "src/app/components/ds/interactive"
-import { Banner } from "src/app/components/ds/primitives"
+import { Button } from "@newrole/ui/Button"
+import { CodeBlock } from "@newrole/ui/interactive"
+import { Banner } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 
 /** How long pair.js gets to answer before the token is shown for pasting. */

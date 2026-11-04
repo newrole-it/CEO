@@ -13,7 +13,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { Check, Copy, X } from "lucide-react"
-import { useCopy } from "src/app/i18n/Locale"
+import { useUiCopy } from "./locale"
 import { Button } from "./Button"
 import { cx } from "./cx"
 
@@ -40,7 +40,7 @@ export function ChipInput({
   renderIcon?: (value: string, index: number) => ReactNode
   onChipClick?: (value: string, index: number) => void
 }) {
-  const { t } = useCopy()
+  const { t } = useUiCopy()
   const [text, setText] = useState("")
   const [expanded, setExpanded] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -279,14 +279,29 @@ function SheetHandle({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function ModalHead({ title, id, onClose }: { title: ReactNode; id?: string; onClose: () => void }) {
-  const { t } = useCopy()
+export function ModalHead({
+  title,
+  id,
+  onClose,
+}: {
+  title: ReactNode
+  id?: string
+  onClose: () => void
+}) {
+  const { t } = useUiCopy()
   return (
     <div className="modal__head">
       <h2 className="t-h3" id={id}>
         {title}
       </h2>
-      <Button variant="ghost" size="sm" iconOnly aria-label={t("common.close")} onClick={onClose} icon={<X />} />
+      <Button
+        variant="ghost"
+        size="sm"
+        iconOnly
+        aria-label={t("common.close")}
+        onClick={onClose}
+        icon={<X />}
+      />
     </div>
   )
 }
@@ -345,7 +360,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (id: string, duration = 5000) => {
       const old = timers.current.get(id)
       if (old) window.clearTimeout(old)
-      if (duration > 0) timers.current.set(id, window.setTimeout(() => dismiss(id), duration))
+      if (duration > 0)
+        timers.current.set(
+          id,
+          window.setTimeout(() => dismiss(id), duration)
+        )
     },
     [dismiss]
   )
@@ -353,7 +372,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback(
     (toast: ToastInput) => {
       const id = toast.id ?? Math.random().toString(36).slice(2)
-      setItems((current) => [...current.filter((item) => item.id !== id), { ...toast, id }].slice(-3))
+      setItems((current) =>
+        [...current.filter((item) => item.id !== id), { ...toast, id }].slice(-3)
+      )
       arm(id, toast.duration)
       return id
     },
@@ -494,7 +515,7 @@ export function CopyButton({
   variant?: "outline" | "ghost" | "primary"
   iconOnly?: boolean
 }) {
-  const { t } = useCopy()
+  const { t } = useUiCopy()
   const [done, setDone] = useState(false)
   useEffect(() => {
     if (!done) return
@@ -522,7 +543,13 @@ export function CopyButton({
   )
 }
 
-export function CodeBlock({ code, copyVariant }: { code: string; copyVariant?: "outline" | "primary" }) {
+export function CodeBlock({
+  code,
+  copyVariant,
+}: {
+  code: string
+  copyVariant?: "outline" | "primary"
+}) {
   return (
     <div className="code">
       <pre>{code}</pre>
@@ -551,7 +578,7 @@ export function ScoreRing({
   caption?: string
   drawKey?: string
 }) {
-  const { t } = useCopy()
+  const { t } = useUiCopy()
   const value = Math.max(0, Math.min(100, Math.round(score)))
   const ref = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(() => !drawKey || drawn.has(drawKey))

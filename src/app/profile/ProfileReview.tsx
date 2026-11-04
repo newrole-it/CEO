@@ -4,9 +4,9 @@ import { useId, useState } from "react"
 import { House } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { ChipInput } from "src/app/components/ds/interactive"
-import { Chip, Segmented } from "src/app/components/ds/primitives"
-import { cx } from "src/app/components/ds/cx"
+import { ChipInput } from "@newrole/ui/interactive"
+import { Chip, Segmented } from "@newrole/ui/primitives"
+import { cx } from "@newrole/ui/cx"
 import { seniorityValues, type ProfileDraft } from "src/server/profile/schema"
 
 type Seniority = (typeof seniorityValues)[number]

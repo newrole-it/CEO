@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useRef } from "react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { useToast } from "src/app/components/ds/interactive"
+import { useToast } from "@newrole/ui/interactive"
 
 const MESSAGES: Record<string, CopyKey> = {
   "linkedin-config": "li.toast.config",

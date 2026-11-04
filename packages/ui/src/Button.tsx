@@ -60,28 +60,42 @@ function Inner({ icon, iconRight, loading, kbd, children }: Common & { children?
   )
 }
 
-export const Button = forwardRef<
-  HTMLButtonElement,
-  Common & ComponentPropsWithoutRef<"button">
->(function Button(
-  { variant, size, block, icon, iconRight, iconOnly, pill, loading, kbd, className, children, type, disabled, ...rest },
-  ref
-) {
-  return (
-    <button
-      ref={ref}
-      type={type ?? "button"}
-      className={buttonClass({ variant, size, block, iconOnly, pill, className })}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
-      {...rest}
-    >
-      <Inner icon={icon} iconRight={iconRight} loading={loading} kbd={kbd}>
-        {children}
-      </Inner>
-    </button>
-  )
-})
+export const Button = forwardRef<HTMLButtonElement, Common & ComponentPropsWithoutRef<"button">>(
+  function Button(
+    {
+      variant,
+      size,
+      block,
+      icon,
+      iconRight,
+      iconOnly,
+      pill,
+      loading,
+      kbd,
+      className,
+      children,
+      type,
+      disabled,
+      ...rest
+    },
+    ref
+  ) {
+    return (
+      <button
+        ref={ref}
+        type={type ?? "button"}
+        className={buttonClass({ variant, size, block, iconOnly, pill, className })}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
+        {...rest}
+      >
+        <Inner icon={icon} iconRight={iconRight} loading={loading} kbd={kbd}>
+          {children}
+        </Inner>
+      </button>
+    )
+  }
+)
 
 /** A link that looks like a button. External links open in a new tab. */
 export function ButtonLink({

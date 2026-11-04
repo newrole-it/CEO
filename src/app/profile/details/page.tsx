@@ -1,6 +1,6 @@
 import { invoke } from "src/app/blitz-server"
-import { ButtonLink } from "src/app/components/ds/Button"
-import { LinkTabs } from "src/app/components/ds/primitives"
+import { ButtonLink } from "@newrole/ui/Button"
+import { LinkTabs } from "@newrole/ui/primitives"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
