@@ -5,6 +5,7 @@
 export const tailorPl = {
   "tl.act": "Dostosuj CV",
   "tl.act.open": "Twoje CV pod tę ofertę",
+  "tl.act.cv": "Otwórz CV",
 
   // the start page
   "tl.start.title": "Dostosuj CV do tej oferty",
@@ -98,6 +99,11 @@ export const tailorPl = {
   "tl.r.excerpt":
     "Model znał tylko fragment oferty (znaków: {n}), bo pełnej treści nie udało się pobrać. Wklej wymagania poniżej i wygeneruj ponownie.",
   "tl.r.full": "Model przeczytał pełną treść oferty (znaków: {n}).",
+  "tl.r.keywords": "Słowa kluczowe z oferty",
+  "tl.r.kwIn": "W CV: {n} z {total}.",
+  "tl.r.kwAdded": "Dopasowanie dodało: {n}.",
+  "tl.r.kwUnplaced": "Masz je w CV albo profilu, ale nie w tej wersji. Dopisz, jeśli pasują:",
+  "tl.r.kwMissing": "Tego nie ma w Twoich danych:",
   "tl.r.changes": "Co zmienił model",
   "tl.r.gaps": "Tego oferta wymaga, a w Twoich danych nie ma",
   "tl.r.gapsHint": "Model tego nie dopisał. Jeśli to masz, dodaj sam.",
@@ -126,6 +132,7 @@ export const tailorPl = {
 export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.act": "Tailor CV",
   "tl.act.open": "Your CV for this offer",
+  "tl.act.cv": "Open CV",
 
   "tl.start.title": "Tailor your CV to this offer",
   "tl.start.back": "Back to the offer",
@@ -216,6 +223,12 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.r.excerpt":
     "The model only had an excerpt of the offer ({n} characters), because the full text couldn't be fetched. Paste the requirements below and generate again.",
   "tl.r.full": "The model read the full offer ({n} characters).",
+  "tl.r.keywords": "Keywords from the offer",
+  "tl.r.kwIn": "In the CV: {n} of {total}.",
+  "tl.r.kwAdded": "Added by tailoring: {n}.",
+  "tl.r.kwUnplaced":
+    "Your CV or profile shows these, this version doesn't. Add them where they fit:",
+  "tl.r.kwMissing": "Your data doesn't show these:",
   "tl.r.changes": "What the model changed",
   "tl.r.gaps": "The offer asks for this, and your data doesn't show it",
   "tl.r.gapsHint": "The model didn't add it. If you have it, add it yourself.",

@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import {
+  Building,
   Building2,
   ChevronDown,
   Clock,
   House,
   Keyboard,
   MapPin,
-  Search,
   TrendingUp,
   Wallet,
   X,
@@ -18,11 +18,21 @@ import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "@newrole/ui/Button"
 import { Modal, ModalHead, useIsMobile, usePopoverFocus } from "@newrole/ui/interactive"
 import { cx } from "@newrole/ui/cx"
-import { LEVELS, filtersQuery, type FeedFilters, type Level } from "../feed-filters"
+import { loadCities } from "../actions"
+import {
+  LEVELS,
+  clearedFilters,
+  filtersQuery,
+  noCountry,
+  type FeedFilters,
+  type Level,
+} from "../feed-filters"
 import { countryLabel } from "../format"
 import type { FeedTab } from "../types"
+import { ActiveTags, TagSearch } from "./TagSearch"
 
 type PillId = "mode" | "city" | "pay" | "level" | "source"
+type City = { city: string; count: number }
 
 export function FilterBar({
   filters,
@@ -31,15 +41,20 @@ export function FilterBar({
   countries,
   country,
   ownCountry,
+  companyName,
+  lead,
   onShortcuts,
   searchRef,
 }: {
   filters: FeedFilters
   tab: FeedTab
-  cities: { city: string; count: number }[]
+  cities: City[]
   countries: { country: string; count: number }[]
   country: string | null
   ownCountry: string | null
+  companyName: string | null
+  /** Shown first in the row (the sort on a phone). */
+  lead?: ReactNode
   onShortcuts: () => void
   searchRef: React.RefObject<HTMLInputElement | null>
 }) {
@@ -48,7 +63,8 @@ export function FilterBar({
   const mobile = useIsMobile()
   const [open, setOpen] = useState<PillId | null>(null)
   const [draft, setDraft] = useState<FeedFilters>(filters)
-  const [q, setQ] = useState(filters.q)
+  // Shown at once; the list follows when the page comes back with them.
+  const [tags, setTags] = useState(filters.tags)
   const barRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -57,7 +73,7 @@ export function FilterBar({
 
   useEffect(() => {
     setDraft(filters)
-    setQ(filters.q)
+    setTags(filters.tags)
   }, [filters])
 
   useEffect(() => {
@@ -81,6 +97,11 @@ export function FilterBar({
     router.push(filtersQuery(next, tab), { scroll: false })
   }
 
+  function applyTags(next: string[]) {
+    setTags(next)
+    router.push(filtersQuery({ ...filters, tags: next }, tab), { scroll: false })
+  }
+
   const modeLabel =
     filters.mode === "remote"
       ? t("mode.remote")
@@ -89,13 +110,15 @@ export function FilterBar({
       : filters.mode === "onsite"
       ? t("mode.onsite")
       : null
-  // The place pill always says where the list is: a city, else the country, else every country.
-  const cityLabel = filters.city
-    ? filters.city
-    : country
-    ? countryLabel(country, locale)
-    : t("filter.country.any")
-  const payLabel = filters.pay ? t("filter.payValue", { n: Math.round(filters.pay / 1000) }) : null
+  // The place pill always says where the list is: a city, else the country (the person's own by
+  // default, removable like any other), else every country, which is no filter at all.
+  const placeLabel = filters.city ? filters.city : country ? countryLabel(country, locale) : null
+  const cityLabel = placeLabel && country && filters.remoteHere ? `${placeLabel} +1` : placeLabel
+  const payLabel = filters.pay
+    ? t("filter.payValue", {
+        n: (filters.pay / 1000).toLocaleString(locale, { maximumFractionDigits: 1 }),
+      })
+    : null
   const levelLabel = filters.levels.length
     ? filters.levels.map((level) => t(`sen.${level}`)).join(", ")
     : null
@@ -108,7 +131,14 @@ export function FilterBar({
       ? t("filter.payOnly")
       : null
   const anyActive = Boolean(
-    modeLabel || cityLabel || payLabel || levelLabel || sourceLabel || filters.fresh || filters.q
+    modeLabel ||
+      cityLabel ||
+      payLabel ||
+      levelLabel ||
+      sourceLabel ||
+      filters.fresh ||
+      filters.tags.length ||
+      filters.company
   )
 
   const body: Record<PillId, ReactNode> = {
@@ -138,26 +168,11 @@ export function FilterBar({
       />
     ),
     pay: (
-      <label className="field">
-        <span className="field__label">{t("filter.pay")}</span>
-        <span className="input-affix">
-          <input
-            className="input num"
-            inputMode="numeric"
-            autoFocus
-            value={draft.pay ? String(Math.round(draft.pay / 1000)) : ""}
-            onChange={(event) => {
-              const n = Number(event.target.value.replace(",", "."))
-              setDraft({ ...draft, pay: Number.isFinite(n) && n > 0 ? Math.round(n * 1000) : null })
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") apply(draft)
-            }}
-          />
-          <span className="input-affix__suffix">{t("f.salaryUnit")}</span>
-        </span>
-        <span className="field__hint">{t("filter.payHint")}</span>
-      </label>
+      <PayField
+        value={draft.pay}
+        onChange={(pay) => setDraft({ ...draft, pay })}
+        onEnter={() => apply(draft)}
+      />
     ),
     level: (
       <div className="radio-list">
@@ -204,15 +219,31 @@ export function FilterBar({
 
   const clearOne: Record<PillId, Partial<FeedFilters>> = {
     mode: { mode: "any" },
-    city: { city: "", country: "" },
+    // Removes what the pill says: a city leaves its country, a country leaves every country.
+    city: filters.city
+      ? { city: "", country: country && country !== ownCountry ? country : filters.country }
+      : { city: "", country: noCountry(ownCountry), remoteHere: false },
     pay: { pay: null },
     level: { levels: [] },
     source: { companyOnly: false, payOnly: false },
   }
 
-  const pills: { id: PillId; label: string; value: string | null; icon: ReactNode }[] = [
+  const pills: {
+    id: PillId
+    label: string
+    value: string | null
+    /** What the pill says with no value, when the bare label would hide where the list is. */
+    idle?: string
+    icon: ReactNode
+  }[] = [
     { id: "mode", label: t("filter.mode"), value: modeLabel, icon: <House aria-hidden /> },
-    { id: "city", label: t("filter.city"), value: cityLabel, icon: <MapPin aria-hidden /> },
+    {
+      id: "city",
+      label: t("filter.city"),
+      value: cityLabel,
+      idle: t("filter.country.any"),
+      icon: <MapPin aria-hidden />,
+    },
     { id: "pay", label: t("filter.pay"), value: payLabel, icon: <Wallet aria-hidden /> },
     { id: "level", label: t("filter.level"), value: levelLabel, icon: <TrendingUp aria-hidden /> },
     {
@@ -223,9 +254,13 @@ export function FilterBar({
     },
   ]
 
+  // The place popover's Clear clears the whole place; the pill's x goes one step at a time.
+  const clearFoot = (id: PillId): Partial<FeedFilters> =>
+    id === "city" ? { city: "", country: noCountry(ownCountry), remoteHere: false } : clearOne[id]
+
   const footer = (id: PillId) => (
     <div className="popover__foot">
-      <Button variant="ghost" size="sm" onClick={() => apply({ ...filters, ...clearOne[id] })}>
+      <Button variant="ghost" size="sm" onClick={() => apply({ ...filters, ...clearFoot(id) })}>
         {t("filter.clear")}
       </Button>
       <Button variant="primary" size="sm" onClick={() => apply(draft)}>
@@ -237,6 +272,23 @@ export function FilterBar({
   return (
     <div className="filterbar" ref={barRef}>
       <div className="filterbar__row" role="toolbar" aria-label={t("filter.label")}>
+        {lead}
+        {filters.company ? (
+          <div className="rel" style={{ flex: "none" }}>
+            <span className="pill is-active pill--clearable">
+              <Building aria-hidden />
+              <span>{companyName ?? t("filter.company")}</span>
+            </span>
+            <button
+              type="button"
+              className="pill__x"
+              aria-label={t("filter.remove", { name: t("filter.company") })}
+              onClick={() => apply({ ...filters, company: "" })}
+            >
+              <X aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {pills.map((pill) => (
           <div key={pill.id} className="rel" style={{ flex: "none" }}>
             <button
@@ -251,7 +303,7 @@ export function FilterBar({
               }}
             >
               {pill.icon}
-              <span>{pill.value ?? pill.label}</span>
+              <span>{pill.value ?? pill.idle ?? pill.label}</span>
               {pill.value ? null : <ChevronDown aria-hidden />}
             </button>
             {/* a sibling of the pill, not inside it: a button cannot hold another button */}
@@ -297,55 +349,35 @@ export function FilterBar({
             type="button"
             className="link t-sm"
             style={{ flex: "none", padding: "0 6px" }}
-            onClick={() =>
-              apply({
-                ...filters,
-                q: "",
-                country: "",
-                city: "",
-                mode: "any",
-                pay: null,
-                levels: [],
-                companyOnly: false,
-                payOnly: false,
-                fresh: false,
-              })
-            }
+            onClick={() => apply(clearedFilters(filters, ownCountry))}
           >
             {t("filter.clearAll")}
           </button>
         ) : null}
-        <form
-          className="feed-search"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault()
-            apply({ ...filters, q: q.trim() })
-          }}
-        >
-          <Search aria-hidden />
-          <input
-            ref={searchRef}
-            className="input"
-            type="search"
-            value={q}
-            placeholder={t("feed.search")}
-            aria-label={t("feed.searchLabel")}
-            aria-keyshortcuts="/"
-            onChange={(event) => setQ(event.target.value)}
-          />
-          {!q ? <kbd className="kbd">/</kbd> : null}
-        </form>
+        <TagSearch tags={tags} onChange={applyTags} searchRef={searchRef} mobile={mobile} />
         <Button
           variant="ghost"
           size="sm"
+          iconOnly
           className="is-desktop-inline"
           icon={<Keyboard />}
+          aria-label={t("keys.link")}
+          title={t("keys.link")}
           onClick={onShortcuts}
-        >
-          {t("keys.link")}
-        </Button>
+        />
       </div>
+
+      {tags.length ? (
+        <ActiveTags
+          tags={tags}
+          onChange={applyTags}
+          trailing={
+            <button type="button" className="link t-sm" onClick={() => applyTags([])}>
+              {t("tags.clear")}
+            </button>
+          }
+        />
+      ) : null}
 
       {mobile && open ? (
         <Modal open kind="sheet" onClose={() => setOpen(null)} labelledBy="filter-sheet-title">
@@ -362,6 +394,43 @@ export function FilterBar({
   )
 }
 
+function PayField({
+  value,
+  onChange,
+  onEnter,
+}: {
+  value: number | null
+  onChange: (pay: number | null) => void
+  onEnter: () => void
+}) {
+  const { t } = useCopy()
+  // The typed text stays as typed, so "12," or "12.5" can be finished.
+  const [text, setText] = useState(value ? String(value / 1000) : "")
+  return (
+    <label className="field">
+      <span className="field__label">{t("filter.pay")}</span>
+      <span className="input-affix">
+        <input
+          className="input num"
+          inputMode="decimal"
+          autoFocus
+          value={text}
+          onChange={(event) => {
+            setText(event.target.value)
+            const n = Number(event.target.value.replace(",", ".").replace(/\s/g, ""))
+            onChange(Number.isFinite(n) && n > 0 ? Math.round(n * 1000) : null)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onEnter()
+          }}
+        />
+        <span className="input-affix__suffix">{t("f.salaryUnit")}</span>
+      </span>
+      <span className="field__hint">{t("filter.payHint")}</span>
+    </label>
+  )
+}
+
 function CityBody({
   draft,
   setDraft,
@@ -372,19 +441,35 @@ function CityBody({
 }: {
   draft: FeedFilters
   setDraft: (filters: FeedFilters) => void
-  cities: { city: string; count: number }[]
+  cities: City[]
   countries: { country: string; count: number }[]
   country: string | null
   ownCountry: string | null
 }) {
   const { t, locale } = useCopy()
   const [search, setSearch] = useState("")
-  const shown = cities.filter((item) =>
+  const picked = draft.country === "any" ? null : draft.country || ownCountry
+  // The page brings the cities of the country on screen; another country picked here loads its own.
+  const [loaded, setLoaded] = useState<{ country: string | null; cities: City[] }>({
+    country,
+    cities,
+  })
+  useEffect(() => {
+    if (picked === loaded.country) return
+    let live = true
+    loadCities(picked).then(
+      (list) => live && setLoaded({ country: picked, cities: list }),
+      () => live && setLoaded({ country: picked, cities: [] })
+    )
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked])
+  const list = loaded.country === picked ? loaded.cities : null
+  const shown = (list ?? []).filter((item) =>
     item.city.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale))
   )
-  const picked = draft.country === "any" ? null : draft.country || ownCountry
-  // The city list belongs to the country on screen; another country shows its cities after Apply.
-  const citiesFit = picked === country
   const options = countries.filter((item) => item.country !== ownCountry)
   return (
     <div className="stack-sm">
@@ -393,7 +478,12 @@ function CityBody({
         <select
           className="input"
           value={draft.country}
-          onChange={(event) => setDraft({ ...draft, country: event.target.value, city: "" })}
+          onChange={(event) => {
+            const value = event.target.value
+            // every country leaves no other one to tie a remote offer to
+            const every = value === "any" || (!value && !ownCountry)
+            setDraft({ ...draft, country: value, city: "", remoteHere: draft.remoteHere && !every })
+          }}
         >
           {ownCountry ? (
             <option value="">
@@ -409,7 +499,27 @@ function CityBody({
         </select>
         <span className="field__hint">{t("filter.country.hint")}</span>
       </label>
-      {citiesFit && cities.length ? (
+      {picked ? (
+        <div className="radio-list">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.remoteHere}
+              aria-describedby="remote-here-hint"
+              onChange={(event) => setDraft({ ...draft, remoteHere: event.target.checked })}
+            />
+            {t("filter.remoteHere")}
+          </label>
+          <span className="field__hint" id="remote-here-hint">
+            {t("filter.remoteHere.hint")}
+          </span>
+        </div>
+      ) : null}
+      {list === null ? (
+        <p className="t-sm subtle" role="status">
+          {t("common.loading")}
+        </p>
+      ) : list.length ? (
         <>
           <input
             className="input"

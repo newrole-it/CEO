@@ -1,3 +1,4 @@
+import { detectLanguage } from "@newrole/cv-core/language"
 import { extractPdfText } from "@newrole/profile/pdf"
 import { structureCvText } from "@newrole/cv-engine/structure"
 import { createLlmClient } from "src/server/llm/client"
@@ -18,17 +19,20 @@ export async function createEditableFromUpload(
   }
   if (text.trim().length < 20)
     throw new CvError("no-content", "No text could be read from that PDF.")
+  // an upload takes the language of the interface, so an English CV can be stored as Polish;
+  // the copy follows its text, or it would get Polish labels and a Polish consent clause
+  const language = detectLanguage(text)
   const { content, reader } = await structureCvText({
     text,
-    locale: stored.language,
+    locale: language,
     userId,
     llm: createLlmClient(),
   })
-  const suffix = stored.language === "en" ? " (editable)" : " (edytowalne)"
+  const suffix = language === "en" ? " (editable)" : " (edytowalne)"
   const cv = await createCv({
     userId,
     title: `${stored.title.slice(0, 140)}${suffix}`,
-    language: stored.language,
+    language,
     from: "content",
     content,
     baseCvId: id,

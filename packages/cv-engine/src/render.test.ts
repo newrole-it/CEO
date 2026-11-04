@@ -52,6 +52,14 @@ describe("renderCvHtml", () => {
     expect(html).not.toContain("cv-contact")
     expect(html).toContain("cv-header--nophoto")
   })
+
+  it("frames the photo in a circle unless the CV asks for a square", () => {
+    const cv = syntheticCv(1)
+    cv.header = { ...cv.header, photo: "data:image/jpeg;base64,AAAA" }
+    expect(renderCvAtoms(cv)).toContain('<img class="cv-photo" src=')
+    cv.header.photoShape = "square"
+    expect(renderCvAtoms(cv)).toContain('<img class="cv-photo cv-photo--square" src=')
+  })
 })
 
 describe("findChrome", () => {

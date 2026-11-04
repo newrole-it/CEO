@@ -169,4 +169,35 @@ describe("readOffer", () => {
     expect(reading.outcome).toBe("partial")
     expect(reading.facts).toMatchObject({ company: "Acme", title: null })
   })
+
+  it("sends the model the main part of the page, not its menus", async () => {
+    const menu = Array.from({ length: 300 }, (_, i) => `<li>Other offer ${i}</li>`).join("")
+    const offer = `<h1>QA Engineer</h1><p>Place: Warszawa. ${"Testing web apps. ".repeat(30)}</p>`
+    let seen = ""
+    await readOffer("https://acme.pl/kariera/qa", {
+      ...unparsed(`<body><nav><ul>${menu}</ul></nav><main>${offer}</main></body>`),
+      model: async (page) => {
+        seen = page.text ?? ""
+        return null
+      },
+    })
+    expect(seen.slice(0, 4000)).toContain("Warszawa")
+    expect(seen).not.toContain("Other offer")
+  })
+
+  it("does not read a sign-in page the link redirected to", async () => {
+    const reading = await readOffer("https://www.acme.pl/kariera/oferta/1", {
+      ...offline,
+      ingest: async () => ({
+        status: "rejected",
+        message: "no JSON-LD",
+        page: {
+          url: "https://accounts.acme-id.com/v3/signin/identifier?continue=x",
+          html: "<title>Sign in - Acme Accounts</title>",
+        },
+      }),
+    })
+    expect(reading.outcome).toBe("unreadable")
+    expect(reading.facts?.title ?? null).not.toMatch(/sign in/i)
+  })
 })

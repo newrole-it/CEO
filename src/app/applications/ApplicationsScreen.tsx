@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { invoke } from "@blitzjs/rpc"
-import { ChartNoAxesColumn, ClipboardList, Download, Plus, Search, Upload } from "lucide-react"
+import {
+  ChartNoAxesColumn,
+  ClipboardList,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  Plus,
+  Search,
+  Upload,
+} from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { numberFormat, type CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink, buttonClass } from "@newrole/ui/Button"
@@ -29,11 +38,14 @@ export function ApplicationsScreen({
   initialRows,
   initialGroup,
   initialOpenId,
+  sheetUrl,
 }: {
   signedIn: boolean
   initialRows: AppRow[]
   initialGroup: AppGroup
   initialOpenId: string | null
+  /** The connected Google Sheet, when the person saved its link in Settings */
+  sheetUrl: string | null
 }) {
   const { t, locale } = useCopy()
   const toast = useToast()
@@ -244,6 +256,17 @@ export function ApplicationsScreen({
                 <Download aria-hidden />
                 {t("app.export")}
               </a>
+            ) : null}
+            {sheetUrl ? (
+              <ButtonLink
+                href={sheetUrl}
+                external
+                variant="outline"
+                icon={<FileSpreadsheet aria-hidden />}
+                iconRight={<ExternalLink aria-hidden />}
+              >
+                {t("sheet.open")}
+              </ButtonLink>
             ) : null}
           </div>
         ) : null}

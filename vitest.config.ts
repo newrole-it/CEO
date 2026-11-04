@@ -15,6 +15,7 @@ export default defineConfig({
     include: [
       "src/server/**/*.test.ts",
       "src/shared/**/*.test.ts",
+      "src/app/**/*.test.ts",
       "config/**/*.test.ts",
       "mcp/**/*.test.ts",
     ],

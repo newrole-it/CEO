@@ -223,14 +223,33 @@ function Editor({
     },
   }
 
-  async function onPhoto(file: File) {
-    try {
-      const photo = await photoToDataUrl(file)
-      edit((current) => updateHeader(current, { photo }))
-    } catch {
-      toast.show({ message: t("cv.photo.err"), tone: "danger" })
+  const onPhoto = useCallback(
+    async (file: File) => {
+      try {
+        const photo = await photoToDataUrl(file)
+        edit((current) => updateHeader(current, { photo }))
+      } catch {
+        toast.show({ message: t("cv.photo.err"), tone: "danger" })
+      }
+    },
+    [edit, t, toast]
+  )
+
+  // a pasted image (a screenshot, "Copy image") becomes the photo; with text on the clipboard
+  // too, the text wins, as the fields take plain text only
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const data = event.clipboardData
+      if (!data || data.getData("text/plain").trim()) return
+      const file = Array.from(data.files).find((entry) => entry.type.startsWith("image/"))
+      if (!file) return
+      event.preventDefault()
+      event.stopPropagation()
+      void onPhoto(file)
     }
-  }
+    document.addEventListener("paste", onPaste, true)
+    return () => document.removeEventListener("paste", onPaste, true)
+  }, [onPhoto])
 
   // ---------------------------------------------------------------- link popover
   const [linkBox, setLinkBox] = useState<LinkBox | null>(null)

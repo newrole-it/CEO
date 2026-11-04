@@ -5,9 +5,9 @@ import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import { parseApplicant } from "@newrole/profile/applicant"
 import {
-  DRAFT_SYSTEM,
   DraftOutputSchema,
   draftMaxTokens,
+  draftSystem,
   draftUserPrompt,
   featureCache,
   finalizeDraft,
@@ -451,7 +451,7 @@ export async function draftAnswers(input: {
   const reply = await client
     .completeJson({
       purpose: pending.some((item) => item.options?.length) ? "form-fill" : "answer-draft",
-      system: DRAFT_SYSTEM,
+      system: draftSystem(pending.map((item) => item.language)),
       user: draftUserPrompt({ candidate, context: input.context, questions: pending }),
       schema: DraftOutputSchema,
       maxTokens: draftMaxTokens(pending),

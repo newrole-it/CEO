@@ -41,7 +41,7 @@ describe("payloadToJob", () => {
     expect(payloadToJob({ ...base, salaryMin: 30000, salaryMax: 10000 })).toHaveProperty("error")
     expect(payloadToJob({ ...base, salaryMin: -5 })).toHaveProperty("error")
     expect(payloadToJob({ ...base, salaryCurrency: "zloty" })).toHaveProperty("error")
-    expect(payloadToJob({ ...base, channel: "web" })).toHaveProperty("error")
+    expect(payloadToJob({ ...base, channel: "extension" })).toHaveProperty("error")
     const linkedin = payloadToJob({ ...base, url: "https://www.linkedin.com/jobs/view/1" })
     expect(linkedin).toHaveProperty("error")
   })
@@ -63,14 +63,54 @@ describe("payloadToJob", () => {
   })
 
   it("keeps hourly currency tags", () => {
-    const result = payloadToJob({ ...base, salaryMin: 150, salaryMax: 200, salaryCurrency: "PLN/HOUR" })
+    const result = payloadToJob({
+      ...base,
+      salaryMin: 150,
+      salaryMax: 200,
+      salaryCurrency: "PLN/HOUR",
+    })
     expect("job" in result && result.job.salaryCurrency).toBe("PLN/hour")
+  })
+
+  it("marks an offer the person added by hand and reads its pay as written", () => {
+    const result = payloadToJob({
+      ...base,
+      url: "https://www.google.com/about/careers/applications/jobs/results/1-manager",
+      company: "Google",
+      channel: "web",
+      salaryText: "zł640000 - zł655000 (PLN)",
+    })
+    expect("job" in result).toBe(true)
+    if (!("job" in result)) return
+    expect(result.job.sourceBoardId).toBe("web:google.com:google")
+    expect(result.job).toMatchObject({
+      salaryMin: 640000,
+      salaryMax: 655000,
+      salaryCurrency: "PLN",
+    })
+  })
+
+  it("prefers stated pay numbers to the pay text", () => {
+    const result = payloadToJob({
+      ...base,
+      salaryMin: 20000,
+      salaryMax: 25000,
+      salaryCurrency: "PLN",
+      salaryText: "30 000 EUR",
+    })
+    expect("job" in result && result.job).toMatchObject({ salaryMin: 20000, salaryCurrency: "PLN" })
   })
 })
 
 describe("matchPosting", () => {
   const job = (url: string, externalId?: string): ListedJob =>
-    ({ title: "T", originalUrl: url, externalId, sourceType: "GREENHOUSE", needsHydration: false }) as ListedJob
+    ({
+      title: "T",
+      originalUrl: url,
+      externalId,
+      sourceType: "GREENHOUSE",
+      needsHydration: false,
+    } as ListedJob)
   it("matches by canonical URL, then id in path, then a single posting", () => {
     const jobs = [job("https://x.io/jobs/1", "11111"), job("https://x.io/jobs/2", "22222")]
     expect(matchPosting(jobs, "https://x.io/jobs/2?utm_source=x")?.externalId).toBe("22222")
@@ -98,9 +138,15 @@ describe("ingestOfferUrl", () => {
     },
   }
   it("refuses LinkedIn and keeps Polish boards link-only without fetching", async () => {
-    const linkedin = await ingestOfferUrl({ url: "https://www.linkedin.com/jobs/view/1", channel: "mcp" }, { http })
+    const linkedin = await ingestOfferUrl(
+      { url: "https://www.linkedin.com/jobs/view/1", channel: "mcp" },
+      { http }
+    )
     expect(linkedin.status).toBe("rejected")
-    const board = await ingestOfferUrl({ url: "https://nofluffjobs.com/pl/job/acme", channel: "mcp" }, { http })
+    const board = await ingestOfferUrl(
+      { url: "https://nofluffjobs.com/pl/job/acme", channel: "mcp" },
+      { http }
+    )
     expect(board.status).toBe("link-only")
     const workday = await ingestOfferUrl(
       { url: "https://acme.wd3.myworkdayjobs.com/Acme/job/Warsaw/Dev_1", channel: "mcp" },
@@ -138,7 +184,11 @@ describe("ingestOfferUrl", () => {
       }
     )
     expect(result).toMatchObject({ status: "created", jobId: "job_1" })
-    expect(saved[0]).toMatchObject({ title: "QA Engineer", companyName: "Acme", sourceBoardId: "page:acme.pl:acme" })
+    expect(saved[0]).toMatchObject({
+      title: "QA Engineer",
+      companyName: "Acme",
+      sourceBoardId: "page:acme.pl:acme",
+    })
   })
 
   it("hands back a page without a posting only for the tracker", async () => {

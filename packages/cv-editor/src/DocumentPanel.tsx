@@ -8,7 +8,7 @@ import { Badge, Field, Skeleton } from "@newrole/ui/primitives"
 import { relativeTime } from "@newrole/ui/time"
 import { compactDiff, diffCv, hasChanges, type DiffPart } from "@newrole/cv-core/diff"
 import type { CvContent } from "@newrole/cv-core/schema"
-import { readOnlyExcerpt, type TailorNotes } from "@newrole/cv-core/tailor"
+import { readOnlyExcerpt, type KeywordNote, type TailorNotes } from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorContext } from "@newrole/cv-core/views"
 import { useCvBackend } from "./backend"
 import { useCvCopy } from "./locale"
@@ -364,6 +364,47 @@ function CompareView({
   )
 }
 
+/** The offer's key terms: those in the CV, those the person has but this CV leaves out, the rest. */
+function KeywordList({ keywords }: { keywords: KeywordNote[] }) {
+  const { t } = useCvCopy()
+  const inCv = keywords.filter((item) => item.status === "kept" || item.status === "added")
+  const added = keywords.filter((item) => item.status === "added").length
+  const groups = [
+    { key: "in", label: null, items: inCv },
+    {
+      key: "unplaced",
+      label: t("tl.r.kwUnplaced"),
+      items: keywords.filter((item) => item.status === "unplaced"),
+    },
+    {
+      key: "missing",
+      label: t("tl.r.kwMissing"),
+      items: keywords.filter((item) => item.status === "missing"),
+    },
+  ]
+  return (
+    <section className="cvt-note">
+      <h3>{t("tl.r.keywords")}</h3>
+      <p>
+        {t("tl.r.kwIn", { n: inCv.length, total: keywords.length })}
+        {added ? ` ${t("tl.r.kwAdded", { n: added })}` : ""}
+      </p>
+      {groups.map((group) =>
+        group.items.length ? (
+          <div key={group.key} className="cvt-kw">
+            {group.label ? <p className="t-sm muted">{group.label}</p> : null}
+            <ul className="cvt-terms">
+              {group.items.map((item) => (
+                <li key={item.term}>{item.term}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null
+      )}
+    </section>
+  )
+}
+
 function ReviewTab({
   doc,
   isLetter,
@@ -407,7 +448,12 @@ function ReviewTab({
     }
   }
 
-  const empty = notes && !notes.changes.length && !notes.gaps.length && !notes.unverified.length
+  const empty =
+    notes &&
+    !notes.changes.length &&
+    !notes.gaps.length &&
+    !notes.unverified.length &&
+    !notes.keywords?.length
   return (
     <>
       {notes?.unverified.length ? (
@@ -439,6 +485,7 @@ function ReviewTab({
           <p>{t("tl.r.reverted", { n: notes.reverted })}</p>
         </section>
       ) : null}
+      {notes?.keywords?.length ? <KeywordList keywords={notes.keywords} /> : null}
       {notes?.changes.length ? (
         <section className="cvt-note">
           <h3>{t("tl.r.changes")}</h3>

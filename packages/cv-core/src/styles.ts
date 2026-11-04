@@ -50,6 +50,7 @@ border-bottom:2px solid var(--cv-accent)}
 .cv-doc .cv-contact a{color:var(--cv-accent)}
 .cv-doc .cv-sep{margin:0 1.6mm;color:var(--cv-sep)}
 .cv-doc .cv-photo{display:block;width:30mm;height:30mm;max-width:none;border-radius:50%;object-fit:cover;border:2px solid #e0e8ed}
+.cv-doc .cv-photo--square{border-radius:0}
 .cv-doc .cv-h2{display:block;font-size:10.5pt;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--cv-accent);
 padding-bottom:1.5mm;border-bottom:1px solid var(--cv-line)}
 .cv-doc .cv-text{display:block}

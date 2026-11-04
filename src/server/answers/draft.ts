@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { wrapLong, wrapUntrusted } from "@newrole/llm/common"
+import { humanStyle } from "@newrole/llm/human-style"
 import { hasRedaction } from "./filter"
 import {
   detectLanguage,
@@ -180,9 +181,17 @@ export const DRAFT_SYSTEM = [
   "Respect maxChars: the text must not be longer. Without a limit, keep it concise: about 400 to 900 characters for open questions, a single line for short factual ones.",
   "When options are given, the text must be exactly one of the options, copied verbatim.",
   "No placeholders such as [Company], no greetings or sign-offs, no markdown, no surrounding quotes.",
+  "When an answer names a skill or tool the job asks for and the candidate's data shows, use the job's own word for it.",
   "basedOn lists the ids of the past answers you actually used (empty when none).",
-  'Return JSON: {"answers": {"<question id>": {"text": "...", "basedOn": ["<answer id>"]}}} with one entry per question id.',
 ].join("\n")
+
+const DRAFT_FORMAT =
+  'Return JSON: {"answers": {"<question id>": {"text": "...", "basedOn": ["<answer id>"]}}} with one entry per question id.'
+
+/** The rules, how each language of the questions should read, then the reply's shape. */
+export function draftSystem(languages: Iterable<AnswerLanguage>): string {
+  return [DRAFT_SYSTEM, humanStyle(languages), DRAFT_FORMAT].join("\n\n")
+}
 
 export function draftUserPrompt(input: {
   candidate: string

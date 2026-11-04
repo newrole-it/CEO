@@ -26,6 +26,7 @@ import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "src/app/jobs/format"
 import { importCvHtml } from "@newrole/cv-core/import-html"
+import type { OfferStage } from "src/server/preferences/saved"
 import { downloadPdf } from "@newrole/cv-editor/download"
 import { cvPdfUrl, cvPrintUrl } from "./urls"
 import createCvDocument from "./mutations/createCvDocument"
@@ -49,17 +50,35 @@ export type CvRow = {
   target: { jobId: string | null; company: string; title: string } | null
 }
 
-/** Tailored documents with an offer's CV and letter side by side, newest offer first. */
-function byOffer(rows: CvRow[]): CvRow[] {
-  const order = new Map<string, number>()
-  const key = (row: CvRow) => row.target?.jobId ?? row.id
-  for (const row of rows) if (!order.has(key(row))) order.set(key(row), order.size)
-  return [...rows].sort(
-    (a, b) =>
-      (order.get(key(a)) ?? 0) - (order.get(key(b)) ?? 0) ||
-      Number(a.docType === "LETTER") - Number(b.docType === "LETTER")
-  )
+/** Tailored documents grouped by offer, CV before letter, newest offer first. */
+function byOffer(
+  rows: CvRow[]
+): { key: string; target: NonNullable<CvRow["target"]>; rows: CvRow[] }[] {
+  const groups = new Map<
+    string,
+    { key: string; target: NonNullable<CvRow["target"]>; rows: CvRow[] }
+  >()
+  for (const row of rows) {
+    if (!row.target) continue
+    const key = row.target.jobId ?? row.id
+    const group = groups.get(key) ?? { key, target: row.target, rows: [] }
+    group.rows.push(row)
+    groups.set(key, group)
+  }
+  return [...groups.values()].map((group) => ({
+    ...group,
+    rows: group.rows.sort(
+      (a, b) => Number(a.docType === "LETTER") - Number(b.docType === "LETTER")
+    ),
+  }))
 }
+
+const STAGE_LABEL = {
+  liked: "saved.liked",
+  ready: "saved.ready",
+  applied: "saved.applied",
+  passed: "saved.passed",
+} as const
 
 /** The dropdown behaviour used across the app: outside click and Esc close it, arrows move. */
 function useMenu() {
@@ -95,10 +114,13 @@ function useMenu() {
 export function CvList({
   signedIn,
   initial,
+  stages = {},
   after = null,
 }: {
   signedIn: boolean
   initial: CvRow[]
+  /** By offer id: its Zapisane tab, for the documents written for it */
+  stages?: Record<string, OfferStage>
   after?: string | null
 }) {
   const { t, locale } = useCopy()
@@ -362,18 +384,65 @@ export function CvList({
           {rows.some((row) => row.target) ? (
             <>
               <h2 className="cvt-list-title">{t("tl.list.title")}</h2>
-              <ul className="cvl-grid" role="list">
-                {byOffer(rows.filter((row) => row.target)).map((row) => (
-                  <CvCard
-                    key={row.id}
-                    row={row}
-                    onDownload={() => void download(row)}
-                    onDuplicate={() => void duplicate(row)}
-                    onDefault={() => void makeDefault(row)}
-                    onDelete={() => setConfirm(row)}
-                  />
-                ))}
-              </ul>
+              {byOffer(rows).map((group) => {
+                const jobId = group.target.jobId
+                const stage = jobId ? stages[jobId] : undefined
+                return (
+                  <section
+                    key={group.key}
+                    className="cvo-group"
+                    aria-label={`${group.target.company} · ${group.target.title}`}
+                  >
+                    <div className="cvo-group__head">
+                      {jobId ? (
+                        <Link className="cvo-group__title" href={`/jobs/${jobId}`}>
+                          {group.target.title}
+                        </Link>
+                      ) : (
+                        <span className="cvo-group__title">{group.target.title}</span>
+                      )}
+                      <span className="muted">{group.target.company}</span>
+                      {stage?.segment ? (
+                        <Badge
+                          tone={
+                            stage.segment === "applied"
+                              ? "success"
+                              : stage.segment === "passed"
+                              ? "plain"
+                              : "primary"
+                          }
+                        >
+                          {t(STAGE_LABEL[stage.segment])}
+                        </Badge>
+                      ) : null}
+                      {stage?.closed || !jobId ? (
+                        <Badge tone="warning">{t("saved.closed")}</Badge>
+                      ) : null}
+                      {stage?.applicationId ? (
+                        <Link
+                          className="link cvo-group__app"
+                          href={`/applications?id=${stage.applicationId}`}
+                        >
+                          {t("saved.openApplication")}
+                        </Link>
+                      ) : null}
+                    </div>
+                    <ul className="cvl-grid" role="list">
+                      {group.rows.map((row) => (
+                        <CvCard
+                          key={row.id}
+                          row={row}
+                          label={t(row.docType === "LETTER" ? "tl.bar.letter" : "tl.bar.cv")}
+                          onDownload={() => void download(row)}
+                          onDuplicate={() => void duplicate(row)}
+                          onDefault={() => void makeDefault(row)}
+                          onDelete={() => setConfirm(row)}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                )
+              })}
             </>
           ) : null}
 
@@ -407,12 +476,15 @@ export function CvList({
 
 function CvCard({
   row,
+  label,
   onDownload,
   onDuplicate,
   onDefault,
   onDelete,
 }: {
   row: CvRow
+  /** Shown instead of the title, where the offer above already names it */
+  label?: string
   onDownload: () => void
   onDuplicate: () => void
   onDefault: () => void
@@ -430,7 +502,7 @@ function CvCard({
         </span>
         <div className="cvl-card__main">
           <Link className="cvl-card__title" href={`/cv/${row.id}`}>
-            {row.title}
+            {label ?? row.title}
           </Link>
           <div className="cvl-card__meta">
             {row.isDefault ? (
@@ -439,7 +511,9 @@ function CvCard({
               </Badge>
             ) : null}
             {letter ? (
-              <Badge tone="primary">{t("tl.list.letter")}</Badge>
+              label ? null : (
+                <Badge tone="primary">{t("tl.list.letter")}</Badge>
+              )
             ) : (
               <Badge tone={uploaded ? "plain" : "success"}>
                 {t(uploaded ? "cv.kind.pdf" : "cv.kind.editable")}

@@ -1434,6 +1434,10 @@ button.chip:hover {
   color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
 }
+/* under its checkbox's text: label padding 8 + box 16 + gap 10 */
+.radio-list .field__hint {
+  padding: 0 8px 0 34px;
+}
 
 /* ------------------------------------------------------------------ toasts */
 

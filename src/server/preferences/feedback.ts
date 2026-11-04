@@ -252,11 +252,15 @@ async function syncApplication(
 
 export async function listFeedback(
   userId: number,
-  opts: { verdict?: FeedbackVerdict; limit?: number } = {}
+  opts: { verdict?: FeedbackVerdict; limit?: number; jobIds?: string[] } = {}
 ): Promise<OfferFeedbackView[]> {
   const take = Math.max(1, Math.min(500, Math.round(opts.limit ?? 100)))
   const rows = await db.offerFeedback.findMany({
-    where: { userId, ...(opts.verdict ? { verdict: opts.verdict } : {}) },
+    where: {
+      userId,
+      ...(opts.verdict ? { verdict: opts.verdict } : {}),
+      ...(opts.jobIds ? { jobId: { in: opts.jobIds } } : {}),
+    },
     orderBy: { updatedAt: "desc" },
     take,
     select: viewSelect,

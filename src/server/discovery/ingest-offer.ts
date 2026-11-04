@@ -256,7 +256,10 @@ export const offerPayloadSchema = z
       .toUpperCase()
       .regex(/^[A-Z]{3}(\/(HOUR|DAY|MONTH|YEAR))?$/, "Currency like PLN or PLN/hour")
       .optional(),
-    channel: z.literal("mcp"),
+    /** Pay as the offer writes it ("20 000 - 25 000 PLN"), read when salaryMin and salaryMax are not set. */
+    salaryText: clean(120).optional(),
+    /** mcp: Claude read the page. web: the person added the offer under Offers ("Dodaj ofertę"). */
+    channel: z.enum(["mcp", "web"]),
   })
   .refine(
     (value) =>
@@ -297,18 +300,20 @@ export function payloadToJob(
     part.toLowerCase()
   )
   const company = stripPersonalData(data.company)
+  const statedPay = data.salaryMin != null || data.salaryMax != null
   const job = buildListedJob({
     title: stripPersonalData(data.title),
     companyName: company,
     locationText: data.location ? stripPersonalData(data.location) : undefined,
     workplaceType: data.workplace,
     descriptionText: linkOnly ? undefined : description,
+    salaryText: statedPay ? undefined : data.salaryText,
     salaryMin: data.salaryMin,
     salaryMax: data.salaryMax,
-    salaryCurrency: data.salaryMin != null || data.salaryMax != null ? currency : undefined,
+    salaryCurrency: statedPay ? currency : undefined,
     originalUrl: url.toString(),
     sourceType: "WEB_SEARCH",
-    sourceBoardId: `mcp:${host.replace(/^www\./, "")}:${
+    sourceBoardId: `${data.channel}:${host.replace(/^www\./, "")}:${
       normalizeCompanyName(company) || "company"
     }`.slice(0, 180),
     needsHydration: false,
@@ -318,8 +323,9 @@ export function payloadToJob(
 }
 
 /**
- * A posting Claude read itself. Validated, recruiter contacts stripped, stored as
- * WEB_SEARCH with an `mcp:` board id. Job-board links keep title and link only.
+ * A posting Claude read itself, or one the person added by hand. Validated, recruiter contacts
+ * stripped, stored as WEB_SEARCH with an `mcp:` or `web:` board id. Job-board links keep title
+ * and link only.
  */
 export async function ingestOfferPayload(
   input: {
@@ -332,7 +338,8 @@ export async function ingestOfferPayload(
     salaryMin?: number
     salaryMax?: number
     salaryCurrency?: string
-    channel: "mcp"
+    salaryText?: string
+    channel: "mcp" | "web"
   },
   deps: IngestDeps = {}
 ): Promise<IngestPayloadResult> {

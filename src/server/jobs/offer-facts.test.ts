@@ -226,6 +226,28 @@ describe("offer filters and requirements", () => {
     expect(inCountry("Anywhere", "JP", "REMOTE")).toBe(true)
   })
 
+  it("with remoteHere, keeps a remote offer stored with another country in that country", () => {
+    // Headway on Ashby, 2026-11-03: location "Remote", addressCountry "United States".
+    const stored = (countries: string[], locationText = "Remote", remoteRegions: string[] = []) =>
+      placeFacts({
+        locationText,
+        countryCode: countries[0] ?? null,
+        countries,
+        remoteRegions,
+        workplaceType: "REMOTE",
+      })
+    const inPoland = (place: ReturnType<typeof placeFacts>, remoteHere: boolean) =>
+      offerMatches(place, { listed: false }, { country: "PL", city: "", mode: "any", remoteHere })
+    expect(inPoland(stored(["US"]), false)).toBe(true)
+    expect(inPoland(stored(["US"]), true)).toBe(false)
+    // no country anywhere: still open to every country
+    expect(inPoland(stored([]), true)).toBe(true)
+    // a region that covers Poland, in the text or stored at ingest
+    expect(inPoland(stored(["GB"], "Remote - EMEA"), true)).toBe(true)
+    expect(inPoland(stored(["GB"], "Remote", ["EMEA"]), true)).toBe(true)
+    expect(inPoland(stored(["US", "PL"]), true)).toBe(true)
+  })
+
   it("canonicalises city aliases and counts cities from messy text", () => {
     expect(canonicalCity("cracow")).toBe("Kraków")
     expect(

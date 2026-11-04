@@ -60,6 +60,7 @@ export function targetWords(
 function sourceLabel(offer: FeedOffer): string {
   if (offer.provider) return offer.provider
   if (offer.sourceKind === "company-site") return "strona firmy"
+  if (offer.sourceKind === "added") return "dodana ręcznie"
   return offer.sourceKind
 }
 

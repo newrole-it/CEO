@@ -4,12 +4,15 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   ArrowDown,
   ArrowUp,
+  Check,
+  Circle,
   FoldVertical,
   ImagePlus,
   Link2,
   ListPlus,
   Plus,
   Rows3,
+  Square,
   Tag,
   Trash2,
 } from "lucide-react"
@@ -43,6 +46,7 @@ import { atomKey, type CvAtom } from "@newrole/cv-core/flow"
 import {
   CV_SECTION_TYPES,
   type CvContent,
+  type CvPhotoShape,
   type CvSection,
   type CvSectionType,
 } from "@newrole/cv-core/schema"
@@ -303,9 +307,16 @@ function HeaderAtom({ ops }: { ops: EditorOps }) {
   )
 }
 
-/** The photo: click to change or remove it. */
+const PHOTO_SHAPES: { shape: CvPhotoShape; icon: ReactNode }[] = [
+  { shape: "circle", icon: <Circle /> },
+  { shape: "square", icon: <Square /> },
+]
+
+/** The photo: click to change it, frame it in a circle or a square, or remove it. */
 function PhotoButton({ ops, src }: { ops: EditorOps; src: string }) {
-  const { t } = ops
+  const { t, edit } = ops
+  const shape = ops.content.header.photoShape ?? "circle"
+  const square = shape === "square"
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -327,14 +338,18 @@ function PhotoButton({ ops, src }: { ops: EditorOps; src: string }) {
     <span className="cve-photo" ref={box}>
       <button
         type="button"
-        className="cve-photo__btn"
+        className={`cve-photo__btn${square ? " cve-photo__btn--square" : ""}`}
         aria-label={t("cv.photo.change")}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- a data URL inside the CV sheet */}
-        <img className="cv-photo" src={src} alt={ops.content.header.name} />
+        <img
+          className={`cv-photo${square ? " cv-photo--square" : ""}`}
+          src={src}
+          alt={ops.content.header.name}
+        />
       </button>
       {open ? (
         <span className="menu" role="menu">
@@ -349,6 +364,26 @@ function PhotoButton({ ops, src }: { ops: EditorOps; src: string }) {
           >
             {t("cv.photo.change")}
           </button>
+          <span className="menu__sep" role="separator" />
+          {PHOTO_SHAPES.map((entry) => (
+            <button
+              key={entry.shape}
+              type="button"
+              className="menu__item"
+              role="menuitemradio"
+              aria-checked={entry.shape === shape}
+              onClick={() => {
+                setOpen(false)
+                if (entry.shape !== shape)
+                  edit((current) => updateHeader(current, { photoShape: entry.shape }))
+              }}
+            >
+              {entry.icon}
+              {t(`cv.photo.${entry.shape}`)}
+              {entry.shape === shape ? <Check className="cve-photo__check" /> : null}
+            </button>
+          ))}
+          <span className="menu__sep" role="separator" />
           <button
             type="button"
             className="menu__item menu__item--danger"

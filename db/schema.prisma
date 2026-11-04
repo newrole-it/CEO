@@ -522,6 +522,29 @@ model LlmCache {
   @@index([userId])
 }
 
+/// One run of the model, for the AI usage tab. Counts only: no prompt, no reply, no user.
+model LlmCall {
+  id               String   @id @default(cuid())
+  purpose          String
+  /// claude-cli or openai
+  provider         String
+  model            String
+  /// Input tokens read without the prompt cache
+  tokenInput       Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  cacheReadTokens  Int      @default(0)
+  tokenOutput      Int      @default(0)
+  webSearches      Int      @default(0)
+  /// What the provider reported itself (claude -p total_cost_usd). Null when it reports none.
+  reportedUsd      Float?
+  /// False when the run ended without a usage report (timeout, crash), so its tokens are unknown
+  usageKnown       Boolean  @default(true)
+  durationMs       Int?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model BackgroundTask {
   id          String     @id @default(cuid())
   type        String

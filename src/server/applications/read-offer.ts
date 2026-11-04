@@ -14,6 +14,7 @@ import { aiOptOut, stripPersonalData } from "src/server/crawler/hygiene"
 import { ingestOfferUrl, type IngestUrlResult } from "src/server/discovery/ingest-offer"
 import { policyFor } from "@newrole/offers/polite"
 import { decodeEntities, htmlToText } from "@newrole/offers/text"
+import { pageText } from "src/server/jobs/offer-text"
 import { formatSalary, urlKey } from "./logic"
 import { findApplicationByUrl, findJobById, findJobByUrl, type IndexedJob } from "./service"
 import type { ApplicationView, OfferFacts, OfferOutcome, OfferUrlCheck } from "./types"
@@ -62,13 +63,32 @@ function metaContent(html: string, property: string): string | null {
   return value ? decodeEntities(value).trim() : null
 }
 
+/**
+ * The main part of the page first: on Google Careers the first 4,000 characters of the whole
+ * page are menus and twenty other offers, and the place comes after them (read 2026-11-04).
+ */
 function pageInput(url: string, html: string): PageInput {
   const tag = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]
   return {
     url,
     title: metaContent(html, "og:title") ?? (tag ? decodeEntities(tag).trim() : null),
     siteName: metaContent(html, "og:site_name"),
-    text: stripPersonalData(htmlToText(html)),
+    text: stripPersonalData(pageText(html) || htmlToText(html)),
+  }
+}
+
+/** The link ended on another site's sign-in page, so what was read is not the offer. */
+export function signInPage(requested: string, reached: string): boolean {
+  try {
+    const from = new URL(requested).hostname.toLowerCase()
+    const to = new URL(reached)
+    if (to.hostname.toLowerCase() === from) return false
+    return (
+      /^(accounts|login|signin|auth|sso)\./i.test(to.hostname) ||
+      /\/(sign-?in|log-?in|auth|sso)\b/i.test(to.pathname)
+    )
+  } catch {
+    return false
   }
 }
 
@@ -129,6 +149,9 @@ export async function readOffer(rawUrl: string, deps: ReadOfferDeps = {}): Promi
   if (result.jobId) {
     const job = await (deps.findById ?? findJobById)(result.jobId)
     if (job) return { url, outcome: "read", facts: factsOf(job) }
+  }
+  if (result.page && signInPage(url, result.page.url)) {
+    return { ...readLink(url, result), outcome: "unreadable", note: "The link asks to sign in." }
   }
   if (result.page) return readPage(url, result.page, deps)
   return readLink(url, result)

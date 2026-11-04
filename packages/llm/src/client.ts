@@ -12,6 +12,7 @@ import {
   type LlmClient,
   type LlmResult,
 } from "./common"
+import type { RecordLlmCall } from "./usage"
 
 export {
   hashCacheKey,
@@ -23,10 +24,13 @@ export {
   wrapUntrusted,
 } from "./common"
 export type { LlmCacheEntry, LlmCacheStore, LlmClient, LlmResult } from "./common"
+export type { LlmCallRecord, RecordLlmCall } from "./usage"
 
 export type LlmClientOptions = {
   /** Where replies are kept between calls; without one every call goes to the model */
   cache?: LlmCacheStore | null
+  /** Where each run's usage goes; without one it is not kept */
+  record?: RecordLlmCall | null
 }
 
 export type LlmProvider = "openai" | "claude-cli" | "none"
@@ -61,9 +65,35 @@ export function llmProvider(
 
 export function createLlmClient(opts: LlmClientOptions = {}): LlmClient | null {
   const provider = llmProvider()
-  if (provider === "claude-cli") return createClaudeCliClient({ cache: opts.cache })
+  if (provider === "claude-cli")
+    return createClaudeCliClient({ cache: opts.cache, record: opts.record })
   if (provider === "openai") return createOpenAiClient(opts)
   return null
+}
+
+type OpenAiUsage = { prompt_tokens?: number; completion_tokens?: number }
+
+/** Hands one answered request to `record`. The host prices it from the token counts. */
+async function recordOpenAi(
+  record: RecordLlmCall | null | undefined,
+  purpose: string,
+  model: string,
+  usage: OpenAiUsage | undefined,
+  started: number
+) {
+  await record?.({
+    purpose,
+    provider: "openai",
+    model,
+    tokenInput: usage?.prompt_tokens ?? 0,
+    cacheWriteTokens: 0,
+    cacheReadTokens: 0,
+    tokenOutput: usage?.completion_tokens ?? 0,
+    webSearches: 0,
+    reportedUsd: null,
+    usageKnown: usage != null,
+    durationMs: Date.now() - started,
+  })
 }
 
 export function createOpenAiClient(opts: LlmClientOptions = {}): LlmClient | null {
@@ -119,6 +149,7 @@ export function createOpenAiClient(opts: LlmClientOptions = {}): LlmClient | nul
       }
 
       let response: Response
+      const started = Date.now()
       try {
         response = await call(true)
         if (response.status === 400) response = await call(false)
@@ -132,7 +163,7 @@ export function createOpenAiClient(opts: LlmClientOptions = {}): LlmClient | nul
       }
       let payload: {
         choices?: Array<{ message?: { content?: string } }>
-        usage?: { prompt_tokens?: number; completion_tokens?: number }
+        usage?: OpenAiUsage
       }
       try {
         payload = (await response.json()) as typeof payload
@@ -143,6 +174,7 @@ export function createOpenAiClient(opts: LlmClientOptions = {}): LlmClient | nul
         )
         return null
       }
+      await recordOpenAi(opts.record, args.purpose, model, payload.usage, started)
       const content = payload.choices?.[0]?.message?.content
       if (!content) return null
       let json: unknown
@@ -192,6 +224,7 @@ export function createOpenAiClient(opts: LlmClientOptions = {}): LlmClient | nul
           signal: AbortSignal.timeout(30_000),
         })
       let response: Response
+      const started = Date.now()
       try {
         response = await send(true)
         if (response.status === 400) response = await send(false)
@@ -203,7 +236,7 @@ export function createOpenAiClient(opts: LlmClientOptions = {}): LlmClient | nul
         console.error(`LLM ${args.purpose} HTTP ${response.status}`)
         return null
       }
-      return storeText(response, store, cache, args.purpose, model)
+      return storeText(response, store, cache, args.purpose, model, opts.record, started)
     },
   }
 }
@@ -213,11 +246,13 @@ async function storeText(
   store: LlmCacheStore | null,
   cache: CachePlan | null,
   purpose: string,
-  model: string
+  model: string,
+  record: RecordLlmCall | null | undefined,
+  started: number
 ): Promise<LlmResult<string> | null> {
   let payload: {
     choices?: Array<{ message?: { content?: string } }>
-    usage?: { prompt_tokens?: number; completion_tokens?: number }
+    usage?: OpenAiUsage
   }
   try {
     payload = (await response.json()) as typeof payload
@@ -228,6 +263,7 @@ async function storeText(
     )
     return null
   }
+  await recordOpenAi(record, purpose, model, payload.usage, started)
   const text = payload.choices?.[0]?.message?.content
   if (!text) return null
   const tokenInput = payload.usage?.prompt_tokens ?? 0

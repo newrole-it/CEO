@@ -12,8 +12,15 @@ import {
 } from "./claude-cli"
 import { llmProvider } from "./client"
 import type { LlmCacheEntry, LlmCacheStore } from "./common"
+import type { LlmCallRecord } from "./usage"
 
 type Call = { command: string; args: string[]; stdin: string }
+
+/** Collects the usage of each run so a test can read it. */
+function recorder() {
+  const rows: LlmCallRecord[] = []
+  return { rows, record: async (row: LlmCallRecord) => void rows.push(row) }
+}
 
 /** A spawn stand-in that answers each call with the next scripted reply. */
 function fakeSpawn(replies: (string | { stdout?: string; code?: number; hang?: boolean })[]) {
@@ -114,7 +121,7 @@ describe("claude CLI output", () => {
 describe("claude CLI client", () => {
   it("sends the prompt on stdin and validates the reply", async () => {
     const { spawn, calls } = fakeSpawn([cliJson('{"title":"CTO","years":12}')])
-    const client = createClaudeCliClient({ spawn, binary: "/bin/claude" })
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude", ...recorder() })
     const result = await client.completeJson({
       purpose: "candidate-profile",
       system: "Extract.",
@@ -135,7 +142,8 @@ describe("claude CLI client", () => {
       cliJson("I think the title is CTO"),
       cliJson('{"title":"CTO","years":3}'),
     ])
-    const client = createClaudeCliClient({ spawn, binary: "/bin/claude" })
+    const usage = recorder()
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude", ...usage })
     const result = await client.completeJson({
       purpose: "candidate-profile",
       system: "s",
@@ -145,11 +153,13 @@ describe("claude CLI client", () => {
     expect(result?.data.years).toBe(3)
     expect(calls).toHaveLength(2)
     expect(calls[1].stdin).toContain("did not match")
+    // The failed first attempt used tokens too.
+    expect(usage.rows.map((row) => row.purpose)).toEqual(["candidate-profile", "candidate-profile"])
   })
 
   it("gives up after the retry", async () => {
     const { spawn, calls } = fakeSpawn([cliJson('{"title":1}')])
-    const client = createClaudeCliClient({ spawn, binary: "/bin/claude" })
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude", ...recorder() })
     const result = await client.completeJson({
       purpose: "candidate-profile",
       system: "s",
@@ -162,7 +172,8 @@ describe("claude CLI client", () => {
 
   it("skips bulk purposes so indexing does not burn the subscription", async () => {
     const { spawn, calls } = fakeSpawn([cliJson("{}")])
-    const client = createClaudeCliClient({ spawn, binary: "/bin/claude" })
+    const usage = recorder()
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude", ...usage })
     const result = await client.completeJson({
       purpose: "role-classify",
       system: "s",
@@ -171,21 +182,96 @@ describe("claude CLI client", () => {
     })
     expect(result).toBeNull()
     expect(calls).toHaveLength(0)
+    expect(usage.rows).toHaveLength(0)
   })
 
-  it("times out a hung process", async () => {
+  it("times out a hung process and records a run without a usage report", async () => {
     const { spawn } = fakeSpawn([{ hang: true }])
+    const usage = recorder()
     const result = await runClaudePrompt(
-      { prompt: "p", timeoutMs: 20 },
-      { spawn, binary: "/bin/claude" }
+      { purpose: "web-search", prompt: "p", model: "sonnet", timeoutMs: 20 },
+      { spawn, binary: "/bin/claude", record: usage.record }
     )
     expect(result).toBeNull()
+    expect(usage.rows).toHaveLength(1)
+    expect(usage.rows[0]).toMatchObject({
+      purpose: "web-search",
+      provider: "claude-cli",
+      model: "sonnet",
+      usageKnown: false,
+      tokenInput: 0,
+      reportedUsd: null,
+    })
   })
 
   it("returns null when the binary is missing", async () => {
     const { spawn, calls } = fakeSpawn([cliJson("x")])
-    expect(await runClaudePrompt({ prompt: "p" }, { spawn, binary: null })).toBeNull()
+    const usage = recorder()
+    expect(
+      await runClaudePrompt({ prompt: "p" }, { spawn, binary: null, record: usage.record })
+    ).toBeNull()
     expect(calls).toHaveLength(0)
+    expect(usage.rows).toHaveLength(0)
+  })
+
+  it("records each run with the task, the model and what the CLI reported", async () => {
+    // Trimmed from a real `claude -p --output-format json` run (Claude Code 2.1.314).
+    const real = JSON.stringify({
+      type: "result",
+      is_error: false,
+      result: "OK",
+      total_cost_usd: 0.0005303,
+      usage: { input_tokens: 2, cache_creation_input_tokens: 2018, output_tokens: 4 },
+      modelUsage: {
+        "claude-haiku-5-5": {
+          inputTokens: 1172,
+          outputTokens: 19,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 2018,
+          webSearchRequests: 0,
+          costUSD: 0.0005303,
+          costBasis: "list",
+        },
+      },
+    })
+    const { spawn } = fakeSpawn([real])
+    const usage = recorder()
+    const result = await runClaudePrompt(
+      { purpose: "similar-companies", prompt: "p" },
+      { spawn, binary: "/bin/claude", record: usage.record }
+    )
+    expect(result?.text).toBe("OK")
+    expect(usage.rows).toHaveLength(1)
+    expect(usage.rows[0]).toMatchObject({
+      purpose: "similar-companies",
+      provider: "claude-cli",
+      model: "claude-haiku-5-5",
+      tokenInput: 1172,
+      cacheWriteTokens: 2018,
+      cacheReadTokens: 0,
+      tokenOutput: 19,
+      reportedUsd: 0.0005303,
+      usageKnown: true,
+    })
+    expect(usage.rows[0].durationMs).toBeGreaterThanOrEqual(0)
+  })
+
+  it("keeps the usage of a run that ended in an error", async () => {
+    const { spawn } = fakeSpawn([cliJson("x", { is_error: true })])
+    const usage = recorder()
+    const result = await runClaudePrompt(
+      { prompt: "p" },
+      { spawn, binary: "/bin/claude", record: usage.record }
+    )
+    expect(result).toBeNull()
+    expect(usage.rows[0]).toMatchObject({
+      purpose: "other",
+      usageKnown: true,
+      tokenInput: 3,
+      cacheWriteTokens: 100,
+      tokenOutput: 12,
+      reportedUsd: 0.0005,
+    })
   })
 })
 

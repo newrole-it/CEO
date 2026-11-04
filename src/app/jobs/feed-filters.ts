@@ -1,13 +1,17 @@
 /** Feed filter state ↔ URL. Shared by the server page and client components (no server imports). */
+import { cleanTags } from "src/shared/title-tags"
 import type { FeedTab } from "./types"
 
 export type Level = "junior" | "mid" | "senior" | "lead" | "head"
 export const LEVELS: Level[] = ["junior", "mid", "senior", "lead", "head"]
 
 export type FeedFilters = {
-  q: string
+  /** Title tags, one `q` each in the URL; an offer matching any one is shown. */
+  tags: string[]
   /** "" follows the person's country (profile, else browser); "any" is every country; else ISO. */
   country: string
+  /** With a country: leave out remote offers the employer tied to another one. */
+  remoteHere: boolean
   city: string
   mode: "any" | "remote" | "hybrid" | "onsite"
   pay: number | null
@@ -22,6 +26,8 @@ export type FeedFilters = {
 type Params = Record<string, string | string[] | undefined>
 const one = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value) ?? ""
+const all = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value : value ? [value] : []
 
 export function parseFilters(params: Params): FeedFilters {
   const where = one(params.where)
@@ -29,7 +35,7 @@ export function parseFilters(params: Params): FeedFilters {
   const mode = one(params.mode)
   const pay = Number(one(params.pay))
   return {
-    q: one(params.q).slice(0, 160),
+    tags: cleanTags(all(params.q)),
     // Old links: where=pl is Poland, where=abroad was "not Poland" and now means every country.
     country: /^[a-z]{2}$/i.test(country)
       ? country.toUpperCase()
@@ -38,6 +44,7 @@ export function parseFilters(params: Params): FeedFilters {
       : where === "pl"
       ? "PL"
       : "",
+    remoteHere: one(params.remotehere) === "1",
     city: one(params.city).slice(0, 80),
     mode: mode === "remote" || mode === "hybrid" || mode === "onsite" ? mode : "any",
     pay: Number.isFinite(pay) && pay > 0 ? Math.round(pay) : null,
@@ -60,8 +67,9 @@ export function filtersQuery(
 ): string {
   const params = new URLSearchParams()
   if (tab === "all") params.set("tab", "all")
-  if (filters.q) params.set("q", filters.q)
+  for (const tag of filters.tags) params.append("q", tag)
   if (filters.country) params.set("country", filters.country)
+  if (filters.remoteHere) params.set("remotehere", "1")
   if (filters.city) params.set("city", filters.city)
   if (filters.mode !== "any") params.set("mode", filters.mode)
   if (filters.pay) params.set("pay", String(filters.pay))
@@ -76,10 +84,37 @@ export function filtersQuery(
   return query ? `/jobs?${query}` : "/jobs"
 }
 
-export function hasActiveFilters(filters: FeedFilters): boolean {
+/**
+ * The country "" means when nobody picked one: the person's own, else every country. Clearing the
+ * place has to say "any" when there is an own country, or the list goes straight back to it.
+ */
+export function noCountry(ownCountry: string | null): string {
+  return ownCountry ? "any" : ""
+}
+
+/** Every filter off, the default country included; the sort stays. */
+export function clearedFilters(filters: FeedFilters, ownCountry: string | null): FeedFilters {
+  return {
+    ...filters,
+    tags: [],
+    country: noCountry(ownCountry),
+    remoteHere: false,
+    city: "",
+    mode: "any",
+    pay: null,
+    levels: [],
+    companyOnly: false,
+    payOnly: false,
+    fresh: false,
+    company: "",
+  }
+}
+
+/** Whether anything narrows the list. `country` is the one the list covers, a default included. */
+export function hasActiveFilters(filters: FeedFilters, country: string | null): boolean {
   return Boolean(
-    filters.q ||
-      Boolean(filters.country) ||
+    filters.tags.length ||
+      country ||
       filters.city ||
       filters.mode !== "any" ||
       filters.pay ||

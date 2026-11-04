@@ -4,6 +4,7 @@ import type { CvContent, CvExperienceSection, CvSection } from "./schema"
 import {
   applyTailoring,
   cvForModel,
+  mentionsTerm,
   TailorReply,
   unverifiedNumbers,
   unverifiedTerms,
@@ -14,7 +15,7 @@ const base = (): CvContent => syntheticCv(3)
 const evidence = (content: CvContent) => cvPlainText(content)
 
 function reply(partial: Partial<TailorReply>): TailorReply {
-  return { sections: [], changes: [], gaps: [], ...partial }
+  return { sections: [], changes: [], gaps: [], keywords: [], ...partial }
 }
 
 function tailor(content: CvContent, partial: Partial<TailorReply>, translateTo?: "pl" | "en") {
@@ -168,6 +169,58 @@ describe("applyTailoring", () => {
     expect(experience(result.content).items[0].bullets).toEqual(job.bullets)
   })
 
+  it("splits a summary into bullets and spaces the role as a full entry", () => {
+    const content = syntheticCv(5)
+    const job = experience(content).items[4]
+    expect(job).toMatchObject({ bullets: [], compact: true })
+    const result = tailor(content, {
+      sections: [
+        {
+          id: "experience",
+          items: [
+            {
+              id: job.id,
+              summary: "Prowadziłem zespół programistów.",
+              bullets: [
+                "Wspierałem inżynierów w codziennej pracy.",
+                "Dostarczałem funkcje produktu.",
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    expect(experience(result.content).items[4]).toMatchObject({
+      summary: "Prowadziłem zespół programistów.",
+      bullets: ["Wspierałem inżynierów w codziennej pracy.", "Dostarczałem funkcje produktu."],
+      compact: false,
+    })
+  })
+
+  it("keeps the whole summary when none of the bullets split from it lands", () => {
+    const content = syntheticCv(5)
+    const job = experience(content).items[4]
+    const result = tailor(content, {
+      sections: [
+        {
+          id: "experience",
+          items: [
+            {
+              id: job.id,
+              summary: "Prowadziłem zespół programistów.",
+              bullets: ["Zespół urósł o 300%."],
+            },
+          ],
+        },
+      ],
+    })
+    expect(experience(result.content).items[4]).toMatchObject({
+      summary: job.summary,
+      bullets: [],
+      compact: true,
+    })
+  })
+
   it("accepts numbers the CV already has, written differently", () => {
     const content = base()
     content.sections[0] = {
@@ -293,6 +346,89 @@ describe("applyTailoring", () => {
       const { content: result } = tailor(base(), {}, "en")
       expect(result.consent).toContain("I consent")
     })
+  })
+})
+
+describe("keywords", () => {
+  it("says for each of the offer's terms whether the CV has it and whether the person's data backs it", () => {
+    const content = base()
+    const { notes } = tailor(content, {
+      keywords: [
+        { term: "PostgreSQL", evidence: "PostgreSQL" },
+        { term: "zarządzanie zespołem", evidence: "Prowadziłem zespół programistów" },
+        { term: "MongoDB", evidence: "MongoDB" },
+        { term: "Terraform", evidence: "" },
+      ],
+      sections: [
+        {
+          id: "profile",
+          body: "Zarządzam zespołami inżynierskimi i projektuję platformy na PostgreSQL.",
+        },
+        // the skill with MongoDB left out
+        { id: "skills", items: [{ id: "sk1" }, { id: "sk2" }] },
+      ],
+    })
+    expect(notes.keywords).toEqual([
+      { term: "PostgreSQL", status: "kept" },
+      { term: "zarządzanie zespołem", status: "added" },
+      { term: "MongoDB", status: "unplaced" },
+      { term: "Terraform", status: "missing" },
+    ])
+    expect(notes.unverified).toEqual([])
+  })
+
+  it("puts a term the CV gained without backing first among the things to check", () => {
+    const content = base()
+    const { notes } = tailor(content, {
+      keywords: [{ term: "Kafka", evidence: "kolejki Kafka w projekcie A" }],
+      sections: [{ id: "profile", body: "Projektuję platformy oparte na Kafka i Terraform." }],
+    })
+    expect(notes.keywords).toEqual([{ term: "Kafka", status: "added" }])
+    expect(notes.unverified[0]).toBe("Kafka")
+    expect(notes.unverified.filter((term) => term === "Kafka")).toHaveLength(1)
+  })
+
+  it("backs a term by the words quoted as evidence, also with the CV's markup", () => {
+    const { notes } = tailor(base(), {
+      keywords: [
+        { term: "ad server", evidence: "<strong>Platforma:</strong> współtworzyłem system" },
+      ],
+      sections: [{ id: "profile", body: "Współtworzyłem ad server, który obsługuje duży ruch." }],
+    })
+    expect(notes.keywords).toEqual([{ term: "ad server", status: "added" }])
+    expect(notes.unverified).toEqual([])
+  })
+
+  it("keeps the first 15 distinct terms", () => {
+    const terms = Array.from({ length: 20 }, (_, index) => ({ term: `Narzędzie${index}` }))
+    const { notes } = tailor(base(), {
+      keywords: [{ term: "PostgreSQL" }, { term: "postgresql" }, ...terms],
+    })
+    expect(notes.keywords).toHaveLength(15)
+    expect(notes.keywords?.filter((item) => item.term.toLowerCase() === "postgresql")).toHaveLength(
+      1
+    )
+  })
+})
+
+describe("mentionsTerm", () => {
+  it("finds Polish words with another ending", () => {
+    expect(mentionsTerm("Zarządzałem zespołem pięciu osób.", "zarządzanie zespołem")).toBe(true)
+    expect(mentionsTerm("Pracuję w Reactem i Kafką.", "React")).toBe(true)
+  })
+
+  it("needs a tool-shaped or short name whole", () => {
+    expect(mentionsTerm("Postgres i Redis", "PostgreSQL")).toBe(false)
+    expect(mentionsTerm("Pracowałem w Google.", "Go")).toBe(false)
+    expect(mentionsTerm("Backend w Go i Node.js", "Go")).toBe(true)
+    expect(mentionsTerm("Backend w Node.js", "node.js")).toBe(true)
+    expect(mentionsTerm("C++ i C#", "C#")).toBe(true)
+    expect(mentionsTerm("tylko C++", "C")).toBe(false)
+    expect(mentionsTerm("CI/CD w GitLab", "CI/CD")).toBe(true)
+  })
+
+  it("does not take a different short word for the term", () => {
+    expect(mentionsTerm("Chcę dotrzeć do klientów (reach).", "React")).toBe(false)
   })
 })
 

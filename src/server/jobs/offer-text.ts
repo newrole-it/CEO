@@ -14,6 +14,7 @@ import { takeDetailSlot } from "src/server/crawler/budget"
 import { aiOptOut, stripPersonalData } from "src/server/crawler/hygiene"
 import { createRobotsCache, policyFor, politeGet } from "@newrole/offers/polite"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
+import { htmlToText } from "@newrole/offers/text"
 import { OFFER_TEXT_LIMIT, type OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type { ListedJob, SourceType } from "src/shared/schemas"
 
@@ -29,6 +30,8 @@ const LIVE_TIMEOUT_MS = 25_000
 const READ_TTL_MS = 15 * 60_000
 const MISS_TTL_MS = 2 * 60_000
 const CACHE_SIZE = 100
+/** Less than this from a page without structured data is a menu or a cookie banner, not an offer. */
+const PAGE_TEXT_MIN = 400
 
 export type OfferText = { text: string; origin: OfferTextOrigin }
 
@@ -177,7 +180,24 @@ async function readPage(source: OfferSource, http: HttpClient): Promise<Live> {
           boardId: board,
           fullText: true,
         })[0]
-  return job ? asLive(job) : { text: "", withheld: aiOptOut(body, hostname) }
+  if (job) return asLive(job)
+  if (aiOptOut(body, hostname)) return { text: "", withheld: true }
+  return { text: pageText(body), withheld: false }
+}
+
+/** A page without JobPosting data: the text of its main part, without menus and footers. */
+export function pageText(html: string): string {
+  const main =
+    html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] ??
+    html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ??
+    html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ??
+    html
+  const content = main.replace(
+    /<(nav|header|footer|aside|form|noscript|svg|template)\b[\s\S]*?<\/\1>/gi,
+    " "
+  )
+  const text = htmlToText(content)
+  return text.length >= PAGE_TEXT_MIN ? text : ""
 }
 
 function readLive(source: OfferSource, http: HttpClient): Promise<Live> {

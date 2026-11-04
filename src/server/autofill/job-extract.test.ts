@@ -351,6 +351,10 @@ describe("normalizePostingUrl", () => {
         "https://boards.greenhouse.io/acme/jobs/123",
       ],
       ["https://boards.greenhouse.io/acme/jobs/123", "https://boards.greenhouse.io/acme/jobs/123"],
+      [
+        "https://www.google.com/about/careers/applications/jobs/recommendations/136305128868061894-senior-software-engineering-manager-emergent-ai-infrastructure",
+        "https://www.google.com/about/careers/applications/jobs/results/136305128868061894-senior-software-engineering-manager-emergent-ai-infrastructure",
+      ],
       ["not a url", "not a url"],
     ]
     for (const [input, output] of cases) expect(normalizePostingUrl(input)).toBe(output)

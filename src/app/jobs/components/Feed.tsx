@@ -12,6 +12,7 @@ import {
   FileUp,
   Heart,
   Info,
+  Plus,
   SearchX,
   SquareTerminal,
   WifiOff,
@@ -31,9 +32,10 @@ import type { FeedbackPrompt, RankedOffer } from "src/server/preferences/types"
 import type { FeedbackAspect } from "src/shared/feedback-aspects"
 import { loadMoreFeed } from "../actions"
 import type { FeedCard, FeedChunk } from "../feed-data"
-import { filtersQuery, hasActiveFilters, type FeedFilters } from "../feed-filters"
+import { clearedFilters, filtersQuery, hasActiveFilters, type FeedFilters } from "../feed-filters"
 import type { FeedTab, Verdict } from "../types"
 import { useFeedback } from "../useFeedback"
+import { AddOfferDialog } from "./AddOffer"
 import { FilterBar } from "./FilterBar"
 import { AppliedStrip, CompactPrompt, LikePanel, LikedStrip, PassStrip } from "./Feedback"
 import { OfferCard } from "./OfferCard"
@@ -86,6 +88,8 @@ export type FeedProps = {
   country: string | null
   /** The person's own country (profile, else browser), the default. */
   ownCountry: string | null
+  /** The name of the company the list is filtered to (filters.company). */
+  companyName: string | null
   hasSession: boolean
   signedIn: boolean
   summary: PreferenceSummary | null
@@ -128,6 +132,7 @@ export function Feed(props: FeedProps) {
   const [summary, setSummary] = useState<PreferenceSummary | null>(props.summary)
   const [freshKeys, setFreshKeys] = useState(new Set<string>())
   const [keysOpen, setKeysOpen] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [coach, setCoach] = useState(false)
   const [ccCard, setCcCard] = useState(false)
   const [offline, setOffline] = useState(false)
@@ -629,9 +634,28 @@ export function Feed(props: FeedProps) {
       ? `feed.count.${pluralKind(count, locale)}`
       : `feed.countAll.${pluralKind(count, locale)}`
   ) as CopyKey
-  const filtered = hasActiveFilters(filters)
+  const filtered = hasActiveFilters(filters, props.country)
   const allDecided = !noProfile && items.length > 0 && visible.length === 0 && !next
   const similarMode = props.similarTo
+
+  // Beside the tabs on wider screens, first in the filter row on a phone.
+  const sortSelect = (className: string) =>
+    tab === "foryou" && !noProfile ? (
+      <select
+        className={className}
+        aria-label={t("feed.sort")}
+        value={filters.sort}
+        onChange={(event) =>
+          router.push(
+            filtersQuery({ ...filters, sort: event.target.value === "new" ? "new" : "fit" }, tab),
+            { scroll: false }
+          )
+        }
+      >
+        <option value="fit">{t("feed.sort.fit")}</option>
+        <option value="new">{t("feed.sort.new")}</option>
+      </select>
+    ) : null
 
   const tabsRow = (
     <div className="feed-tabs-row">
@@ -651,22 +675,7 @@ export function Feed(props: FeedProps) {
           {t("feed.all")}
         </Link>
       </nav>
-      {tab === "foryou" && !noProfile ? (
-        <select
-          className="select select--sm"
-          aria-label={t("feed.sort")}
-          value={filters.sort}
-          onChange={(event) =>
-            router.push(
-              filtersQuery({ ...filters, sort: event.target.value === "new" ? "new" : "fit" }, tab),
-              { scroll: false }
-            )
-          }
-        >
-          <option value="fit">{t("feed.sort.fit")}</option>
-          <option value="new">{t("feed.sort.new")}</option>
-        </select>
-      ) : null}
+      {sortSelect("select select--sm")}
     </div>
   )
 
@@ -823,7 +832,22 @@ export function Feed(props: FeedProps) {
         <div className="feed-head__top">
           <h1 className="t-h1">{tab === "foryou" ? t("feed.title") : t("feed.all")}</h1>
           {!noProfile ? (
-            <span className="feed-head__count">{t(countKey, { n: nf.format(count) })}</span>
+            <span className="feed-head__count">
+              {t(countKey, {
+                n: `${nf.format(count)}${tab === "foryou" && initial.capped ? "+" : ""}`,
+              })}
+            </span>
+          ) : null}
+          {props.hasSession ? (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Plus />}
+              className="feed-head__add"
+              onClick={() => setAdding(true)}
+            >
+              {t("oa.cta")}
+            </Button>
           ) : null}
         </div>
         {tabsRow}
@@ -835,6 +859,8 @@ export function Feed(props: FeedProps) {
         countries={props.countries}
         country={props.country}
         ownCountry={props.ownCountry}
+        companyName={props.companyName}
+        lead={sortSelect("select select--sm filterbar__sort")}
         onShortcuts={() => setKeysOpen(true)}
         searchRef={searchRef}
       />
@@ -932,13 +958,21 @@ export function Feed(props: FeedProps) {
           ) : items.length === 0 && !next ? (
             <EmptyState icon={<SearchX />} title={t("empty.filters.t")} body={t("empty.filters.b")}>
               {filtered ? (
-                <ButtonLink href={tab === "all" ? "/jobs?tab=all" : "/jobs"} variant="outline">
+                <ButtonLink
+                  href={filtersQuery(clearedFilters(filters, props.ownCountry), tab)}
+                  variant="outline"
+                >
                   {t("filter.clearAll")}
                 </ButtonLink>
               ) : null}
               <Link className="link" href="/profile">
                 {t("empty.filters.edit")}
               </Link>
+              {props.hasSession ? (
+                <Button variant="ghost" icon={<Plus />} onClick={() => setAdding(true)}>
+                  {t("oa.empty")}
+                </Button>
+              ) : null}
             </EmptyState>
           ) : (
             <>
@@ -1072,6 +1106,7 @@ export function Feed(props: FeedProps) {
       </Modal>
 
       <ShortcutsDialog open={keysOpen} onClose={() => setKeysOpen(false)} />
+      <AddOfferDialog open={adding} onClose={() => setAdding(false)} />
     </div>
   )
 }

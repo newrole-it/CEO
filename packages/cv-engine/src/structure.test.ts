@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { LlmClient } from "@newrole/llm/common"
 import { CvContent } from "@newrole/cv-core/schema"
-import { cvFromRawText, cvFromStructured, structureCvText } from "./structure"
+import { boldLead, cvFromRawText, cvFromStructured, structureCvText } from "./structure"
 
 const reply = {
   name: "Anna Przykładowa",
@@ -78,6 +78,25 @@ describe("cvFromStructured", () => {
 
   it("is null when the model returned no sections", () => {
     expect(cvFromStructured({ ...reply, sections: [] }, "pl")).toBeNull()
+  })
+})
+
+describe("boldLead", () => {
+  it("bolds a project's name before a colon", () => {
+    expect(boldLead("Fun Reach: I led work on a CDP.")).toBe(
+      "<strong>Fun Reach:</strong> I led work on a CDP."
+    )
+  })
+
+  it("leaves a sentence with a colon in it as it is", () => {
+    const text = "I was responsible for: hiring, architecture."
+    expect(boldLead(text)).toBe(text)
+    expect(boldLead("Led the team. Result: faster releases.")).toBe(
+      "Led the team. Result: faster releases."
+    )
+    expect(boldLead("<strong>BC Ads:</strong> display ads")).toBe(
+      "<strong>BC Ads:</strong> display ads"
+    )
   })
 })
 

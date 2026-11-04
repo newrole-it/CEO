@@ -51,6 +51,8 @@ type LlmCv = z.infer<typeof llmSchema>
 
 const SYSTEM = `You turn the text of a CV into structured JSON. Copy the person's wording exactly, in the CV's own language. Never invent, translate, summarise or improve anything; leave a field empty when the CV does not say it. Skip page numbers and consent clauses.
 
+The words are the person's, the layout is yours: the result must read well on paper. A role's "summary" is at most two sentences that set the scene (the product, the team, the scope). When a role is described in a longer paragraph, keep those opening sentences as "summary" and put every further sentence about a responsibility, result or project in its own bullet, word for word. A list in the CV stays a list, one bullet per point.
+
 Reply with this shape:
 {"name":"","headline":"","location":"","email":"","phone":"","links":[{"label":"linkedin.com/in/x","url":"https://..."}],
 "sections":[
@@ -62,6 +64,13 @@ Reply with this shape:
  {"type":"text","title":"Languages","body":"Polish · English"}
 ]}
 Keep the sections in the order of the CV and use the CV's own section titles. Text fields are plain text.`
+
+/** "AdVantage: I co-built…" → the project's name in bold, as in the reference layout. */
+export function boldLead(html: string): string {
+  const match = html.match(/^([^\s:<.!?][^:<.!?]{0,38}?):\s+/)
+  if (!match || match[1].trim().split(/\s+/).length > 3) return html
+  return `<strong>${match[1]}:</strong> ${html.slice(match[0].length)}`
+}
 
 function toSection(raw: LlmCv["sections"][number], locale: CvLocale): CvSection | null {
   const id = cvId("s")
@@ -86,7 +95,7 @@ function toSection(raw: LlmCv["sections"][number], locale: CvLocale): CvSection 
     const parsed = items
       .map((item) => {
         const bullets = (item.bullets ?? [])
-          .map((bullet) => textToInline(bullet.trim()))
+          .map((bullet) => boldLead(textToInline(bullet.trim())))
           .filter(Boolean)
         const tech = (item.tech ?? "").trim()
         return {

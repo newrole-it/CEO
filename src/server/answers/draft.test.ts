@@ -3,6 +3,7 @@ import {
   companyKey,
   companyMismatch,
   DRAFT_SYSTEM,
+  draftSystem,
   draftUserPrompt,
   finalizeDraft,
   fitToLimit,
@@ -218,5 +219,15 @@ describe("prompt", () => {
     expect(prompt).toContain("id: ans1 (similarity 0.90, company: Allegro, language: en)")
     expect(prompt).toContain("A: Scale.")
     expect(prompt).toContain("(empty: no profile or CV yet)")
+  })
+})
+
+describe("draftSystem", () => {
+  it("puts the style of each question's language between the rules and the reply's shape", () => {
+    const system = draftSystem(["pl"])
+    expect(system.startsWith(DRAFT_SYSTEM)).toBe(true)
+    expect(system).toContain("Natural Polish")
+    expect(system).not.toContain("Natural English")
+    expect(system.trimEnd().endsWith("with one entry per question id.")).toBe(true)
   })
 })

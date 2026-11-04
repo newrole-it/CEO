@@ -241,10 +241,10 @@ export const OfferCard = forwardRef<
           href={`${href}/cv`}
           prefetch={false}
           tabIndex={demo ? -1 : undefined}
-          aria-label={t("tl.act")}
+          aria-label={t(offer.hasCv ? "tl.act.cv" : "tl.act")}
         >
           <FileText aria-hidden />
-          <span className="lbl-long">{t("tl.act")}</span>
+          <span className="lbl-long">{t(offer.hasCv ? "tl.act.cv" : "tl.act")}</span>
         </Link>
         <span className="spacer" />
         {offer.url ? (

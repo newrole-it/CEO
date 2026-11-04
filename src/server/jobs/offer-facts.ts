@@ -4,7 +4,7 @@
  */
 import { DEFAULT_CONFIG } from "@newrole/matching/config"
 import { CITY_ALIASES, normalizeLocation } from "@newrole/matching/normalization"
-import { countryFromText, remoteOpenTo } from "@newrole/matching/places"
+import { countryFromText, regionCovers, remoteOpenTo } from "@newrole/matching/places"
 import { fold } from "@newrole/matching/text"
 import { blockedCountries, isBlockedCountry } from "src/server/geo/countries"
 import { plnPerUnit } from "src/server/fx/nbp"
@@ -297,12 +297,27 @@ export function placeFacts(input: {
   return { inPoland, city, countryCode, countries: [...countries], workMode, location: parsed }
 }
 
-/** In the country, or remote and open to people there. */
 const REGIONS = new Set(["PL", "EU", "EMEA", "US", "AMERICAS", "APAC", "WORLD"])
 
-export function placeInCountry(place: PlaceFacts, country: string): boolean {
+/**
+ * In the country, or remote and open to people there. remoteOpenTo reads only the location text,
+ * so "Remote" with no region is open to every country. With `remoteHere` a country stored with
+ * the offer (Ashby: "Remote" with an address in the United States) keeps it remote in that
+ * country; a region that covers this country still lets it in.
+ */
+export function placeInCountry(
+  place: PlaceFacts,
+  country: string,
+  { remoteHere = false } = {}
+): boolean {
   if (isBlockedCountry(country)) return false
-  return place.countries.includes(country) || remoteOpenTo(place.location, country)
+  if (place.countries.includes(country)) return true
+  if (!remoteOpenTo(place.location, country)) return false
+  return (
+    !remoteHere ||
+    !place.countries.length ||
+    place.location.remoteRegions.some((region) => regionCovers(region, country))
+  )
 }
 
 export function canonicalCity(value: string): string | null {
@@ -329,7 +344,8 @@ export function cityNeedles(city: string): string[] {
 
 // The words @newrole/matching/normalization reads as remote work (RE_REMOTE). Only narrows the database
 // scan; placeInCountry decides. A text "Remote" on an offer stored with another country and no
-// region still reads as open to every country (85 open offers in the list for Poland, 2026-11-03).
+// region still reads as open to every country (85 open offers in the list for Poland, 2026-11-03)
+// unless the person turns on remoteHere.
 const REMOTE_NEEDLES = [
   "remote",
   "zdaln",
@@ -382,10 +398,16 @@ export type OfferFilter = {
   city: string
   mode: "any" | "remote" | "hybrid" | "onsite"
   minMonthlyPln?: number
+  /** Leave out remote offers the employer tied to another country (see placeInCountry). */
+  remoteHere?: boolean
 }
 
 export function offerMatches(place: PlaceFacts, pay: MonthlyPay, filters: OfferFilter): boolean {
-  if (filters.country && !placeInCountry(place, filters.country)) return false
+  if (
+    filters.country &&
+    !placeInCountry(place, filters.country, { remoteHere: filters.remoteHere })
+  )
+    return false
   if (filters.city && place.city !== filters.city) return false
   if (filters.mode !== "any" && place.workMode !== filters.mode) return false
   if (filters.minMonthlyPln != null && filters.minMonthlyPln > 0) {

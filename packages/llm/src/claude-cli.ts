@@ -14,6 +14,7 @@ import {
   type LlmClient,
   type LlmResult,
 } from "./common"
+import { readCliUsage, type LlmCallUsage, type RecordLlmCall } from "./usage"
 
 /**
  * LLM provider that runs the local `claude` CLI in print mode, so the person's own
@@ -27,6 +28,8 @@ export type SpawnFn = (
 ) => ChildProcessWithoutNullStreams
 
 export type ClaudeRunArgs = {
+  /** The task, as the AI usage tab names it (LlmCall.purpose) */
+  purpose?: string
   prompt: string
   system?: string
   model?: string
@@ -53,6 +56,8 @@ export type ClaudeRunResult = {
 export type ClaudeCliDeps = {
   spawn?: SpawnFn
   binary?: string | null
+  /** Where each run's usage goes; without one it is not kept */
+  record?: RecordLlmCall | null
 }
 
 export const DEFAULT_CLAUDE_MODEL = "haiku"
@@ -117,6 +122,10 @@ function limiterFor(max: number) {
   return limiter
 }
 
+function cliModel(args: ClaudeRunArgs): string {
+  return args.model || process.env.CLAUDE_CLI_MODEL?.trim() || DEFAULT_CLAUDE_MODEL
+}
+
 export function claudeArgs(args: ClaudeRunArgs): string[] {
   const tools = args.allowedTools ?? []
   // --tools lists built-in tools only. MCP tools (Chrome) are allowed by name alone.
@@ -126,7 +135,7 @@ export function claudeArgs(args: ClaudeRunArgs): string[] {
     "--output-format",
     ...(args.onEvent ? ["stream-json", "--verbose"] : ["json"]),
     "--model",
-    args.model || process.env.CLAUDE_CLI_MODEL?.trim() || DEFAULT_CLAUDE_MODEL,
+    cliModel(args),
     "--max-turns",
     String(args.maxTurns ?? (tools.length ? 8 : 1)),
     // Only the named built-in tools exist in the session; "" means none at all.
@@ -209,12 +218,14 @@ export function parseCliOutput(stdout: string): ClaudeRunResult | null {
   }
 }
 
+type RunOutcome = { reply: ClaudeRunResult | null; usage: LlmCallUsage | null }
+
 function runOnce(
   binary: string,
   args: ClaudeRunArgs,
   spawn: SpawnFn,
   timeoutMs: number
-): Promise<ClaudeRunResult | null> {
+): Promise<RunOutcome> {
   return new Promise((resolve) => {
     let child: ChildProcessWithoutNullStreams
     try {
@@ -226,7 +237,7 @@ function runOnce(
       })
     } catch (error) {
       console.error("claude CLI failed to start", error instanceof Error ? error.message : error)
-      resolve(null)
+      resolve({ reply: null, usage: null })
       return
     }
     let stdout = ""
@@ -251,7 +262,7 @@ function runOnce(
         }
       }
     }
-    const finish = (value: ClaudeRunResult | null) => {
+    const finish = (value: RunOutcome) => {
       if (settled) return
       settled = true
       clearTimeout(timer)
@@ -261,7 +272,7 @@ function runOnce(
       console.error(`claude CLI timed out after ${timeoutMs} ms`)
       child.kill("SIGTERM")
       setTimeout(() => child.kill("SIGKILL"), 2000).unref()
-      finish(null)
+      finish({ reply: null, usage: null })
     }, timeoutMs)
     child.stdout.on("data", (chunk: Buffer) => {
       const text = chunk.toString("utf8")
@@ -271,7 +282,7 @@ function runOnce(
     child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString("utf8")))
     child.on("error", (error) => {
       console.error("claude CLI failed", error.message)
-      finish(null)
+      finish({ reply: null, usage: null })
     })
     child.on("close", (code) => {
       if (args.onEvent) {
@@ -284,7 +295,7 @@ function runOnce(
           `claude CLI exited ${code}${stderr ? `: ${stderr.trim().slice(0, 300)}` : ""}`
         )
       }
-      finish(parsed)
+      finish({ reply: parsed, usage: readCliUsage(stdout) })
     })
     child.stdin.on("error", () => undefined)
     child.stdin.end(args.prompt)
@@ -294,6 +305,7 @@ function runOnce(
 /**
  * One headless Claude turn. Tools are off unless `allowedTools` names them
  * (discovery passes ["WebSearch"]). Returns null when the CLI is missing or fails.
+ * Every run that starts goes to `deps.record`, failed ones too.
  */
 export async function runClaudePrompt(
   args: ClaudeRunArgs,
@@ -305,7 +317,26 @@ export async function runClaudePrompt(
     args.timeoutMs ?? (Number(process.env.CLAUDE_CLI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS)
   const max =
     deps.maxConcurrent ?? (Number(process.env.CLAUDE_CLI_MAX_CONCURRENT) || DEFAULT_MAX_CONCURRENT)
-  return limiterFor(max)(() => runOnce(binary, args, deps.spawn ?? nodeSpawn, timeoutMs))
+  const run = await limiterFor(max)(async () => {
+    const started = Date.now()
+    const outcome = await runOnce(binary, args, deps.spawn ?? nodeSpawn, timeoutMs)
+    return { ...outcome, durationMs: Date.now() - started }
+  })
+  await deps.record?.({
+    purpose: args.purpose || "other",
+    provider: "claude-cli",
+    tokenInput: 0,
+    cacheWriteTokens: 0,
+    cacheReadTokens: 0,
+    tokenOutput: 0,
+    webSearches: 0,
+    reportedUsd: null,
+    ...run.usage,
+    model: run.usage?.model || cliModel(args),
+    usageKnown: run.usage != null,
+    durationMs: run.durationMs,
+  })
+  return run.reply
 }
 
 /** First balanced JSON object or array in a reply that may carry prose around it. */
@@ -368,10 +399,15 @@ export function createClaudeCliClient(
   const store = opts.cache ?? null
   const model = opts.model || process.env.CLAUDE_CLI_MODEL?.trim() || DEFAULT_CLAUDE_MODEL
   const cacheModel = `claude-cli/${model}`
-  const run = (prompt: string, system: string) =>
+  const run = (purpose: string, prompt: string, system: string) =>
     runClaudePrompt(
-      { prompt, system, model, timeoutMs: opts.timeoutMs },
-      { spawn: opts.spawn, binary: opts.binary, maxConcurrent: opts.maxConcurrent }
+      { purpose, prompt, system, model, timeoutMs: opts.timeoutMs },
+      {
+        spawn: opts.spawn,
+        binary: opts.binary,
+        maxConcurrent: opts.maxConcurrent,
+        record: opts.record,
+      }
     )
 
   return {
@@ -395,7 +431,7 @@ export function createClaudeCliClient(
       let tokenOutput = 0
       let prompt = args.user
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const reply = await run(prompt, system)
+        const reply = await run(args.purpose, prompt, system)
         if (!reply) return null
         tokenInput += reply.tokenInput
         tokenOutput += reply.tokenOutput
@@ -427,7 +463,7 @@ export function createClaudeCliClient(
         const hit = await readCachedText(store, cache.cacheKey)
         if (hit) return hit
       }
-      const reply = await run(args.user, system)
+      const reply = await run(args.purpose, args.user, system)
       if (!reply?.text.trim()) return null
       if (store && cache) {
         await writeCache(store, {

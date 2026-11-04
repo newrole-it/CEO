@@ -15,7 +15,7 @@ import { asStringList } from "@newrole/profile/schema"
 import { roleLabel, titleSimilarity, type OfferProfile } from "./facts"
 import type { Bilingual } from "./types"
 
-export type SourceKind = "company-site" | "ats" | "link-only" | "mcp"
+export type SourceKind = "company-site" | "ats" | "link-only" | "mcp" | "added"
 
 const PROVIDER_LABEL: Record<string, string> = {
   GREENHOUSE: "Greenhouse",
@@ -42,8 +42,9 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 /**
  * ATS boards → "ats" with the ATS name. Career-site and generic HTML pages → "company-site".
- * WEB_SEARCH rows added through MCP (board id "mcp:…") → "mcp"; other WEB_SEARCH rows
- * without a description are links we may not read → "link-only".
+ * WEB_SEARCH rows added through MCP (board id "mcp:…") → "mcp"; those the person added under
+ * Offers ("web:…") → "added"; other WEB_SEARCH rows without a description are links we may not
+ * read → "link-only".
  */
 export function sourceOf(job: {
   sourceType: string
@@ -52,6 +53,7 @@ export function sourceOf(job: {
 }): { sourceKind: SourceKind; provider: string | null } {
   if (job.sourceType === "WEB_SEARCH") {
     if (job.sourceBoardId?.startsWith("mcp:")) return { sourceKind: "mcp", provider: "Claude" }
+    if (job.sourceBoardId?.startsWith("web:")) return { sourceKind: "added", provider: null }
     return { sourceKind: job.hasDescription ? "company-site" : "link-only", provider: null }
   }
   if (job.sourceType === "CAREER_SITE" || job.sourceType === "GENERIC_HTML") {
@@ -235,6 +237,8 @@ function sourcePart(kind: SourceKind, provider: string | null): ScorePart {
   if (kind === "company-site") return part("source", 1, { pl: "Strona firmy", en: "Company site" })
   if (kind === "mcp")
     return part("source", 0.85, { pl: "Dodana przez Claude", en: "Added by Claude" })
+  if (kind === "added")
+    return part("source", 0.85, { pl: "Dodana przez Ciebie", en: "Added by you" })
   return part("source", 0.5, { pl: "Tylko link", en: "Link only" })
 }
 

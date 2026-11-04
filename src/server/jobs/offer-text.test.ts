@@ -5,12 +5,15 @@ import type { HttpClient, HttpResponse } from "src/server/security/safe-fetch"
 import {
   indexedOfferText,
   OFFER_TEXT_LIMIT,
+  pageText,
   readOfferText,
   toOfferSource,
   type OfferSource,
 } from "./offer-text"
 
-const LONG = `${"Budujemy platformę płatności dla dużych zespołów. ".repeat(12)}Wymagamy: Go, Kubernetes.`
+const LONG = `${"Budujemy platformę płatności dla dużych zespołów. ".repeat(
+  12
+)}Wymagamy: Go, Kubernetes.`
 const STORED = "Fragment z indeksu."
 
 let counter = 0
@@ -90,8 +93,18 @@ describe("readOfferText", () => {
 
   it("finds the offer in a feed that lists every description", async () => {
     const postings = [
-      { id: "other", text: "Other", hostedUrl: "https://jobs.lever.co/acme/other", descriptionPlain: "Inna oferta" },
-      { id: "7", text: "Staff Engineer", hostedUrl: "https://jobs.lever.co/acme/7", descriptionPlain: LONG },
+      {
+        id: "other",
+        text: "Other",
+        hostedUrl: "https://jobs.lever.co/acme/other",
+        descriptionPlain: "Inna oferta",
+      },
+      {
+        id: "7",
+        text: "Staff Engineer",
+        hostedUrl: "https://jobs.lever.co/acme/7",
+        descriptionPlain: LONG,
+      },
     ]
     const { http } = fakeHttp(() => ({ body: JSON.stringify(postings) }))
 
@@ -115,6 +128,25 @@ describe("readOfferText", () => {
     expect(read.text).toContain("Wymagamy: Go, Kubernetes.")
     const indexed = parseJsonLdJobs(page, CAREER.originalUrl)[0]
     expect(indexed.descriptionText?.length).toBeLessThanOrEqual(EXCERPT_CHARS)
+  })
+
+  it("reads the main text of a company page that has no structured data", async () => {
+    const page = `<html><body><nav>Kariera · Blog · Kontakt</nav><main><h1>Staff Engineer</h1><p>${LONG}</p></main><footer>© Acme</footer></body></html>`
+    const { http } = careerHttp(page)
+
+    const read = await readOfferText(source(CAREER), http)
+
+    expect(read.origin).toBe("full")
+    expect(read.text).toContain("Wymagamy: Go, Kubernetes.")
+    expect(read.text).not.toContain("Blog")
+    expect(read.text).not.toContain("© Acme")
+  })
+
+  it("keeps the excerpt when a page without structured data holds almost no text", async () => {
+    const { http } = careerHttp("<html><body><main>Ładowanie…</main></body></html>")
+
+    expect(await readOfferText(source(CAREER), http)).toEqual({ text: STORED, origin: "excerpt" })
+    expect(pageText("<main>Ładowanie…</main>")).toBe("")
   })
 
   it("drops contact details and stops at the limit", async () => {
@@ -192,7 +224,10 @@ describe("readOfferText", () => {
     const { http, urls } = fakeHttp(() => ({ body: greenhouse(LONG) }))
     const offer = source()
 
-    const [first, second] = await Promise.all([readOfferText(offer, http), readOfferText(offer, http)])
+    const [first, second] = await Promise.all([
+      readOfferText(offer, http),
+      readOfferText(offer, http),
+    ])
     const third = await readOfferText(offer, http)
 
     expect(first).toEqual(second)
@@ -228,7 +263,9 @@ describe("toOfferSource", () => {
   })
 
   it("marks an opted-out offer as withheld without touching the network", () => {
-    expect(indexedOfferText(toOfferSource({ ...row, descriptionText: "Opis", llmOptOut: true }))).toEqual({
+    expect(
+      indexedOfferText(toOfferSource({ ...row, descriptionText: "Opis", llmOptOut: true }))
+    ).toEqual({
       text: "",
       origin: "withheld",
     })

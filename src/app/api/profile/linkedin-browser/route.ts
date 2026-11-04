@@ -1,6 +1,7 @@
 import { getBlitzContext } from "src/app/blitz-server"
 import { draftFromProfileText } from "src/server/profile/import"
 import { linkedInBrowserAvailable, readLinkedInViaClaude } from "@newrole/profile/linkedin-browser"
+import { runClaudePrompt } from "src/server/llm/claude-cli"
 import { isLocalInstall } from "src/server/local-install"
 import { linkedInJobs } from "@newrole/profile/linkedin-jobs"
 import { isAppHostRequest, isSameAppRequest } from "src/server/security/origin"
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   const who = await owner()
   if (!who) return signInFirst()
   const { id } = linkedInJobs().start(who.key, async ({ stage }) => {
-    const read = await readLinkedInViaClaude({ onStage: stage })
+    const read = await readLinkedInViaClaude({ onStage: stage, run: runClaudePrompt })
     if (read.status !== "ok" || !read.text) return { status: read.status, message: read.message }
     stage("analyzing")
     const { draft } = await draftFromProfileText(read.text, who.userId)

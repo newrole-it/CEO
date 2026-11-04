@@ -1,8 +1,9 @@
 const MAX_PHOTO_PX = 360
 
 /**
- * A picked image as a small square JPEG data URL: centre-cropped (the CV shows it in a circle),
- * at most 360 px, on white in case the source has transparency. Throws if it cannot be read.
+ * A picked image as a small square JPEG data URL: centre-cropped (the CV frames it in a circle
+ * or a square), at most 360 px, on white in case the source has transparency. Throws if it
+ * cannot be read.
  */
 export async function photoToDataUrl(file: File): Promise<string> {
   const url = URL.createObjectURL(file)

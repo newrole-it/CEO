@@ -563,6 +563,14 @@ export function normalizePostingUrl(rawUrl: string): string {
       const token = url.searchParams.get("token")
       if (board && token) return `https://boards.greenhouse.io/${board}/jobs/${token}`
     }
+    // Google Careers sends /jobs/recommendations/<id> to a Google sign-in; /jobs/results/<id> is
+    // the same posting in public (both read 2026-11-04).
+    if (url.hostname === "www.google.com") {
+      url.pathname = url.pathname.replace(
+        /^\/about\/careers\/applications\/jobs\/recommendations\//,
+        "/about/careers/applications/jobs/results/"
+      )
+    }
     url.pathname = url.pathname.replace(
       /\/(apply(\/[^/]*)?|application|applications\/new|apply-now|aplikuj)\/?$/i,
       ""

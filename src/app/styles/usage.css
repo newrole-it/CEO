@@ -1,0 +1,45 @@
+/* /usage: model runs by task and their cost. Uses the tokens from app.css. */
+
+.usage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.usage-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+}
+.usage-tile {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 14px 16px;
+}
+.usage-tile__value {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.usage-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .usage-card {
+    padding: 20px;
+  }
+}
+.usage-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+}
+.usage-table td,
+.usage-table th {
+  white-space: nowrap;
+}

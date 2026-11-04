@@ -4,6 +4,7 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { listCvs } from "src/server/cv/service"
+import { offerStages } from "src/server/preferences/saved"
 import { setupBack } from "src/app/setup/back"
 import { CvList } from "./CvList"
 
@@ -19,13 +20,15 @@ export default async function CvPage() {
     user ? listCvs(user.id, { letters: true }) : [],
     setupBack(user?.id ?? null),
   ])
+  const jobIds = cvs.flatMap((cv) => (cv.target?.jobId ? [cv.target.jobId] : []))
+  const stages = user ? await offerStages(user.id, jobIds) : {}
   return (
     <SiteFrame user={user} locale={locale} width="narrow" setupBack={back}>
       <header className="page-head">
         <h1 className="t-h1">{t("cv.title")}</h1>
         <p>{t("cv.sub")}</p>
       </header>
-      <CvList signedIn={Boolean(user)} initial={cvs} after={back} />
+      <CvList signedIn={Boolean(user)} initial={cvs} stages={stages} after={back} />
     </SiteFrame>
   )
 }

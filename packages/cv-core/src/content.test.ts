@@ -33,6 +33,10 @@ describe("schema", () => {
         header: { ...base.header, photo: `data:image/png;base64,${"A".repeat(MAX_PHOTO_CHARS)}` },
       })
     ).toContain("too large")
+    expect(cvContentError({ ...base, header: { ...base.header, photoShape: "oval" } })).toContain(
+      "photoShape"
+    )
+    expect(cvContentError({ ...base, header: { ...base.header, photoShape: "square" } })).toBeNull()
     expect(
       cvContentError({
         ...base,

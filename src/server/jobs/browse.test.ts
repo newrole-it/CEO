@@ -5,9 +5,10 @@ import {
   UNFILTERED_BATCHES,
   browseQuery,
   browseScanCap,
+  knownSince,
   resolveBrowse,
   scanUntilPage,
-  titleMatchesPhrase,
+  tagsWhere,
 } from "./browse"
 import { monthlyBasePln, offerMatches, placeFacts } from "./offer-facts"
 
@@ -133,6 +134,24 @@ describe("browse query", () => {
     expect(resolveBrowse({ location: "zdalnie" }).mode).toBe("remote")
   })
 
+  it("scans further for a company, a date or a caller's own test", () => {
+    expect(browseScanCap(resolveBrowse({}))).toBe(UNFILTERED_BATCHES)
+    expect(browseScanCap(resolveBrowse({ companyId: "c1" }))).toBeGreaterThan(UNFILTERED_BATCHES)
+    expect(browseScanCap(resolveBrowse({ seenSince: new Date() }))).toBeGreaterThan(
+      UNFILTERED_BATCHES
+    )
+    expect(browseScanCap(resolveBrowse({ keep: () => true }))).toBeGreaterThan(UNFILTERED_BATCHES)
+  })
+
+  it("dates an offer by its posting date only when that is earlier than the first sighting", () => {
+    const firstSeenAt = "2026-11-03T10:00:00.000Z"
+    expect(knownSince({ firstSeenAt, publishedAt: "2025-01-10T00:00:00.000Z" })).toBe(
+      "2025-01-10T00:00:00.000Z"
+    )
+    expect(knownSince({ firstSeenAt, publishedAt: "2026-11-03T10:00:01.000Z" })).toBe(firstSeenAt)
+    expect(knownSince({ firstSeenAt, publishedAt: null })).toBe(firstSeenAt)
+  })
+
   it("builds one jobs url for a phrase and a monthly minimum", () => {
     const href = browseQuery(
       resolveBrowse({ phrase: "Data Engineer", pay: 30_000, mode: "remote" })
@@ -140,18 +159,20 @@ describe("browse query", () => {
     expect(href).toBe("/jobs?q=Data+Engineer&mode=remote&pay=30000")
   })
 
-  it("matches a role when every word is in the title", () => {
-    expect(
-      titleMatchesPhrase("Senior Data Engineer", "Senior Data Engineer", "data engineer")
-    ).toBe(true)
-    expect(titleMatchesPhrase("Product Designer", "Product Designer", "data engineer")).toBe(false)
+  it("keeps each tag as its own q, the old phrase among them", () => {
+    const filters = resolveBrowse({ tags: ["Engineering Manager", "java"], phrase: "CTO" })
+    expect(filters.tags).toEqual(["Engineering Manager", "java", "CTO"])
+    expect(browseQuery(filters)).toBe("/jobs?q=Engineering+Manager&q=java&q=CTO")
+    expect(browseScanCap(filters)).toBeGreaterThan(UNFILTERED_BATCHES)
   })
 
-  it("matches the employer name, alone or with a role", () => {
-    const title = "Senior Backend Engineer"
-    expect(titleMatchesPhrase(title, title, "docplanner", "Docplanner")).toBe(true)
-    expect(titleMatchesPhrase(title, title, "Docplanner backend", "Docplanner")).toBe(true)
-    expect(titleMatchesPhrase(title, title, "docplanner frontend", "Docplanner")).toBe(false)
-    expect(titleMatchesPhrase(title, title, "docplanner", "Allegro")).toBe(false)
+  it("narrows the rows by any tag's words, catalog phrases without diacritic words", () => {
+    expect(tagsWhere([])).toBeNull()
+    const where = JSON.stringify(tagsWhere(["Team Lead", "docplanner backend"]))
+    // "lider zespołu" asks only for "lider"; a title may spell "zespolu"
+    expect(where).toContain('"lider"')
+    expect(where).not.toContain("zespołu")
+    // free text may be the employer's name
+    expect(where).toContain('"company":{"name":{"contains":"docplanner"')
   })
 })

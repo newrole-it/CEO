@@ -169,6 +169,7 @@ export async function readLinkedInViaClaude(
   const run = opts.run ?? runClaudePrompt
   const reply = await run(
     {
+      purpose: "linkedin-browser",
       prompt: LINKEDIN_BROWSER_PROMPT,
       system: SYSTEM,
       model: modelName(),

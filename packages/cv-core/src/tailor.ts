@@ -1,7 +1,9 @@
+import { fold } from "@newrole/matching/text"
 import { z } from "zod"
 import { defaultConsent, type CvLocale } from "./blank"
 import { inlineToText, sanitizeInline } from "./sanitize"
 import { parseCvContent, type CvContent, type CvSection } from "./schema"
+import { cvPlainText } from "./text"
 
 /**
  * Tailoring a CV to one offer. The model never writes the CV: it proposes wording and order for
@@ -35,11 +37,18 @@ const ReplySection = z.object({
   items: z.array(ReplyItem).max(120).optional(),
 })
 
+const ReplyKeyword = z.object({
+  term: z.string().max(300),
+  /** The candidate's own words that show the term; empty when nothing does */
+  evidence: z.string().max(2000).optional(),
+})
+
 export const TailorReply = z.object({
   headline: optional(900),
   sections: z.array(ReplySection).max(60),
   changes: z.array(z.string().max(600)).max(20).catch([]),
   gaps: z.array(z.string().max(600)).max(20).catch([]),
+  keywords: z.array(ReplyKeyword).max(40).catch([]),
 })
 export type TailorReply = z.infer<typeof TailorReply>
 
@@ -50,11 +59,22 @@ export type OfferTextOrigin = z.infer<typeof OfferTextOrigin>
 /** The most of an offer's text a tailoring or a letter reads. */
 export const OFFER_TEXT_LIMIT = 12_000
 
+/**
+ * Where one of the offer's key terms ended up. kept: the CV had it already. added: tailoring put
+ * it in. unplaced: the person's CV or profile shows it, the tailored CV does not. missing: their
+ * data does not show it.
+ */
+export const KeywordStatus = z.enum(["kept", "added", "unplaced", "missing"])
+export type KeywordStatus = z.infer<typeof KeywordStatus>
+export type KeywordNote = { term: string; status: KeywordStatus }
+
 export const TailorNotes = z.object({
   changes: z.array(z.string()),
   gaps: z.array(z.string()),
   /** Names in the new text that the person's CV and profile do not have */
   unverified: z.array(z.string()),
+  /** The offer's key terms, most important first. Documents tailored before this have none. */
+  keywords: z.array(z.object({ term: z.string(), status: KeywordStatus })).optional(),
   /** Fields that kept their old text because the model added a number */
   reverted: z.number(),
   /** False when the model saw only the company and title, not the offer's text */
@@ -163,6 +183,83 @@ export function unverifiedNumbers(written: string[], evidence: string): string[]
   const known = knownNumbers(evidence)
   const found = written.flatMap(numbersIn).filter((value) => !known.has(value))
   return [...new Set(found)]
+}
+
+/* ---------------------------------------------------------------- keywords */
+
+const MAX_KEYWORDS = 15
+
+/** Text as words for matching: folded, punctuation as spaces, "C++" and "C#" kept, padded. */
+const matchable = (text: string) =>
+  ` ${fold(text)
+    .replace(/[^\p{L}\p{N}+#]+/gu, " ")
+    .trim()} `
+
+/**
+ * One word of a term in matchable text. A tool-shaped or short word must be there whole; a word of
+ * four or five letters may gain an ending of up to three ("React" in "Reactem"), and a longer one
+ * counts by its stem ("zarządzanie" in "zarządzałem").
+ */
+function hasWord(text: string, raw: string): boolean {
+  const word = matchable(raw).trim()
+  if (!word) return true
+  if (TECH_SHAPED.test(raw) || !/^\p{L}+$/u.test(word) || word.length <= 3)
+    return text.includes(` ${word} `)
+  if (word.length <= 5) return new RegExp(` ${word}\\p{L}{0,3} `, "u").test(text)
+  return text.includes(` ${word.slice(0, Math.max(5, word.length - 3))}`)
+}
+
+function hasTerm(text: string, term: string): boolean {
+  const words = term
+    .split(/\s+/)
+    .map((word) => word.replace(/^["'„“(]+|["'”).,;:!?]+$/g, ""))
+    .filter(Boolean)
+  return words.length > 0 && words.every((word) => hasWord(text, word))
+}
+
+/**
+ * True when the text has every word of the term, by stem where Polish changes endings, so
+ * "zarządzanie zespołem" is found in "zarządzałem zespołem". A hint, not a verdict.
+ */
+export function mentionsTerm(text: string, term: string): boolean {
+  return hasTerm(matchable(text), term)
+}
+
+/**
+ * The offer's key terms the model listed, checked by code: whether the tailored CV has each one,
+ * and whether the person's data backs it, by the term itself or by the words the model quoted as
+ * evidence. A term in the CV that nothing backs is returned in `unsupported`.
+ */
+export function keywordNotes(
+  keywords: TailorReply["keywords"],
+  texts: { before: string; after: string; evidence: string }
+): { keywords: KeywordNote[]; unsupported: string[] } {
+  const before = matchable(texts.before)
+  const after = matchable(texts.after)
+  const known = matchable(texts.evidence)
+  const seen = new Set<string>()
+  const notes: KeywordNote[] = []
+  const unsupported: string[] = []
+  for (const keyword of keywords) {
+    const term = inlineToText(keyword.term).replace(/\s+/g, " ").trim()
+    const key = matchable(term).trim()
+    if (!key || term.length > 80 || seen.has(key)) continue
+    seen.add(key)
+    const quote = matchable(inlineToText(keyword.evidence ?? "")).trim()
+    const backed = hasTerm(known, term) || (quote.length >= 3 && known.includes(` ${quote} `))
+    const inCv = hasTerm(after, term)
+    const status: KeywordStatus = inCv
+      ? hasTerm(before, term)
+        ? "kept"
+        : "added"
+      : backed
+      ? "unplaced"
+      : "missing"
+    if (inCv && !backed) unsupported.push(term)
+    notes.push({ term, status })
+    if (notes.length === MAX_KEYWORDS) break
+  }
+  return { keywords: notes, unsupported }
 }
 
 /* ---------------------------------------------------------------- merge */
@@ -278,13 +375,18 @@ function mergeSection(
         .map((bullet) => writer.rich(bullet, MAX.bullet))
         .filter((bullet): bullet is string => Boolean(bullet))
         .slice(0, 40)
+      const summary = writer.rich(next.summary, MAX.summary) ?? item.summary
+      // a summary split into bullets: if none of them landed, the old summary still has the facts
+      const split = !item.bullets.length && Boolean(next.bullets?.length)
       return {
         ...item,
         role: translate ? writer.plain(next.role, 240) ?? item.role : item.role,
         dates: translate ? writer.dates(next.dates, item.dates) : item.dates,
-        summary: writer.rich(next.summary, MAX.summary) ?? item.summary,
+        summary: split && !bullets.length ? item.summary : summary,
         bullets: bullets.length ? bullets : item.bullets,
         tech: writer.rich(next.tech, MAX.tech) ?? item.tech,
+        // a role that gained bullets is no longer a one-line entry
+        compact: split && bullets.length ? false : item.compact,
       }
     })
     return { ...section, title, items }
@@ -306,7 +408,7 @@ function mergeSection(
 
 export type Tailored = {
   content: CvContent
-  notes: Pick<TailorNotes, "changes" | "gaps" | "unverified" | "reverted">
+  notes: Pick<TailorNotes, "changes" | "gaps" | "unverified" | "reverted" | "keywords">
 }
 
 /**
@@ -343,13 +445,26 @@ export function applyTailoring(
       opts.translateTo && base.consent != null ? defaultConsent(opts.translateTo) : base.consent,
   })
   if (!content) return null
+  const keywords = keywordNotes(reply.keywords, {
+    before: cvPlainText(base),
+    after: cvPlainText(content),
+    evidence: opts.evidence,
+  })
+  // a keyword nothing backs comes first: the model said the person's data shows it
+  const unverified = new Map(
+    [
+      ...keywords.unsupported,
+      ...unverifiedTerms(writer.written, opts.evidence, { translated: translate }),
+    ].map((term) => [term.toLowerCase(), term])
+  )
   return {
     content,
     notes: {
       changes: reply.changes.map((line) => line.trim()).filter(Boolean),
       gaps: reply.gaps.map((line) => line.trim()).filter(Boolean),
-      unverified: unverifiedTerms(writer.written, opts.evidence, { translated: translate }),
+      unverified: [...unverified.values()].slice(0, 12),
       reverted: writer.reverted(),
+      keywords: keywords.keywords,
     },
   }
 }

@@ -369,11 +369,21 @@
   background: none;
   cursor: pointer;
 }
+.cv-doc .cve-photo__btn--square {
+  border-radius: 0;
+}
 .cve-photo__btn:hover .cv-photo {
   filter: brightness(0.9);
 }
 .cve-photo .menu {
   display: block;
+}
+.cv-doc .cve-photo .menu__sep {
+  display: block;
+}
+.cv-doc .cve-photo .cve-photo__check {
+  margin-left: auto;
+  color: var(--primary);
 }
 
 /* hover strip on a block; absolutely positioned, so it cannot move text */

@@ -51,6 +51,9 @@ export const CvPhoto = z
     "The photo must be a JPEG, PNG or WebP data URL."
   )
 
+/** The frame the photo sits in at the top of the sheet; a CV without it shows a circle. */
+export const CvPhotoShape = z.enum(["circle", "square"])
+
 export const CvHeader = z.object({
   name: plain(120),
   headline: plain(300),
@@ -59,6 +62,7 @@ export const CvHeader = z.object({
   phone: plain(60),
   links: z.array(CvLink).max(8),
   photo: CvPhoto.nullable(),
+  photoShape: CvPhotoShape.optional(),
 })
 
 const sectionBase = {
@@ -156,6 +160,7 @@ export const CvContent = z.object({
 export type CvContent = z.infer<typeof CvContent>
 export type CvHeader = z.infer<typeof CvHeader>
 export type CvLink = z.infer<typeof CvLink>
+export type CvPhotoShape = z.infer<typeof CvPhotoShape>
 export type CvSection = z.infer<typeof CvSection>
 /** What can be added to a CV; a letter's section comes only with the letter. */
 export type CvSectionType = Exclude<CvSection["type"], "letter">

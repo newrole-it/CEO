@@ -14,6 +14,7 @@ import {
 } from "@newrole/cv-core/tailor"
 import { cvPlainText } from "@newrole/cv-core/text"
 import { wrapLong, wrapUntrusted, type LlmClient } from "@newrole/llm/common"
+import { humanStyle } from "@newrole/llm/human-style"
 
 /**
  * A CV and a cover letter written for one job offer (@newrole/cv-core/tailor has the rules that
@@ -39,14 +40,32 @@ What you may do:
 - "hide": true on a text, skills or cards section that adds nothing for this offer.
 - Keep the CV no longer than it is. Tighten rather than add.
 
-Fixed, code ignores any change: company, school, contact details and the order of roles and education. A role you leave out stays as it is, so include one only to change it, and you cannot remove it.
+Keywords: a recruiter and an ATS search the CV for the offer's own words. Work in this order:
+1. In "keywords" list up to 15 terms the offer asks for, required ones first: technologies, tools, methods, domains, kinds of work and named qualifications. Write each as the offer writes it ("PostgreSQL", "CI/CD", "zarządzanie zespołem"). Leave out generic words such as "communication" or "teamwork" unless the offer stresses them.
+2. For each term, "evidence" is a short fragment copied exactly from the CV or the candidate context that shows it, or "" when nothing does. A term without evidence goes in "gaps" and nowhere in the CV.
+3. Put each term with evidence where its evidence is: the bullet of the role where the candidate did it, the skills, and for the two or three that matter most, the profile. When the CV says the same thing in other words, use the offer's: "Postgres" becomes "PostgreSQL", "prowadziłem zespół" can become "zarządzałem zespołem". When the CV is in another language than the offer, keep names of technologies and write the rest in the CV's language.
+4. Keep it natural. A term appears once or twice in the whole CV, inside a sentence about what the candidate did. No lists of keywords in the profile or in a bullet, no sentence copied from the offer, no term squeezed into a bullet about something else. When a term does not fit a bullet, the skills are enough; when it fits nowhere, leave it out.
 
-Format: body fields may use <strong>, <em> and <br>, and nothing else: no other tags, links, markdown or placeholders. "tech" keeps its form: <strong>Label:</strong> a, b, c.
+Content that passes a recruiter and an ATS (after the cv-resume skill, github.com/trfi/skills):
+- The profile (the first text section) is 2 to 4 sentences: who the candidate is, their core strengths and experience, what they bring to this role, with the offer's most important keywords inside those sentences. No clichés such as "hardworking", "team player", "passionate", "pracowity", "komunikatywny".
+- Start every bullet with a strong action verb (Led, Built, Designed, Reduced; Zbudowałem, Wdrożyłam, Skróciłem). Where the CV has a number for a role, put a bullet with it near the top. Never invent one.
+- Write an acronym in full once, the first time it appears, when the full form is in the CV or is the standard expansion of a technical term: "Machine Learning (ML)".
+- Past tense for earlier roles, present tense for the current one.
+
+Layout: a recruiter scans the CV in seconds, so it must look clean and professional on paper.
+- A role's "summary" is at most two sentences that set the scene: the product, the team, the scope. Every responsibility, result or project goes in its own bullet. When a role is one long paragraph, split it this way and keep all its facts.
+- A bullet is one point in one or two lines, and starts with what the candidate did or achieved. A bullet about a named project or product starts with its name in bold: "<strong>Name:</strong> …". Recent and relevant roles get about 3 to 6 bullets; older roles a sentence or nothing.
+- No paragraph runs longer than about 60 words, the profile included.
+- Write alike what is alike: bullets of a role in the same person, all ending with a full stop or none, skill lists in one style.
+
+Fixed, code ignores any change: company, school, contact details and the order of roles and education. A role you leave out stays as it is, so include one only to change it, and you cannot remove it.`
+
+const TAILOR_FORMAT = `Format: body fields may use <strong>, <em> and <br>, and nothing else: no other tags, links, markdown or placeholders. "tech" keeps its form: <strong>Label:</strong> a, b, c.
 
 "changes" lists up to 6 short points on what you changed and why. "gaps" lists up to 6 requirements of the offer that the candidate's data does not show. Both are for the candidate and written in the language given for notes.
 
-Return JSON:
-{"headline":"...","sections":[
+Return JSON, "keywords" first:
+{"keywords":[{"term":"...","evidence":"..."}],"headline":"...","sections":[
  {"id":"<id>","body":"..."},
  {"id":"<id>","hide":true},
  {"id":"<id>","items":[{"id":"<id>","label":"...","text":"..."}]},
@@ -68,12 +87,23 @@ Content: 3 or 4 short paragraphs, 150 to 250 words in total, enough for one page
 - First: the role, and the single strongest match with one concrete fact from the CV.
 - Middle: one or two results from the CV, each tied to something this offer asks for.
 - Last: one plain sentence on why this role, from what the offer says, and an invitation to talk.
+- A skill or tool you name that the offer asks for and the CV shows goes in the offer's own word for it.
 
 Style: plain, specific and human. No flattery or stock phrases such as "z ogromnym entuzjazmem", "idealny kandydat", "dynamiczny zespół", "passionate", "excited to apply", "team player". Do not list what the CV already lists. In Polish write natural, professional Polish without needless anglicisms, address the employer as "Państwo", and use the grammatical gender the CV uses; when it does not show one, write sentences that avoid it. In English use plain British or international English.
 
-Do not write a greeting, sign-off, date, subject line, placeholders, markdown or surrounding quotes: the layout adds them. Paragraphs are plain text.
+Do not write a greeting, sign-off, date, subject line, placeholders, markdown or surrounding quotes: the layout adds them. Paragraphs are plain text.`
 
-Return JSON: {"paragraphs":["...","..."]}`
+const LETTER_FORMAT = `Return JSON: {"paragraphs":["...","..."]}`
+
+/** The rules, then how the language should read, then the reply's shape. */
+function tailorSystem(language: CvLocale, translate: boolean): string {
+  const rules = translate ? `${TAILOR_SYSTEM}\n${TRANSLATE_RULE}` : TAILOR_SYSTEM
+  return [rules, humanStyle([language]), TAILOR_FORMAT].join("\n\n")
+}
+
+function letterSystem(language: CvLocale): string {
+  return [LETTER_SYSTEM, humanStyle([language]), LETTER_FORMAT].join("\n\n")
+}
 
 /** The offer as the model sees it. */
 export type TailorOffer = {
@@ -182,7 +212,7 @@ export async function tailorCv(input: {
   const cv = JSON.stringify(cvForModel(base.content))
   const reply = await llm.completeJson({
     purpose: "cv-tailor",
-    system: translate ? `${TAILOR_SYSTEM}\n${TRANSLATE_RULE}` : TAILOR_SYSTEM,
+    system: tailorSystem(language, translate),
     user: [
       `Target language: ${language}`,
       `Language for "changes" and "gaps": ${input.locale ?? "pl"}`,
@@ -198,7 +228,8 @@ export async function tailorCv(input: {
     ].join("\n"),
     // .catch() widens the schema's input type; its output is what the client returns
     schema: TailorReply as unknown as z.ZodType<TailorReply>,
-    maxTokens: Math.min(12_000, Math.ceil(cv.length / 2.5) + 1200),
+    // the CV, the notes and up to 15 keywords with their evidence
+    maxTokens: Math.min(12_000, Math.ceil(cv.length / 2.5) + 1700),
     timeoutMs: WRITING_TIMEOUT_MS,
     userId,
   })
@@ -240,7 +271,7 @@ export async function writeCoverLetter(input: {
   const cvText = cvPlainText(input.cv)
   const reply = await llm.completeJson({
     purpose: "cover-letter",
-    system: LETTER_SYSTEM,
+    system: letterSystem(language),
     user: [
       `Write in: ${language === "pl" ? "Polish" : "English"}`,
       "",

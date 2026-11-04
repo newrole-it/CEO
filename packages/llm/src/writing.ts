@@ -18,6 +18,7 @@ export function createWritingClient(
       model: env.CLAUDE_WRITING_MODEL?.trim() || DEFAULT_WRITING_MODEL,
       timeoutMs: Number(env.CLAUDE_WRITING_TIMEOUT_MS) || 150_000,
       cache: opts.cache,
+      record: opts.record,
     })
   }
   return createLlmClient(opts)

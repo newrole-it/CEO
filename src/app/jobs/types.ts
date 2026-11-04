@@ -12,6 +12,8 @@ export type CardOffer = ServerFeedOffer & {
   score?: number | null
   reasons?: FeedReason[]
   preferenceDelta?: number
+  /** A CV was already tailored to this offer */
+  hasCv?: boolean
 }
 
 export type Verdict = "LIKE" | "DISLIKE" | "APPLIED"

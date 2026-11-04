@@ -27,6 +27,13 @@ describe("offer source", () => {
       sourceOf({ sourceType: "WEB_SEARCH", sourceBoardId: "page:x", hasDescription: false })
         .sourceKind
     ).toBe("link-only")
+    expect(
+      sourceOf({
+        sourceType: "WEB_SEARCH",
+        sourceBoardId: "web:google.com:google",
+        hasDescription: false,
+      }).sourceKind
+    ).toBe("added")
   })
 })
 

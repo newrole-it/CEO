@@ -68,7 +68,9 @@ function headerHtml(content: CvContent): string {
     contact ? `<div class="cv-contact">${contact}</div>` : "",
     "</div>",
     photo
-      ? `<img class="cv-photo" src="${escapeAttr(photo)}" alt="${escapeAttr(header.name)}">`
+      ? `<img class="cv-photo${
+          header.photoShape === "square" ? " cv-photo--square" : ""
+        }" src="${escapeAttr(photo)}" alt="${escapeAttr(header.name)}">`
       : "",
     "</div>",
   ].join("")

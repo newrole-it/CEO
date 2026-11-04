@@ -4,6 +4,7 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { listApplications } from "src/server/applications/service"
+import { sheetStatus } from "src/server/applications/sheet"
 import { ApplicationsScreen } from "./ApplicationsScreen"
 import { toRow } from "./rows"
 
@@ -22,7 +23,9 @@ export default async function ApplicationsPage({
     searchParams,
     invoke(getCurrentUser, null),
   ])
-  const rows = user ? await listApplications(user.id, { group: "all" }) : []
+  const [rows, sheet] = user
+    ? await Promise.all([listApplications(user.id, { group: "all" }), sheetStatus(user.id)])
+    : [[], null]
   const group =
     params.group === "all" || params.group === "closed" || params.group === "rejected"
       ? params.group
@@ -34,6 +37,7 @@ export default async function ApplicationsPage({
         initialRows={rows.map(toRow)}
         initialGroup={group}
         initialOpenId={params.id ?? null}
+        sheetUrl={sheet?.configured ? sheet.spreadsheetUrl : null}
       />
     </SiteFrame>
   )

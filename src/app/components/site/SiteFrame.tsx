@@ -2,6 +2,7 @@ import Link from "next/link"
 import { cookies } from "next/headers"
 import db from "db"
 import { linkedInCredentials } from "src/server/auth/linkedin"
+import { usageTabVisible } from "src/server/llm/usage"
 import { isLocalInstall } from "src/server/local-install"
 import { offerIndexEnabled } from "src/server/offer-index"
 import { listWatched } from "src/server/watchlist/watch"
@@ -107,6 +108,7 @@ export async function SiteFrame({
               newAtWatched={counts.newAtWatched}
               app={app}
               setup={isLocalInstall()}
+              usage={app && usageTabVisible(user?.role)}
               offerIndex={offerIndexEnabled()}
             />
           )}

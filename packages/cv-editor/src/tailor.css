@@ -233,6 +233,11 @@
   font-size: 13px;
   font-weight: 600;
 }
+.cvt-kw {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .cvt-again {
   display: flex;
   flex-direction: column;
@@ -340,4 +345,24 @@
   .cvt-start__row {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.cvo-group {
+  display: grid;
+  gap: 10px;
+}
+.cvo-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 14px;
+}
+.cvo-group__title {
+  font-weight: 600;
+  color: var(--text);
+}
+.cvo-group__app {
+  margin-left: auto;
+  font-size: 13px;
 }

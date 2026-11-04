@@ -11,6 +11,7 @@ import {
   Minus,
   Repeat,
   SquareTerminal,
+  UserPlus,
 } from "lucide-react"
 import { intlLocale, type Locale, type T } from "src/app/i18n/copy"
 import { Badge } from "@newrole/ui/primitives"
@@ -48,6 +49,12 @@ export function SourceBadge({
       )
     case "mcp":
       return <Badge icon={<SquareTerminal aria-hidden />}>{t("src.claude")}</Badge>
+    case "added":
+      return (
+        <Badge icon={<UserPlus aria-hidden />} tip={t("src.added.tip")}>
+          {t("src.added")}
+        </Badge>
+      )
     default:
       return null
   }

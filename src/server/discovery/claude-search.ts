@@ -5,7 +5,8 @@
  */
 import db from "db"
 import { envCount } from "config/env"
-import { extractJson, findClaudeBinary, runClaudePrompt } from "@newrole/llm/claude-cli"
+import { extractJson, findClaudeBinary } from "@newrole/llm/claude-cli"
+import { runClaudePrompt } from "src/server/llm/claude-cli"
 import type { WebHit } from "./web-search"
 
 export const CLAUDE_SEARCH_SOURCE = "claude_search"
@@ -148,6 +149,7 @@ export async function claudeSearch(
   if (!(await counter.take(cap, deps?.now ?? new Date()))) throw new ClaudeSearchCapError(cap)
   const run = deps?.run ?? runClaudePrompt
   const result = await run({
+    purpose: "web-search",
     prompt: claudeSearchPrompt(query),
     system: SYSTEM,
     allowedTools: ["WebSearch"],

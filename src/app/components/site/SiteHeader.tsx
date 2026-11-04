@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   ClipboardList,
+  Coins,
   FileSearch,
   FileText,
   MessageSquareText,
@@ -84,6 +85,7 @@ export function SiteHeader({
   newAtWatched,
   app,
   setup,
+  usage,
   offerIndex,
 }: {
   user: ShellUser
@@ -92,6 +94,8 @@ export function SiteHeader({
   app: boolean
   /** A local install: the /setup checklist exists */
   setup: boolean
+  /** The /usage tab exists for this account (usageTabVisible) */
+  usage: boolean
   /** False with OFFER_INDEX=off: the screens built on offers do not exist */
   offerIndex: boolean
 }) {
@@ -192,6 +196,11 @@ export function SiteHeader({
               <Link href="/applications" aria-current={cur("/applications")}>
                 {t("nav.applications")}
               </Link>
+              {usage ? (
+                <Link href="/usage" aria-current={cur("/usage")}>
+                  {t("nav.usage")}
+                </Link>
+              ) : null}
             </nav>
           ) : app ? (
             <nav className="nav" aria-label={t("nav.main")}>
@@ -217,6 +226,11 @@ export function SiteHeader({
               <Link href="/sync" aria-current={cur("/sync")}>
                 {t("nav.sync")}
               </Link>
+              {usage ? (
+                <Link href="/usage" aria-current={cur("/usage")}>
+                  {t("nav.usage")}
+                </Link>
+              ) : null}
             </nav>
           ) : (
             <nav className="nav" aria-label={t("nav.main")}>
@@ -296,6 +310,11 @@ export function SiteHeader({
                             <ListChecks aria-hidden /> {t("nav.setup")}
                           </Link>
                         ) : null}
+                        {usage ? (
+                          <Link className="menu__item" role="menuitem" href="/usage">
+                            <Coins aria-hidden /> {t("nav.usage")}
+                          </Link>
+                        ) : null}
                         <Link className="menu__item" role="menuitem" href="/login?returnTo=/jobs">
                           <LogIn aria-hidden /> {t("nav.signin")}
                         </Link>
@@ -349,6 +368,11 @@ export function SiteHeader({
                         {setup ? (
                           <Link className="menu__item" role="menuitem" href="/setup">
                             <ListChecks aria-hidden /> {t("nav.setup")}
+                          </Link>
+                        ) : null}
+                        {usage ? (
+                          <Link className="menu__item" role="menuitem" href="/usage">
+                            <Coins aria-hidden /> {t("nav.usage")}
                           </Link>
                         ) : null}
                         {user?.role === "ADMIN" ? (

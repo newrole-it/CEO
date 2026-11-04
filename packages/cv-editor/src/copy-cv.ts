@@ -123,8 +123,10 @@ export const cvPl = {
   "cv.links.remove": "Usuń link: {label}",
 
   // photo
-  "cv.photo.add": "Dodaj zdjęcie",
+  "cv.photo.add": "Dodaj albo wklej zdjęcie",
   "cv.photo.change": "Zmień zdjęcie",
+  "cv.photo.circle": "W kole",
+  "cv.photo.square": "W kwadracie",
   "cv.photo.remove": "Usuń zdjęcie",
   "cv.photo.err": "Nie udało się wczytać tego zdjęcia. Wybierz plik JPEG lub PNG.",
 
@@ -338,8 +340,10 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.links.add": "Add a link",
   "cv.links.remove": "Remove link: {label}",
 
-  "cv.photo.add": "Add a photo",
+  "cv.photo.add": "Add or paste a photo",
   "cv.photo.change": "Change photo",
+  "cv.photo.circle": "In a circle",
+  "cv.photo.square": "In a square",
   "cv.photo.remove": "Remove photo",
   "cv.photo.err": "Couldn't read that photo. Choose a JPEG or PNG file.",
 

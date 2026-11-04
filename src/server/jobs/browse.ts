@@ -11,6 +11,7 @@ import { toSignals, type ProfileSignals } from "src/server/profile/rank"
 import { asStringList } from "@newrole/profile/schema"
 import type { FitOffer, OfferView } from "src/shared/offer-view"
 import { profileReady } from "src/shared/shortlist"
+import { cleanTags, tagMatcher, tagNeedles, type TaggedOffer } from "src/shared/title-tags"
 import {
   canonicalCity,
   citiesFrom,
@@ -50,21 +51,41 @@ export type BrowseInput = {
   country?: string
   /** The country used when nothing else names one: the person's own (see jobs/country.ts). */
   defaultCountry?: string | null
+  /** Leave out remote offers the employer tied to another country (see placeInCountry). */
+  remoteHere?: boolean
   /** Old links: "pl" is Poland, "abroad" and "any" are every country. */
   where?: string
   city?: string
   mode?: string
   pay?: number | string
   cursor?: string
+  /** Title tags (src/shared/title-tags.ts): an offer matching any one of them is kept. */
+  tags?: string[]
+  /** One more tag, as old links and saved searches name it. */
   phrase?: string
   q?: string
   location?: string
+  /** Only this employer's offers (a company id). */
+  companyId?: string
+  /** Only offers this index first saw on or after this date. */
+  seenSince?: Date
+  /**
+   * A test the caller adds on top (seniority, source, salary listed). It runs while scanning, so a
+   * page still fills up when the test is strict.
+   */
+  keep?: (offer: KeepOffer) => boolean
 }
+
+/** What a caller's `keep` test sees: the card plus the stored facts it is built from. */
+export type KeepOffer = FeedOffer & { companyId: string; seniorityLevel: string | null }
 
 export type ResolvedBrowse = OfferFilter & {
   cursor: string
-  phrase: string
+  tags: string[]
   location: string
+  companyId: string
+  seenSince: Date | null
+  keep?: (offer: KeepOffer) => boolean
 }
 
 export type BrowseCursor = { at: Date; id: string }
@@ -97,6 +118,8 @@ export type ForYouPage = {
   nextPage: number | null
   /** Ranked offers in the pool (after filters, without offers you already judged). */
   total: number
+  /** The pool stopped at its size or scan limit; more offers match than `total`. */
+  capped: boolean
   hasProfile: boolean
   hasFeedback: boolean
 }
@@ -132,6 +155,7 @@ const jobSelect = {
   employmentType: true,
   seniorityLevel: true,
   viaIntermediary: true,
+  companyId: true,
   company: { select: { name: true, industry: true } },
 } satisfies Prisma.JobSelect
 
@@ -191,34 +215,6 @@ export function interpretLocation(
   return { country: null, city: "", location: trimmed, mode }
 }
 
-export function phraseTokens(phrase: string): string[] {
-  const seen = new Set<string>()
-  const tokens: string[] = []
-  for (const part of phrase.trim().split(/\s+/)) {
-    const token = part.trim()
-    if (token.length < 2) continue
-    const key = token.toLocaleLowerCase("pl")
-    if (seen.has(key)) continue
-    seen.add(key)
-    tokens.push(token)
-    if (tokens.length >= 6) break
-  }
-  return tokens
-}
-
-/** Every word of the phrase appears in the title or the employer name ("docplanner backend"). */
-export function titleMatchesPhrase(
-  title: string,
-  normalizedTitle: string,
-  phrase: string,
-  company = ""
-): boolean {
-  const tokens = phraseTokens(phrase)
-  if (!tokens.length) return true
-  const hay = `${title}\n${normalizedTitle}\n${company}`.toLocaleLowerCase("pl")
-  return tokens.every((token) => hay.includes(token.toLocaleLowerCase("pl")))
-}
-
 export function resolveBrowse(input: BrowseInput): ResolvedBrowse {
   const picked = parseCountry(input)
   let mode = parseMode(input.mode)
@@ -236,9 +232,13 @@ export function resolveBrowse(input: BrowseInput): ResolvedBrowse {
     city,
     mode,
     minMonthlyPln: parsePay(input.pay),
-    phrase: (input.phrase || input.q || "").trim().slice(0, 160),
+    remoteHere: Boolean(input.remoteHere),
+    tags: cleanTags([...(input.tags ?? []), input.phrase || input.q]),
     location: place.location,
     cursor: (input.cursor ?? "").trim().slice(0, 120),
+    companyId: (input.companyId ?? "").trim().slice(0, 64),
+    seenSince: input.seenSince ?? null,
+    keep: input.keep,
   }
 }
 
@@ -252,17 +252,31 @@ export function browseScanCap(filters: {
   city: string
   mode: string
   minMonthlyPln?: number
-  phrase?: string
+  tags?: string[]
   location?: string
+  companyId?: string
+  seenSince?: Date | null
+  keep?: unknown
 }): number {
   const selective =
     (filters.minMonthlyPln != null && filters.minMonthlyPln > 0) ||
     Boolean(filters.country) ||
     filters.mode !== "any" ||
     Boolean(filters.city) ||
-    Boolean(filters.phrase) ||
-    Boolean(filters.location)
+    Boolean(filters.tags?.length) ||
+    Boolean(filters.location) ||
+    Boolean(filters.companyId) ||
+    Boolean(filters.seenSince) ||
+    Boolean(filters.keep)
   return selective ? FILTERED_BATCHES : UNFILTERED_BATCHES
+}
+
+/** The earliest date an offer is known to exist: the employer's posting date when it is earlier
+ * than the first time this index saw the offer, else that first sighting. */
+export function knownSince(offer: { firstSeenAt: string; publishedAt: string | null }): string {
+  return offer.publishedAt && offer.publishedAt < offer.firstSeenAt
+    ? offer.publishedAt
+    : offer.firstSeenAt
 }
 
 export function encodeCursor(at: Date, id: string): string {
@@ -281,7 +295,7 @@ export function decodeCursor(value: string | undefined): { at: Date; id: string 
 
 export function browseQuery(filters: ResolvedBrowse, cursor?: string | null): string {
   const params = new URLSearchParams()
-  if (filters.phrase) params.set("q", filters.phrase)
+  for (const tag of filters.tags) params.append("q", tag)
   if (filters.location) params.set("location", filters.location)
   if (filters.country) params.set("country", filters.country)
   if (filters.city) params.set("city", filters.city)
@@ -354,22 +368,44 @@ function listWhere(filters: ResolvedBrowse, cursor: BrowseCursor | null): Prisma
   if (filters.location) {
     and.push({ locationText: { contains: filters.location, mode: "insensitive" } })
   }
+  if (filters.companyId) and.push({ companyId: filters.companyId })
+  if (filters.seenSince) and.push({ firstSeenAt: { gte: filters.seenSince } })
   if (filters.minMonthlyPln != null && filters.minMonthlyPln > 0) {
     and.push({ OR: [{ salaryMin: { not: null } }, { salaryMax: { not: null } }] })
   }
-  for (const token of phraseTokens(filters.phrase)) {
-    and.push({
-      OR: [
-        { title: { contains: token, mode: "insensitive" } },
-        { normalizedTitle: { contains: token, mode: "insensitive" } },
-        { company: { name: { contains: token, mode: "insensitive" } } },
-      ],
-    })
-  }
+  const tags = tagsWhere(filters.tags)
+  if (tags) and.push(tags)
   return {
     status: { in: ["ACTIVE", "POSSIBLY_CLOSED"] },
     ...(and.length ? { AND: and } : {}),
   }
+}
+
+/**
+ * Rows any of the tags may match, as a LIKE on the words each tag needs; tagMatcher decides on the
+ * rows that come back. Null when there are no tags, or a tag has a way to match with no word to
+ * look for, which leaves the whole test to tagMatcher.
+ */
+export function tagsWhere(tags: string[]): Prisma.JobWhereInput | null {
+  const ways: Prisma.JobWhereInput[] = []
+  for (const tag of tags) {
+    const needles = tagNeedles(tag)
+    if (!needles) return null
+    for (const { words, company } of needles) {
+      ways.push({
+        AND: words.map((word) => ({
+          OR: [
+            { title: { contains: word, mode: "insensitive" as const } },
+            { normalizedTitle: { contains: word, mode: "insensitive" as const } },
+            ...(company
+              ? [{ company: { name: { contains: word, mode: "insensitive" as const } } }]
+              : []),
+          ],
+        })),
+      })
+    }
+  }
+  return ways.length ? { OR: ways } : null
 }
 
 /**
@@ -433,21 +469,36 @@ function toOfferView(
   return { view, place, pay }
 }
 
-function rowAccepted(row: JobRow, filters: ResolvedBrowse): boolean {
-  if (!titleMatchesPhrase(row.title, row.normalizedTitle, filters.phrase, row.company.name)) {
+function rowAccepted(
+  row: JobRow,
+  filters: ResolvedBrowse,
+  matchTags: (offer: TaggedOffer) => boolean
+): boolean {
+  if (
+    !matchTags({
+      title: row.title,
+      normalizedTitle: row.normalizedTitle,
+      company: row.company.name,
+    })
+  ) {
     return false
   }
   if (filters.location) {
     const hay = (row.locationText || "").toLocaleLowerCase("pl")
     if (!hay.includes(filters.location.toLocaleLowerCase("pl"))) return false
   }
-  const { place, pay } = toOfferView(row, "pl")
-  return offerMatches(place, pay, filters)
+  const { view, place, pay } = toOfferView(row, "pl")
+  if (!offerMatches(place, pay, filters)) return false
+  return (
+    !filters.keep ||
+    filters.keep({ ...view, companyId: row.companyId, seniorityLevel: row.seniorityLevel })
+  )
 }
 
 export async function listOfferPage(input: BrowseInput, locale: "pl" | "en"): Promise<OfferPage> {
   await ensureFxRates()
   const filters = resolveBrowse(input)
+  const matchTags = tagMatcher(filters.tags)
   const scanned = await scanUntilPage({
     maxBatches: browseScanCap(filters),
     batchSize: BROWSE_BATCH,
@@ -461,7 +512,7 @@ export async function listOfferPage(input: BrowseInput, locale: "pl" | "en"): Pr
         take: BROWSE_BATCH,
       }),
     cursorOf: (row) => ({ at: row.lastSeenAt, id: row.id }),
-    accept: (row) => rowAccepted(row, filters),
+    accept: (row) => rowAccepted(row, filters, matchTags),
   })
   return {
     offers: scanned.kept.map((row) => toOfferView(row, locale, filters.country).view),
@@ -539,11 +590,12 @@ export function scoreRow(
 
 /**
  * "Dla Ciebie": the newest offers that pass the browse filters (up to FOR_YOU_POOL), minus
- * offers already liked or passed, ordered by profile fit + learned preferences. Paged by
- * number because the order is a ranking, not a time cursor.
+ * offers already liked or passed, ordered by profile fit + learned preferences, or with
+ * sort "new" by knownSince, newest first. Paged by number because the order is a ranking,
+ * not a time cursor.
  */
 export async function listForYou(
-  input: BrowseInput & { page?: number | string },
+  input: BrowseInput & { page?: number | string; sort?: "fit" | "new" },
   userId: number | null,
   locale: "pl" | "en"
 ): Promise<ForYouPage> {
@@ -554,6 +606,7 @@ export async function listForYou(
     page,
     nextPage: null,
     total: 0,
+    capped: false,
     hasProfile: false,
     hasFeedback: false,
   }
@@ -566,6 +619,7 @@ export async function listForYou(
   const hasFeedback = model.liked + model.disliked > 0
   if (!hasProfile && !hasFeedback) return empty
   const filters = resolveBrowse(input)
+  const matchTags = tagMatcher(filters.tags)
   const scanned = await scanUntilPage({
     maxBatches: browseScanCap(filters) === UNFILTERED_BATCHES ? 4 : FILTERED_BATCHES,
     batchSize: FOR_YOU_BATCH,
@@ -579,7 +633,7 @@ export async function listForYou(
         take: FOR_YOU_BATCH,
       }),
     cursorOf: (row) => ({ at: row.lastSeenAt, id: row.id }),
-    accept: (row) => !model.decided.has(row.id) && rowAccepted(row, filters),
+    accept: (row) => !model.decided.has(row.id) && rowAccepted(row, filters, matchTags),
   })
   const ctx = {
     signals: hasProfile && profile ? toSignals(profile, locale) : null,
@@ -589,10 +643,12 @@ export async function listForYou(
     now: new Date(),
     country: filters.country,
   }
+  const newest = input.sort === "new"
   const ranked = scanned.kept
     .map((row) => scoreRow(row, ctx))
     .sort(
       (a, b) =>
+        (newest ? knownSince(b.view).localeCompare(knownSince(a.view)) : 0) ||
         b.score.score - a.score.score ||
         b.view.lastSeenAt.localeCompare(a.view.lastSeenAt) ||
         a.view.id.localeCompare(b.view.id)
@@ -615,6 +671,7 @@ export async function listForYou(
     page,
     nextPage: start + BROWSE_PAGE < ranked.length ? page + 1 : null,
     total: ranked.length,
+    capped: scanned.next !== null,
     hasProfile,
     hasFeedback,
   }
@@ -687,7 +744,10 @@ export async function jobsPathForSavedSearch(
 }
 
 /** Open offers, in one country (and remote ones open to it) when given. */
-export async function countOpenOffers(country: string | null = null): Promise<number> {
+export async function countOpenOffers(
+  country: string | null = null,
+  { remoteHere = false } = {}
+): Promise<number> {
   const open = { status: { in: ["ACTIVE" as const, "POSSIBLY_CLOSED" as const] } }
   if (!country) return db.job.count({ where: open })
   if (isBlockedCountry(country)) return 0
@@ -707,7 +767,10 @@ export async function countOpenOffers(country: string | null = null): Promise<nu
       },
     }),
   ])
-  return inCountry + rest.filter((row) => placeInCountry(placeFacts(row), country)).length
+  return (
+    inCountry +
+    rest.filter((row) => placeInCountry(placeFacts(row), country, { remoteHere })).length
+  )
 }
 
 /** The most common cities among the newest offers, in one country when given. */
