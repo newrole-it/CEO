@@ -4,17 +4,18 @@
 
 ## Running it
 
-| Command                                 | What it does                                                                                                                                                                       |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run go`                            | From a fresh clone to a running app: `.env`, packages, Postgres in Docker, migrations, extension build, web + worker, opens `/setup`. Safe to run every day; it skips what is done |
-| `npm run setup`                         | The same preparation without starting the app                                                                                                                                      |
-| `npm run dev:all`                       | Web on 127.0.0.1:43123 plus the worker, no preparation steps                                                                                                                       |
-| `npm run dev` / `npm run worker`        | Web and worker separately. A scan does nothing until the worker runs                                                                                                               |
-| `npm run build && npm start`            | Production build on the same port                                                                                                                                                  |
-| `npm run mcp`                           | The MCP server over stdio (Claude Code starts it for you)                                                                                                                          |
-| `npm run catalog -- <command>`          | The outside board catalog: `import`, `check`, `reconcile`, `guess "<company>"`, `status`. See below                                                                                |
-| `npm run harvest`                       | Reads the due board APIs and pushes them to a harvest branch, for a scheduled cloud agent. See below                                                                               |
-| `npm run ext:build` / `npm run ext:dev` | Rebuild the Chrome extension into `extension/.output/chrome-mv3`, or run WXT's dev mode                                                                                            |
+| Command                                               | What it does                                                                                                                                                                       |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run go`                                          | From a fresh clone to a running app: `.env`, packages, Postgres in Docker, migrations, extension build, web + worker, opens `/setup`. Safe to run every day; it skips what is done |
+| `npm run setup`                                       | The same preparation without starting the app                                                                                                                                      |
+| `npm run dev:all`                                     | Web on 127.0.0.1:43123 plus the worker, no preparation steps                                                                                                                       |
+| `npm run dev` / `npm run worker`                      | Web and worker separately. A scan does nothing until the worker runs                                                                                                               |
+| `npm run build && npm start`                          | Production build on the same port                                                                                                                                                  |
+| `npm run mcp`                                         | The MCP server over stdio (Claude Code starts it for you)                                                                                                                          |
+| `npm run catalog -- <command>`                        | The outside board catalog: `import`, `check`, `reconcile`, `guess "<company>"`, `status`. See below                                                                                |
+| `npm run harvest`                                     | Reads the due board APIs and pushes them to a harvest branch, for a scheduled cloud agent. See below                                                                               |
+| `npm run ext:build` / `npm run ext:dev`               | Rebuild the Chrome extension into `extension/.output/chrome-mv3`, or run WXT's dev mode                                                                                            |
+| `npm run cv` / `npm run cv:build && npm run cv:start` | newrole CV, the standalone CV tailoring app, on 127.0.0.1:43124 ([apps/cv/README.md](../apps/cv/README.md))                                                                        |
 
 To use a Postgres you already run instead of Docker, set `DATABASE_URL` in `.env`: `npm run go` uses it and leaves Docker alone. If port 5432 is taken on the first run, it picks another port and writes it to `.env`.
 
@@ -139,4 +140,4 @@ With `claude-cli`, each model call is one `claude -p --output-format json` proce
 npm test
 ```
 
-That runs the vitest unit tests (`src/server`, `src/shared`, `config`, `mcp`), the matching pack's tests, and the node:test flow tests in `test/` (search flow, indexer, auth, privacy, Gmail, CV tailoring) against the `jobscanner_test` database, which must exist and be migrated (`npm run test:db`). `npm run lint` and `npx tsc --noEmit` cover style and types.
+That runs the vitest unit tests (`src/server`, `src/shared`, `config`, `mcp`), each workspace's own tests (`npm run test:workspaces`: the packages in `packages/` and newrole CV), the matching pack's tests, and the node:test flow tests in `test/` (search flow, indexer, auth, privacy, Gmail, CV tailoring) against the `jobscanner_test` database, which must exist and be migrated (`npm run test:db`). `npm run lint` and `npx tsc --noEmit` cover style and types; `npm run typecheck:workspaces` compiles every package and app on its own, and `npm run check:boundaries` checks that none of them imports the app or anything it does not declare ([architecture.md](architecture.md)).

@@ -3,7 +3,7 @@ import { letterSection, type CvContent, type CvLetterSection, type CvSection } f
 
 /**
  * The CV as a flat sequence of atoms: the unit the paginator moves between pages. The editor
- * (React) and the print HTML (src/server/cv/render.ts) render the same atoms with the same
+ * (React, @newrole/cv-editor) and the print HTML (@newrole/cv-engine/render) render the same atoms with the same
  * classes from ./styles, so a page break in the editor is a page break in the PDF.
  *
  * Vertical rhythm is the atom's `lead` (top padding, mm), never margins, so measured heights

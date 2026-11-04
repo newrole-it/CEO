@@ -49,7 +49,7 @@ import {
 import { Editable } from "./Editable"
 
 /**
- * React views of the atoms in src/shared/cv/flow.ts. The structure and classes mirror the print
+ * React views of the atoms in @newrole/cv-core/flow. The structure and classes mirror the print
  * markup in @newrole/cv-engine/render one to one, so both lay out the same with the shared CSS;
  * only the fields are editable and the controls (absolutely positioned) are added on top.
  */

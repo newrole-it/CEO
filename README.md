@@ -31,7 +31,7 @@ newrole.it is a job finder that runs on your machine. It reads the public career
 - 🔍 **Search in Polish or English.** A phrase is expanded into related titles, seniority, synonyms and exclusions, then scored against the local index first, so results show before any crawl.
 - 👤 **Your profile without a LinkedIn app.** Import from a CV PDF, LinkedIn's data export ZIP, pasted text, or let Claude read your own profile in your own Chrome.
 - 📋 **Application tracker.** Stages from applied to offer, next steps, timeline, your stated salary, statistics with a funnel and response rates, CSV export, one-way sync to your own Google Sheet, and status updates from a Gmail message you open and pick in the extension (the mailbox itself is never searched).
-- 📄 **CV editor with real A4 pages.** Tailor a CV to an offer (code keeps facts, dates and employers intact), a cover letter on the same sheets, versions with compare and restore, an audit that underlines what to change, and a PDF printed from the same HTML.
+- 📄 **CV editor with real A4 pages.** Tailor a CV to an offer (code keeps facts, dates and employers intact), a cover letter on the same sheets, versions with compare and restore, an audit that underlines what to change, and a PDF printed from the same HTML. Also as a separate app, [newrole CV](apps/cv/README.md): paste a link to an offer, get the CV and letter, no database.
 - 💬 **Answer bank.** Every answer you gave to an application question, grouped by question with per-company variants, and Claude drafts from them.
 - 🧩 **Chrome extension.** Fills application forms from your details, CV and answer bank on known ATS hosts, records the application when you submit, turns the Gmail message you have open into a stage change after you confirm it, and scores your LinkedIn profile 0–100. It never fills passwords or consents and never submits for you.
 - 🤖 **An MCP server for Claude Code.** 30 tools and 5 prompts: search, profile, taste, watched companies, applications, Gmail, CV, answers. Model calls run through `claude -p` on your own subscription.
@@ -162,6 +162,8 @@ Model calls (query expansion, CV reading, match explanations, drafts) go through
 
 ### Layout
 
+The repository is a set of npm workspaces: the root is the newrole.it app, `packages/` holds the parts any app can use, and `apps/` the apps built from them. [docs/architecture.md](docs/architecture.md) has the map and the rules.
+
 | Path | What lives there |
 |---|---|
 | `src/app` | Next 16 App Router UI, Blitz auth, queries and mutations per feature |
@@ -169,6 +171,9 @@ Model calls (query expansion, CV reading, match explanations, drafts) go through
 | `src/worker.ts` | Claims `BackgroundTask` rows: searches, crawls, sheet sync. No Redis |
 | `mcp/` | The MCP server for Claude Code (stdio), tools over the services in `src/server` |
 | `matching/` | Query expansion, normalization, dedupe and the explainable scorer, with fixture tests |
+| `packages/cv-core`, `cv-engine`, `cv-editor` | The CV and letter model and rules; tailoring, letters, PDF reading and printing; the A4 editor |
+| `packages/llm`, `offers`, `ui`, `app-kit` | Model clients; polite reading of job postings; the design system; origin guard and interface language |
+| `apps/cv` | newrole CV: a link to an offer in, a tailored CV and letter out, in files ([apps/cv/README.md](apps/cv/README.md)) |
 | `extension/` | The Chrome extension (WXT): thin `entrypoints/`, logic in `lib/` |
 | `config/` | Verified seed boards and source policies |
 | `scripts/go.mjs` | `npm run go`: from a fresh clone to a running app |
@@ -181,6 +186,7 @@ Model calls (query expansion, CV reading, match explanations, drafts) go through
 - [Sources, scanning and matching](docs/sources.md) — the crawler rules, verified APIs, employer sites, the scorer
 - [Accounts, profile and privacy](docs/accounts.md) — sign-in, LinkedIn import without a LinkedIn app, audits, your data
 - [Applications, CV, answers and the extension](docs/applications.md) — the tracker, statistics, Google Sheet, Gmail, CV editor, answer bank
+- [Architecture](docs/architecture.md) — the packages, the apps built from them, and the rules between them
 - [Chrome extension](extension/README.md) · [Product plans](docs/product) · [Source packs](sources)
 - [Changelog](CHANGELOG.md) — every change by date; the app shows the same list at `/changelog`
 
@@ -192,7 +198,8 @@ Bug reports and pull requests are welcome. For anything larger, open an issue fi
 npm run go          # first run: Postgres, migrations, extension, web + worker
 npm run dev:all     # later: web on 127.0.0.1:43123 plus the worker
 npm run test:db     # create the test database if needed and migrate it (again after new migrations)
-npm test            # vitest unit tests, the matching pack, node:test flow tests
+npm test            # vitest unit tests, each workspace's tests, the matching pack, node:test flow tests
+npm run check:boundaries   # packages and apps import only what they declare
 npm run lint        # eslint
 npx tsc --noEmit    # types
 npm run build       # production build, as CI runs it

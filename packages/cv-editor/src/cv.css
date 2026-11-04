@@ -1,5 +1,5 @@
 /* CV list and editor chrome (stream B). The CV page itself is styled by CV_CSS in
- * src/shared/cv/styles.ts, so the editor and the PDF share one stylesheet. Nothing here may
+ * @newrole/cv-core/styles, so the editor and the PDF share one stylesheet. Nothing here may
  * change the layout of a sheet: controls and placeholders must not move text. */
 
 /* ------------------------------------------------------------------- list */

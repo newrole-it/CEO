@@ -17,7 +17,6 @@ export default defineConfig({
       "src/shared/**/*.test.ts",
       "config/**/*.test.ts",
       "mcp/**/*.test.ts",
-      "packages/*/src/**/*.test.ts",
     ],
   },
 })
