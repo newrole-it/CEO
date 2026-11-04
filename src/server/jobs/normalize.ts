@@ -1,5 +1,5 @@
 import type { Seniority, WorkplaceType } from "src/shared/schemas"
-import { htmlToText } from "./text"
+import { htmlToText } from "@newrole/offers/text"
 
 const STOP = new Set([
   "a",

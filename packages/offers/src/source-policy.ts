@@ -1,4 +1,4 @@
-import { decideFetch } from "config/source-policies"
+import { decideFetch } from "./source-policies"
 import { UnsafeUrlError } from "./url-safety"
 
 export function assertSourcePolicy(url: URL): void {

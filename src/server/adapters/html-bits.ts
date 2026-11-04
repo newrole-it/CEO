@@ -2,7 +2,7 @@
  * Small HTML helpers for adapters that read server-rendered pages without a DOM parser.
  * Pure string work: nothing here fetches or stores anything.
  */
-import { decodeEntities } from "src/server/jobs/text"
+import { decodeEntities } from "@newrole/offers/text"
 
 /** Inner HTML of the first element with this id, matching nested tags of the same name. */
 export function innerHtmlOfId(html: string, id: string): string | null {

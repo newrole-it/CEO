@@ -1,12 +1,11 @@
 /**
- * One page read on behalf of a person: source policy, robots.txt, then safe-fetch.
- * safe-fetch adds URL safety, the size cap, and 1 s per host. Nothing is stored here.
+ * One page read on behalf of a person: source policy, robots.txt, then the safe fetch (http.ts),
+ * which adds URL safety, the size cap, and 1 s per host. Nothing is stored here.
  */
-import { decideFetch } from "config/source-policies"
-import { emptyRobots, parseRobots, robotsAllows, type RobotsRules } from "src/server/crawler/robots"
-import type { HttpClient, HttpResponse } from "src/server/security/safe-fetch"
-import { noteHostInterval } from "src/server/security/safe-fetch"
-import { isAggregatorHost } from "./careers-detect"
+import { isAggregatorHost } from "./hosts"
+import { noteHostInterval, type HttpClient, type HttpResponse } from "./http"
+import { emptyRobots, parseRobots, robotsAllows, type RobotsRules } from "./robots"
+import { decideFetch } from "./source-policies"
 
 export type PoliteResult =
   | { ok: true; response: HttpResponse }

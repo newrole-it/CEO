@@ -13,15 +13,15 @@ import { stripPersonalData } from "src/server/crawler/hygiene"
 import { identityFor, saveDiscoveredJob } from "src/server/index/store"
 import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "src/server/jobs/normalize"
-import { htmlToText } from "src/server/jobs/text"
+import { htmlToText } from "@newrole/offers/text"
 import { offerIndexEnabled } from "src/server/offer-index"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
-import { assertSafeUrl } from "src/server/security/url-safety"
+import { assertSafeUrl } from "@newrole/offers/url-safety"
 import type { ListedJob } from "src/shared/schemas"
-import { isPolishBoardHost } from "src/shared/polish-boards"
+import { isPolishBoardHost } from "@newrole/offers/polish-boards"
 import { classifyHit, workableSlugFromHtml } from "./boards"
 import { hostOf, isAggregatorHost } from "./careers-detect"
-import { createRobotsCache, policyFor, politeGet, type RobotsCache } from "./polite-fetch"
+import { createRobotsCache, policyFor, politeGet, type RobotsCache } from "@newrole/offers/polite"
 
 const NO_INDEX = "This server keeps no index of offers."
 
@@ -62,7 +62,9 @@ function slugName(boardId: string): string {
 
 async function store(job: ListedJob, deps: IngestDeps, now: Date) {
   const key = identityFor(job)
-  const lookup = deps.existing ?? ((identityKey) => db.job.findUnique({ where: { identityKey }, select: { id: true } }))
+  const lookup =
+    deps.existing ??
+    ((identityKey) => db.job.findUnique({ where: { identityKey }, select: { id: true } }))
   const before = await lookup(key)
   const saved = await (deps.save ?? saveDiscoveredJob)(job, now)
   return { id: saved.id, created: !before }
@@ -105,7 +107,12 @@ async function fromAts(
   try {
     listed = await adapter.list(boardId, http)
   } catch (error) {
-    return { status: "rejected", message: `The ${provider.toLowerCase()} board did not answer: ${error instanceof Error ? error.message : "error"}` }
+    return {
+      status: "rejected",
+      message: `The ${provider.toLowerCase()} board did not answer: ${
+        error instanceof Error ? error.message : "error"
+      }`,
+    }
   }
   let job = matchPosting(listed.jobs, url, exact)
   if (!job) {
@@ -127,8 +134,13 @@ async function fromAts(
     where: { provider_providerBoardId: { provider, providerBoardId: boardId } },
     include: { company: { select: { name: true } } },
   })
-  const companyName = job.companyName || listed.companyName || page?.company.name || slugName(boardId)
-  const saved = await store({ ...job, companyName, sourceBoardId: job.sourceBoardId || boardId }, deps, now)
+  const companyName =
+    job.companyName || listed.companyName || page?.company.name || slugName(boardId)
+  const saved = await store(
+    { ...job, companyName, sourceBoardId: job.sourceBoardId || boardId },
+    deps,
+    now
+  )
   return {
     status: saved.created ? "created" : "updated",
     jobId: saved.id,
@@ -206,7 +218,9 @@ export async function ingestOfferUrl(
     {
       ...job,
       companyName,
-      sourceBoardId: `page:${host.replace(/^www\./, "")}:${normalizeCompanyName(companyName)}`.slice(0, 180),
+      sourceBoardId: `page:${host.replace(/^www\./, "")}:${normalizeCompanyName(
+        companyName
+      )}`.slice(0, 180),
     },
     deps,
     now
@@ -244,15 +258,21 @@ export const offerPayloadSchema = z
       .optional(),
     channel: z.literal("mcp"),
   })
-  .refine((value) => value.salaryMin == null || value.salaryMax == null || value.salaryMin <= value.salaryMax, {
-    message: "salaryMin is above salaryMax",
-    path: ["salaryMin"],
-  })
+  .refine(
+    (value) =>
+      value.salaryMin == null || value.salaryMax == null || value.salaryMin <= value.salaryMax,
+    {
+      message: "salaryMin is above salaryMax",
+      path: ["salaryMin"],
+    }
+  )
 
 export type OfferPayload = z.input<typeof offerPayloadSchema>
 
 /** Validated, cleaned job from a payload, or the reason it was refused. Pure. */
-export function payloadToJob(input: unknown): { job: ListedJob; linkOnly: boolean } | { error: string } {
+export function payloadToJob(
+  input: unknown
+): { job: ListedJob; linkOnly: boolean } | { error: string } {
   const parsed = offerPayloadSchema.safeParse(input)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
@@ -273,7 +293,9 @@ export function payloadToJob(input: unknown): { job: ListedJob; linkOnly: boolea
   const description = data.description
     ? stripPersonalData(htmlToText(data.description)).slice(0, 20_000)
     : undefined
-  const currency = data.salaryCurrency?.replace(/\/(HOUR|DAY|MONTH|YEAR)$/, (part) => part.toLowerCase())
+  const currency = data.salaryCurrency?.replace(/\/(HOUR|DAY|MONTH|YEAR)$/, (part) =>
+    part.toLowerCase()
+  )
   const company = stripPersonalData(data.company)
   const job = buildListedJob({
     title: stripPersonalData(data.title),
@@ -286,7 +308,9 @@ export function payloadToJob(input: unknown): { job: ListedJob; linkOnly: boolea
     salaryCurrency: data.salaryMin != null || data.salaryMax != null ? currency : undefined,
     originalUrl: url.toString(),
     sourceType: "WEB_SEARCH",
-    sourceBoardId: `mcp:${host.replace(/^www\./, "")}:${normalizeCompanyName(company) || "company"}`.slice(0, 180),
+    sourceBoardId: `mcp:${host.replace(/^www\./, "")}:${
+      normalizeCompanyName(company) || "company"
+    }`.slice(0, 180),
     needsHydration: false,
   })
   if (!job || job.title.length < 2 || !company) return { error: "Title and company are required" }

@@ -145,7 +145,15 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
     reason:
       "Career Sites Builder pages ({slug}.pracujunas.pl) publish offers.json on offers.erecruiter.pl, and the skk.erecruiter.pl widget lists offer rows and Offer.aspx pages; neither host has a robots.txt disallow (checked 2026-10-31). system.erecruiter.pl apply forms disallow / and stay link-only.",
     termsUrl: "https://erecruiter.pl/",
-    allowPaths: ["/careers", "/career", "/jobs/", "/job/", "/skk/company/", "/GetHtml.ashx", "/Offer.aspx"],
+    allowPaths: [
+      "/careers",
+      "/career",
+      "/jobs/",
+      "/job/",
+      "/skk/company/",
+      "/GetHtml.ashx",
+      "/Offer.aspx",
+    ],
     denyPaths: ["/FormTemplates/", "/RecruitmentForm"],
   },
   jobvite: {
@@ -173,8 +181,7 @@ export const PLATFORM_POLICIES: Record<string, SourcePolicy> = {
   join: {
     platform: "JOIN",
     state: "link_only",
-    reason:
-      "JOIN's company terms ban access through any automated system. Nothing is fetched.",
+    reason: "JOIN's company terms ban access through any automated system. Nothing is fetched.",
     termsUrl: "https://join.com/en/terms",
   },
   dynatrace: {

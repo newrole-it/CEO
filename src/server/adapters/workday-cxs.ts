@@ -12,10 +12,10 @@
  * postings are, so a posting listed as "2 Locations" gets its countries without a detail request.
  */
 import { envCount } from "config/env"
-import type { RobotsRules } from "src/server/crawler/robots"
-import { robotsAllows } from "src/server/crawler/robots"
+import type { RobotsRules } from "@newrole/offers/robots"
+import { robotsAllows } from "@newrole/offers/robots"
 import type { HttpClient } from "src/server/security/safe-fetch"
-import { UnsafeUrlError } from "src/server/security/url-safety"
+import { UnsafeUrlError } from "@newrole/offers/url-safety"
 import type { ListedJob } from "src/shared/schemas"
 import { buildListedJob } from "./parse"
 import type { BoardList } from "./types"

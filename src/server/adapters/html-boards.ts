@@ -1,7 +1,7 @@
 import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob, SourceType } from "src/shared/schemas"
 import { parseSitemap } from "src/server/crawler/sitemap"
-import { decodeEntities } from "src/server/jobs/text"
+import { decodeEntities } from "@newrole/offers/text"
 import { tenantHost } from "./hosts"
 import { metaContent, stripTags, titleFromSlug } from "./html-bits"
 import { parseJsonLdJobs } from "./jsonld"
@@ -28,7 +28,9 @@ export const HTML_VENDORS: Record<string, HtmlVendor> = {
     label: "onlyfy",
     sourceType: "ONLYFY",
     listUrl: (board, page) =>
-      `https://${tenantHost(board, "onlyfy.jobs")}/candidate/job/ajax_list?display_length=50&page=${page + 1}`,
+      `https://${tenantHost(board, "onlyfy.jobs")}/candidate/job/ajax_list?display_length=50&page=${
+        page + 1
+      }`,
     jobLink: /\/job\/([a-z0-9]+)(?:["'?#/]|$)/i,
   },
   REXX: {
@@ -40,13 +42,15 @@ export const HTML_VENDORS: Record<string, HtmlVendor> = {
   JAZZHR: {
     label: "JazzHR",
     sourceType: "JAZZHR",
-    listUrl: (board, page) => (page ? null : `https://${tenantHost(board, "applytojob.com")}/apply/`),
+    listUrl: (board, page) =>
+      page ? null : `https://${tenantHost(board, "applytojob.com")}/apply/`,
     jobLink: /\/apply\/([A-Za-z0-9]{6,})\/[^"'?#]+/,
   },
   CATSONE: {
     label: "CATS",
     sourceType: "CATSONE",
-    listUrl: (board, page) => (page ? null : `https://${tenantHost(board, "catsone.com")}/careers/`),
+    listUrl: (board, page) =>
+      page ? null : `https://${tenantHost(board, "catsone.com")}/careers/`,
     jobLink: /\/careers\/\d+\/jobs\/(\d+)/,
   },
   LOXO: {
@@ -58,14 +62,16 @@ export const HTML_VENDORS: Record<string, HtmlVendor> = {
   TALENTLYFT: {
     label: "TalentLyft",
     sourceType: "TALENTLYFT",
-    listUrl: (board, page) => (page ? null : `https://${tenantHost(board, "talentlyft.com")}/sitemap.xml`),
+    listUrl: (board, page) =>
+      page ? null : `https://${tenantHost(board, "talentlyft.com")}/sitemap.xml`,
     jobLink: /\/jobs\/.+-([A-Za-z0-9]{3,})\/?$/,
     sitemap: true,
   },
   FACTORIAL: {
     label: "Factorial",
     sourceType: "FACTORIAL",
-    listUrl: (board, page) => (page ? null : `https://${tenantHost(board, "factorialhr.com")}/sitemap.xml`),
+    listUrl: (board, page) =>
+      page ? null : `https://${tenantHost(board, "factorialhr.com")}/sitemap.xml`,
     jobLink: /\/job_posting\/.*-(\d+)\/?$/,
     sitemap: true,
   },
@@ -104,9 +110,13 @@ export function htmlLister(key: keyof typeof HTML_VENDORS & string) {
     for (let page = 0; page < 30; page++) {
       const url = vendor.listUrl(board, page)
       if (!url) break
-      const response = await http.get(url, { accept: "text/html, application/xml", maxBytes: 6_000_000 })
+      const response = await http.get(url, {
+        accept: "text/html, application/xml",
+        maxBytes: 6_000_000,
+      })
       if (response.status === 404 || response.status === 410) {
-        if (page === 0) return { jobs: [], proven: false, companyName: name, note: `${label} was not found` }
+        if (page === 0)
+          return { jobs: [], proven: false, companyName: name, note: `${label} was not found` }
         break
       }
       if (response.status >= 400) throw new Error(`${label} returned ${response.status}`)

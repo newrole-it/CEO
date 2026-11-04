@@ -20,7 +20,9 @@ export function polishBoardLinks(phrase: string): PolishBoardLink[] {
     },
     {
       name: "nofluffjobs",
-      href: `https://nofluffjobs.com/pl?criteria=keyword%3D${encodeURIComponent(query.toLowerCase())}`,
+      href: `https://nofluffjobs.com/pl?criteria=keyword%3D${encodeURIComponent(
+        query.toLowerCase()
+      )}`,
       note: "Opens their search. Not downloaded.",
     },
     {
@@ -41,7 +43,14 @@ export function polishBoardLinks(phrase: string): PolishBoardLink[] {
   ]
 }
 
-const POLISH_HOSTS = ["justjoin.it", "nofluffjobs.com", "pracuj.pl", "theprotocol.it", "bulldogjob.pl", "bulldogjob.com"]
+const POLISH_HOSTS = [
+  "justjoin.it",
+  "nofluffjobs.com",
+  "pracuj.pl",
+  "theprotocol.it",
+  "bulldogjob.pl",
+  "bulldogjob.com",
+]
 
 export function isPolishBoardHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^www\./, "")

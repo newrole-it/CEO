@@ -1,0 +1,23 @@
+{
+  "name": "@newrole/offers",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Reading public job postings politely: per-platform source policies, robots.txt, SSRF-safe fetching with one request per second per host, schema.org JobPosting, HTML to text, and stripping personal data. The first part of newrole.it's job search to stand on its own.",
+  "sideEffects": false,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "undici": "7.30.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.6.3",
+    "vitest": "0.25.3"
+  }
+}

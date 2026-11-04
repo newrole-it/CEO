@@ -15,7 +15,7 @@ import {
   normalizeWhitespace,
 } from "src/server/jobs/normalize"
 import { isUniqueViolation } from "src/server/jobs/prisma-errors"
-import { summarize } from "src/server/jobs/text"
+import { summarize } from "@newrole/offers/text"
 import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
 import { keepExternalPay } from "src/server/discovery/offer-search"
 import { excerpt } from "src/server/crawler/hygiene"

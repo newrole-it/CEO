@@ -3,7 +3,7 @@ import { CITY_ALIASES } from "matching/normalization"
 import { fold } from "matching/text"
 import { isPlatformName, readCompanyName } from "src/server/companies/names"
 import { hostOf, isAggregatorHost } from "src/server/discovery/careers-detect"
-import { decodeEntities } from "src/server/jobs/text"
+import { decodeEntities } from "@newrole/offers/text"
 import { createLlmClient } from "src/server/llm/client"
 import { wrapUntrusted } from "@newrole/llm/common"
 

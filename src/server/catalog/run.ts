@@ -4,7 +4,7 @@
  */
 import db from "db"
 import { loadSeedBoards } from "config/seed-boards"
-import { createRobotsCache, type RobotsCache } from "src/server/discovery/polite-fetch"
+import { createRobotsCache, type RobotsCache } from "@newrole/offers/polite"
 import { settleApiList } from "src/server/index/run"
 import { nextCrawlAt } from "src/server/index/schedule"
 import { storeBoardInventory } from "src/server/index/store"

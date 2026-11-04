@@ -1,5 +1,5 @@
 import type { SourceType } from "src/shared/schemas"
-import { isPolishBoardHost } from "src/shared/polish-boards"
+import { isPolishBoardHost } from "@newrole/offers/polish-boards"
 import { isWorkdayHost } from "src/shared/workday-boards"
 
 export type DetectedBoard = {
@@ -64,11 +64,16 @@ export function detectBoard(raw: string): DetectedBoard | null {
     return { provider: "JOBVITE", boardId: slug }
   }
   if (host === "skk.erecruiter.pl" || host === "system.erecruiter.pl") {
-    const cfg = url.searchParams.get("skkcfg") ?? (host === "skk.erecruiter.pl" ? url.searchParams.get("cfg") : null)
-    return cfg && /^[0-9a-f]{32}$/i.test(cfg) ? { provider: "ERECRUITER", boardId: cfg.toLowerCase() } : null
+    const cfg =
+      url.searchParams.get("skkcfg") ??
+      (host === "skk.erecruiter.pl" ? url.searchParams.get("cfg") : null)
+    return cfg && /^[0-9a-f]{32}$/i.test(cfg)
+      ? { provider: "ERECRUITER", boardId: cfg.toLowerCase() }
+      : null
   }
   const pracujunas = host.match(/^([a-z0-9-]+)\.pracujunas\.pl$/)
-  if (pracujunas && pracujunas[1] !== "www") return { provider: "ERECRUITER", boardId: pracujunas[1] }
+  if (pracujunas && pracujunas[1] !== "www")
+    return { provider: "ERECRUITER", boardId: pracujunas[1] }
   if (host.endsWith(".avature.net") && host !== "www.avature.net") {
     return { provider: "AVATURE", boardId: host }
   }

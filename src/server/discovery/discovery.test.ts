@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { classifyHit, workableSlugFromHtml } from "./boards"
 import { pickDiscoveryQueries } from "./queries"
-import { polishBoardLinks } from "src/shared/polish-boards"
+import { polishBoardLinks } from "@newrole/offers/polish-boards"
 import { WORKDAY_BOARDS } from "src/shared/workday-boards"
 import { loadSeedBoards, selectSeedBoards, workdayOutboundLinks } from "config/seed-boards"
 

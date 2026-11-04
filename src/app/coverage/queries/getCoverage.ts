@@ -1,5 +1,5 @@
 import { resolver } from "@blitzjs/rpc"
-import { coverageRows } from "config/source-policies"
+import { coverageRows } from "@newrole/offers/source-policies"
 import db from "db"
 
 const OPEN = ["ACTIVE", "POSSIBLY_CLOSED"] as const
