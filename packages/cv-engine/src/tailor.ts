@@ -122,6 +122,37 @@ function offerTextNote(job: TailorOffer, note: string | undefined): TailorNotes[
 }
 
 /**
+ * The language of a CV tailored to an offer: the one asked for, else the one the offer's CV
+ * already has, else the offer's own.
+ */
+export function tailoredCvLanguage(input: {
+  requested?: CvLocale
+  existing: { language: string } | null
+  offer: CvLocale
+}): CvLocale {
+  const { requested, existing, offer } = input
+  return requested ?? (existing?.language === "en" ? "en" : existing ? "pl" : offer)
+}
+
+/** A letter's language: as asked, else the letter's, else the tailored CV's, else the offer's. */
+export function coverLetterLanguage(input: {
+  requested?: CvLocale
+  letter: { language: string } | null
+  cv: { language: string } | null
+  offer: CvLocale
+}): CvLocale {
+  const { requested, letter, cv, offer } = input
+  return (
+    requested ??
+    (letter?.language === "en" || (!letter && cv?.language === "en")
+      ? "en"
+      : letter || cv
+      ? "pl"
+      : offer)
+  )
+}
+
+/**
  * "Dostosuj CV": the base CV with wording and order aimed at the offer. Code merges the model's
  * proposal, so employers, dates, contact details and every number stay as the base has them.
  */

@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
-import { tailorCv, writeCoverLetter } from "@newrole/cv-engine/tailor"
+import {
+  coverLetterLanguage,
+  tailorCv,
+  tailoredCvLanguage,
+  writeCoverLetter,
+} from "@newrole/cv-engine/tailor"
 import type { LlmClient } from "@newrole/llm/common"
 import { cvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
@@ -282,8 +287,11 @@ export async function tailorCvForJob(input: {
   if (!job) throw new CvError("job-not-found", "This offer is not in the index.")
   const existing = await findExisting(userId, jobId, "CV")
   const base = await baseForTailoring(userId, existing, input.baseCvId)
-  const language: CvLanguage =
-    input.language ?? (existing?.language === "en" ? "en" : existing ? "pl" : job.language)
+  const language = tailoredCvLanguage({
+    requested: input.language,
+    existing,
+    offer: job.language,
+  })
   const attempt = await attemptNumber(existing?.id)
 
   const generated = await tailorCv({
@@ -339,13 +347,12 @@ export async function generateLetterForJob(input: {
   const tailoredContent = parseCvContent(tailoredCv?.content)
   const source = tailoredContent ?? (await resolveBase(userId)).content
   if (!source) throw new CvError("no-base", "There is no CV to write from.")
-  const language: CvLanguage =
-    input.language ??
-    (existing?.language === "en" || (!existing && tailoredCv?.language === "en")
-      ? "en"
-      : existing || tailoredCv
-      ? "pl"
-      : job.language)
+  const language = coverLetterLanguage({
+    requested: input.language,
+    letter: existing,
+    cv: tailoredCv,
+    offer: job.language,
+  })
   const attempt = await attemptNumber(existing?.id)
 
   const generated = await writeCoverLetter({

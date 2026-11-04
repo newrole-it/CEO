@@ -3,7 +3,13 @@ import { syntheticCv } from "@newrole/cv-core/fixtures"
 import { letterSection } from "@newrole/cv-core/schema"
 import { OFFER_TEXT_LIMIT } from "@newrole/cv-core/tailor"
 import type { LlmClient } from "@newrole/llm/common"
-import { tailorCv, writeCoverLetter, type TailorOffer } from "./tailor"
+import {
+  coverLetterLanguage,
+  tailorCv,
+  tailoredCvLanguage,
+  writeCoverLetter,
+  type TailorOffer,
+} from "./tailor"
 
 type Call = { purpose: string; system: string; user: string; userId?: number }
 
@@ -136,5 +142,23 @@ describe("writeCoverLetter", () => {
       context: "",
     })
     expect(result).toBeNull()
+  })
+})
+
+describe("the language of what is written", () => {
+  it("keeps the CV's language once it has one, else follows the offer", () => {
+    expect(tailoredCvLanguage({ existing: null, offer: "en" })).toBe("en")
+    expect(tailoredCvLanguage({ existing: { language: "pl" }, offer: "en" })).toBe("pl")
+    expect(tailoredCvLanguage({ requested: "pl", existing: { language: "en" }, offer: "en" })).toBe(
+      "pl"
+    )
+  })
+
+  it("writes a letter in the letter's language, else the tailored CV's, else the offer's", () => {
+    expect(coverLetterLanguage({ letter: null, cv: null, offer: "pl" })).toBe("pl")
+    expect(coverLetterLanguage({ letter: null, cv: { language: "en" }, offer: "pl" })).toBe("en")
+    expect(
+      coverLetterLanguage({ letter: { language: "pl" }, cv: { language: "en" }, offer: "en" })
+    ).toBe("pl")
   })
 })

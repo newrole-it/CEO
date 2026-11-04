@@ -31,7 +31,7 @@ import logout from "src/app/(auth)/mutations/logout"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Modal } from "@newrole/ui/interactive"
-import { LOCALE_COOKIE } from "src/shared/locale"
+import { LOCALE_COOKIE } from "@newrole/app-kit/languages"
 import { LogoLockup } from "./Brand"
 import type { ShellUser } from "./links"
 

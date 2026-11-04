@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { languagesFromHeader, resolveLocale } from "./locale"
+import { languagesFromHeader, resolveLocale } from "./languages"
 
 describe("interface language", () => {
   it("follows the person's own choice first", () => {
