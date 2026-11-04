@@ -8,6 +8,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- npm run export:cv writes newrole CV as a repository of its own, with every package it needs, its own README, CI and commands, ready to push; run again in a clone of it, it brings in what changed and leaves local data alone. docs/publishing.md has the steps.
 - newrole CV, a separate app in apps/cv: build your profile from a CV PDF, pasted text, LinkedIn's data export or your LinkedIn page read by Claude in your own Chrome, then paste a link to a job offer and get your CV tailored to it, with a cover letter, in the same A4 editor, with versions, the CV audit, a print view and PDF. It also makes a CV from the profile, keeps form details for the CV header and audits the profile. It runs on its own (npm run cv, port 43124), keeps everything in files rather than a database, reads offers with the same source policy and robots.txt rules as newrole.it, and keeps at most 300 characters of an offer on disk.
 - The index holds IT offers only, and all of them: QA, developers, DevOps, data, security, product, design, IT project and program managers, analysts, IT support, directors and VPs. Offers outside IT, test posts and candidate pools are left out on every read.
 - Every offer stores its countries and remote regions, from the ATS's own fields where it has them, then from the location text (with a GeoNames list of large cities). An offer that says nowhere it is is left out.

@@ -188,6 +188,7 @@ The repository is a set of npm workspaces: the root is the newrole.it app, `pack
 - [Accounts, profile and privacy](docs/accounts.md) — sign-in, LinkedIn import without a LinkedIn app, audits, your data
 - [Applications, CV, answers and the extension](docs/applications.md) — the tracker, statistics, Google Sheet, Gmail, CV editor, answer bank
 - [Architecture](docs/architecture.md) — the packages, the apps built from them, and the rules between them
+- [Publishing](docs/publishing.md) — newrole CV as a repository of its own (`npm run export:cv`), and what npm would take
 - [Chrome extension](extension/README.md) · [Product plans](docs/product) · [Source packs](sources)
 - [Changelog](CHANGELOG.md) — every change by date; the app shows the same list at `/changelog`
 

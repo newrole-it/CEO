@@ -20,6 +20,7 @@
     "cv": "npm run dev -w @newrole/cv-app",
     "cv:build": "npm run build -w @newrole/cv-app",
     "cv:start": "npm run start -w @newrole/cv-app",
+    "export:cv": "node scripts/export-cv.mjs",
     "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
     "build": "next build --webpack",
     "start": "next start -H 127.0.0.1 -p 43123",
