@@ -1,26 +1,18 @@
 "use client"
 
-import { invoke } from "@blitzjs/rpc"
 import { useEffect, useId, useMemo, useState } from "react"
 import { ArrowLeft, ExternalLink, GitCompareArrows, RotateCcw, Sparkles, X } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
 import { Badge, Field, Skeleton } from "@newrole/ui/primitives"
-import { useCopy } from "src/app/i18n/Locale"
-import { relativeTime } from "src/app/jobs/format"
-import type { TailorContext } from "src/server/cv/tailor"
-import type { CvVersionView } from "src/server/cv/versions"
+import { relativeTime } from "@newrole/ui/time"
 import { compactDiff, diffCv, hasChanges, type DiffPart } from "@newrole/cv-core/diff"
 import type { CvContent } from "@newrole/cv-core/schema"
 import { readOnlyExcerpt, type TailorNotes } from "@newrole/cv-core/tailor"
-import { printViewUrl } from "../download"
-import generateCoverLetter from "../mutations/generateCoverLetter"
-import restoreCvVersion from "../mutations/restoreCvVersion"
-import saveCvVersion from "../mutations/saveCvVersion"
-import tailorCvForJob from "../mutations/tailorCvForJob"
-import getCvVersion from "../queries/getCvVersion"
-import getCvVersions from "../queries/getCvVersions"
-import { tailorErrorKey } from "../tailor-errors"
+import type { CvVersionView, TailorContext } from "@newrole/cv-core/views"
+import { useCvBackend } from "./backend"
+import { useCvCopy } from "./locale"
+import { tailorErrorKey } from "./tailor-errors"
 import type { CvLanguage } from "./useCvDocument"
 
 export type PanelTab = "versions" | "review"
@@ -56,7 +48,7 @@ export function DocumentPanel({
   notes: TailorNotes | null
   onNotes: (notes: TailorNotes) => void
 }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
   return (
     <aside className="cvt-panel" aria-label={t("tl.panel.label")}>
       <div className="cvt-panel__head">
@@ -110,7 +102,8 @@ export function DocumentPanel({
 }
 
 function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
+  const backend = useCvBackend()
   const toast = useToast()
   const inputId = useId()
   const [versions, setVersions] = useState<CvVersionView[] | null>(null)
@@ -120,7 +113,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
   const [compare, setCompare] = useState<{ number: number; content: CvContent } | null>(null)
 
   async function load(content: CvContent) {
-    const rows = await invoke(getCvVersions, { id })
+    const rows = await backend.versions.list(id)
     setVersions(rows)
     setLoadedFrom(content)
   }
@@ -129,7 +122,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
     let live = true
     void doc
       .flush()
-      .then(() => invoke(getCvVersions, { id }))
+      .then(() => backend.versions.list(id))
       .then((rows) => {
         if (!live) return
         setVersions(rows)
@@ -146,7 +139,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
     setBusy("save")
     try {
       await doc.flush()
-      const result = await invoke(saveCvVersion, { id, label: label.trim() || undefined })
+      const result = await backend.versions.save(id, label.trim() || undefined)
       const named = Boolean(label.trim())
       setLabel("")
       await load(doc.content)
@@ -166,7 +159,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
     setBusy(version.id)
     try {
       await doc.flush()
-      const result = await invoke(restoreCvVersion, { id, versionId: version.id })
+      const result = await backend.versions.restore(id, version.id)
       doc.replace({ content: result.content, language: result.language }, result.updatedAt)
       await load(result.content)
       setCompare(null)
@@ -184,7 +177,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
   async function openCompare(version: CvVersionView) {
     setBusy(version.id)
     try {
-      const { content } = await invoke(getCvVersion, { id, versionId: version.id })
+      const { content } = await backend.versions.get(id, version.id)
       setCompare({ number: version.number, content })
     } catch {
       toast.show({ message: t("tl.v.err"), tone: "danger" })
@@ -258,7 +251,7 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
                     {t("tl.v.compare")}
                   </Button>
                   <ButtonLink
-                    href={`${printViewUrl(id, false)}?version=${encodeURIComponent(version.id)}`}
+                    href={backend.printUrl(id, { versionId: version.id })}
                     external
                     size="sm"
                     variant="ghost"
@@ -304,7 +297,7 @@ function CompareView({
   current: CvContent
   onBack: () => void
 }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
   const rows = useMemo(() => diffCv(compare.content, current), [compare.content, current])
   const shown = useMemo(() => compactDiff(rows), [rows])
   return (
@@ -384,7 +377,8 @@ function ReviewTab({
   notes: TailorNotes | null
   onNotes: (notes: TailorNotes) => void
 }) {
-  const { t, locale } = useCopy()
+  const { t, locale } = useCvCopy()
+  const backend = useCvBackend()
   const toast = useToast()
   const noteId = useId()
   const [note, setNote] = useState("")
@@ -397,8 +391,8 @@ function ReviewTab({
       await doc.flush()
       const input = { jobId, note: note.trim() || undefined, language: doc.language }
       const result = isLetter
-        ? await invoke(generateCoverLetter, input)
-        : await invoke(tailorCvForJob, { ...input, locale })
+        ? await backend.tailor.letter(input)
+        : await backend.tailor.cv({ ...input, locale })
       if (!result) throw new Error("no result")
       doc.replace({ content: result.content, language: result.language }, result.updatedAt)
       onNotes(result.notes)

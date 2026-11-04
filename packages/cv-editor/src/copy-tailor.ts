@@ -26,7 +26,8 @@ export const tailorPl = {
   "tl.start.noText":
     "Nie mamy treści tej oferty, więc model zobaczy tylko firmę i stanowisko. Żeby dopasowanie było dokładne, wklej poniżej najważniejsze wymagania.",
   "tl.start.reading": "Czytam treść oferty ze strony firmy…",
-  "tl.start.full": "Mamy pełną treść tej oferty (znaków: {n}). Model przeczyta ją przed dopasowaniem.",
+  "tl.start.full":
+    "Mamy pełną treść tej oferty (znaków: {n}). Model przeczyta ją przed dopasowaniem.",
   "tl.start.excerpt":
     "Nie udało się pobrać pełnej treści tej oferty, więc model zobaczy tylko jej fragment (znaków: {n}). Żeby dopasowanie było dokładne, wklej poniżej najważniejsze wymagania.",
   "tl.start.noCv": "Najpierw dodaj CV",
@@ -145,7 +146,8 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.start.noText":
     "We don't have the text of this offer, so the model sees only the company and role. For a precise match, paste the main requirements below.",
   "tl.start.reading": "Reading the offer from the company's site…",
-  "tl.start.full": "We have the full text of this offer ({n} characters). The model reads it before tailoring.",
+  "tl.start.full":
+    "We have the full text of this offer ({n} characters). The model reads it before tailoring.",
   "tl.start.excerpt":
     "The full text of this offer couldn't be fetched, so the model sees only an excerpt ({n} characters). For a precise match, paste the main requirements below.",
   "tl.start.noCv": "Add a CV first",
@@ -161,7 +163,8 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.err.noBase": "There's no CV or profile to start from. Add a CV and try again.",
   "tl.err.noJob": "This offer is no longer in the index.",
   "tl.err.failed": "The model didn't return a usable result. Nothing changed, so try again.",
-  "tl.err.letter": "The CV is ready, but the letter couldn't be written. You can add it in the editor.",
+  "tl.err.letter":
+    "The CV is ready, but the letter couldn't be written. You can add it in the editor.",
 
   "tl.bar.label": "Documents for this offer",
   "tl.bar.cv": "CV",

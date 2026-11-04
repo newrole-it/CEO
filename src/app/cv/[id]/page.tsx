@@ -7,7 +7,7 @@ import { setupBack } from "src/app/setup/back"
 import { latestCvAudit } from "src/server/cv/audit-store"
 import { getCv } from "src/server/cv/service"
 import { tailorContext } from "src/server/cv/tailor"
-import { CvEditor } from "./CvEditor"
+import { NewroleCvEditor } from "./NewroleCvEditor"
 import { UploadedCv } from "./UploadedCv"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +38,7 @@ export default async function CvEditorPage({
       setupBack={await setupBack(user?.id ?? null)}
     >
       {cv.kind === "EDITABLE" && cv.content ? (
-        <CvEditor
+        <NewroleCvEditor
           id={cv.id}
           initial={{ title: cv.title, language: cv.language, content: cv.content }}
           loadedAt={cv.updatedAt.toISOString()}

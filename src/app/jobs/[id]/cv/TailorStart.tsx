@@ -12,7 +12,7 @@ import { useCopy } from "src/app/i18n/Locale"
 import generateCoverLetter from "src/app/cv/mutations/generateCoverLetter"
 import tailorCvForJob from "src/app/cv/mutations/tailorCvForJob"
 import getOfferTextStatus from "src/app/cv/queries/getOfferTextStatus"
-import { tailorErrorKey } from "src/app/cv/tailor-errors"
+import { tailorErrorKey } from "@newrole/cv-editor/tailor-errors"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 
 export type StartJob = {

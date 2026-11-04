@@ -3,16 +3,13 @@
 import { ChevronDown, ChevronUp, Pencil, RotateCcw, Sparkles, X } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { Banner } from "@newrole/ui/primitives"
-import { useCopy } from "src/app/i18n/Locale"
-import { intlLocale } from "src/app/i18n/copy"
+import { intlLocale } from "@newrole/ui/i18n"
+import type { CvT } from "./copy"
+import { useCvCopy } from "./locale"
 import { auditCategories, type CvAuditNote } from "@newrole/cv-core/audit"
 import type { CvAuditState } from "./useCvAudit"
 
-function progressLine(
-  t: ReturnType<typeof useCopy>["t"],
-  score: number,
-  previous: number | null
-): string | null {
+function progressLine(t: CvT, score: number, previous: number | null): string | null {
   if (previous == null) return null
   const delta = score - previous
   if (delta === 0) return t("cv.au.same")
@@ -21,7 +18,7 @@ function progressLine(
 
 /** Over the sheets: the score, what the audit found overall and which notes are shown. */
 export function AuditBar({ state }: { state: CvAuditState }) {
-  const { t, locale } = useCopy()
+  const { t, locale } = useCvCopy()
   const { audit, busy, failed, allOpen, hidden } = state
   if (!audit) {
     return (
@@ -170,7 +167,7 @@ function NoteCard({
   active: boolean
   state: CvAuditState
 }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
   const important = note.severity >= 4
   return (
     <article
@@ -251,7 +248,7 @@ function NoteCard({
 
 /** Beside the sheet: one card per note, level with the text it is about. */
 export function AuditRail({ state }: { state: CvAuditState }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
   const { audit, busy, notes, allOpen, active, position, stackRef } = state
   const running = busy && !audit
   return (

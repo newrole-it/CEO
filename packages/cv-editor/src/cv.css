@@ -666,8 +666,22 @@
   width: 16px;
   height: 6px;
   /* a short squiggle, so the legend looks like what it explains */
-  background: radial-gradient(circle at 50% 120%, transparent 38%, var(--cva-c) 40%, var(--cva-c) 58%, transparent 60%) 0 0 / 8px 6px,
-    radial-gradient(circle at 50% -20%, transparent 38%, var(--cva-c) 40%, var(--cva-c) 58%, transparent 60%) 4px 0 / 8px 6px;
+  background: radial-gradient(
+        circle at 50% 120%,
+        transparent 38%,
+        var(--cva-c) 40%,
+        var(--cva-c) 58%,
+        transparent 60%
+      )
+      0 0 / 8px 6px,
+    radial-gradient(
+        circle at 50% -20%,
+        transparent 38%,
+        var(--cva-c) 40%,
+        var(--cva-c) 58%,
+        transparent 60%
+      )
+      4px 0 / 8px 6px;
 }
 .cva-chip b {
   color: var(--text-muted);

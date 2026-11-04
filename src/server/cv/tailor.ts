@@ -6,6 +6,7 @@ import { cvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
 import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 import { parseTailorNotes, type OfferTextOrigin, type TailorNotes } from "@newrole/cv-core/tailor"
+import type { TailorContext, TailorResult } from "@newrole/cv-core/views"
 import {
   indexedOfferText,
   offerSourceSelect,
@@ -38,22 +39,7 @@ export type TailorJob = {
   language: CvLanguage
 }
 
-export type TailorResult = {
-  id: string
-  content: CvContent
-  language: CvLanguage
-  notes: TailorNotes
-  /** The document's updatedAt after this write, for the editor's next save */
-  updatedAt: Date
-}
-
-/** What the editor shows around a tailored document. */
-export type TailorContext = {
-  job: { id: string | null; company: string; title: string; url: string | null }
-  cvId: string | null
-  letterId: string | null
-  notes: TailorNotes | null
-}
+export type { TailorContext, TailorResult }
 
 /** Reads the index only, unless `live` asks for the whole offer from its source. */
 export async function loadTailorJob(

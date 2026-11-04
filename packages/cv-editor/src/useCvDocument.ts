@@ -1,9 +1,8 @@
 "use client"
 
-import { invoke } from "@blitzjs/rpc"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { cvContentError, cvTooLongLimit, type CvContent } from "@newrole/cv-core/schema"
-import updateCvDocument from "../mutations/updateCvDocument"
+import { useCvBackend } from "./backend"
 
 export type CvLanguage = "pl" | "en"
 /** "conflict": the stored CV is newer than this tab's copy; saving stops until a reload */
@@ -28,6 +27,7 @@ const GROUP_MS = 1000
  * server has a newer one, another tab saved in between and the state turns to "conflict".
  */
 export function useCvDocument(id: string, initial: Doc, loadedAt: Date) {
+  const { save } = useCvBackend()
   const [doc, setDoc] = useState<Doc>(initial)
   const [saveState, setSaveState] = useState<SaveState>("saved")
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -68,7 +68,7 @@ export function useCvDocument(id: string, initial: Doc, loadedAt: Date) {
       return Promise.resolve(true)
     }
     setSaveState("saving")
-    const run = invoke(updateCvDocument, { ...patch, baseUpdatedAt: version.current }).then(
+    const run = save({ ...patch, baseUpdatedAt: version.current }).then(
       (result) => {
         inFlight.current = null
         saved.current = snapshot
@@ -98,7 +98,7 @@ export function useCvDocument(id: string, initial: Doc, loadedAt: Date) {
     )
     inFlight.current = run
     return run
-  }, [id])
+  }, [id, save])
 
   const change = useCallback(
     (next: Doc) => {

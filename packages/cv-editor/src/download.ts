@@ -13,29 +13,26 @@ function nameFromHeader(header: string | null): string | null {
 }
 
 /**
- * Downloads a CV as a PDF. "print" means the server has no Chrome (503): the caller opens the
- * print view instead. Fetching first (rather than a plain link) is what makes that fallback work.
+ * Downloads a CV as a PDF from `url` (CvEditorBackend.pdfUrl). "print" means the server has no
+ * Chrome (503): the caller opens the print view instead. Fetching first (rather than a plain link)
+ * is what makes that fallback work.
  */
-export async function downloadCvPdf(id: string): Promise<"ok" | "print" | "failed"> {
+export async function downloadPdf(url: string): Promise<"ok" | "print" | "failed"> {
   let response: Response
   try {
-    response = await fetch(`/api/cv/${encodeURIComponent(id)}/pdf`, { credentials: "same-origin" })
+    response = await fetch(url, { credentials: "same-origin" })
   } catch {
     return "failed"
   }
   if (response.status === 503) return "print"
   if (!response.ok) return "failed"
-  const url = URL.createObjectURL(await response.blob())
+  const blobUrl = URL.createObjectURL(await response.blob())
   const link = document.createElement("a")
-  link.href = url
+  link.href = blobUrl
   link.download = nameFromHeader(response.headers.get("Content-Disposition")) ?? "CV.pdf"
   document.body.appendChild(link)
   link.click()
   link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000)
   return "ok"
-}
-
-export function printViewUrl(id: string, auto = true): string {
-  return `/cv/${encodeURIComponent(id)}/print${auto ? "?auto=1" : ""}`
 }

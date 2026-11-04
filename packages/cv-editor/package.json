@@ -1,0 +1,42 @@
+{
+  "name": "@newrole/cv-editor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "The A4 CV and cover letter editor of newrole.it for React and Next.js: real pages edited in place, undo, autosave, versions with compare and restore, tailoring notes and the CV audit. The app around it supplies storage through one CvEditorBackend.",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./cv.css": "./src/cv.css",
+    "./tailor.css": "./src/tailor.css",
+    "./*": "./src/*.tsx",
+    "./copy": "./src/copy.ts",
+    "./copy-cv": "./src/copy-cv.ts",
+    "./copy-tailor": "./src/copy-tailor.ts",
+    "./audit-dom": "./src/audit-dom.ts",
+    "./download": "./src/download.ts",
+    "./photo": "./src/photo.ts",
+    "./tailor-errors": "./src/tailor-errors.ts",
+    "./useCvAudit": "./src/useCvAudit.ts",
+    "./useCvDocument": "./src/useCvDocument.ts",
+    "./usePagination": "./src/usePagination.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@newrole/cv-core": "0.1.0",
+    "@newrole/ui": "0.1.0",
+    "lucide-react": "1.55.0"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "typescript": "5.6.3"
+  }
+}

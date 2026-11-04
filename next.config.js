@@ -1,5 +1,5 @@
 const { withBlitz } = require("@blitzjs/next")
-const { workspacePackages } = require("./scripts/workspaces.cjs")
+const { workspacePackages } = require("./scripts/workspaces.js")
 
 // Same-origin frames stay allowed: the CV editor shows an uploaded PDF from /api/cv in an iframe.
 const securityHeaders = [

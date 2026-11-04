@@ -1,12 +1,11 @@
 import { accountEn, accountPl } from "./copy-account"
 import { answersEn, answersPl } from "./copy-answers"
 import { applicationsEn, applicationsPl } from "./copy-applications"
-import { cvEn, cvPl } from "./copy-cv"
+import { cvEn, cvPl, tailorEn, tailorPl } from "@newrole/cv-editor/copy"
 import { extensionEn, extensionPl } from "./copy-extension"
 import { gmailEn, gmailPl } from "./copy-gmail"
 import { setupEn, setupPl } from "./copy-setup"
 import { syncEn, syncPl } from "./copy-sync"
-import { tailorEn, tailorPl } from "./copy-tailor"
 import { uiEn, uiPl } from "@newrole/ui/copy"
 import { fmt, intlLocale, type Locale } from "@newrole/ui/i18n"
 

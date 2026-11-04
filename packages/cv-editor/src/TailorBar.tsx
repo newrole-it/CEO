@@ -2,16 +2,15 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
 import { useState } from "react"
 import { Plus, Sparkles } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
-import { useCopy } from "src/app/i18n/Locale"
-import type { TailorContext } from "src/server/cv/tailor"
 import type { TailorNotes } from "@newrole/cv-core/tailor"
-import generateCoverLetter from "../mutations/generateCoverLetter"
-import { tailorErrorKey } from "../tailor-errors"
+import type { TailorContext } from "@newrole/cv-core/views"
+import { useCvBackend } from "./backend"
+import { useCvCopy } from "./locale"
+import { tailorErrorKey } from "./tailor-errors"
 import type { CvLanguage } from "./useCvDocument"
 
 /** Above a tailored document: the switch between its CV and letter, and the offer they are for. */
@@ -30,9 +29,10 @@ export function TailorBar({
   flush: () => Promise<boolean>
   onReview: () => void
 }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
   const toast = useToast()
   const router = useRouter()
+  const backend = useCvBackend()
   const [adding, setAdding] = useState(false)
   const { job, cvId, letterId } = tailor
 
@@ -41,9 +41,9 @@ export function TailorBar({
     setAdding(true)
     try {
       await flush()
-      const letter = await invoke(generateCoverLetter, { jobId: job.id, language })
+      const letter = await backend.tailor.letter({ jobId: job.id, language })
       if (!letter) throw new Error("no result")
-      router.push(`/cv/${letter.id}`)
+      router.push(backend.routes.document(letter.id))
     } catch (error) {
       toast.show({ message: t(tailorErrorKey(error)), tone: "danger" })
       setAdding(false)
@@ -52,13 +52,14 @@ export function TailorBar({
 
   const toCheck = notes?.unverified.length ?? 0
   const offer = `${job.company} · ${job.title}`
+  const jobPage = job.id ? backend.routes.job(job.id) : null
   return (
     <div className="cvt-bar">
       <nav className="tabs" aria-label={t("tl.bar.label")}>
         {cvId ? (
           <Link
             className="tab"
-            href={`/cv/${cvId}`}
+            href={backend.routes.document(cvId)}
             aria-current={cvId === id ? "page" : undefined}
           >
             {t("tl.bar.cv")}
@@ -67,7 +68,7 @@ export function TailorBar({
         {letterId ? (
           <Link
             className="tab"
-            href={`/cv/${letterId}`}
+            href={backend.routes.document(letterId)}
             aria-current={letterId === id ? "page" : undefined}
           >
             {t("tl.bar.letter")}
@@ -88,10 +89,14 @@ export function TailorBar({
       ) : null}
       <span className="cvt-bar__for" title={offer}>
         {t("tl.bar.for")}{" "}
-        {job.id ? (
-          <Link className="link" href={`/jobs/${job.id}`}>
+        {jobPage ? (
+          <Link className="link" href={jobPage}>
             {offer}
           </Link>
+        ) : job.url ? (
+          <a className="link" href={job.url} target="_blank" rel="noopener noreferrer">
+            {offer}
+          </a>
         ) : (
           offer
         )}

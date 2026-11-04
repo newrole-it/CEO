@@ -1,3 +1,4 @@
+/// <reference path="./react-dom.d.ts" />
 "use client"
 
 import {

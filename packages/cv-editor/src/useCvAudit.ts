@@ -1,6 +1,5 @@
 "use client"
 
-import { invoke } from "@blitzjs/rpc"
 import {
   useCallback,
   useEffect,
@@ -11,7 +10,6 @@ import {
   type RefObject,
 } from "react"
 import { useToast } from "@newrole/ui/interactive"
-import { useCopy } from "src/app/i18n/Locale"
 import {
   applyNote,
   openNotes,
@@ -21,9 +19,9 @@ import {
   type CvAuditNote,
 } from "@newrole/cv-core/audit"
 import type { CvContent } from "@newrole/cv-core/schema"
-import runCvAudit from "../mutations/runCvAudit"
-import setCvAuditDismissed from "../mutations/setCvAuditDismissed"
+import { useCvBackend } from "./backend"
 import { placeCaret } from "./Editable"
+import { useCvCopy } from "./locale"
 import {
   anchorTop,
   fieldElement,
@@ -63,7 +61,8 @@ export function useCvAudit({
   edit: (update: (content: CvContent) => CvContent) => void
   undo: () => void
 }) {
-  const { t, locale } = useCopy()
+  const { t, locale } = useCvCopy()
+  const { audit: auditApi } = useCvBackend()
   const toast = useToast()
   const [audit, setAudit] = useState(initial)
   const [open, setOpen] = useState(startOpen)
@@ -216,8 +215,9 @@ export function useCvAudit({
     setBusy(true)
     setFailed(false)
     try {
+      if (!auditApi) throw new Error("no audit")
       if (!(await flush())) throw new Error("not saved")
-      const result = await invoke(runCvAudit, { id, locale })
+      const result = await auditApi.run(id, locale)
       if (!result) throw new Error("no result")
       setAudit(result)
       setHidden(new Set())
@@ -227,7 +227,7 @@ export function useCvAudit({
     } finally {
       setBusy(false)
     }
-  }, [id, locale, flush, content])
+  }, [id, locale, flush, content, auditApi])
 
   const toggle = useCallback(() => {
     if (open) {
@@ -291,12 +291,15 @@ export function useCvAudit({
   const saveDismissed = useCallback(
     (dismissed: string[], previous: CvAudit) => {
       setAudit({ ...previous, dismissed })
-      invoke(setCvAuditDismissed, { id, dismissed }).catch(() => {
+      const stored = auditApi
+        ? auditApi.setDismissed(id, dismissed)
+        : Promise.reject(new Error("no audit"))
+      stored.catch(() => {
         setAudit(previous)
         toast.show({ message: t("cv.err.action"), tone: "danger" })
       })
     },
-    [id, toast, t]
+    [id, toast, t, auditApi]
   )
 
   const skip = useCallback(

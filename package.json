@@ -51,6 +51,7 @@
     "@blitzjs/rpc": "3.0.2",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@newrole/cv-core": "0.1.0",
+    "@newrole/cv-editor": "0.1.0",
     "@newrole/cv-engine": "0.1.0",
     "@newrole/llm": "0.1.0",
     "@newrole/ui": "0.1.0",

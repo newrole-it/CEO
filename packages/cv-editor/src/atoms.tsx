@@ -13,7 +13,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react"
-import type { T } from "src/app/i18n/copy"
+import type { CvT } from "./copy"
 import {
   newCard,
   newEducation,
@@ -50,12 +50,12 @@ import { Editable } from "./Editable"
 
 /**
  * React views of the atoms in src/shared/cv/flow.ts. The structure and classes mirror the print
- * markup in src/server/cv/render.ts one to one, so both lay out the same with the shared CSS;
+ * markup in @newrole/cv-engine/render one to one, so both lay out the same with the shared CSS;
  * only the fields are editable and the controls (absolutely positioned) are added on top.
  */
 
 export type EditorOps = {
-  t: T
+  t: CvT
   locale: CvLocale
   content: CvContent
   edit: (update: (content: CvContent) => CvContent, group?: string) => void

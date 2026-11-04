@@ -18,8 +18,6 @@ import {
 } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
-import { useCopy } from "src/app/i18n/Locale"
-import type { TailorContext } from "src/server/cv/tailor"
 import type { CvAudit } from "@newrole/cv-core/audit"
 import { newSection } from "@newrole/cv-core/blank"
 import { insertSection, removeSection, updateHeader } from "@newrole/cv-core/edit"
@@ -28,12 +26,15 @@ import { normalizeHref } from "@newrole/cv-core/sanitize"
 import type { CvContent, CvSection } from "@newrole/cv-core/schema"
 import { CV_CSS, MM, PAGE_MM } from "@newrole/cv-core/styles"
 import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
-import { downloadCvPdf, printViewUrl } from "../download"
+import type { TailorContext } from "@newrole/cv-core/views"
 import { AtomContent, type EditorOps } from "./atoms"
+import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./backend"
+import { downloadPdf } from "./download"
 import { AuditBar, AuditRail } from "./AuditPanel"
 import { DocumentPanel, type PanelTab } from "./DocumentPanel"
 import { placeCaret } from "./Editable"
 import { LinksPopover } from "./LinksPopover"
+import { useCvCopy } from "./locale"
 import { Outline } from "./Outline"
 import { photoToDataUrl } from "./photo"
 import { TailorBar } from "./TailorBar"
@@ -62,16 +63,7 @@ function fieldHost(node: Node | null): HTMLElement | null {
   return element?.closest<HTMLElement>("[data-field]") ?? null
 }
 
-/** The CV editor: a sticky toolbar, the outline and the sheets, edited in place. */
-export function CvEditor({
-  id,
-  initial,
-  loadedAt,
-  initialAudit,
-  startAudit,
-  isLetter = false,
-  tailor = null,
-}: {
+type EditorProps = {
   id: string
   initial: { title: string; language: CvLanguage; content: CvContent }
   /** The CV's updatedAt when the page loaded (ISO), so a save from a stale tab is refused */
@@ -83,8 +75,31 @@ export function CvEditor({
   isLetter?: boolean
   /** Set when this document was written for an offer */
   tailor?: TailorContext | null
-}) {
-  const { t } = useCopy()
+}
+
+/**
+ * The CV editor: a sticky toolbar, the outline and the sheets, edited in place. `backend` is how
+ * it saves, prints and tailors (backend.tsx); pass the same object on every render.
+ */
+export function CvEditor({ backend, ...props }: EditorProps & { backend: CvEditorBackend }) {
+  return (
+    <CvEditorBackendProvider backend={backend}>
+      <Editor {...props} />
+    </CvEditorBackendProvider>
+  )
+}
+
+function Editor({
+  id,
+  initial,
+  loadedAt,
+  initialAudit,
+  startAudit,
+  isLetter = false,
+  tailor = null,
+}: EditorProps) {
+  const { t } = useCvCopy()
+  const backend = useCvBackend()
   const toast = useToast()
   const doc = useCvDocument(id, initial, new Date(loadedAt))
   const { content, edit, undo, redo } = doc
@@ -342,10 +357,10 @@ export function CvEditor({
     setDownloading(true)
     try {
       await doc.flush()
-      const result = await downloadCvPdf(id)
+      const result = await downloadPdf(backend.pdfUrl(id))
       if (result === "print") {
         toast.show({ message: t("cv.pdf.noChrome"), duration: 8000 })
-        window.open(printViewUrl(id), "_blank", "noopener")
+        window.open(backend.printUrl(id, { auto: true }), "_blank", "noopener")
       } else if (result === "failed") {
         toast.show({ message: t("cv.err.pdf"), tone: "danger" })
       }
@@ -363,7 +378,7 @@ export function CvEditor({
       <div className="cve-toolbar" role="toolbar" aria-label={t("cv.ed.tools")}>
         <Link
           className="cve-toolbar__back"
-          href="/cv"
+          href={backend.routes.list}
           aria-label={t("cv.ed.back")}
           title={t("cv.ed.back")}
         >
@@ -445,7 +460,7 @@ export function CvEditor({
         <span className="cve-toolbar__pages t-sm muted" aria-live="polite">
           {t("cv.ed.pages", { n: pageCount })}
         </span>
-        {isLetter ? null : (
+        {isLetter || !backend.audit ? null : (
           <Button
             size="sm"
             variant={audit.open ? "soft" : "ghost"}
@@ -472,7 +487,7 @@ export function CvEditor({
           {t("tl.v.button")}
         </Button>
         <ButtonLink
-          href={printViewUrl(id, false)}
+          href={backend.printUrl(id)}
           external
           size="sm"
           variant="ghost"
@@ -663,7 +678,7 @@ function SaveStatus({
   limit: number | null
   onRetry: () => void
 }) {
-  const { t } = useCopy()
+  const { t } = useCvCopy()
   if (state === "conflict") {
     return (
       <span className="cve-save cve-save--error" role="alert">

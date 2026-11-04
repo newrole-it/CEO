@@ -1,6 +1,7 @@
 import { createHash } from "crypto"
 import type { Prisma } from "@prisma/client"
 import db from "db"
+import type { CvVersionOrigin, CvVersionView } from "@newrole/cv-core/views"
 import { cvLocale } from "@newrole/cv-core/blank"
 import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 
@@ -18,19 +19,7 @@ export const MAX_AUTO_VERSIONS = 30
 const MAX_LABEL = 120
 const LOCK_NAMESPACE = 7419
 
-export type CvVersionOrigin = "auto" | "manual" | "base" | "generated" | "restored"
-
-export type CvVersionView = {
-  id: string
-  number: number
-  origin: CvVersionOrigin
-  label: string | null
-  sourceNumber: number | null
-  language: "pl" | "en"
-  createdAt: Date
-  /** The document is exactly this version right now */
-  isCurrent: boolean
-}
+export type { CvVersionOrigin, CvVersionView }
 
 type Writer = Prisma.TransactionClient
 
