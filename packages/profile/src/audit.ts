@@ -180,6 +180,8 @@ const COPY = {
     noGaps:
       "Matched offers were counted. No checklist phrase is both common in those offers and missing from this profile.",
     noFacts: "No saved search with results yet, so this audit does not cite offer counts.",
+    noIndex:
+      "There is no offer index here, so this audit does not compare the profile with what offers ask for.",
     same: (score: number) => `Same score as the last audit (${score}).`,
     up: (delta: number, previous: number) => `Up ${delta} from the last audit (${previous}).`,
     down: (delta: number, previous: number) => `Down ${delta} from the last audit (${previous}).`,
@@ -227,6 +229,8 @@ const COPY = {
       "Dopasowane oferty policzone. Żadna fraza z listy nie jest jednocześnie częsta w tych ofertach i nieobecna w profilu.",
     noFacts:
       "Nie ma jeszcze zapisanego wyszukiwania z wynikami, więc ten audyt nie podaje liczb z ofert.",
+    noIndex:
+      "Tu nie ma indeksu ofert, więc audyt nie porównuje profilu z tym, czego wymagają oferty.",
     same: (score: number) => `Taka sama ocena jak w ostatnim audycie (${score}).`,
     up: (delta: number, previous: number) =>
       `O ${delta} więcej niż w ostatnim audycie (${previous}).`,
@@ -714,7 +718,8 @@ function serverSummary(
   score: number,
   notes: AuditAnnotation[],
   facts: DemandFact[],
-  locale: AuditLocale
+  locale: AuditLocale,
+  noIndex = false
 ): string {
   const copy = COPY[locale]
   const qualifying = facts.filter((fact) => fact.qualifies)
@@ -722,6 +727,8 @@ function serverSummary(
     ? copy.gaps(qualifying.length, factSentence(qualifying[0], locale, "profile"))
     : facts.length
     ? copy.noGaps
+    : noIndex
+    ? copy.noIndex
     : copy.noFacts
   return `${copy.lead(score, notes.length)} ${lead}`
 }
@@ -739,6 +746,8 @@ function summaryOk(text: string | undefined): text is string {
 export async function buildProfileAudit(input: {
   document: LinkedInDocument
   facts: DemandFact[]
+  /** The app has no offer index, so there are no facts to have (not merely none yet) */
+  noIndex?: boolean
   llm: LlmClient | null
   previousScore: number | null
   userId?: number
@@ -793,7 +802,7 @@ export async function buildProfileAudit(input: {
   const summary = (
     summaryOk(modelSummary)
       ? modelSummary.trim()
-      : serverSummary(score, annotations, input.facts, locale)
+      : serverSummary(score, annotations, input.facts, locale, input.noIndex)
   ).slice(0, 800)
   const topChanges = annotations.slice(0, 5).map((item) => ({
     id: item.id,

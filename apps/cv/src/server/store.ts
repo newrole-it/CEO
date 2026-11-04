@@ -6,10 +6,16 @@ import { cvContentError, parseCvContent, type CvContent } from "@newrole/cv-core
 import { parseTailorNotes, type TailorNotes } from "@newrole/cv-core/tailor"
 import type { CvVersionOrigin, CvVersionView } from "@newrole/cv-core/views"
 import { contentHash } from "@newrole/cv-engine/versions"
+import { parseApplicant, type ApplicantInfo } from "@newrole/profile/applicant"
+import { builtAuditSchema, type BuiltAudit } from "@newrole/profile/audit"
+import { parseStoredDocument, type LinkedInDocument } from "@newrole/profile/linkedin"
+import { profileDraftSchema, type ProfileDraft } from "@newrole/profile/schema"
+import { parseCvAudit, type CvAudit } from "@newrole/cv-core/audit"
 
 /**
  * Everything newrole CV keeps, as JSON files in one folder (NEWROLE_CV_DATA, else .data next to
- * the app): documents/<id>.json with their versions, and offers/<id>.json. One person on their own
+ * the app): documents/<id>.json with their versions and latest audit, offers/<id>.json, and the
+ * person's profile.json. One person on their own
  * machine, so there is no account and no database. Writes to one file run one at a time and land
  * whole (a temporary file, then a rename).
  */
@@ -47,6 +53,8 @@ export type CvDocument = {
 
 type DocumentFile = Omit<CvDocument, "createdAt" | "updatedAt" | "notes"> & {
   notes: unknown
+  /** The latest CV audit (@newrole/cv-core/audit) */
+  audit?: unknown
   createdAt: string
   updatedAt: string
   versions: StoredVersion[]
@@ -344,6 +352,24 @@ export async function storeGenerated(input: {
   })
 }
 
+// ------------------------------------------------------------------ audits
+
+export async function getDocumentAudit(id: string): Promise<CvAudit | null> {
+  const file = await readDocumentFile(id)
+  return file ? parseCvAudit(file.audit) : null
+}
+
+/** Only the latest audit is kept. It changes nothing on the page, so updatedAt stays. */
+export async function setDocumentAudit(id: string, audit: CvAudit): Promise<void> {
+  if (!isId(id)) throw new StoreError("not-found", "Document not found.")
+  await serialized(id, async () => {
+    const file = await readDocumentFile(id)
+    if (!file) throw new StoreError("not-found", "Document not found.")
+    file.audit = audit
+    await writeJson(fileOf("documents", id), file)
+  })
+}
+
 // ------------------------------------------------------------------ versions
 
 function toView(version: StoredVersion, currentHash: string | null): CvVersionView {
@@ -459,4 +485,63 @@ export async function getOffer(id: string): Promise<Offer | null> {
   if (!isId(id)) return null
   const file = await readJson<OfferFile>(fileOf("offers", id))
   return file ? toOffer(file) : null
+}
+
+// ------------------------------------------------------------------ profile
+
+/**
+ * The person's profile: what they confirmed of it (`draft`), the CV or LinkedIn sections it was
+ * read from (for "CV from profile" and as facts for the model), their form details, and the
+ * latest profile audit.
+ */
+export type Profile = {
+  draft: ProfileDraft | null
+  document: LinkedInDocument | null
+  applicant: ApplicantInfo
+  importedAt: Date | null
+  audit: BuiltAudit | null
+  auditedAt: Date | null
+}
+
+type ProfileFile = {
+  draft?: unknown
+  document?: unknown
+  applicant?: unknown
+  importedAt?: string | null
+  audit?: unknown
+  auditedAt?: string | null
+}
+
+const profilePath = () => join(dataDir(), "profile.json")
+
+function toProfile(file: ProfileFile | null): Profile {
+  const draft = profileDraftSchema.safeParse(file?.draft)
+  const audit = builtAuditSchema.safeParse(file?.audit)
+  return {
+    draft: file?.draft && draft.success ? draft.data : null,
+    document: parseStoredDocument(file?.document ?? null),
+    applicant: parseApplicant(file?.applicant),
+    importedAt: file?.importedAt ? new Date(file.importedAt) : null,
+    audit: file?.audit && audit.success ? audit.data : null,
+    auditedAt: file?.auditedAt ? new Date(file.auditedAt) : null,
+  }
+}
+
+export async function getProfile(): Promise<Profile> {
+  return toProfile(await readJson<ProfileFile>(profilePath()))
+}
+
+export async function updateProfile(patch: Partial<Profile>): Promise<Profile> {
+  return serialized("profile", async () => {
+    const file = (await readJson<ProfileFile>(profilePath())) ?? {}
+    const next: ProfileFile = { ...file }
+    if ("draft" in patch) next.draft = patch.draft
+    if ("document" in patch) next.document = patch.document
+    if ("applicant" in patch) next.applicant = patch.applicant
+    if ("importedAt" in patch) next.importedAt = patch.importedAt?.toISOString() ?? null
+    if ("audit" in patch) next.audit = patch.audit
+    if ("auditedAt" in patch) next.auditedAt = patch.auditedAt?.toISOString() ?? null
+    await writeJson(profilePath(), next)
+    return toProfile(next)
+  })
 }

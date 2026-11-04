@@ -1,7 +1,6 @@
 import db from "db"
 import { createLlmClient } from "src/server/llm/client"
-import { extractProfileFromText } from "@newrole/profile/extract"
-import { parseLinkedInProfile } from "@newrole/profile/linkedin"
+import { draftFromText } from "@newrole/profile/import-text"
 import type { ProfileDraft } from "@newrole/profile/schema"
 
 /**
@@ -13,8 +12,7 @@ export async function draftFromProfileText(
   text: string,
   userId?: number
 ): Promise<{ draft: ProfileDraft }> {
-  const draft = await extractProfileFromText(text, createLlmClient(), userId)
-  const document = parseLinkedInProfile(text)
+  const { draft, document } = await draftFromText(text, createLlmClient(), userId)
   try {
     if (userId && document) {
       await db.candidateProfile.upsert({

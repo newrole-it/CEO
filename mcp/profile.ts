@@ -6,7 +6,7 @@ import { createLlmClient, llmProvider } from "src/server/llm/client"
 import { extractProfileFromText } from "@newrole/profile/extract"
 import { parseLinkedInProfile } from "@newrole/profile/linkedin"
 import { linkedInExportText, MAX_ZIP_BYTES } from "@newrole/profile/linkedin-export"
-import { extractPdfText } from "@newrole/cv-engine/pdf"
+import { extractPdfText } from "@newrole/profile/pdf"
 import { asStringList, type ProfileDraft } from "@newrole/profile/schema"
 import { mcpHost } from "./host"
 

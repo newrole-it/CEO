@@ -1,4 +1,4 @@
-import { extractPdfText } from "@newrole/cv-engine/pdf"
+import { extractPdfText } from "@newrole/profile/pdf"
 import { structureCvText } from "@newrole/cv-engine/structure"
 import { createLlmClient } from "src/server/llm/client"
 import { createCv, CvError, storedPdf, type CvDetail } from "./service"

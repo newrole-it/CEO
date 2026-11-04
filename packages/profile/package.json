@@ -16,6 +16,7 @@
     "@newrole/cv-core": "0.1.0",
     "@newrole/llm": "0.1.0",
     "@newrole/matching": "0.1.0",
+    "unpdf": "1.4.0",
     "zod": "3.25.76"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 import type { z } from "zod"
 import { createOriginGuard } from "@newrole/app-kit/origin"
 import { OfferError } from "./offers"
+import { ProfileError } from "./profile"
 import { StoreError } from "./store"
 import { WritingError } from "./writing"
 
@@ -42,6 +43,7 @@ const STATUS: Record<string, number> = {
 }
 
 export function errorResponse(error: unknown): Response {
+  if (error instanceof ProfileError) return failure(error.code, error.message, error.status)
   if (error instanceof StoreError || error instanceof WritingError || error instanceof OfferError)
     return failure(error.code, error.message, STATUS[error.code] ?? 400)
   console.error("newrole CV request failed", error)

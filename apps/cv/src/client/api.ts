@@ -12,7 +12,7 @@ export class ApiError extends Error {
 const DATES = new Set(["updatedAt", "createdAt", "readAt"])
 
 export async function api<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   url: string,
   body?: unknown
 ): Promise<T> {

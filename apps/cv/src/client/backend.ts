@@ -26,6 +26,10 @@ export const cvAppBackend: CvEditorBackend = {
     letter: (input) => api("POST", "/api/letter", input),
   },
   offerText: (offerId) => api("GET", `/api/offers/${encodeURIComponent(offerId)}/text`),
+  audit: {
+    run: (id, locale) => api("POST", `${doc(id)}/audit`, { locale }),
+    setDismissed: (id, dismissed) => api("PATCH", `${doc(id)}/audit`, { dismissed }),
+  },
   routes: {
     list: "/",
     document: (id) => `/cv/${id}`,

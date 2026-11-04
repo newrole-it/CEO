@@ -250,3 +250,13 @@ describe("LinkedIn profile audit", () => {
     expect(secondFacts.find((fact) => fact.phrase === "budget ownership")?.qualifies).toBe(false)
   })
 })
+
+describe("a profile audit in an app without an offer index", () => {
+  it("says there is nothing to compare with, instead of asking for a saved search", async () => {
+    const document = parseLinkedInProfile(fixture("linkedin-export.txt"))!
+    const base = { document, facts: [], llm: null, previousScore: null, locale: "pl" as const }
+    expect((await buildProfileAudit(base)).summary).toContain("zapisanego wyszukiwania")
+    const noIndex = await buildProfileAudit({ ...base, noIndex: true })
+    expect(noIndex.summary).toContain("Tu nie ma indeksu ofert")
+  })
+})

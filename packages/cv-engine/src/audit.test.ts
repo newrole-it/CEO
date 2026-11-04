@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { LlmClient } from "@newrole/llm/common"
 import { demandFromOffers } from "@newrole/profile/demand"
 import { locateNote, openNotes } from "@newrole/cv-core/audit"
+import { syntheticCv } from "@newrole/cv-core/fixtures"
 import type { CvContent } from "@newrole/cv-core/schema"
 import { buildCvAudit, scoreNotes } from "./audit"
 
@@ -316,5 +317,22 @@ describe("CV audit", () => {
     expect(audit.notes[0].severity).toBeGreaterThanOrEqual(
       audit.notes[audit.notes.length - 1].severity
     )
+  })
+})
+
+describe("an audit in an app without an offer index", () => {
+  it("says there is nothing to compare with, instead of asking for a saved search", async () => {
+    const base = { content: syntheticCv(2), language: "pl" as const, locale: "pl" as const }
+    const none = await buildCvAudit({ ...base, facts: [], llm: null, previousScore: null })
+    expect(none.summary).toContain("zapisanego wyszukiwania")
+    const noIndex = await buildCvAudit({
+      ...base,
+      facts: [],
+      noIndex: true,
+      llm: null,
+      previousScore: null,
+    })
+    expect(noIndex.summary).toContain("Tu nie ma indeksu ofert")
+    expect(noIndex.summary).not.toContain("zapisanego wyszukiwania")
   })
 })

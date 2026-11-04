@@ -1,27 +1,12 @@
 import { getBlitzContext } from "src/app/blitz-server"
 import { takeSlot } from "src/server/auth/magic-link"
 import { draftFromProfileText } from "src/server/profile/import"
-import {
-  ExportError,
-  isZipBytes,
-  linkedInExportText,
-  MAX_ZIP_BYTES,
-} from "@newrole/profile/linkedin-export"
-import { extractPdfText } from "@newrole/cv-engine/pdf"
+import { importText, MAX_IMPORT_BODY_BYTES } from "@newrole/profile/import-text"
 import { clientIpFrom } from "src/server/security/client-ip"
 import { crossSiteRefused, isSameAppRequest } from "src/server/security/origin"
 
-const MAX_PDF_BYTES = 8_000_000
-// The largest file plus room for the multipart envelope and a pasted note.
-const MAX_BODY_BYTES = MAX_ZIP_BYTES + 1_000_000
-// Far more than any CV; every character goes to the model.
-const MAX_TEXT_CHARS = 60_000
 const IMPORTS_PER_USER = 20
 const GUEST_IMPORTS_PER_IP = 60
-
-function isZipFile(file: File): boolean {
-  return /zip/.test(file.type) || file.name.toLowerCase().endsWith(".zip")
-}
 
 async function sessionOf(): Promise<{ userId: number; guest: boolean } | null> {
   try {
@@ -44,7 +29,7 @@ export async function POST(request: Request) {
   if (!Number.isFinite(length)) {
     return Response.json({ error: "Send a PDF or pasted text." }, { status: 411 })
   }
-  if (length > MAX_BODY_BYTES) {
+  if (length > MAX_IMPORT_BODY_BYTES) {
     return Response.json(
       { error: "That ZIP is larger than 50 MB.", code: "too-large" },
       { status: 413 }
@@ -72,56 +57,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Send a PDF or pasted text." }, { status: 400 })
   }
   const pasted = form.get("text")
-  let text = typeof pasted === "string" ? pasted : ""
-  if (text.length > MAX_TEXT_CHARS) {
+  const file = form.get("file")
+  const read = await importText({
+    text: typeof pasted === "string" ? pasted : "",
+    file: file instanceof File ? file : null,
+  })
+  if (!read.ok) {
     return Response.json(
-      { error: "That text is too long. Paste only the CV.", code: "too-long" },
-      { status: 400 }
+      read.code ? { error: read.error, code: read.code } : { error: read.error },
+      { status: read.status }
     )
   }
-  const file = form.get("file")
-  if (file instanceof File && file.size > 0) {
-    if (isZipFile(file)) {
-      if (file.size > MAX_ZIP_BYTES) {
-        return Response.json({ error: "That ZIP is larger than 50 MB." }, { status: 400 })
-      }
-      const bytes = Buffer.from(await file.arrayBuffer())
-      try {
-        if (!isZipBytes(bytes)) throw new ExportError("not-zip", "That file is not a ZIP archive.")
-        text = `${text}\n${linkedInExportText(bytes)}`.trim()
-      } catch (error) {
-        const code = error instanceof ExportError ? error.code : "not-zip"
-        return Response.json(
-          { error: error instanceof Error ? error.message : "Could not read that ZIP.", code },
-          { status: 400 }
-        )
-      }
-    } else {
-      if (file.size > MAX_PDF_BYTES) {
-        return Response.json({ error: "That PDF is larger than 8 MB." }, { status: 400 })
-      }
-      if (
-        file.type &&
-        file.type !== "application/pdf" &&
-        !file.name.toLowerCase().endsWith(".pdf")
-      ) {
-        return Response.json({ error: "Upload a PDF, or paste the text instead." }, { status: 400 })
-      }
-      const bytes = Buffer.from(await file.arrayBuffer())
-      try {
-        text = `${text}\n${await extractPdfText(bytes)}`.trim()
-      } catch {
-        return Response.json(
-          { error: "Could not read that PDF. Paste the text instead." },
-          { status: 400 }
-        )
-      }
-    }
-  }
-  if (text.trim().length < 20) {
-    return Response.json({ error: "Add a PDF or paste more of the CV." }, { status: 400 })
-  }
-
-  // A long PDF or a full LinkedIn export can hold more text than any CV; the model gets the start.
-  return Response.json(await draftFromProfileText(text.slice(0, MAX_TEXT_CHARS), session.userId))
+  return Response.json(await draftFromProfileText(read.text, session.userId))
 }

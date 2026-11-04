@@ -3,7 +3,16 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
-import { ExternalLink, FilePlus, FileText, FileUp, Link2, Mail, Trash2 } from "lucide-react"
+import {
+  ExternalLink,
+  FilePlus,
+  FileText,
+  FileUp,
+  Link2,
+  Mail,
+  Trash2,
+  UserRound,
+} from "lucide-react"
 import type { CvLocale } from "@newrole/cv-core/blank"
 import { importCvHtml } from "@newrole/cv-core/import-html"
 import { TailorStart } from "@newrole/cv-editor/TailorStart"
@@ -34,7 +43,13 @@ type Offer = {
 }
 
 /** The one page besides the editor: the offer, the person's CVs, and what was written. */
-export function Home({ documents }: { documents: HomeDocument[] }) {
+export function Home({
+  documents,
+  hasProfile,
+}: {
+  documents: HomeDocument[]
+  hasProfile: boolean
+}) {
   const { t } = useCopy()
   const [offer, setOffer] = useState<Offer | null>(null)
   const general = documents.filter((doc) => doc.docType === "CV" && !doc.tailored)
@@ -100,7 +115,7 @@ export function Home({ documents }: { documents: HomeDocument[] }) {
       </section>
 
       <div className="stack">
-        <AddCv />
+        <AddCv hasProfile={hasProfile} />
         <Documents documents={documents} />
       </div>
     </div>
@@ -226,15 +241,18 @@ function OfferForm({ onOffer }: { onOffer: (offer: Offer) => void }) {
   )
 }
 
-function AddCv() {
+function AddCv({ hasProfile }: { hasProfile: boolean }) {
   const { t, locale } = useCopy()
   const toast = useToast()
   const router = useRouter()
   const pdfInput = useRef<HTMLInputElement>(null)
   const htmlInput = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState<"pdf" | "html" | "blank" | null>(null)
+  const [busy, setBusy] = useState<"pdf" | "html" | "blank" | "profile" | null>(null)
 
-  async function run(kind: "pdf" | "html" | "blank", work: () => Promise<{ id: string }>) {
+  async function run(
+    kind: "pdf" | "html" | "blank" | "profile",
+    work: () => Promise<{ id: string }>
+  ) {
     setBusy(kind)
     try {
       const { id } = await work()
@@ -284,6 +302,25 @@ function AddCv() {
         >
           {t("cv.new.blank")}
         </Button>
+        {hasProfile ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<UserRound />}
+            loading={busy === "profile"}
+            onClick={() =>
+              void run("profile", () =>
+                api("POST", "/api/documents", { from: "profile", language: locale })
+              )
+            }
+          >
+            {t("cv.new.profile")}
+          </Button>
+        ) : (
+          <Link className="link t-sm" href="/profile">
+            {t("app.nav.profile")}
+          </Link>
+        )}
       </div>
       <input
         ref={pdfInput}

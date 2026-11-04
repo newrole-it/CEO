@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation"
 import type { TailorContext } from "@newrole/cv-core/views"
-import { documentForOffer, getDocument, getOffer, type CvDocument } from "@/server/store"
+import {
+  documentForOffer,
+  getDocument,
+  getDocumentAudit,
+  getOffer,
+  type CvDocument,
+} from "@/server/store"
 import { Editor } from "./Editor"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -27,8 +33,15 @@ async function tailorContext(document: CvDocument): Promise<TailorContext | null
   }
 }
 
-export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
-  const document = await getDocument((await params).id)
+export default async function DocumentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ audit?: string }>
+}) {
+  const [{ id }, query] = await Promise.all([params, searchParams])
+  const [document, audit] = await Promise.all([getDocument(id), getDocumentAudit(id)])
   if (!document) notFound()
   return (
     // no site header above the editor here, so its toolbar sticks to the very top
@@ -37,8 +50,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
         id={document.id}
         initial={{ title: document.title, language: document.language, content: document.content }}
         loadedAt={document.updatedAt.toISOString()}
-        initialAudit={null}
-        startAudit={false}
+        initialAudit={audit}
+        startAudit={query.audit === "1"}
         isLetter={document.docType === "LETTER"}
         tailor={await tailorContext(document)}
       />

@@ -70,3 +70,21 @@
   align-items: center;
   gap: 4px;
 }
+
+.cva-notes {
+  display: grid;
+  gap: 12px;
+}
+
+.cva-note {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 10px);
+}
+
+.cva-note__quote {
+  font-style: italic;
+  color: var(--text-muted);
+}

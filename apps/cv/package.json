@@ -18,6 +18,8 @@
     "@newrole/cv-engine": "0.1.0",
     "@newrole/llm": "0.1.0",
     "@newrole/offers": "0.1.0",
+    "@newrole/profile": "0.1.0",
+    "@newrole/profile-ui": "0.1.0",
     "@newrole/ui": "0.1.0",
     "lucide-react": "1.55.0",
     "next": "16.4.3",

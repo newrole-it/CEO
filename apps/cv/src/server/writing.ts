@@ -2,7 +2,7 @@ import { blankCv, type CvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
 import type { CvContent } from "@newrole/cv-core/schema"
 import type { TailorResult } from "@newrole/cv-core/views"
-import { extractPdfText } from "@newrole/cv-engine/pdf"
+import { extractPdfText } from "@newrole/profile/pdf"
 import { structureCvText } from "@newrole/cv-engine/structure"
 import {
   coverLetterLanguage,
@@ -15,6 +15,7 @@ import { createLlmClient } from "@newrole/llm/client"
 import type { LlmClient } from "@newrole/llm/common"
 import { createWritingClient } from "@newrole/llm/writing"
 import { offerText } from "./offers"
+import { candidateContext } from "./profile"
 import {
   createDocument,
   defaultCv,
@@ -30,8 +31,9 @@ import {
 
 /**
  * What newrole CV writes with a model: a CV tailored to an offer, a cover letter, and an editable
- * CV out of a PDF. @newrole/cv-engine does the writing exactly as in newrole.it; this module picks
- * the CV to start from and keeps the result. Errors carry the codes the editor knows
+ * CV out of a PDF. @newrole/cv-engine does the writing exactly as in newrole.it, with the person's
+ * profile as the facts it may use (profile.ts); this module picks the CV to start from and keeps
+ * the result. Errors carry the codes the editor knows
  * (@newrole/cv-editor/tailor-errors).
  */
 
@@ -105,7 +107,7 @@ export async function tailorForOffer(input: {
     offer: tailor,
     language,
     locale: input.locale,
-    context: "",
+    context: await candidateContext(),
     note: input.note,
     attempt: existing ? (await generatedCount(existing.id)) + 1 : 1,
   })
@@ -147,7 +149,7 @@ export async function letterForOffer(input: {
     cv: source,
     offer: tailor,
     language,
-    context: "",
+    context: await candidateContext(),
     note: input.note,
     attempt: existing ? (await generatedCount(existing.id)) + 1 : 1,
   })

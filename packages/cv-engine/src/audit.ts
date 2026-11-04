@@ -49,6 +49,7 @@ const COPY = {
       "Żadna fraza z listy nie jest jednocześnie częsta w Twoich ofertach i nieobecna w tym CV.",
     noFacts:
       "Nie ma jeszcze zapisanego wyszukiwania z wynikami, więc audyt nie podaje liczb z ofert.",
+    noIndex: "Tu nie ma indeksu ofert, więc audyt nie porównuje CV z tym, czego wymagają oferty.",
   },
   en: {
     vague:
@@ -82,6 +83,8 @@ const COPY = {
     gaps: (count: number) => `Phrases from your offers that this CV lacks: ${count}.`,
     noGaps: "No checklist phrase is both common in your offers and missing from this CV.",
     noFacts: "There's no saved search with results yet, so this audit doesn't cite offer counts.",
+    noIndex:
+      "There is no offer index here, so this audit does not compare the CV with what offers ask for.",
   },
 }
 
@@ -568,13 +571,20 @@ export function scoreNotes(notes: CvAuditNote[]): number {
   return Math.max(5, 100 - penalty)
 }
 
-function serverSummary(notes: CvAuditNote[], facts: DemandFact[], locale: Locale): string {
+function serverSummary(
+  notes: CvAuditNote[],
+  facts: DemandFact[],
+  locale: Locale,
+  noIndex = false
+): string {
   const copy = COPY[locale]
   const qualifying = facts.filter((fact) => fact.qualifies)
   const lead = qualifying.length
     ? `${copy.gaps(qualifying.length)} ${factSentence(qualifying[0], locale)}`
     : facts.length
     ? copy.noGaps
+    : noIndex
+    ? copy.noIndex
     : copy.noFacts
   return `${copy.notes(notes.length)} ${lead}`
 }
@@ -595,6 +605,8 @@ export async function buildCvAudit(input: {
   /** The interface language: what the comments are written in */
   locale: Locale
   facts: DemandFact[]
+  /** The app has no offer index, so there are no facts to have (not merely none yet) */
+  noIndex?: boolean
   llm: LlmClient | null
   previousScore: number | null
   dismissed?: string[]
@@ -643,7 +655,7 @@ export async function buildCvAudit(input: {
     previousScore: input.previousScore,
     summary: (summaryOk(modelSummary, source)
       ? modelSummary.trim()
-      : serverSummary(notes, facts, locale)
+      : serverSummary(notes, facts, locale, input.noIndex)
     ).slice(0, 800),
     notes,
     demand: facts.map((fact) => ({ ...fact, phrase: phraseLabel(fact, locale) })),

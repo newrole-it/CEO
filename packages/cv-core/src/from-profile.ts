@@ -34,7 +34,7 @@ export type CvProfileInput = {
     skills?: string[]
     languages?: string[]
   } | null
-  /** Saved form details (src/shared/applicant.ts) */
+  /** Saved form details (@newrole/profile/applicant) */
   applicant?: {
     firstName?: string
     lastName?: string
