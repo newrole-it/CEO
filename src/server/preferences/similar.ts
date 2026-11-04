@@ -6,8 +6,8 @@
  */
 import { Prisma } from "@prisma/client"
 import db from "db"
-import { tokens } from "matching/text"
-import { SENIORITY_RANK } from "matching/types"
+import { tokens } from "@newrole/matching/text"
+import { SENIORITY_RANK } from "@newrole/matching/types"
 import { offerPayFields } from "src/server/jobs/offer-facts"
 import { INDUSTRY_GROUPS } from "src/server/profile/industry"
 import { parseAspects, type FeedbackAspect } from "src/shared/feedback-aspects"

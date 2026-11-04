@@ -8,8 +8,7 @@ COPY package.json package-lock.json .npmrc ./
 # npm workspaces: the packages and apps must be there for npm ci to link them
 COPY packages ./packages
 COPY apps/cv/package.json ./apps/cv/
-COPY matching/package.json matching/package-lock.json ./matching/
-RUN npm ci && npm ci --prefix matching
+RUN npm ci
 
 COPY . .
 # Build-time placeholders. They are not left in the image environment.

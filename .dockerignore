@@ -1,5 +1,5 @@
 node_modules
-matching/node_modules
+packages/*/node_modules
 extension/node_modules
 extension/.output
 extension/.wxt

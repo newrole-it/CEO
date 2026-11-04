@@ -4,10 +4,10 @@
  * location 25, salary 15, freshness 10, source 5), measured against the profile instead of a
  * saved search. The feed score is exactly: parts + industry + skills + preference delta.
  */
-import { DEFAULT_CONFIG } from "matching/config"
-import { functionTokens, normalizeTitle } from "matching/normalization"
-import { fold } from "matching/text"
-import { SENIORITY_RANK, type Seniority } from "matching/types"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
+import { functionTokens, normalizeTitle } from "@newrole/matching/normalization"
+import { fold } from "@newrole/matching/text"
+import { SENIORITY_RANK, type Seniority } from "@newrole/matching/types"
 import { NEW_ATS_LABELS } from "src/shared/ats-labels"
 import { canonicalCity } from "src/server/jobs/offer-facts"
 import { profileMonthlyPln, type ProfilePay } from "src/server/profile/salary"

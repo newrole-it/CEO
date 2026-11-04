@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { detectSeniority } from "matching/normalization"
-import { fold } from "matching/text"
+import { detectSeniority } from "@newrole/matching/normalization"
+import { fold } from "@newrole/matching/text"
 import { wrapUntrusted, type LlmClient } from "src/server/llm/client"
 import { canonicalIndustry, visibleText } from "./industry"
 import { amountsInText, salaryFromText, type SalaryFromText } from "./salary-text"

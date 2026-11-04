@@ -1,4 +1,4 @@
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 
 // The pl/en rule is shared with the CV tools, which pick a CV's language from the offer.
 export { detectLanguage } from "@newrole/cv-core/language"

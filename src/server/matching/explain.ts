@@ -2,9 +2,9 @@ import {
   buildMatchExplanationMessages,
   fallbackExplanation,
   finalizeExplanation,
-} from "../../../matching/match-explanation.schema"
-import type { ScoreResult } from "../../../matching/scoring"
-import type { MatchProfile, NormalizedPosting } from "../../../matching/types"
+} from "@newrole/matching/match-explanation.schema"
+import type { ScoreResult } from "@newrole/matching/scoring"
+import type { MatchProfile, NormalizedPosting } from "@newrole/matching/types"
 import type { LlmClient } from "src/server/llm/client"
 
 /** Only the top matches get a model-written reason; the rest use the deterministic summary. */

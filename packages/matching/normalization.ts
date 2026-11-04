@@ -162,7 +162,7 @@ export function normalizeCompany(raw: string): string {
 /* ------------------------------------------------------------------ */
 
 // Country names, subdivisions, cities and remote regions live in places.ts; re-exported so
-// existing imports from "matching/normalization" keep working.
+// existing imports from "@newrole/matching/normalization" keep working.
 export {
   CITY_ALIASES,
   COUNTRY_ALIASES,

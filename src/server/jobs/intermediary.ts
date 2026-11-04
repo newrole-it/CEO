@@ -3,7 +3,7 @@
  * company of the offer. The offer stays, marked, so a person sees who publishes it and that the
  * employer is not known. Phrases were read from open offers in the index on 2026-11-03.
  */
-import { fold } from "../../../matching/text"
+import { fold } from "@newrole/matching/text"
 
 /**
  * The posting says, in so many words, that someone else is the employer. One such offer is marked

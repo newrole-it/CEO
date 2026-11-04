@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import { wrapUntrusted, type LlmClient } from "src/server/llm/client"
 import type { IndustryMode } from "./schema"
 

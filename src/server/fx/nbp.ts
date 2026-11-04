@@ -5,7 +5,7 @@
  * cannot be reached the last table stays, and before any table the defaults in matching/config.ts
  * apply. FX_<CODE>_PLN in the environment still wins over both.
  */
-import { DEFAULT_CONFIG } from "matching/config"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
 
 export const NBP_TABLE_A_URL = "https://api.nbp.pl/api/exchangerates/tables/A?format=json"
 

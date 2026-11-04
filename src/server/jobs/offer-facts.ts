@@ -2,13 +2,13 @@
  * Facts a job seeker can scan: where the job is, monthly base pay in PLN, and a short requirements list.
  * Display only. Matching still uses its own B2B comparison in matching/normalization.ts.
  */
-import { DEFAULT_CONFIG } from "matching/config"
-import { CITY_ALIASES, normalizeLocation } from "matching/normalization"
-import { countryFromText, remoteOpenTo } from "matching/places"
-import { fold } from "matching/text"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
+import { CITY_ALIASES, normalizeLocation } from "@newrole/matching/normalization"
+import { countryFromText, remoteOpenTo } from "@newrole/matching/places"
+import { fold } from "@newrole/matching/text"
 import { blockedCountries, isBlockedCountry } from "src/server/geo/countries"
 import { plnPerUnit } from "src/server/fx/nbp"
-import type { NormalizedLocation } from "matching/types"
+import type { NormalizedLocation } from "@newrole/matching/types"
 import type { OfferWorkMode, PayNote } from "src/shared/offer-view"
 
 /**

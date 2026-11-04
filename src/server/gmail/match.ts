@@ -1,4 +1,4 @@
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import {
   companyKey,
   domainLabel,

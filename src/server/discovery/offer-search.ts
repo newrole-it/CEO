@@ -5,8 +5,8 @@
  * "up to" amounts are not used.
  */
 import { decideFetch } from "@newrole/offers/source-policies"
-import { CITY_ALIASES, parseSalaryText } from "matching/normalization"
-import { fold } from "matching/text"
+import { CITY_ALIASES, parseSalaryText } from "@newrole/matching/normalization"
+import { fold } from "@newrole/matching/text"
 import { classifyHit } from "src/server/discovery/boards"
 import { canonicalUrl } from "src/server/jobs/dedupe"
 import { inferWorkplace, normalizeCompanyName } from "src/server/jobs/normalize"

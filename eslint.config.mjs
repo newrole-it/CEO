@@ -24,7 +24,7 @@ export default defineConfig([
     "next-env.d.ts",
     "extension/.output/**",
     "extension/.wxt/**",
-    "matching/node_modules/**",
+    "packages/*/node_modules/**",
     "extension/node_modules/**",
     "apps/*/.next/**",
     "apps/*/.data/**",

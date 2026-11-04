@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_CONFIG } from "../../../matching/config"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
 import { explainIndustry } from "./explain"
 import { extractJobIndustry, industryDelta, industryFromRules, industryRelation } from "./industry"
 import { rankAgainstProfile, type ProfileSignals } from "./rank"

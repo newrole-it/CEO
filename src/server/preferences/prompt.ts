@@ -3,9 +3,9 @@
  * offer. Aspects that already match the person's profile (or their saved answer) start selected.
  */
 import db from "db"
-import { DEFAULT_CONFIG } from "matching/config"
-import { functionTokens, normalizeTitle } from "matching/normalization"
-import { diceTokens, fold } from "matching/text"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
+import { functionTokens, normalizeTitle } from "@newrole/matching/normalization"
+import { diceTokens, fold } from "@newrole/matching/text"
 import { canonicalCity } from "src/server/jobs/offer-facts"
 import { industryRelation } from "src/server/profile/industry"
 import { profileMonthlyPln } from "src/server/profile/salary"

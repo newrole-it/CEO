@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import { wrapUntrusted, type LlmClient } from "@newrole/llm/common"
 import { MAIL_SIGNALS, type MailSignal } from "src/shared/gmail"
 import { MODEL_TEXT_LIMIT } from "./text"

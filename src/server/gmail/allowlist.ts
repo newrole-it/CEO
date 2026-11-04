@@ -1,4 +1,4 @@
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import { atsCompanySlug } from "src/server/autofill/job-extract"
 import type { ScopedApp, Tier } from "./types"
 

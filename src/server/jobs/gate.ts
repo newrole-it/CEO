@@ -3,7 +3,7 @@
  * read goes through this, so nothing is stored that a search would have to hide later.
  */
 import { classifyTechRole } from "src/server/classify/role"
-import { fold } from "../../../matching/text"
+import { fold } from "@newrole/matching/text"
 import { hasPlace, type JobCountries } from "src/server/geo/countries"
 
 export type GateReason = "junk_title" | "bad_url" | "not_it" | "no_country" | "blocked_country"

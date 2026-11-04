@@ -1,5 +1,10 @@
 import db from "db"
-import { detectSeniority, normalizeTitle, titleCore, titleTokens } from "matching/normalization"
+import {
+  detectSeniority,
+  normalizeTitle,
+  titleCore,
+  titleTokens,
+} from "@newrole/matching/normalization"
 import {
   boardUrlFacts,
   extractJobByRules,

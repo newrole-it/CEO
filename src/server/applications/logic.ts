@@ -1,4 +1,4 @@
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import {
   APPLICATION_SOURCES,
   APPLICATION_STATUSES,
