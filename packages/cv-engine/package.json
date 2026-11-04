@@ -13,7 +13,10 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@newrole/cv-core": "0.1.0"
+    "@newrole/cv-core": "0.1.0",
+    "@newrole/llm": "0.1.0",
+    "unpdf": "1.4.0",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

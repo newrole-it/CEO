@@ -47,6 +47,9 @@ export type TailorReply = z.infer<typeof TailorReply>
 export const OfferTextOrigin = z.enum(["full", "excerpt", "none", "withheld"])
 export type OfferTextOrigin = z.infer<typeof OfferTextOrigin>
 
+/** The most of an offer's text a tailoring or a letter reads. */
+export const OFFER_TEXT_LIMIT = 12_000
+
 export const TailorNotes = z.object({
   changes: z.array(z.string()),
   gaps: z.array(z.string()),

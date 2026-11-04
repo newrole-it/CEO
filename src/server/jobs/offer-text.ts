@@ -14,7 +14,7 @@ import { takeDetailSlot } from "src/server/crawler/budget"
 import { aiOptOut, stripPersonalData } from "src/server/crawler/hygiene"
 import { createRobotsCache, policyFor, politeGet } from "src/server/discovery/polite-fetch"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
-import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
+import { OFFER_TEXT_LIMIT, type OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type { ListedJob, SourceType } from "src/shared/schemas"
 
 /**
@@ -23,7 +23,7 @@ import type { ListedJob, SourceType } from "src/shared/schemas"
  * table. docs/product/plan-p0.md has the reasons.
  */
 
-export const OFFER_TEXT_LIMIT = 12_000
+export { OFFER_TEXT_LIMIT }
 
 const LIVE_TIMEOUT_MS = 25_000
 const READ_TTL_MS = 15 * 60_000

@@ -79,6 +79,15 @@ export function wrapUntrusted(label: string, value: string): string {
   return `<untrusted_${label}>\n${safe.slice(0, 4000)}\n</untrusted_${label}>`
 }
 
+/** A long text as consecutive untrusted blocks of at most 3500 characters, cut at `max`. */
+export function wrapLong(label: string, text: string, max: number): string {
+  const body = text.slice(0, max)
+  const parts: string[] = []
+  for (let start = 0; start < body.length; start += 3500)
+    parts.push(wrapUntrusted(label, body.slice(start, start + 3500)))
+  return parts.join("\n")
+}
+
 export function shouldStoreLlmCache(purpose: string, userId?: number): boolean {
   return !isPersonalLlmPurpose(purpose) || userId != null
 }

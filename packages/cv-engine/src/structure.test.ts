@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("db", () => ({ default: {} }))
-
-import type { LlmClient } from "src/server/llm/client"
+import type { LlmClient } from "@newrole/llm/common"
 import { CvContent } from "@newrole/cv-core/schema"
 import { cvFromRawText, cvFromStructured, structureCvText } from "./structure"
 

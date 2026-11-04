@@ -1,5 +1,7 @@
 import { fold } from "matching/text"
-import type { AnswerLanguage } from "./types"
+
+// The pl/en rule is shared with the CV tools, which pick a CV's language from the offer.
+export { detectLanguage } from "@newrole/cv-core/language"
 
 /**
  * Deterministic question similarity for Polish and English (no model, no network).
@@ -410,31 +412,4 @@ export function featureSimilarity(a: QuestionFeatures, b: QuestionFeatures): num
 /** How alike two questions are, in [0, 1]: 1 for the same question, ~0.6+ for paraphrases. */
 export function similarity(a: string, b: string): number {
   return featureSimilarity(questionFeatures(a), questionFeatures(b))
-}
-
-/* ------------------------------------------------------------------ language */
-
-const PL_MARKERS = new Set(
-  `jest sie nie czy jak jaki jakie jaka jakiego dlaczego czemu oraz prosze twoj twoje twoja twojego twojej
-  ktore ktory ktora ktorych dla przez jestes masz mozesz opisz opowiedz pracy prace sa ze tak tylko rowniez
-  bardzo swoje swoj nas naszej naszym naszego naszej w z na o u po od do sobie siebie ile kiedy gdzie lat
-  oczekiwania wynagrodzenie doswiadczenie zespol firmy firma`.split(/\s+/)
-)
-const EN_MARKERS = new Set(
-  `the and you your is are why what how with for please describe have has we our us would which this that
-  of in on at be about tell does did can will yes from experience team company salary expectations notice
-  period work years role position`.split(/\s+/)
-)
-
-/** "pl" when the text reads as Polish (diacritics, Polish function words), otherwise "en". */
-export function detectLanguage(text: string): AnswerLanguage {
-  const diacritics = (text.match(/[ąćęłńóśźż]/gi) ?? []).length
-  let pl = Math.min(diacritics, 6) * 2
-  let en = 0
-  for (const word of normalizeText(text).split(" ").slice(0, 400)) {
-    if (!word) continue
-    if (PL_MARKERS.has(word)) pl += 1
-    if (EN_MARKERS.has(word)) en += 1
-  }
-  return pl > en ? "pl" : "en"
 }
