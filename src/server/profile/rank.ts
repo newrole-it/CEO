@@ -1,7 +1,7 @@
-import type { MatchingConfig } from "matching/config"
-import { detectSeniority } from "matching/normalization"
-import { fold } from "matching/text"
-import { SENIORITY_RANK, type Seniority } from "matching/types"
+import type { MatchingConfig } from "@newrole/matching/config"
+import { detectSeniority } from "@newrole/matching/normalization"
+import { fold } from "@newrole/matching/text"
+import { SENIORITY_RANK, type Seniority } from "@newrole/matching/types"
 import {
   explainCity,
   explainIndustry,
@@ -21,9 +21,9 @@ import {
   industryRelation,
   type DomainRequirement,
   type JobIndustry,
-} from "./industry"
+} from "@newrole/profile/industry"
 import { profileMonthlyPln, scoreSalary, type MonthlyRange, type ProfilePay } from "./salary"
-import { asStringList, type IndustryMode } from "./schema"
+import { asStringList, type IndustryMode } from "@newrole/profile/schema"
 import { skillOverlap } from "./skills"
 
 const LEADERSHIP = new Set(["head", "director", "vp", "c_level", "senior_manager"])

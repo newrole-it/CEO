@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { copy, type Locale } from "src/app/i18n/copy"
-import { LOCALE_COOKIE, localeFromLanguages } from "src/shared/locale"
+import { LOCALE_COOKIE, localeFromLanguages } from "@newrole/app-kit/languages"
 
 // The colours of src/app/styles/app.css, which this page cannot load.
 const CSS = `

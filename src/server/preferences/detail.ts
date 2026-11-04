@@ -41,7 +41,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null
 }
 
-/** The stored matching/scoring.ts breakdown, read defensively (older rows have other shapes). */
+/** The stored packages/matching/scoring.ts breakdown, read defensively (older rows have other shapes). */
 export function searchComponents(breakdown: unknown): {
   components: SearchComponent[]
   penalties: { id: string; points: number; reason: string }[]

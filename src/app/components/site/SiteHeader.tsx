@@ -29,9 +29,9 @@ import {
 } from "lucide-react"
 import logout from "src/app/(auth)/mutations/logout"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Modal } from "src/app/components/ds/interactive"
-import { LOCALE_COOKIE } from "src/shared/locale"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Modal } from "@newrole/ui/interactive"
+import { LOCALE_COOKIE } from "@newrole/app-kit/languages"
 import { LogoLockup } from "./Brand"
 import type { ShellUser } from "./links"
 

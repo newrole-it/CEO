@@ -1,4 +1,4 @@
-import { parseRobots, robotsAllows } from "src/server/crawler/robots"
+import { parseRobots, robotsAllows } from "@newrole/offers/robots"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { inferWorkplace } from "src/server/jobs/normalize"

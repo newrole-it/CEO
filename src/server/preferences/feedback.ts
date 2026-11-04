@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import {
   ensureApplicationForJob,
   removeUntouchedApplicationForJob,
@@ -209,7 +209,13 @@ export async function recordFeedback(input: {
     select: viewSelect,
   })
   await syncMatches(input.userId, input.jobId, input.verdict)
-  await syncApplication(input.userId, input.jobId, previous?.verdict ?? null, input.verdict, channel)
+  await syncApplication(
+    input.userId,
+    input.jobId,
+    previous?.verdict ?? null,
+    input.verdict,
+    channel
+  )
   return toFeedbackView(row)
 }
 

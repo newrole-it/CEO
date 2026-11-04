@@ -24,12 +24,7 @@ import {
   plausibleBoard,
   siteName,
 } from "src/server/discovery/careers-detect"
-import {
-  createRobotsCache,
-  policyFor,
-  politeGet,
-  type RobotsCache,
-} from "src/server/discovery/polite-fetch"
+import { createRobotsCache, policyFor, politeGet, type RobotsCache } from "@newrole/offers/polite"
 import type { WebHit } from "src/server/discovery/web-search"
 
 export type Resolution =

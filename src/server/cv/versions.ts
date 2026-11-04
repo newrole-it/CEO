@@ -1,8 +1,9 @@
-import { createHash } from "crypto"
 import type { Prisma } from "@prisma/client"
 import db from "db"
-import { cvLocale } from "src/shared/cv/blank"
-import { parseCvContent, type CvContent } from "src/shared/cv/schema"
+import { contentHash } from "@newrole/cv-engine/versions"
+import type { CvVersionOrigin, CvVersionView } from "@newrole/cv-core/views"
+import { cvLocale } from "@newrole/cv-core/blank"
+import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 
 /**
  * Version history of an editable CV or letter. A version is a whole copy of the content; nothing
@@ -18,19 +19,7 @@ export const MAX_AUTO_VERSIONS = 30
 const MAX_LABEL = 120
 const LOCK_NAMESPACE = 7419
 
-export type CvVersionOrigin = "auto" | "manual" | "base" | "generated" | "restored"
-
-export type CvVersionView = {
-  id: string
-  number: number
-  origin: CvVersionOrigin
-  label: string | null
-  sourceNumber: number | null
-  language: "pl" | "en"
-  createdAt: Date
-  /** The document is exactly this version right now */
-  isCurrent: boolean
-}
+export type { CvVersionOrigin, CvVersionView }
 
 type Writer = Prisma.TransactionClient
 
@@ -69,22 +58,7 @@ function toView(row: VersionRow, currentHash: string | null): CvVersionView {
   }
 }
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`
-  if (value && typeof value === "object") {
-    const fields = Object.entries(value)
-      .filter(([, field]) => field !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([key, field]) => `${JSON.stringify(key)}:${canonical(field)}`)
-    return `{${fields.join(",")}}`
-  }
-  return JSON.stringify(value) ?? "null"
-}
-
-/** Stable across key order: Postgres stores JSON with its keys reordered. */
-export function contentHash(content: CvContent): string {
-  return createHash("sha256").update(canonical(content)).digest("hex")
-}
+export { contentHash }
 
 /** A stored JSON value: drops the undefined keys optional fields can leave behind. */
 export function toStoredJson(content: CvContent) {

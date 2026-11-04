@@ -3,10 +3,10 @@
  * The profile's city or locations first, then the browser's region, else every country.
  */
 import db from "db"
-import { normalizeLocation } from "matching/normalization"
-import { COUNTRY_CODES } from "matching/places"
-import { asStringList } from "src/server/profile/schema"
-import { languagesFromHeader } from "src/shared/locale"
+import { normalizeLocation } from "@newrole/matching/normalization"
+import { COUNTRY_CODES } from "@newrole/matching/places"
+import { asStringList } from "@newrole/profile/schema"
+import { languagesFromHeader } from "@newrole/app-kit/languages"
 
 const KNOWN = new Set(COUNTRY_CODES)
 

@@ -3,8 +3,8 @@
 import { ArrowDownUp, ArrowDown, ArrowUp, ExternalLink } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { CompanyInitial } from "src/app/components/ds/primitives"
-import { cx } from "src/app/components/ds/cx"
+import { CompanyInitial } from "@newrole/ui/primitives"
+import { cx } from "@newrole/ui/cx"
 import {
   APPLICATION_STATUSES,
   isActiveStatus,

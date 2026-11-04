@@ -21,8 +21,8 @@ import {
 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { Button } from "src/app/components/ds/Button"
-import { Skeleton } from "src/app/components/ds/primitives"
+import { Button } from "@newrole/ui/Button"
+import { Skeleton } from "@newrole/ui/primitives"
 import { FEEDBACK_ASPECTS, type FeedbackAspect } from "src/shared/feedback-aspects"
 import type { FeedbackPrompt } from "src/server/preferences/types"
 
@@ -46,7 +46,12 @@ function chipsFromPrompt(prompt: FeedbackPrompt | null, t: (key: CopyKey) => str
   const out: ChipPick[] = []
   for (const suggestion of prompt.suggestions) {
     if (!suggestion.tags.length) {
-      out.push({ aspect: suggestion.aspect, tag: null, label: t(`aspect.${suggestion.aspect}` as CopyKey), on: suggestion.preselected })
+      out.push({
+        aspect: suggestion.aspect,
+        tag: null,
+        label: t(`aspect.${suggestion.aspect}` as CopyKey),
+        on: suggestion.preselected,
+      })
     } else {
       for (const tag of suggestion.tags) {
         out.push({ aspect: suggestion.aspect, tag, label: tag, on: suggestion.preselected })
@@ -95,7 +100,9 @@ export function LikePanel({
   const extra = FEEDBACK_ASPECTS.filter((aspect) => !present.has(aspect))
 
   function toggle(index: number) {
-    setChips((current) => current.map((chip, at) => (at === index ? { ...chip, on: !chip.on } : chip)))
+    setChips((current) =>
+      current.map((chip, at) => (at === index ? { ...chip, on: !chip.on } : chip))
+    )
   }
 
   function submit() {
@@ -143,7 +150,8 @@ export function LikePanel({
       window.setTimeout(() => noteRef.current?.focus(), 0)
     }
     // keep feed shortcuts (J/K/A) from firing while the panel has focus
-    if (["j", "k", "a", "z", "J", "K", "A", "Z", "o", "O"].includes(event.key)) event.stopPropagation()
+    if (["j", "k", "a", "z", "J", "K", "A", "Z", "o", "O"].includes(event.key))
+      event.stopPropagation()
   }
 
   return (
@@ -182,7 +190,11 @@ export function LikePanel({
                 >
                   <Icon aria-hidden />
                   <span>{chip.label}</span>
-                  {index < 9 ? <span className="chip__num" aria-hidden>{index + 1}</span> : null}
+                  {index < 9 ? (
+                    <span className="chip__num" aria-hidden>
+                      {index + 1}
+                    </span>
+                  ) : null}
                 </button>
               )
             })}
@@ -206,7 +218,10 @@ export function LikePanel({
                   className="chip"
                   aria-pressed={false}
                   onClick={() =>
-                    setChips((current) => [...current, { aspect, tag: null, label: t(`aspect.${aspect}` as CopyKey), on: true }])
+                    setChips((current) => [
+                      ...current,
+                      { aspect, tag: null, label: t(`aspect.${aspect}` as CopyKey), on: true },
+                    ])
                   }
                 >
                   <Icon aria-hidden />
@@ -286,9 +301,19 @@ export function CompactPrompt({
   )
 }
 
-const PASS_ORDER: FeedbackAspect[] = ["salary", "stack", "seniority", "location", "company", "industry"]
+const PASS_ORDER: FeedbackAspect[] = [
+  "salary",
+  "stack",
+  "seniority",
+  "location",
+  "company",
+  "industry",
+]
 
-function passChips(prompt: FeedbackPrompt | null, t: (key: CopyKey, vars?: Record<string, string | number>) => string) {
+function passChips(
+  prompt: FeedbackPrompt | null,
+  t: (key: CopyKey, vars?: Record<string, string | number>) => string
+) {
   const byAspect = new Map<FeedbackAspect, string | null>()
   for (const suggestion of prompt?.suggestions ?? []) {
     if (!PASS_ORDER.includes(suggestion.aspect) || byAspect.has(suggestion.aspect)) continue
@@ -388,14 +413,29 @@ export function PassStrip({
           )
         })}
       </div>
-      <Button variant="ghost" size="sm" icon={<Undo2 />} onClick={onUndo} kbd="Z" className="show-kbd">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<Undo2 />}
+        onClick={onUndo}
+        kbd="Z"
+        className="show-kbd"
+      >
         {t("act.undo")}
       </Button>
     </div>
   )
 }
 
-export function LikedStrip({ title, company, onUndo }: { title: string; company: string; onUndo: () => void }) {
+export function LikedStrip({
+  title,
+  company,
+  onUndo,
+}: {
+  title: string
+  company: string
+  onUndo: () => void
+}) {
   const { t } = useCopy()
   return (
     <div className="strip strip--liked">

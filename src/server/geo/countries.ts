@@ -2,9 +2,9 @@
  * The countries an offer is in. Every ingest writes them, so the index can be opened country by
  * country, and the countries this app refuses by design never reach it.
  */
-import { normalizeLocation } from "matching/normalization"
-import { countryFromText } from "matching/places"
-import { fold } from "matching/text"
+import { normalizeLocation } from "@newrole/matching/normalization"
+import { countryFromText } from "@newrole/matching/places"
+import { fold } from "@newrole/matching/text"
 import cityData from "./cities.json"
 
 /** GeoNames city names of 100,000+ people → ISO code (scripts/gen-cities.mjs). Ambiguous names are absent. */

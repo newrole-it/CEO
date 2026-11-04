@@ -10,7 +10,7 @@ import {
   sectionTarget,
   textOf,
 } from "../../../extension/lib/linkedin.js"
-import { documentFromSections } from "./linkedin-audit"
+import { documentFromSections } from "@newrole/profile/linkedin-audit"
 
 const page = readFileSync(join(__dirname, "fixtures", "linkedin-page.html"), "utf8")
 

@@ -1,0 +1,3 @@
+/* Tailwind first: its base (preflight) must come before the design system's own base rules. */
+@tailwind base;
+@tailwind utilities;

@@ -3,17 +3,10 @@
 import { invoke } from "@blitzjs/rpc"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CircleAlert, MessageSquareText, Plus, Search, SearchX } from "lucide-react"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { cx } from "src/app/components/ds/cx"
-import { Modal, useToast } from "src/app/components/ds/interactive"
-import {
-  Badge,
-  Banner,
-  Chip,
-  EmptyState,
-  Segmented,
-  Skeleton,
-} from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { cx } from "@newrole/ui/cx"
+import { Modal, useToast } from "@newrole/ui/interactive"
+import { Badge, Banner, Chip, EmptyState, Segmented, Skeleton } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { groupAnswers } from "src/server/answers/group"
 import { AnswerPanel } from "./AnswerPanel"

@@ -1,14 +1,14 @@
 import db from "db"
-import { parseApplicant } from "src/shared/applicant"
-import { blankCv, cvLocale, type CvLocale } from "src/shared/cv/blank"
-import { cvFromProfile } from "src/shared/cv/from-profile"
-import { cvPdfFileName } from "src/shared/cv/filename"
-import { letterFileSuffix } from "src/shared/cv/letter"
-import { cvContentError, parseCvContent, type CvContent } from "src/shared/cv/schema"
-import { cvPlainText } from "src/shared/cv/text"
-import { parseStoredDocument } from "src/server/profile/linkedin"
-import { asStringList } from "src/server/profile/schema"
-import { renderCvHtml, renderPdfFromHtml } from "./render"
+import { parseApplicant } from "@newrole/profile/applicant"
+import { blankCv, cvLocale, type CvLocale } from "@newrole/cv-core/blank"
+import { cvFromProfile } from "@newrole/cv-core/from-profile"
+import { cvPdfFileName } from "@newrole/cv-core/filename"
+import { cvContentError, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
+import { cvPlainText } from "@newrole/cv-core/text"
+import { parseStoredDocument } from "@newrole/profile/linkedin"
+import { asStringList } from "@newrole/profile/schema"
+import { documentPdfName } from "@newrole/cv-engine/http"
+import { renderCvHtml, renderPdfFromHtml } from "@newrole/cv-engine/render"
 import { toStoredJson, versionBeforeEdit } from "./versions"
 
 /** CV documents: the person's editable CVs and uploaded PDFs (docs/product/plan-aplikacje.md §5.2). */
@@ -132,10 +132,7 @@ function validContent(value: unknown): CvContent {
  * Leaves the content out, so a list never loads photos; an editable row always has content.
  * CVs only, tailored ones included; `letters` adds the cover letters.
  */
-export async function listCvs(
-  userId: number,
-  opts: { letters?: boolean } = {}
-): Promise<CvView[]> {
+export async function listCvs(userId: number, opts: { letters?: boolean } = {}): Promise<CvView[]> {
   const rows = await db.cvDocument.findMany({
     where: { userId, ...(opts.letters ? {} : { docType: "CV" }) },
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
@@ -295,7 +292,12 @@ export async function updateCv(
     }
     const content = validContent(patch.content)
     const checked = await versionBeforeEdit(
-      { id: row.id, content: row.content, language: row.language, versionCheckedAt: row.versionCheckedAt },
+      {
+        id: row.id,
+        content: row.content,
+        language: row.language,
+        versionCheckedAt: row.versionCheckedAt,
+      },
       content
     )
     if (checked) data.versionCheckedAt = checked.checkedAt
@@ -438,10 +440,11 @@ export async function cvPdf(
   }
   const content = row.content == null ? null : parseCvContent(row.content)
   if (!content) return null
-  const name =
-    row.docType === "LETTER"
-      ? cvPdfFileName(content.header.name, letterFileSuffix(cvLocale(row.language)))
-      : cvPdfFileName(content.header.name)
+  const name = documentPdfName(
+    content,
+    row.docType === "LETTER" ? "LETTER" : "CV",
+    cvLocale(row.language)
+  )
   if (row.pdf && row.pdfUpdatedAt && row.pdfUpdatedAt >= row.updatedAt) {
     return { bytes: Buffer.from(row.pdf), name }
   }

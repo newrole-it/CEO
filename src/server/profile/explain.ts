@@ -1,4 +1,4 @@
-import type { DomainRequirement, IndustryRelation } from "./industry"
+import type { DomainRequirement, IndustryRelation } from "@newrole/profile/industry"
 import type { SalaryKind } from "./salary"
 import type { SkillHit } from "./skills"
 

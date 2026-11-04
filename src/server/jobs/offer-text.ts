@@ -12,9 +12,9 @@ import { hydrateSmartRecruiters } from "src/server/adapters/smartrecruiters"
 import { parseSuccessFactorsJob } from "src/server/adapters/successfactors"
 import { takeDetailSlot } from "src/server/crawler/budget"
 import { aiOptOut, stripPersonalData } from "src/server/crawler/hygiene"
-import { createRobotsCache, policyFor, politeGet } from "src/server/discovery/polite-fetch"
+import { createRobotsCache, policyFor, politeGet } from "@newrole/offers/polite"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
-import type { OfferTextOrigin } from "src/shared/cv/tailor"
+import { OFFER_TEXT_LIMIT, type OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type { ListedJob, SourceType } from "src/shared/schemas"
 
 /**
@@ -23,7 +23,7 @@ import type { ListedJob, SourceType } from "src/shared/schemas"
  * table. docs/product/plan-p0.md has the reasons.
  */
 
-export const OFFER_TEXT_LIMIT = 12_000
+export { OFFER_TEXT_LIMIT }
 
 const LIVE_TIMEOUT_MS = 25_000
 const READ_TTL_MS = 15 * 60_000
@@ -126,7 +126,11 @@ function asLive(job: ListedJob | undefined): Live {
   return { text: job.descriptionText ?? "", withheld: Boolean(job.llmOptOut) }
 }
 
-async function readDetailApi(source: OfferSource, hydrate: Hydrate, http: HttpClient): Promise<Live> {
+async function readDetailApi(
+  source: OfferSource,
+  hydrate: Hydrate,
+  http: HttpClient
+): Promise<Live> {
   const job = await hydrate(
     {
       externalId: source.externalId ?? undefined,
@@ -228,7 +232,10 @@ export function readOfferText(
   return value
 }
 
-export async function readOfferTextById(jobId: string, http?: HttpClient): Promise<OfferText | null> {
+export async function readOfferTextById(
+  jobId: string,
+  http?: HttpClient
+): Promise<OfferText | null> {
   const row = await db.job.findUnique({ where: { id: jobId }, select: offerSourceSelect })
   return row ? readOfferText(toOfferSource(row), http) : null
 }

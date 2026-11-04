@@ -1,6 +1,6 @@
 import { z } from "zod"
 import type { ListedJob, SourceType, WorkplaceType } from "src/shared/schemas"
-import { decodeEntities } from "src/server/jobs/text"
+import { decodeEntities } from "@newrole/offers/text"
 import {
   cleanDescription,
   inferWorkplace,

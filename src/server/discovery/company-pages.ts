@@ -1,4 +1,4 @@
-import { decideFetch } from "config/source-policies"
+import { decideFetch } from "@newrole/offers/source-policies"
 
 function hostOf(raw: string): string {
   return new URL(raw).hostname.toLowerCase().replace(/^www\./, "")

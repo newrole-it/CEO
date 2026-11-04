@@ -1,10 +1,10 @@
 import { z } from "zod"
-import { smartRecruitersPostingApiEnabled } from "config/source-policies"
+import { smartRecruitersPostingApiEnabled } from "@newrole/offers/source-policies"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { isBlockedSlug, namesAgree } from "./blocked"
 import { asDate, buildListedJob, itemsFrom, readJson } from "./parse"
-import { htmlToText } from "src/server/jobs/text"
+import { htmlToText } from "@newrole/offers/text"
 import type { BoardList } from "./types"
 
 const postingSchema = z

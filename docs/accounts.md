@@ -14,7 +14,7 @@ Getting your profile needs no LinkedIn app and no keys. `/start` → "Pobierz z 
 
 This reads only your own profile, in your own browser, when you start it. newrole.it does not crawl LinkedIn. In Claude Code, the `onboard` MCP prompt follows the same rules, and `profile_import` takes `text`, `pdfPath`, or `zipPath`.
 
-A PDF is parsed in memory (`src/server/profile/pdf.ts`): it never touches the disk and is not stored. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so a CV can be created from them. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source. Model replies from the CV are cached under the user and removed with the profile.
+A PDF is parsed in memory (`@newrole/cv-engine/pdf`, `packages/cv-engine/src/pdf.ts`): it never touches the disk and is not stored. The structured profile is stored, and so are the parsed sections (headline, about, experience, skills, education) so a CV can be created from them. CV text is treated as untrusted: instruction-like lines are stripped, and skills or titles the model invents are kept only when they appear in the source. Model replies from the CV are cached under the user and removed with the profile.
 
 ### Sign in with LinkedIn (optional)
 

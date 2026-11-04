@@ -17,9 +17,9 @@ import {
 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { numberFormat, type CopyKey } from "src/app/i18n/copy"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Dropzone, isPdf, isZip, useToast } from "src/app/components/ds/interactive"
-import { Banner } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Dropzone, isPdf, isZip, useToast } from "@newrole/ui/interactive"
+import { Banner } from "@newrole/ui/primitives"
 import { LinkedInMark } from "src/app/components/site/Brand"
 import ensureGuest from "src/app/profile/mutations/ensureGuest"
 import saveProfile from "src/app/profile/mutations/saveProfile"
@@ -30,10 +30,11 @@ import {
   fieldsFrom,
   salaryError,
   type DraftField,
-} from "src/app/profile/ProfileReview"
-import { emptyProfileDraft, type ProfileDraft } from "src/server/profile/schema"
-import { LinkedInImport } from "./LinkedInImport"
-import { PasteTile } from "./PasteTile"
+} from "@newrole/profile-ui/ProfileReview"
+import { emptyProfileDraft, type ProfileDraft } from "@newrole/profile/schema"
+import { LinkedInImport } from "@newrole/profile-ui/LinkedInImport"
+import { newroleBrowserImport } from "src/app/profile/profile-ui"
+import { PasteTile } from "@newrole/profile-ui/PasteTile"
 import { clearPendingFile, linkedInStartHref, takePendingFile } from "./pending"
 
 export type Step = "source" | "linkedin" | "reading" | "review" | "linkedin-next"
@@ -325,7 +326,7 @@ export function Onboarding({
 
   const importOptions = (
     <LinkedInImport
-      browserImport={browserImport}
+      browser={browserImport ? newroleBrowserImport : null}
       signInHref={linkedIn ? linkedInStartHref() : "/start/linkedin"}
       onDraft={toReview}
       onFile={onFile}

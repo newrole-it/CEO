@@ -15,9 +15,9 @@ import {
   X,
 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button } from "src/app/components/ds/Button"
-import { Modal, ModalHead, useIsMobile, usePopoverFocus } from "src/app/components/ds/interactive"
-import { cx } from "src/app/components/ds/cx"
+import { Button } from "@newrole/ui/Button"
+import { Modal, ModalHead, useIsMobile, usePopoverFocus } from "@newrole/ui/interactive"
+import { cx } from "@newrole/ui/cx"
 import { LEVELS, filtersQuery, type FeedFilters, type Level } from "../feed-filters"
 import { countryLabel } from "../format"
 import type { FeedTab } from "../types"

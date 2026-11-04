@@ -1,0 +1,39 @@
+{
+  "name": "@newrole/cv-app",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "newrole CV: paste a link to a job offer and get your CV tailored to it, with a cover letter, in an A4 editor. Runs on your machine and keeps everything in files: no database, no account.",
+  "scripts": {
+    "dev": "next dev --webpack -p 43124 -H 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start -H 127.0.0.1 -p 43124",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@newrole/app-kit": "0.1.0",
+    "@newrole/cv-core": "0.1.0",
+    "@newrole/cv-editor": "0.1.0",
+    "@newrole/cv-engine": "0.1.0",
+    "@newrole/llm": "0.1.0",
+    "@newrole/offers": "0.1.0",
+    "@newrole/profile": "0.1.0",
+    "@newrole/profile-ui": "0.1.0",
+    "@newrole/ui": "0.1.0",
+    "lucide-react": "1.55.0",
+    "next": "16.4.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/react": "19.0.0",
+    "autoprefixer": "10.6.1",
+    "postcss": "8.5.29",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.6.3",
+    "vitest": "0.25.3"
+  }
+}

@@ -14,7 +14,7 @@ import { safeCanonicalUrl } from "src/server/jobs/dedupe"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
 import { hostOf, jobLinks } from "src/server/discovery/careers-detect"
-import { createRobotsCache, politeGet } from "src/server/discovery/polite-fetch"
+import { createRobotsCache, politeGet } from "@newrole/offers/polite"
 
 /** Job pages read per watched site per run. The 200/day host cap still applies. */
 export const SITE_BATCH = 25

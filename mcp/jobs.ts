@@ -1,9 +1,9 @@
 import type { CandidateProfile } from "@prisma/client"
-import { countryName } from "matching/places"
-import { fold } from "matching/text"
+import { countryName } from "@newrole/matching/places"
+import { fold } from "@newrole/matching/text"
 import { listForYou, listOfferPage, type FeedOffer, type ForYouOffer } from "src/server/jobs/browse"
 import { defaultCountry } from "src/server/jobs/country"
-import { asStringList } from "src/server/profile/schema"
+import { asStringList } from "@newrole/profile/schema"
 
 /**
  * Read side of the local index for MCP tools. Ranking is the web app's For-you score

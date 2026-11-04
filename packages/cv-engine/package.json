@@ -1,0 +1,26 @@
+{
+  "name": "@newrole/cv-engine",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "The server side of newrole.it's CV tools: tailoring a CV and writing a cover letter for one job offer with a model, reading a CV out of a PDF, and printing A4 HTML and PDF. Storage-free: callers keep the documents.",
+  "sideEffects": false,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@newrole/cv-core": "0.1.0",
+    "@newrole/llm": "0.1.0",
+    "@newrole/profile": "0.1.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.6.3",
+    "vitest": "0.25.3"
+  }
+}

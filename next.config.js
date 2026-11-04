@@ -1,4 +1,5 @@
 const { withBlitz } = require("@blitzjs/next")
+const { workspacePackages } = require("./scripts/workspaces.js")
 
 // Same-origin frames stay allowed: the CV editor shows an uploaded PDF from /api/cv in an iframe.
 const securityHeaders = [
@@ -17,6 +18,8 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typedRoutes: false,
+  // The workspace packages ship TypeScript source (packages/*/README.md); Next compiles them here.
+  transpilePackages: workspacePackages(),
   // next dev would otherwise write AGENTS.md into the checkout on every start.
   agentRules: false,
   // Bundled, sodium-native looks for its prebuilt binary next to the route chunk and does not find

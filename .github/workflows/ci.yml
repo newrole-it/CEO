@@ -37,12 +37,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm ci --prefix matching
       - run: npx prisma generate
       - run: npm run test:db
       - run: npm run lint
+      - run: npm run check:boundaries
       - run: npx tsc --noEmit
+      - run: npm run typecheck:workspaces
       - run: npx vitest run
-      - run: npm test --prefix matching
+      - run: npm run test:workspaces
       - run: npm run test:flow
       - run: npm run build
+      - run: npm run cv:build

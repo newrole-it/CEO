@@ -3,7 +3,7 @@
  * platform, each one checked on the platform the same way an imported board is.
  */
 import db from "db"
-import { createRobotsCache, type RobotsCache } from "src/server/discovery/polite-fetch"
+import { createRobotsCache, type RobotsCache } from "@newrole/offers/polite"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { SourceType } from "src/shared/schemas"
 import { checkCatalogBoard } from "./run"

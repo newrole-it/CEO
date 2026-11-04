@@ -1,11 +1,22 @@
 "use client"
 
 import { useEffect } from "react"
-import { Building2, ChevronRight, Heart, Info, Link as LinkIcon, Search, ShieldCheck, Shuffle, SquareTerminal, UserRound } from "lucide-react"
+import {
+  Building2,
+  ChevronRight,
+  Heart,
+  Info,
+  Link as LinkIcon,
+  Search,
+  ShieldCheck,
+  Shuffle,
+  SquareTerminal,
+  UserRound,
+} from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { copy, type CopyKey } from "src/app/i18n/copy"
-import { CodeBlock, CopyButton } from "src/app/components/ds/interactive"
-import { Banner } from "src/app/components/ds/primitives"
+import { CodeBlock, CopyButton } from "@newrole/ui/interactive"
+import { Banner } from "@newrole/ui/primitives"
 import { GITHUB_URL } from "src/app/components/site/links"
 
 export type ToolKey = "search" | "profile" | "feedback" | "similar" | "companies" | "ingest"

@@ -5,8 +5,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json .npmrc ./
-COPY matching/package.json matching/package-lock.json ./matching/
-RUN npm ci && npm ci --prefix matching
+# npm workspaces: the packages and apps must be there for npm ci to link them
+COPY packages ./packages
+COPY apps/cv/package.json ./apps/cv/
+RUN npm ci
 
 COPY . .
 # Build-time placeholders. They are not left in the image environment.

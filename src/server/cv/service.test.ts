@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { blankCv } from "src/shared/cv/blank"
+import { blankCv } from "@newrole/cv-core/blank"
 
 /** One CV row in memory; every write moves updatedAt forward like Prisma's @updatedAt. */
 const table = {

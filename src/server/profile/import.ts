@@ -1,8 +1,7 @@
 import db from "db"
 import { createLlmClient } from "src/server/llm/client"
-import { extractProfileFromText } from "./extract"
-import { parseLinkedInProfile } from "./linkedin"
-import type { ProfileDraft } from "./schema"
+import { draftFromText } from "@newrole/profile/import-text"
+import type { ProfileDraft } from "@newrole/profile/schema"
 
 /**
  * CV text → profile draft for the review step. The parsed LinkedIn sections are kept for "CV from
@@ -13,8 +12,7 @@ export async function draftFromProfileText(
   text: string,
   userId?: number
 ): Promise<{ draft: ProfileDraft }> {
-  const draft = await extractProfileFromText(text, createLlmClient(), userId)
-  const document = parseLinkedInProfile(text)
+  const { draft, document } = await draftFromText(text, createLlmClient(), userId)
   try {
     if (userId && document) {
       await db.candidateProfile.upsert({

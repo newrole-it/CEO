@@ -66,9 +66,9 @@ Details and the probe scripts are in [`sources/`](../sources) (`source-pack.md`,
 
 ## Matching
 
-The [`matching/`](../matching) package is the search-intelligence pack: query expansion, normalization, dedupe, explainable scoring, and match explanation. The app calls it from the worker.
+The [`@newrole/matching`](../packages/matching) package is the search-intelligence pack: query expansion, normalization, dedupe, explainable scoring, and match explanation. The app calls it from the worker.
 
-Scoring weights, locked in by the fixture tests: title 30, seniority 15, location 25, salary 15, freshness 10, source 5. Salary is compared as monthly PLN on a B2B net-of-VAT basis (UoP gross × 1.25). Exchange rates come from NBP table A (mid rates, read every 12 hours per process, `src/server/fx/nbp.ts`); before the first read, or with `NBP_RATES=off`, the defaults in `matching/config.ts` apply, and `FX_*_PLN` wins over both. An offer posted more than a year ago, by the source's own date, loses 10 points in both the search score and the For you feed.
+Scoring weights, locked in by the fixture tests: title 30, seniority 15, location 25, salary 15, freshness 10, source 5. Salary is compared as monthly PLN on a B2B net-of-VAT basis (UoP gross × 1.25). Exchange rates come from NBP table A (mid rates, read every 12 hours per process, `src/server/fx/nbp.ts`); before the first read, or with `NBP_RATES=off`, the defaults in `packages/matching/config.ts` apply, and `FX_*_PLN` wins over both. An offer posted more than a year ago, by the source's own date, loses 10 points in both the search score and the For you feed.
 
 The neutral live profile is: salary floor 1 PLN, every contract type accepted, and the country the search names (else `MATCH_HOME_COUNTRY`, PL). Remote counts in the regions that cover that country plus WORLD (for Poland: PL, EU, EMEA, WORLD). In the home country, home city Warsaw and the main Polish cities count for hybrid and on-site; in another country the country itself is what counts. Seniority is a window around the expanded role.
 

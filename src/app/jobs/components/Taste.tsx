@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react"
 import { invoke } from "@blitzjs/rpc"
 import { ChevronRight, Heart, Minus } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button } from "src/app/components/ds/Button"
-import { Modal, ModalHead, usePopoverFocus, useToast } from "src/app/components/ds/interactive"
-import { cx } from "src/app/components/ds/cx"
+import { Button } from "@newrole/ui/Button"
+import { Modal, ModalHead, usePopoverFocus, useToast } from "@newrole/ui/interactive"
+import { cx } from "@newrole/ui/cx"
 import muteSignal from "src/app/feedback/mutations/muteSignal"
 import type { PreferenceSummary } from "src/server/preferences/model"
 import type { TasteItem } from "src/server/preferences/types"
@@ -63,7 +63,8 @@ export function TasteChip({
         message: `${label(item, locale)} — ${t("taste.remove").toLowerCase()} ✓`,
         action: {
           label: t("act.undo"),
-          onClick: () => void invoke(muteSignal, { key: item.key, restore: true }).then(() => onRemoved?.("")),
+          onClick: () =>
+            void invoke(muteSignal, { key: item.key, restore: true }).then(() => onRemoved?.("")),
         },
       })
     } catch {
@@ -96,10 +97,17 @@ export function TasteChip({
           style={{ left: 0, right: "auto", width: 260 }}
         >
           <p className="menu__label" style={{ whiteSpace: "normal" }}>
-            {item.source === "profile" ? t("taste.fromProfile") : t("taste.source", { n: item.count })}
+            {item.source === "profile"
+              ? t("taste.fromProfile")
+              : t("taste.source", { n: item.count })}
           </p>
           {item.removable ? (
-            <button type="button" className="menu__item" disabled={busy} onClick={() => void remove()}>
+            <button
+              type="button"
+              className="menu__item"
+              disabled={busy}
+              onClick={() => void remove()}
+            >
               <Minus aria-hidden /> {t("taste.remove")}
             </button>
           ) : (
@@ -125,7 +133,8 @@ export function TastePanel({
   const { t } = useCopy()
   const [how, setHow] = useState(false)
   const likes = summary?.likes.filter((item) => !summary.muted.includes(item.key)).slice(0, 8) ?? []
-  const avoids = summary?.dislikes.filter((item) => !summary.muted.includes(item.key)).slice(0, 6) ?? []
+  const avoids =
+    summary?.dislikes.filter((item) => !summary.muted.includes(item.key)).slice(0, 6) ?? []
   const empty = !likes.length && !avoids.length
   return (
     <section className="card rail-card" aria-labelledby="taste-title">
@@ -144,7 +153,12 @@ export function TastePanel({
               <span>{t("taste.likes")}</span>
               <div className="chips chips--sm">
                 {likes.map((item) => (
-                  <TasteChip key={item.key} item={item} fresh={freshKeys?.has(item.key)} onRemoved={onChanged} />
+                  <TasteChip
+                    key={item.key}
+                    item={item}
+                    fresh={freshKeys?.has(item.key)}
+                    onRemoved={onChanged}
+                  />
                 ))}
               </div>
             </div>
@@ -187,13 +201,24 @@ export function TastePanel({
 }
 
 /** Tablet/mobile one-liner; opens the full panel in a bottom sheet. */
-export function TasteStrip({ summary, onChanged }: { summary: PreferenceSummary | null; onChanged?: () => void }) {
+export function TasteStrip({
+  summary,
+  onChanged,
+}: {
+  summary: PreferenceSummary | null
+  onChanged?: () => void
+}) {
   const { t, locale } = useCopy()
   const [open, setOpen] = useState(false)
   const likes = summary?.likes.filter((item) => !summary.muted.includes(item.key)).slice(0, 4) ?? []
   return (
     <>
-      <button type="button" className="taste-strip" onClick={() => setOpen(true)} aria-haspopup="dialog">
+      <button
+        type="button"
+        className="taste-strip"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+      >
         <Heart aria-hidden />
         <span>
           {likes.length

@@ -1,4 +1,4 @@
-import { coverageRows } from "config/source-policies"
+import { coverageRows } from "@newrole/offers/source-policies"
 import db from "db"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { intlLocale, translator } from "src/app/i18n/copy"

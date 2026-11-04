@@ -1,5 +1,5 @@
 import db from "db"
-import { decideFetch } from "config/source-policies"
+import { decideFetch } from "@newrole/offers/source-policies"
 import { loadSeedBoards, type SeedBoard } from "config/seed-boards"
 import { listCareerSite } from "src/server/adapters/career-site"
 import { adapterFor, type BoardList, type LiveAts } from "src/server/adapters/registry"

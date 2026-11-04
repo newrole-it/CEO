@@ -6,7 +6,7 @@
  * gpt-4o: $2.50 input, $10 output.
  * OpenAI standard rates for these model ids.
  *
- * PLN uses the same approximate USD rate as salary display (matching/config.ts, asOf 2026-10-01).
+ * PLN uses the same approximate USD rate as salary display (packages/matching/config.ts, asOf 2026-10-01).
  */
 export const MODEL_USD_PER_MILLION: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
@@ -50,7 +50,11 @@ export function priceForModel(model: string): { input: number; output: number } 
   return key ? MODEL_USD_PER_MILLION[key] : null
 }
 
-export function estimateModelUsd(model: string, tokenInput: number, tokenOutput: number): number | null {
+export function estimateModelUsd(
+  model: string,
+  tokenInput: number,
+  tokenOutput: number
+): number | null {
   const price = priceForModel(model)
   if (!price) return null
   return (tokenInput / 1_000_000) * price.input + (tokenOutput / 1_000_000) * price.output

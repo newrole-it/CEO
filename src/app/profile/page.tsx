@@ -1,6 +1,6 @@
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { LinkTabs } from "src/app/components/ds/primitives"
+import { LinkTabs } from "@newrole/ui/primitives"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"

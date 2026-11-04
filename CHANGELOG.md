@@ -8,6 +8,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- newrole CV, a separate app in apps/cv: build your profile from a CV PDF, pasted text, LinkedIn's data export or your LinkedIn page read by Claude in your own Chrome, then paste a link to a job offer and get your CV tailored to it, with a cover letter, in the same A4 editor, with versions, the CV audit, a print view and PDF. It also makes a CV from the profile, keeps form details for the CV header and audits the profile. It runs on its own (npm run cv, port 43124), keeps everything in files rather than a database, reads offers with the same source policy and robots.txt rules as newrole.it, and keeps at most 300 characters of an offer on disk.
 - The index holds IT offers only, and all of them: QA, developers, DevOps, data, security, product, design, IT project and program managers, analysts, IT support, directors and VPs. Offers outside IT, test posts and candidate pools are left out on every read.
 - Every offer stores its countries and remote regions, from the ATS's own fields where it has them, then from the location text (with a GeoNames list of large cities). An offer that says nowhere it is is left out.
 - BLOCKED_COUNTRIES: countries whose offers never enter the index. Russia and Belarus by default.
@@ -30,6 +31,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Changed
 
+- The repository is a set of npm workspaces: the CV model, the CV writing and audit, the CV editor, the profile and its screens, the matching pack, the model clients, the design system and the polite reading of job postings are packages under packages/ (@newrole/cv-core, cv-engine, cv-editor, profile, profile-ui, matching, llm, ui, offers, app-kit) that newrole.it and newrole CV both use. The matching pack no longer needs its own npm install. Tailoring a CV, the editor, the profile and the pages look and work as before. docs/architecture.md has the map.
 - The crawler waits 1 second between requests to one host instead of 5 (longer when robots.txt sets a Crawl-delay).
 - Candidate pools and standing posts ("Talent Pipeline", "(Evergreen)", "Future Openings", "Open Applications", "Spontanansökan", "(Internal Only)") and freelance AI-training, data-annotation and data-collection gigs are left out, as are roles that only borrow an IT word (PLC programmer, marketing automation, account manager, landscape architect).
 - ERP and CRM consultants (Dynamics 365, SAP, Salesforce, ServiceNow, NetSuite) count as IT even when the title names a finance module, and Polish titles such as "Ekspert ds. Cyberbezpieczeństwa" and "Analityk Biznesowo-Systemowy" are recognised.

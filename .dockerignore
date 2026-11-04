@@ -1,9 +1,11 @@
 node_modules
-matching/node_modules
+packages/*/node_modules
 extension/node_modules
 extension/.output
 extension/.wxt
 .next
+apps/*/.next
+apps/*/.data
 uploads
 agent-tools
 .git

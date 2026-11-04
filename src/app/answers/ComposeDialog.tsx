@@ -3,15 +3,9 @@
 import { invoke } from "@blitzjs/rpc"
 import { useEffect, useRef, useState } from "react"
 import { CircleAlert, LoaderCircle, Sparkles } from "lucide-react"
-import { Button } from "src/app/components/ds/Button"
-import {
-  CopyButton,
-  Modal,
-  ModalHead,
-  useIsMobile,
-  useToast,
-} from "src/app/components/ds/interactive"
-import { Banner, Field } from "src/app/components/ds/primitives"
+import { Button } from "@newrole/ui/Button"
+import { CopyButton, Modal, ModalHead, useIsMobile, useToast } from "@newrole/ui/interactive"
+import { Banner, Field } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import draftAnswer from "./mutations/draftAnswer"
 import saveAnswer from "./mutations/saveAnswer"

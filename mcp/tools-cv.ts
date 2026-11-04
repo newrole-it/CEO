@@ -3,7 +3,7 @@ import { homedir } from "os"
 import { basename, dirname, extname, isAbsolute, join } from "path"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
-import { findChrome } from "src/server/cv/render"
+import { findChrome } from "@newrole/cv-engine/render"
 import {
   cvPdf,
   cvText,
@@ -14,8 +14,8 @@ import {
   type CvDetail,
   type CvView,
 } from "src/server/cv/service"
-import { applyCvPatch } from "src/shared/cv/patch"
-import { cvContentError, parseCvContent } from "src/shared/cv/schema"
+import { applyCvPatch } from "@newrole/cv-core/patch"
+import { cvContentError, parseCvContent } from "@newrole/cv-core/schema"
 import { appLink, mcpHost } from "./host"
 import { failure, guard, reply, type ToolResult } from "./tools"
 import { currentUser } from "./user"
@@ -40,9 +40,9 @@ function viewData(cv: CvView) {
 function viewLine(cv: CvView): string {
   const kind = cv.kind === "UPLOADED" ? "PDF" : "edytowalne"
   const target = cv.target ? `, pod ofertę: ${cv.target.company}` : ""
-  return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${cv.language}, ${kind}${target}, zmiana ${cv.updatedAt
-    .toISOString()
-    .slice(0, 10)}) id ${cv.id}`
+  return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${
+    cv.language
+  }, ${kind}${target}, zmiana ${cv.updatedAt.toISOString().slice(0, 10)}) id ${cv.id}`
 }
 
 /** Where cv_export_pdf writes: an absolute path, or ~/Downloads/<name>_CV.pdf. */

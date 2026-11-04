@@ -1,8 +1,8 @@
 import db from "db"
 import { createLlmClient } from "src/server/llm/client"
-import { buildProfileAudit, builtAuditSchema, type BuiltAudit } from "./audit"
-import { demandFromOffers, pickLatestRuns } from "./demand"
-import { parseStoredDocument, profileText, type LinkedInDocument } from "./linkedin"
+import { buildProfileAudit, builtAuditSchema, type BuiltAudit } from "@newrole/profile/audit"
+import { demandFromOffers, pickLatestRuns } from "@newrole/profile/demand"
+import { parseStoredDocument, profileText, type LinkedInDocument } from "@newrole/profile/linkedin"
 
 /** What the latest run of each saved search says about a text (profile and CV audits). */
 export async function demandForUser(userId: number, text: string) {

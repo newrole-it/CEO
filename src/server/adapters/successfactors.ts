@@ -1,5 +1,5 @@
 import type { ListedJob } from "src/shared/schemas"
-import { htmlToText } from "src/server/jobs/text"
+import { htmlToText } from "@newrole/offers/text"
 import { asDate, buildListedJob } from "./parse"
 import { aiOptOut, excerpt } from "src/server/crawler/hygiene"
 

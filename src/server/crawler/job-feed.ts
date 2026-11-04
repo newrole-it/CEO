@@ -1,6 +1,6 @@
 import type { ListedJob, SourceType } from "src/shared/schemas"
 import { excerpt } from "src/server/crawler/hygiene"
-import { htmlToText } from "src/server/jobs/text"
+import { htmlToText } from "@newrole/offers/text"
 import { asDate, buildListedJob } from "src/server/adapters/parse"
 
 type JsonRecord = Record<string, unknown>

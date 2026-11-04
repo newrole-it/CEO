@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { wrapUntrusted } from "src/server/llm/common"
+import { wrapLong, wrapUntrusted } from "@newrole/llm/common"
 import { hasRedaction } from "./filter"
 import {
   detectLanguage,
@@ -183,14 +183,6 @@ export const DRAFT_SYSTEM = [
   "basedOn lists the ids of the past answers you actually used (empty when none).",
   'Return JSON: {"answers": {"<question id>": {"text": "...", "basedOn": ["<answer id>"]}}} with one entry per question id.',
 ].join("\n")
-
-export function wrapLong(label: string, text: string, max: number): string {
-  const body = text.slice(0, max)
-  const parts: string[] = []
-  for (let start = 0; start < body.length; start += 3500)
-    parts.push(wrapUntrusted(label, body.slice(start, start + 3500)))
-  return parts.join("\n")
-}
 
 export function draftUserPrompt(input: {
   candidate: string

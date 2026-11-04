@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import db from "db"
 import { createGuestUser } from "src/server/auth/accounts"
-import { profileDraftSchema } from "src/server/profile/schema"
+import { profileDraftSchema } from "@newrole/profile/schema"
 
 export default resolver.pipe(resolver.zod(profileDraftSchema), async (input, ctx) => {
   let userId = ctx.session.userId

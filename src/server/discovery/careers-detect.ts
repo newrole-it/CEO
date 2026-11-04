@@ -2,9 +2,11 @@
  * Read a company page for a way to its job offers. Pure: no network, no database.
  * The HTML is only scanned here and never stored.
  */
-import { decodeEntities } from "src/server/jobs/text"
-import { isPolishBoardHost } from "src/shared/polish-boards"
+import { isAggregatorHost } from "@newrole/offers/hosts"
+import { decodeEntities } from "@newrole/offers/text"
 import { detectBoard, type DetectedBoard } from "./boards"
+
+export { isAggregatorHost }
 
 export type CareersLink = { url: string; text: string; score: number }
 
@@ -29,24 +31,6 @@ const LINK_ONLY_VENDORS: Array<{ vendor: string; host: RegExp }> = [
   { vendor: "HiBob", host: /(^|\.)hibob\.com$/i },
 ]
 
-/** Hosts that are never a company's own careers page. */
-const NOT_COMPANY_HOSTS = [
-  "linkedin.com",
-  "facebook.com",
-  "instagram.com",
-  "twitter.com",
-  "x.com",
-  "youtube.com",
-  "glassdoor.com",
-  "glassdoor.pl",
-  "indeed.com",
-  "wikipedia.org",
-  "github.com",
-  "crunchbase.com",
-  "goldenline.pl",
-  "rocketjobs.pl",
-]
-
 export function hostOf(raw: string): string | null {
   try {
     return new URL(raw).hostname.toLowerCase().replace(/\.$/, "")
@@ -60,17 +44,6 @@ export function companyDomain(raw: string): string | null {
   const host = hostOf(raw)
   if (!host) return null
   return host.replace(/^(www|careers|career|kariera|jobs|praca|join)\./, "")
-}
-
-function hostMatches(host: string, suffix: string): boolean {
-  return host === suffix || host.endsWith(`.${suffix}`)
-}
-
-/** LinkedIn, Polish job boards, and social sites. They are never fetched as a company page. */
-export function isAggregatorHost(host: string): boolean {
-  const clean = host.toLowerCase().replace(/^www\./, "")
-  if (isPolishBoardHost(clean)) return true
-  return NOT_COMPANY_HOSTS.some((suffix) => hostMatches(clean, suffix))
 }
 
 function sameSite(left: string, right: string): boolean {
@@ -134,7 +107,8 @@ export function findCareersLinks(html: string, pageUrl: string): CareersLink[] {
 const EMBED_PATTERNS: Array<{ provider: DetectedBoard["provider"]; pattern: RegExp }> = [
   {
     provider: "GREENHOUSE",
-    pattern: /(?:boards|job-boards)\.greenhouse\.io\/embed\/job_board(?:\/js)?\?for=([a-z0-9_-]+)/gi,
+    pattern:
+      /(?:boards|job-boards)\.greenhouse\.io\/embed\/job_board(?:\/js)?\?for=([a-z0-9_-]+)/gi,
   },
   { provider: "GREENHOUSE", pattern: /boards-api\.greenhouse\.io\/v1\/boards\/([a-z0-9_-]+)/gi },
   { provider: "GREENHOUSE", pattern: /grnhse_board[^"']*["'][^"']*for=([a-z0-9_-]+)/gi },
@@ -142,7 +116,10 @@ const EMBED_PATTERNS: Array<{ provider: DetectedBoard["provider"]; pattern: RegE
   { provider: "ASHBY", pattern: /jobs\.ashbyhq\.com\/([a-z0-9_.-]+)\/embed/gi },
   { provider: "ASHBY", pattern: /api\.ashbyhq\.com\/posting-api\/job-board\/([a-z0-9_.-]+)/gi },
   { provider: "WORKABLE", pattern: /workable\.com\/widget\/accounts\/([a-z0-9_-]+)/gi },
-  { provider: "WORKABLE", pattern: /apply\.workable\.com\/api\/v\d\/(?:widget\/)?accounts\/([a-z0-9_-]+)/gi },
+  {
+    provider: "WORKABLE",
+    pattern: /apply\.workable\.com\/api\/v\d\/(?:widget\/)?accounts\/([a-z0-9_-]+)/gi,
+  },
   {
     provider: "SMARTRECRUITERS",
     pattern: /api\.smartrecruiters\.com\/v1\/companies\/([a-z0-9_-]+)\/postings/gi,
@@ -188,7 +165,8 @@ export function findAtsMarkers(html: string, pageUrl: string): AtsMarker[] {
       push({ kind: "link-only", vendor: vendor.vendor, url: raw })
       continue
     }
-    if (/(^|\.)(app|api|www|cdn|assets|scripts|static)\.(teamtailor|recruitee)\.com$/.test(host)) continue
+    if (/(^|\.)(app|api|www|cdn|assets|scripts|static)\.(teamtailor|recruitee)\.com$/.test(host))
+      continue
     if (/teamtailor-cdn|recruitee-cdn/.test(host)) continue
     const board = detectBoard(raw)
     if (board) push({ kind: "board", ...board, evidence: raw.slice(0, 120) })
@@ -196,11 +174,21 @@ export function findAtsMarkers(html: string, pageUrl: string): AtsMarker[] {
   const pageHost = hostOf(pageUrl)
   if (pageHost && !markers.some((marker) => marker.kind === "board")) {
     if (/teamtailor-cdn\.com|content=["']Teamtailor["']|teamtailor\.com\/assets/i.test(html)) {
-      push({ kind: "board", provider: "TEAMTAILOR", boardId: pageHost, evidence: "Teamtailor assets" })
+      push({
+        kind: "board",
+        provider: "TEAMTAILOR",
+        boardId: pageHost,
+        evidence: "Teamtailor assets",
+      })
     } else if (/phenompeople\.com|window\.phApp\b|["']ddoKey["']/i.test(html)) {
       push({ kind: "board", provider: "PHENOM", boardId: pageHost, evidence: "Phenom assets" })
     } else if (/\/JobDetail\/[^"'\s]+\/\d+|jobRecordsPerPage=/i.test(html)) {
-      push({ kind: "board", provider: "AVATURE", boardId: pageHost, evidence: "Avature portal paths" })
+      push({
+        kind: "board",
+        provider: "AVATURE",
+        boardId: pageHost,
+        evidence: "Avature portal paths",
+      })
     }
   }
   return markers
@@ -221,7 +209,10 @@ export function siteName(html: string): string | null {
   const raw = og || html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]
   if (!raw) return null
   const text = decodeEntities(raw).replace(/\s+/g, " ").trim()
-  const parts = text.split(/\s+[|–—-]\s+|\s*[|·•]\s*/).map((part) => part.trim()).filter(Boolean)
+  const parts = text
+    .split(/\s+[|–—-]\s+|\s*[|·•]\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean)
   const generic = /^(home|strona główna|kariera|careers?|jobs?|praca|welcome)$/i
   const name = parts.find((part) => !generic.test(part) && part.length <= 60) ?? parts[0]
   return name && name.length <= 80 ? name : null

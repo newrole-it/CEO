@@ -6,7 +6,7 @@ import { rememberCompanyPage } from "src/server/discovery/company-pages"
 import { listCareerSite } from "src/server/adapters/career-site"
 import { listSmartRecruiters } from "src/server/adapters/smartrecruiters"
 import type { HttpClient } from "src/server/security/safe-fetch"
-import { UnsafeUrlError } from "src/server/security/url-safety"
+import { UnsafeUrlError } from "@newrole/offers/url-safety"
 
 const FEED = JSON.stringify({
   "@context": "https://schema.org",

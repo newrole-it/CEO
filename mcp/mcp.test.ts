@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { clampLimit, offerLine } from "./format"
 import { sinceDate, targetWords, titleWords } from "./jobs"
 import { profileData } from "./profile"
-import { emptyProfileDraft } from "src/server/profile/schema"
+import { emptyProfileDraft } from "@newrole/profile/schema"
 import { pickUser } from "./user"
 
 const users = [

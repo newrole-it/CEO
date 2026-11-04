@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { cx } from "src/app/components/ds/cx"
+import { cx } from "@newrole/ui/cx"
 
 /**
  * The few chart forms the statistics page needs, drawn with plain SVG and CSS so they follow the

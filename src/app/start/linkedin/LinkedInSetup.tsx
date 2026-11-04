@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { CircleCheck, ExternalLink, FileUp, RefreshCw } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { CodeBlock, Dropzone } from "src/app/components/ds/interactive"
-import { Banner } from "src/app/components/ds/primitives"
-import { cx } from "src/app/components/ds/cx"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { CodeBlock, Dropzone } from "@newrole/ui/interactive"
+import { Banner } from "@newrole/ui/primitives"
+import { cx } from "@newrole/ui/cx"
 import { LinkedInMark } from "src/app/components/site/Brand"
 import { linkedInStartHref, setPendingFile } from "../pending"
 
@@ -34,7 +34,8 @@ export function LinkedInSetup({
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(KEY) || "[]") as unknown
-      if (Array.isArray(saved)) setDone((current) => current.map((_, index) => Boolean(saved[index])))
+      if (Array.isArray(saved))
+        setDone((current) => current.map((_, index) => Boolean(saved[index])))
     } catch {}
   }, [])
 
@@ -60,7 +61,13 @@ export function LinkedInSetup({
         <>
           <p className="field__hint">{t("li.setup.1.hint")}</p>
           <div>
-            <ButtonLink href={developerUrl} external variant="outline" size="sm" iconRight={<ExternalLink />}>
+            <ButtonLink
+              href={developerUrl}
+              external
+              variant="outline"
+              size="sm"
+              iconRight={<ExternalLink />}
+            >
               {t("li.setup.1.btn").replace(" ↗", "")}
             </ButtonLink>
           </div>
@@ -77,7 +84,10 @@ export function LinkedInSetup({
         </>
       ),
     },
-    { title: t("li.setup.4"), body: <CodeBlock code={envKeys.map((key) => `${key}=…`).join("\n")} /> },
+    {
+      title: t("li.setup.4"),
+      body: <CodeBlock code={envKeys.map((key) => `${key}=…`).join("\n")} />,
+    },
     { title: t("li.setup.5") },
   ]
 

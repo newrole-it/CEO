@@ -5,11 +5,8 @@ import {
   readJson,
   withToken,
 } from "src/server/autofill/http"
-import {
-  auditLinkedInProfile,
-  latestLinkedInAudit,
-  LinkedInAuditBodySchema,
-} from "src/server/profile/linkedin-audit"
+import { LinkedInAuditBodySchema } from "@newrole/profile/linkedin-audit"
+import { auditLinkedInProfile, latestLinkedInAudit } from "src/server/profile/linkedin-audit"
 
 export const dynamic = "force-dynamic"
 

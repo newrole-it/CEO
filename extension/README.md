@@ -52,7 +52,7 @@ Firmę i stanowisko rozszerzenie czyta z danych `JobPosting` na stronie, a na Li
 Jak porównywane są nazwy:
 
 - **Firma:** formy prawne, „Polska”, „Careers at”, „- English”, nawiasy i pisownia się nie liczą. Resztę zna mapa firm w tabeli `CompanyAlias`: nazwy z indeksu, identyfikatory tablic ATS z indeksu (np. `realtimeboardglobal` to Miro) i `config/company-aliases.ts`. Każdy wpis tej listy ma źródło, którego treść została sprawdzona, a wpisu bez źródła nie ma (np. „LiveChat Software” to „Text” według text.com). Worker uzupełnia mapę co godzinę o nowe firmy. Zły wiersz wyłączysz na stałe, ustawiając mu `confidence` na 0. Nazwa, która tylko zaczyna inną („Swift Harbor” i „Swift Harbor Solutions”), liczy się tylko razem ze zgodnym stanowiskiem, a panel mówi wtedy, że nazwa firmy jest podobna.
-- **Stanowisko:** według tych samych zasad co deduplikacja ofert (`matching/`): liczą się słowa i poziom, a nie liczą się płeć, miasto, tryb pracy ani numer rekrutacji. „Developer”, „Programista” i „Software Engineer” są tu traktowane jak to samo słowo. „Senior” i „Junior” tej samej roli to różne stanowiska, a brak poziomu po jednej stronie niczego nie przekreśla.
+- **Stanowisko:** według tych samych zasad co deduplikacja ofert (`packages/matching`): liczą się słowa i poziom, a nie liczą się płeć, miasto, tryb pracy ani numer rekrutacji. „Developer”, „Programista” i „Software Engineer” są tu traktowane jak to samo słowo. „Senior” i „Junior” tej samej roli to różne stanowiska, a brak poziomu po jednej stronie niczego nie przekreśla.
 - **Strona zamiast firmy:** gdy w aplikacji albo na ofercie firmą jest sam portal (np. „LinkedIn” na linkedin.com), taka nazwa nie bierze udziału w porównaniu.
 
 ## Ocena profilu LinkedIn

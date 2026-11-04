@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_CONFIG } from "matching/config"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
 import {
   DAYS_PER_MONTH,
   HOURS_PER_MONTH,

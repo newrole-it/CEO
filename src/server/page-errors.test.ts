@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({
 }))
 vi.mock("src/app/i18n/server", () => ({ getLocale: async () => "pl" }))
 vi.mock("src/app/components/site/SiteFrame", () => ({ SiteFrame: () => null }))
-vi.mock("src/app/components/ds/primitives", () => ({ LinkTabs: () => null }))
+vi.mock("@newrole/ui/primitives", () => ({ LinkTabs: () => null }))
 vi.mock("src/app/jobs/[id]/OfferPage", () => ({ OfferPage: () => null }))
 vi.mock("src/app/profile/ProfileEditor", () => ({ ProfileEditor: () => null }))
 vi.mock("src/app/setup/back", () => ({ setupBack: async () => null }))

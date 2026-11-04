@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers"
-import { LOCALE_COOKIE, resolveLocale } from "src/shared/locale"
+import { LOCALE_COOKIE, resolveLocale } from "@newrole/app-kit/languages"
 import type { Locale } from "./copy"
 
 export async function getLocale(): Promise<Locale> {

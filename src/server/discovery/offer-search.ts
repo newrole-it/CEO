@@ -4,18 +4,35 @@
  * if any, is an explicit published figure. Estimates, closed posts, and
  * "up to" amounts are not used.
  */
-import { decideFetch } from "config/source-policies"
-import { CITY_ALIASES, parseSalaryText } from "matching/normalization"
-import { fold } from "matching/text"
+import { decideFetch } from "@newrole/offers/source-policies"
+import { CITY_ALIASES, parseSalaryText } from "@newrole/matching/normalization"
+import { fold } from "@newrole/matching/text"
 import { classifyHit } from "src/server/discovery/boards"
 import { canonicalUrl } from "src/server/jobs/dedupe"
 import { inferWorkplace, normalizeCompanyName } from "src/server/jobs/normalize"
 import { monthlyBasePln } from "src/server/jobs/offer-facts"
 import type { WebHit } from "src/server/discovery/web-search"
-import { isPolishBoardHost } from "src/shared/polish-boards"
+import { isPolishBoardHost } from "@newrole/offers/polish-boards"
 import type { WorkplaceType } from "src/shared/schemas"
 
-const STOP = new Set(["a", "an", "the", "of", "and", "or", "for", "to", "in", "at", "on", "ds", "do", "w", "na", "dla"])
+const STOP = new Set([
+  "a",
+  "an",
+  "the",
+  "of",
+  "and",
+  "or",
+  "for",
+  "to",
+  "in",
+  "at",
+  "on",
+  "ds",
+  "do",
+  "w",
+  "na",
+  "dla",
+])
 const RANK = new Set(["junior", "senior", "staff", "principal", "associate", "intern", "sr", "jr"])
 const FUNCTION = new Set([
   "director",
@@ -161,7 +178,10 @@ export function hasPay(min?: number | null, max?: number | null): boolean {
 }
 
 /** Keep a salary copied from another listing when a later crawl has no pay of its own. */
-export function keepExternalPay<T extends SalaryFields>(existing: SalaryFields | null, incoming: T): T {
+export function keepExternalPay<T extends SalaryFields>(
+  existing: SalaryFields | null,
+  incoming: T
+): T {
   if (!existing?.salarySourceUrl) {
     if (hasPay(incoming.salaryMin, incoming.salaryMax)) {
       return { ...incoming, salarySourceUrl: null, salarySourceRaw: null }
@@ -205,7 +225,9 @@ export function choosePay(figures: PayFigure[]): PayFigure | null {
   const best = Math.max(...showable.map((figure) => figure.rank))
   const top = showable.filter((figure) => figure.rank === best)
   const first = top[0]!
-  const same = top.filter((figure) => figure.currency === first.currency && figure.period === first.period)
+  const same = top.filter(
+    (figure) => figure.currency === first.currency && figure.period === first.period
+  )
   if (same.length !== top.length) return first
   const overlap = same.every((left) =>
     same.every((right) => left.max >= right.min && right.max >= left.min)
@@ -260,7 +282,11 @@ export function storageMode(raw: string): "snippet" | "fetch" | "salary-only" {
   const decision = decideFetch(url)
   if (!decision.allow || decision.state === "link_only") return "salary-only"
   if (classified.kind === "ats" || classified.kind === "workable-shortcode") return "fetch"
-  if (/\/(jobs?|careers?|oferta|oferty|praca|posting|vacancies|positions|opening)(\/|$)/i.test(url.pathname)) {
+  if (
+    /\/(jobs?|careers?|oferta|oferty|praca|posting|vacancies|positions|opening)(\/|$)/i.test(
+      url.pathname
+    )
+  ) {
     return "fetch"
   }
   return "salary-only"
@@ -274,8 +300,7 @@ export function offerQuery(company: string, title: string): string {
   return `"${quote(title)}" "${quote(company)}"`
 }
 
-export const BOARD_DISCOVERY_QUERY =
-  `"Director of Engineering" OR "Engineering Manager" (Poland OR Polska OR Warsaw OR Warszawa) (site:justjoin.it OR site:nofluffjobs.com OR site:bulldogjob.pl)`
+export const BOARD_DISCOVERY_QUERY = `"Director of Engineering" OR "Engineering Manager" (Poland OR Polska OR Warsaw OR Warszawa) (site:justjoin.it OR site:nofluffjobs.com OR site:bulldogjob.pl)`
 
 export function pickFocus(
   jobs: Array<{ company: string; title: string }>,
@@ -323,7 +348,10 @@ export function planOfferHits(
       continue
     }
     if (candidate.mode === "salary-only") continue
-    const key = `${normalizeCompanyName(candidate.company)}|${roleParts(candidate.title, candidate.company).role.join(" ")}|${roleParts(candidate.title, candidate.company).rank.join(" ")}`
+    const key = `${normalizeCompanyName(candidate.company)}|${roleParts(
+      candidate.title,
+      candidate.company
+    ).role.join(" ")}|${roleParts(candidate.title, candidate.company).rank.join(" ")}`
     const planned = toCreate(candidate)
     const current = createBuckets.get(key)
     createBuckets.set(key, current ? preferCreate(current, planned) : planned)
@@ -340,7 +368,10 @@ export function planOfferHits(
 
 type Candidate = Omit<PlannedCreate, "mode"> & { mode: "snippet" | "fetch" | "salary-only" }
 
-function parseCandidate(hit: WebHit, focus?: { company: string; title: string } | null): Candidate | null {
+function parseCandidate(
+  hit: WebHit,
+  focus?: { company: string; title: string } | null
+): Candidate | null {
   let url: URL
   try {
     url = new URL(hit.url)
@@ -415,7 +446,10 @@ function splitTitle(title: string): { role: string; company: string | null } {
 
 function cleanCompany(value: string | null): string | null {
   if (!value) return null
-  const cleaned = value.replace(/\s+/g, " ").replace(/[|–—-]+$/g, "").trim()
+  const cleaned = value
+    .replace(/\s+/g, " ")
+    .replace(/[|–—-]+$/g, "")
+    .trim()
   if (cleaned.length < 2 || cleaned.length > 80) return null
   if (ROLE_HINT.test(cleaned) && cleaned.split(/\s+/).length > 2) return null
   if (/^(jobs|careers|salary|wynagrodzenie)$/i.test(cleaned)) return null
@@ -423,7 +457,9 @@ function cleanCompany(value: string | null): string | null {
 }
 
 function mentionsCompany(text: string, company: string): boolean {
-  const needle = fold(company).replace(/[^a-z0-9]+/g, " ").trim()
+  const needle = fold(company)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
   if (needle.length < 3) return false
   const hay = ` ${fold(text).replace(/[^a-z0-9]+/g, " ")} `
   return hay.includes(` ${needle} `)
@@ -432,7 +468,9 @@ function mentionsCompany(text: string, company: string): boolean {
 function roleParts(title: string, company?: string): { role: string[]; rank: string[] } {
   let text = fold(title).replace(/\([^)]*\)/g, " ")
   if (company) {
-    const name = fold(company).replace(/[^a-z0-9]+/g, " ").trim()
+    const name = fold(company)
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
     if (name) text = text.replace(name, " ")
   }
   const tokens = text

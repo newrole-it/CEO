@@ -4,16 +4,16 @@
  * Feedback tags, the "what did you like?" chips, the preference model and similar offers all
  * speak in these keys. Deterministic and rule-based, no LLM.
  */
-import { SENIORITY_RANK, type Seniority } from "matching/types"
+import { SENIORITY_RANK, type Seniority } from "@newrole/matching/types"
 import {
   detectSeniority,
   functionTokens,
   normalizeCompany,
   normalizeTitle,
-} from "matching/normalization"
-import { fold, tokens } from "matching/text"
+} from "@newrole/matching/normalization"
+import { fold, tokens } from "@newrole/matching/text"
 import { monthlyBasePln, placeFacts } from "src/server/jobs/offer-facts"
-import { canonicalIndustry, industryFromRules } from "src/server/profile/industry"
+import { canonicalIndustry, industryFromRules } from "@newrole/profile/industry"
 import type { FeedbackAspect } from "src/shared/feedback-aspects"
 import type { OfferWorkMode } from "src/shared/offer-view"
 import type { Bilingual, OfferForScoring } from "./types"

@@ -15,7 +15,7 @@ import {
   normalizeWhitespace,
 } from "src/server/jobs/normalize"
 import { isUniqueViolation } from "src/server/jobs/prisma-errors"
-import { summarize } from "src/server/jobs/text"
+import { summarize } from "@newrole/offers/text"
 import { classificationFields, rememberCompanyTech } from "src/server/classify/persist"
 import { keepExternalPay } from "src/server/discovery/offer-search"
 import { excerpt } from "src/server/crawler/hygiene"
@@ -39,10 +39,10 @@ import { noteIndexStart, storeBoardInventory } from "src/server/index/store"
 import { mapPool } from "src/server/queue/pool"
 import { createHttpClient, type HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob, SourceType, WorkplaceType } from "src/shared/schemas"
-import { runMatching } from "../../../matching/pipeline"
-import type { QueryExpansion } from "../../../matching/query-expansion.schema"
-import type { NormalizedPosting, RawPosting } from "../../../matching/types"
-import type { ScoreResult } from "../../../matching/scoring"
+import { runMatching } from "@newrole/matching/pipeline"
+import type { QueryExpansion } from "@newrole/matching/query-expansion.schema"
+import type { NormalizedPosting, RawPosting } from "@newrole/matching/types"
+import type { ScoreResult } from "@newrole/matching/scoring"
 
 type BoardTarget = SeedBoard & { origin: "seed" | "search" }
 

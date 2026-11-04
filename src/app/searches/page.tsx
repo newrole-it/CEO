@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { Bookmark } from "lucide-react"
 import { invoke } from "src/app/blitz-server"
-import { ButtonLink } from "src/app/components/ds/Button"
-import { EmptyState } from "src/app/components/ds/primitives"
+import { ButtonLink } from "@newrole/ui/Button"
+import { EmptyState } from "@newrole/ui/primitives"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { intlLocale, translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
@@ -36,7 +36,11 @@ export default async function SearchesPage() {
           {searches.map((search) => {
             const mode = search.workMode !== "ANY" ? search.workMode.toLowerCase() : null
             return (
-              <li key={search.id} className="card saved-row" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+              <li
+                key={search.id}
+                className="card saved-row"
+                style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}
+              >
                 <div className="saved-row__main">
                   <Link href={`/searches/${search.id}`}>{search.phrase}</Link>
                   <span>
@@ -52,7 +56,9 @@ export default async function SearchesPage() {
                 </div>
                 <div className="row">
                   {search.latest?.newJobs ? (
-                    <span className="badge badge--new">{t("srch.new", { n: search.latest.newJobs })}</span>
+                    <span className="badge badge--new">
+                      {t("srch.new", { n: search.latest.newJobs })}
+                    </span>
                   ) : null}
                   <ButtonLink href={`/searches/${search.id}`} variant="outline" size="sm">
                     {t("srch.open")}

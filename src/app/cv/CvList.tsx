@@ -20,13 +20,14 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Dropzone, isPdf, Modal, ModalHead, useToast } from "src/app/components/ds/interactive"
-import { Badge, EmptyState } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Dropzone, isPdf, Modal, ModalHead, useToast } from "@newrole/ui/interactive"
+import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "src/app/jobs/format"
-import { importCvHtml } from "src/shared/cv/import-html"
-import { downloadCvPdf, printViewUrl } from "./download"
+import { importCvHtml } from "@newrole/cv-core/import-html"
+import { downloadPdf } from "@newrole/cv-editor/download"
+import { cvPdfUrl, cvPrintUrl } from "./urls"
 import createCvDocument from "./mutations/createCvDocument"
 import deleteCvDocument from "./mutations/deleteCvDocument"
 import duplicateCvDocument from "./mutations/duplicateCvDocument"
@@ -226,13 +227,13 @@ export function CvList({
   }
 
   async function download(row: CvRow) {
-    const result = await downloadCvPdf(row.id)
+    const result = await downloadPdf(cvPdfUrl(row.id))
     if (result === "print") {
       toast.show({
         message: t("cv.pdf.noChrome"),
         action: {
           label: t("cv.pdf.openPrint"),
-          onClick: () => window.open(printViewUrl(row.id), "_blank", "noopener"),
+          onClick: () => window.open(cvPrintUrl(row.id, { auto: true }), "_blank", "noopener"),
         },
         duration: 10_000,
       })

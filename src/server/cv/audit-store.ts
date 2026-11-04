@@ -1,11 +1,11 @@
 import db from "db"
 import { createLlmClient } from "src/server/llm/client"
 import { demandForUser } from "src/server/profile/audit-store"
-import { parseCvAudit, type CvAudit } from "src/shared/cv/audit"
-import { letterSection, parseCvContent } from "src/shared/cv/schema"
-import { cvPlainText } from "src/shared/cv/text"
-import { cvLocale } from "src/shared/cv/blank"
-import { buildCvAudit } from "./audit"
+import { parseCvAudit, type CvAudit } from "@newrole/cv-core/audit"
+import { letterSection, parseCvContent } from "@newrole/cv-core/schema"
+import { cvPlainText } from "@newrole/cv-core/text"
+import { cvLocale } from "@newrole/cv-core/blank"
+import { buildCvAudit } from "@newrole/cv-engine/audit"
 import { CvError } from "./service"
 
 export async function latestCvAudit(userId: number, id: string): Promise<CvAudit | null> {

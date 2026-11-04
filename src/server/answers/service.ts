@@ -1,9 +1,9 @@
 import db, { type Answer, type Prisma } from "db"
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import { parseFormAnswers } from "src/server/applications/logic"
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
-import { parseApplicant } from "src/shared/applicant"
+import { parseApplicant } from "@newrole/profile/applicant"
 import {
   DRAFT_SYSTEM,
   DraftOutputSchema,

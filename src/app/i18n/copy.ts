@@ -1,14 +1,16 @@
 import { accountEn, accountPl } from "./copy-account"
 import { answersEn, answersPl } from "./copy-answers"
 import { applicationsEn, applicationsPl } from "./copy-applications"
-import { cvEn, cvPl } from "./copy-cv"
+import { cvEn, cvPl, tailorEn, tailorPl } from "@newrole/cv-editor/copy"
 import { extensionEn, extensionPl } from "./copy-extension"
 import { gmailEn, gmailPl } from "./copy-gmail"
 import { setupEn, setupPl } from "./copy-setup"
 import { syncEn, syncPl } from "./copy-sync"
-import { tailorEn, tailorPl } from "./copy-tailor"
+import { profileEn, profilePl } from "@newrole/profile-ui/copy-profile"
+import { uiEn, uiPl } from "@newrole/ui/copy"
+import { fmt, intlLocale, type Locale } from "@newrole/ui/i18n"
 
-export type Locale = "pl" | "en"
+export { fmt, intlLocale, type Locale }
 
 /**
  * All interface strings. Keys follow docs/product/ux-spec.md §10 (dotted, grouped by screen).
@@ -49,22 +51,6 @@ const basePl = {
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
   "onb.skip": "Pomiń, przeglądaj oferty",
-  "common.close": "Zamknij",
-  "common.copy": "Kopiuj",
-  "common.copied": "Skopiowano ✓",
-  "common.cancel": "Anuluj",
-  "common.save": "Zapisz",
-  "common.loading": "Wczytuję…",
-  "common.retry": "Spróbuj ponownie",
-  "common.newTab": "(otwiera się w nowej karcie)",
-  "common.more": "+{n} więcej",
-  "common.or": "albo",
-  "common.yesterday": "wczoraj",
-  "common.daysAgo": "{n} dni temu",
-  "common.hoursAgo": "{n} h temu",
-  "common.minutesAgo": "{n} min temu",
-  "common.justNow": "przed chwilą",
-  "common.over30": "> 30 dni",
 
   // landing
   "hero.title1": "Oferty z całego świata.",
@@ -107,12 +93,6 @@ const basePl = {
   "onb.tile.pdf": "Wrzuć CV lub PDF z LinkedIn",
   "onb.tile.pdf.hint": "PDF do 8 MB",
   "onb.tile.li.hint": "Przez Claude w Chrome, eksport ZIP albo PDF",
-  "onb.tile.paste": "Wklej tekst",
-  "onb.tile.paste.hint": "CV albo sekcje profilu LinkedIn",
-  "onb.paste.label": "Treść CV",
-  "onb.paste.ph": "Wklej treść CV albo sekcje z LinkedIn: O mnie, Doświadczenie, Umiejętności…",
-  "onb.paste.short": "Dodaj trochę więcej tekstu",
-  "onb.paste.cta": "Przeczytaj profil",
   "onb.claudeHint": "Używasz Claude Code? Może przeczytać Twój profil LinkedIn za Ciebie →",
   "onb.read.title": "Czytam Twój profil",
   "onb.read.s1": "Wczytuję plik",
@@ -134,64 +114,6 @@ const basePl = {
   "onb.review.title": "Tak Cię widzimy",
   "onb.review.sub": "Popraw, co trzeba. Na tej podstawie liczymy dopasowanie.",
   "onb.review.other": "Wczytaj inny plik",
-  "onb.fromCv": "z CV",
-  "onb.fillIn": "Uzupełnij — mocno wpływa na wynik",
-  "f.role": "Rola",
-  "f.rolePh": "Np. Senior Backend Developer",
-  "f.alsoLooking": "Szukam też:",
-  "f.add": "dodaj",
-  "f.addTitle": "Dodaj rolę",
-  "f.seniority": "Poziom",
-  "f.more": "Więcej",
-  "f.years": "≈ {n} lat doświadczenia",
-  "f.yearsLabel": "Lata doświadczenia",
-  "f.stack": "Stack",
-  "f.stackPh": "Dodaj technologię i naciśnij Enter",
-  "f.salary": "Wynagrodzenie",
-  "f.salaryMin": "Minimum",
-  "f.salaryTarget": "Cel",
-  "f.salaryUnit": "tys. zł / mies.",
-  "f.salaryUnitCur": "tys. {cur} / mies.",
-  "f.salaryHint": "B2B netto bez VAT; UoP brutto. Oferty bez widełek nie znikają.",
-  "f.salaryErr": "Minimum nie może być wyższe niż cel.",
-  "f.salaryContract": "Kwoty podaję dla umowy",
-  "f.currency": "Waluta",
-  "f.contracts": "Umowa",
-  "f.contract.b2b": "B2B",
-  "f.contract.uop": "UoP",
-  "f.contract.uz": "Zlecenie",
-  "f.contract.any": "Dowolna",
-  "f.mode": "Tryb pracy",
-  "f.mode.remote": "Zdalnie",
-  "f.mode.hybrid": "Hybrydowo",
-  "f.mode.onsite": "Stacjonarnie",
-  "f.mode.any": "Obojętnie",
-  "f.cities": "Miasta",
-  "f.citiesPh": "Dodaj miasto",
-  "f.homeCityIs": "Miasto domowe",
-  "f.relocate": "Rozważę przeprowadzkę",
-  "f.industries": "Branże",
-  "f.industriesPh": "Np. fintech, e-commerce",
-  "f.ind.stick": "Trzymaj się tych branż",
-  "f.ind.prefer": "Wolę te branże",
-  "f.ind.any": "Branża bez znaczenia",
-  "f.languages": "Języki",
-  "f.languagesPh": "Np. angielski C1",
-  "f.headline": "Nagłówek",
-  "f.remove": "Usuń {item}",
-  "sen.intern": "Stażysta",
-  "sen.junior": "Junior",
-  "sen.mid": "Mid",
-  "sen.senior": "Senior",
-  "sen.lead": "Lead",
-  "sen.principal": "Principal",
-  "sen.manager": "Manager",
-  "sen.senior_manager": "Senior manager",
-  "sen.head": "Head+",
-  "sen.director": "Dyrektor",
-  "sen.vp": "VP",
-  "sen.c_level": "C-level",
-  "sen.none": "Nie wiem",
   "onb.deleted":
     "Pliku nie zapisujemy. Zostają sekcje odczytane z CV i to podsumowanie, gdy je zatwierdzisz.",
   "onb.cta": "Pokaż moje dopasowania",
@@ -211,7 +133,6 @@ const basePl = {
   "li.hiAnon": "Cześć!",
   "li.honest":
     "LinkedIn przy logowaniu przekazuje nam tylko imię, e-mail i zdjęcie — bez doświadczenia i umiejętności. Żeby dopasować oferty, potrzebujemy Twojego profilu. Wybierz, jak go pobrać:",
-  "li.step1.btn": "Otwórz profil ↗",
   "li.paste": "Wolę wkleić tekst",
   "li.setup.title": "Logowanie przez LinkedIn (opcjonalne)",
   "li.setup.sub":
@@ -243,46 +164,6 @@ const basePl = {
   "li.toast.unverified":
     "LinkedIn nie potwierdził tego adresu e-mail, a ma on już konto. Zaloguj się linkiem z e-maila.",
   "li.toast.expired": "Ten link do logowania wygasł albo został już użyty. Poproś o nowy.",
-  "lix.title": "Pobierz z LinkedIn",
-  "lix.sub": "Wybierz, jak przenieść profil. Nie potrzebujesz aplikacji LinkedIn ani kluczy.",
-  "lix.ownOnly": "Tylko Twój profil, w Twojej przeglądarce, uruchamiane przez Ciebie.",
-  "lix.claude.title": "Przez Claude w Twojej przeglądarce",
-  "lix.claude.badge": "Najszybciej",
-  "lix.claude.body":
-    "Claude otworzy w Twoim Chrome tylko Twój profil — tam, gdzie już jesteś zalogowany — i przeczyta doświadczenie, umiejętności i wykształcenie. Nic nie klika i nic nie wysyła. Działa na Twojej licencji Claude.",
-  "lix.claude.cta": "Pobierz przez Claude",
-  "lix.claude.unavailable": "Dostępne w lokalnej instalacji z Claude Code.",
-  "lix.stage.connecting": "Łączę z Chrome",
-  "lix.stage.opening": "Otwieram Twój profil",
-  "lix.stage.reading": "Czytam doświadczenie i umiejętności",
-  "lix.stage.analyzing": "Analizuję",
-  "lix.running.note": "Zwykle 1–3 minuty. Nie zamykaj Chrome — karta zamknie się sama.",
-  "lix.err.notConnected": "Claude nie widzi Twojej przeglądarki",
-  "lix.err.notConnected.1": "Zainstaluj rozszerzenie Claude in Chrome:",
-  "lix.back": "← Inne sposoby",
-  "lix.err.notConnected.2": "Zaloguj się w nim na claude.ai tym samym kontem, co w Claude Code.",
-  "lix.err.notConnected.3": "Zrestartuj Chrome i spróbuj ponownie.",
-  "lix.err.signedOut":
-    "Nie jesteś zalogowany do LinkedIn w Chrome. Zaloguj się tam i spróbuj ponownie.",
-  "lix.err.noClaude":
-    "Nie znalazłem Claude Code na tym komputerze. Zainstaluj go albo użyj eksportu ZIP lub PDF.",
-  "lix.err.failed":
-    "Nie udało się przeczytać profilu. Spróbuj ponownie albo użyj eksportu ZIP lub PDF.",
-  "lix.retry": "Spróbuj ponownie",
-  "lix.zip.title": "Eksport danych LinkedIn (ZIP)",
-  "lix.zip.body": "Oficjalna kopia Twoich danych z pełnym doświadczeniem i umiejętnościami.",
-  "lix.zip.1": "Na LinkedIn: Ustawienia → Prywatność danych → Pobierz kopię swoich danych.",
-  "lix.zip.2": "Zaznacz dane profilu (albo całe archiwum) i poproś o archiwum.",
-  "lix.zip.3": "LinkedIn wyśle link e-mailem, zwykle w ~10 minut. Upuść pobrany ZIP tutaj.",
-  "lix.zip.open": "Otwórz ustawienia",
-  "lix.zip.choose": "Wybierz ZIP",
-  "lix.zip.privacy":
-    "Czytamy tylko pliki profilu (stanowiska, umiejętności, wykształcenie, języki). Wiadomości, kontakty i adres pomijamy.",
-  "lix.pdf.title": "PDF z profilu",
-  "lix.pdf.body":
-    "Na LinkedIn: Twój profil → Więcej → Zapisz jako PDF. Krótszy niż eksport, ale gotowy od razu.",
-  "lix.pdf.choose": "Wybierz PDF",
-  "lix.signin": "Logowanie przez LinkedIn (opcjonalne)",
   "err.zipNotZip": "To nie jest archiwum ZIP z LinkedIn. Wrzuć plik z kopią danych LinkedIn.",
   "err.zipNoProfile":
     "W tym ZIP nie ma plików profilu (Profile.csv, Positions.csv). Pobierz archiwum z zaznaczonym profilem.",
@@ -326,7 +207,6 @@ const basePl = {
   "feed.searchLabel": "Szukaj w ofertach",
   "feed.similarTo": "Podobne do: {title}",
   "feed.similarClear": "Pokaż wszystkie",
-  "card.score": "Dopasowanie {n} na 100",
   "card.scoreCaption": "dopasowanie",
   "card.new": "Nowa",
   "card.posted": "Opublikowana {when}",
@@ -382,7 +262,6 @@ const basePl = {
   "empty.done.cta": "Dodaj firmy do obserwowanych",
   "feed.indexing": "Indeks się zapełnia — {n} ofert, kolejne co kilka minut.",
   "err.feed": "Nie udało się wczytać ofert.",
-  "err.save": "Nie zapisano. Spróbuj jeszcze raz.",
   offline: "Jesteś offline. Decyzje zapiszą się po powrocie.",
   "feed.more": "Pokaż więcej",
   "feed.end": "To już wszystkie oferty w tym widoku.",
@@ -734,6 +613,8 @@ const basePl = {
 
 /** Feature strings live in their own files (docs/product/plan-aplikacje.md §6). */
 const pl = {
+  ...uiPl,
+  ...profilePl,
   ...basePl,
   ...accountPl,
   ...applicationsPl,
@@ -750,6 +631,8 @@ export type CopyKey = keyof typeof pl
 export type Dict = Record<CopyKey, string>
 
 const en: Dict = {
+  ...uiEn,
+  ...profileEn,
   ...accountEn,
   ...applicationsEn,
   ...cvEn,
@@ -792,22 +675,6 @@ const en: Dict = {
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
   "onb.skip": "Skip, browse offers",
-  "common.close": "Close",
-  "common.copy": "Copy",
-  "common.copied": "Copied ✓",
-  "common.cancel": "Cancel",
-  "common.save": "Save",
-  "common.loading": "Loading…",
-  "common.retry": "Try again",
-  "common.newTab": "(opens in a new tab)",
-  "common.more": "+{n} more",
-  "common.or": "or",
-  "common.yesterday": "yesterday",
-  "common.daysAgo": "{n} days ago",
-  "common.hoursAgo": "{n} h ago",
-  "common.minutesAgo": "{n} min ago",
-  "common.justNow": "just now",
-  "common.over30": "> 30 days",
 
   "hero.title1": "Global offers.",
   "hero.title2": "Local search.",
@@ -848,12 +715,6 @@ const en: Dict = {
   "onb.tile.pdf": "Upload a CV or LinkedIn PDF",
   "onb.tile.pdf.hint": "PDF up to 8 MB",
   "onb.tile.li.hint": "Through Claude in Chrome, the ZIP export, or a PDF",
-  "onb.tile.paste": "Paste text",
-  "onb.tile.paste.hint": "Your CV or LinkedIn profile sections",
-  "onb.paste.label": "CV text",
-  "onb.paste.ph": "Paste your CV or LinkedIn sections: About, Experience, Skills…",
-  "onb.paste.short": "Add a bit more text",
-  "onb.paste.cta": "Read profile",
   "onb.claudeHint": "Using Claude Code? It can read your LinkedIn profile for you →",
   "onb.read.title": "Reading your profile",
   "onb.read.s1": "Uploading the file",
@@ -875,65 +736,6 @@ const en: Dict = {
   "onb.review.title": "Here's how we see you",
   "onb.review.sub": "Fix anything that's off. This is what we match on.",
   "onb.review.other": "Load a different file",
-  "onb.fromCv": "from CV",
-  "onb.fillIn": "Fill this in — it matters for the score",
-  "f.role": "Role",
-  "f.rolePh": "E.g. Senior Backend Developer",
-  "f.alsoLooking": "Also looking for:",
-  "f.add": "add",
-  "f.addTitle": "Add a role",
-  "f.seniority": "Seniority",
-  "f.more": "More",
-  "f.years": "≈ {n} years of experience",
-  "f.yearsLabel": "Years of experience",
-  "f.stack": "Stack",
-  "f.stackPh": "Add a technology and press Enter",
-  "f.salary": "Salary",
-  "f.salaryMin": "Minimum",
-  "f.salaryTarget": "Target",
-  "f.salaryUnit": "k PLN / month",
-  "f.salaryUnitCur": "k {cur} / month",
-  "f.salaryHint":
-    "B2B net of VAT; employment contract gross. Offers without a salary stay visible.",
-  "f.salaryErr": "The minimum can't be higher than the target.",
-  "f.salaryContract": "Amounts are for",
-  "f.currency": "Currency",
-  "f.contracts": "Contract",
-  "f.contract.b2b": "B2B",
-  "f.contract.uop": "Employment",
-  "f.contract.uz": "Mandate",
-  "f.contract.any": "Any",
-  "f.mode": "Work mode",
-  "f.mode.remote": "Remote",
-  "f.mode.hybrid": "Hybrid",
-  "f.mode.onsite": "On-site",
-  "f.mode.any": "Any",
-  "f.cities": "Cities",
-  "f.citiesPh": "Add a city",
-  "f.homeCityIs": "Home city",
-  "f.relocate": "Open to relocating",
-  "f.industries": "Industries",
-  "f.industriesPh": "E.g. fintech, e-commerce",
-  "f.ind.stick": "Stick to these",
-  "f.ind.prefer": "Prefer these",
-  "f.ind.any": "Industry doesn't matter",
-  "f.languages": "Languages",
-  "f.languagesPh": "E.g. English C1",
-  "f.headline": "Headline",
-  "f.remove": "Remove {item}",
-  "sen.intern": "Intern",
-  "sen.junior": "Junior",
-  "sen.mid": "Mid",
-  "sen.senior": "Senior",
-  "sen.lead": "Lead",
-  "sen.principal": "Principal",
-  "sen.manager": "Manager",
-  "sen.senior_manager": "Senior manager",
-  "sen.head": "Head+",
-  "sen.director": "Director",
-  "sen.vp": "VP",
-  "sen.c_level": "C-level",
-  "sen.none": "Not sure",
   "onb.deleted":
     "The file is not saved. We keep the sections read from the CV, and this summary once you confirm it.",
   "onb.cta": "Show my matches",
@@ -953,7 +755,6 @@ const en: Dict = {
   "li.hiAnon": "Hi!",
   "li.honest":
     "When you sign in, LinkedIn only shares your name, email and photo — no experience or skills. To match offers we need your profile. Choose how to bring it over:",
-  "li.step1.btn": "Open profile ↗",
   "li.paste": "I'd rather paste text",
   "li.setup.title": "Sign in with LinkedIn (optional)",
   "li.setup.sub":
@@ -984,44 +785,6 @@ const en: Dict = {
   "li.toast.unverified":
     "LinkedIn hasn't verified this email, and it already has an account. Sign in with the email link.",
   "li.toast.expired": "That sign-in link is invalid or already used. Request a new one.",
-  "lix.title": "Get it from LinkedIn",
-  "lix.sub": "Choose how to bring your profile over. No LinkedIn app or keys needed.",
-  "lix.ownOnly": "Only your profile, in your browser, started by you.",
-  "lix.claude.title": "With Claude in your browser",
-  "lix.claude.badge": "Fastest",
-  "lix.claude.body":
-    "Claude opens only your own profile in your Chrome — where you're already signed in — and reads your experience, skills and education. It doesn't click or send anything. Runs on your Claude licence.",
-  "lix.claude.cta": "Fetch with Claude",
-  "lix.claude.unavailable": "Available in a local install with Claude Code.",
-  "lix.stage.connecting": "Connecting to Chrome",
-  "lix.stage.opening": "Opening your profile",
-  "lix.stage.reading": "Reading experience and skills",
-  "lix.stage.analyzing": "Analysing",
-  "lix.running.note": "Usually 1–3 minutes. Keep Chrome open — the tab closes by itself.",
-  "lix.err.notConnected": "Claude can't see your browser",
-  "lix.err.notConnected.1": "Install the Claude in Chrome extension:",
-  "lix.back": "← Other ways",
-  "lix.err.notConnected.2": "Sign in to claude.ai in it with the same account as Claude Code.",
-  "lix.err.notConnected.3": "Restart Chrome and try again.",
-  "lix.err.signedOut": "You're not signed in to LinkedIn in Chrome. Sign in there and try again.",
-  "lix.err.noClaude":
-    "Claude Code isn't installed on this machine. Install it, or use the ZIP export or a PDF.",
-  "lix.err.failed": "Couldn't read the profile. Try again, or use the ZIP export or a PDF.",
-  "lix.retry": "Try again",
-  "lix.zip.title": "LinkedIn data export (ZIP)",
-  "lix.zip.body": "The official copy of your data, with full experience and skills.",
-  "lix.zip.1": "On LinkedIn: Settings → Data privacy → Get a copy of your data.",
-  "lix.zip.2": "Pick your profile data (or the whole archive) and request it.",
-  "lix.zip.3": "LinkedIn emails a link, usually within ~10 minutes. Drop the ZIP here.",
-  "lix.zip.open": "Open settings",
-  "lix.zip.choose": "Choose ZIP",
-  "lix.zip.privacy":
-    "We read only the profile files (positions, skills, education, languages). Messages, connections and your address are skipped.",
-  "lix.pdf.title": "Profile PDF",
-  "lix.pdf.body":
-    "On LinkedIn: your profile → More → Save to PDF. Shorter than the export, but ready right away.",
-  "lix.pdf.choose": "Choose PDF",
-  "lix.signin": "Sign in with LinkedIn (optional)",
   "err.zipNotZip":
     "That isn't a LinkedIn ZIP archive. Upload the file with your LinkedIn data copy.",
   "err.zipNoProfile":
@@ -1065,7 +828,6 @@ const en: Dict = {
   "feed.searchLabel": "Search offers",
   "feed.similarTo": "Similar to: {title}",
   "feed.similarClear": "Show all",
-  "card.score": "Match {n} out of 100",
   "card.scoreCaption": "match",
   "card.new": "New",
   "card.posted": "Posted {when}",
@@ -1121,7 +883,6 @@ const en: Dict = {
   "empty.done.cta": "Watch companies",
   "feed.indexing": "The index is filling up — {n} offers, more every few minutes.",
   "err.feed": "Couldn't load offers.",
-  "err.save": "Not saved. Try again.",
   offline: "You're offline. Decisions will save when you're back.",
   "feed.more": "Show more",
   "feed.end": "That's every offer in this view.",
@@ -1468,13 +1229,6 @@ export function copy(locale: Locale): Dict {
   return locale === "en" ? en : pl
 }
 
-/** Fill {placeholders}. Missing values stay visible so a bug is easy to spot. */
-export function fmt(template: string, vars: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    name in vars ? String(vars[name]) : whole
-  )
-}
-
 /** Polish plural bucket: 1 → one, 2–4 (not 12–14) → few, everything else → many. */
 export function pluralKind(n: number, locale: Locale): "one" | "few" | "many" {
   if (n === 1) return "one"
@@ -1491,11 +1245,6 @@ export type T = (key: CopyKey, vars?: Record<string, string | number>) => string
 export function translator(locale: Locale): T {
   const dict = copy(locale)
   return (key, vars) => (vars ? fmt(dict[key], vars) : dict[key])
-}
-
-/** The BCP 47 tag the Intl formatters get for a UI locale. */
-export function intlLocale(locale: Locale): "pl-PL" | "en-GB" {
-  return locale === "pl" ? "pl-PL" : "en-GB"
 }
 
 export function numberFormat(locale: Locale): Intl.NumberFormat {

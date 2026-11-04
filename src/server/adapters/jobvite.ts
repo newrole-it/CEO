@@ -1,6 +1,6 @@
 import type { HttpClient } from "src/server/security/safe-fetch"
 import type { ListedJob } from "src/shared/schemas"
-import { decodeEntities } from "src/server/jobs/text"
+import { decodeEntities } from "@newrole/offers/text"
 import { stripTags } from "./html-bits"
 import { parseJsonLdJobs } from "./jsonld"
 import { buildListedJob } from "./parse"
@@ -37,7 +37,9 @@ export type JobviteLink = { url: string; code: string; title: string; location?:
 export function parseJobviteListing(html: string, pageUrl: string): JobviteLink[] {
   const out: JobviteLink[] = []
   const seen = new Set<string>()
-  const anchors = [...html.matchAll(/<a\b[^>]*href="([^"]*\/job\/[A-Za-z0-9]+[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi)]
+  const anchors = [
+    ...html.matchAll(/<a\b[^>]*href="([^"]*\/job\/[A-Za-z0-9]+[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi),
+  ]
   anchors.forEach((anchor, index) => {
     let url: URL
     try {
@@ -54,12 +56,21 @@ export function parseJobviteListing(html: string, pageUrl: string): JobviteLink[
     const next = anchors[index + 1]?.index ?? html.length
     const between = html.slice((anchor.index ?? 0) + anchor[0].length, next)
     const location = between.match(/jv-job-list-location[^>]*>([\s\S]*?)<\/[a-z]+>/i)?.[1]
-    out.push({ url: url.toString(), code, title, location: location ? stripTags(location) || undefined : undefined })
+    out.push({
+      url: url.toString(),
+      code,
+      title,
+      location: location ? stripTags(location) || undefined : undefined,
+    })
   })
   return out
 }
 
-export async function listJobvite(boardId: string, http: HttpClient, companyName?: string): Promise<BoardList> {
+export async function listJobvite(
+  boardId: string,
+  http: HttpClient,
+  companyName?: string
+): Promise<BoardList> {
   const slug = jobviteSlug(boardId)
   let links: JobviteLink[] = []
   let invalid = false

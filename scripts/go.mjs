@@ -356,7 +356,6 @@ async function main() {
     ...process.env,
   }
   install(ROOT, join("node_modules", ".bin", "next"), "App")
-  install(join(ROOT, "matching"), join("node_modules", "zod", "package.json"), "Matching")
   installExtension()
   await ensureDatabase(env)
   migrate(env)

@@ -1,4 +1,4 @@
-import { decodeEntities } from "src/server/jobs/text"
+import { decodeEntities } from "@newrole/offers/text"
 
 const NAV =
   /^(home|menu|search|privacy|cookie|cookies|login|log in|sign in|about|contact|blog|news|legal|terms|regulamin|more|więcej|apply|aplikuj|#)$/i

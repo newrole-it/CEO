@@ -1,17 +1,17 @@
 /**
  * Where an offer comes from, and the "why this score" drawer for the For-you feed.
- * The parts use the same ids and maxima as matching/scoring.ts (title 30, seniority 15,
+ * The parts use the same ids and maxima as packages/matching/scoring.ts (title 30, seniority 15,
  * location 25, salary 15, freshness 10, source 5), measured against the profile instead of a
  * saved search. The feed score is exactly: parts + industry + skills + preference delta.
  */
-import { DEFAULT_CONFIG } from "matching/config"
-import { functionTokens, normalizeTitle } from "matching/normalization"
-import { fold } from "matching/text"
-import { SENIORITY_RANK, type Seniority } from "matching/types"
+import { DEFAULT_CONFIG } from "@newrole/matching/config"
+import { functionTokens, normalizeTitle } from "@newrole/matching/normalization"
+import { fold } from "@newrole/matching/text"
+import { SENIORITY_RANK, type Seniority } from "@newrole/matching/types"
 import { NEW_ATS_LABELS } from "src/shared/ats-labels"
 import { canonicalCity } from "src/server/jobs/offer-facts"
 import { profileMonthlyPln, type ProfilePay } from "src/server/profile/salary"
-import { asStringList } from "src/server/profile/schema"
+import { asStringList } from "@newrole/profile/schema"
 import { roleLabel, titleSimilarity, type OfferProfile } from "./facts"
 import type { Bilingual } from "./types"
 

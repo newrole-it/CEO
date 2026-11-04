@@ -7,18 +7,24 @@ import { invoke, useMutation } from "@blitzjs/rpc"
 import { ArrowRight, CircleAlert, FileUp, Info, Trash2 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
-import { Dropzone, Modal, ModalHead, isPdf, useToast } from "src/app/components/ds/interactive"
-import { Banner, EmptyState } from "src/app/components/ds/primitives"
+import { Button, ButtonLink } from "@newrole/ui/Button"
+import { Dropzone, Modal, ModalHead, isPdf, useToast } from "@newrole/ui/interactive"
+import { Banner, EmptyState } from "@newrole/ui/primitives"
 import clearFeedback from "src/app/feedback/mutations/clearFeedback"
 import listMyFeedback from "src/app/feedback/queries/listMyFeedback"
 import { TasteChip } from "src/app/jobs/components/Taste"
 import type { PreferenceSummary } from "src/server/preferences/model"
 import { FEEDBACK_ASPECTS } from "src/shared/feedback-aspects"
-import { emptyProfileDraft, type ProfileDraft } from "src/server/profile/schema"
+import { emptyProfileDraft, type ProfileDraft } from "@newrole/profile/schema"
 import ensureGuest from "./mutations/ensureGuest"
 import saveProfile from "./mutations/saveProfile"
-import { ProfileReview, cleanDraft, fieldsFrom, salaryError, type DraftField } from "./ProfileReview"
+import {
+  ProfileReview,
+  cleanDraft,
+  fieldsFrom,
+  salaryError,
+  type DraftField,
+} from "@newrole/profile-ui/ProfileReview"
 
 export function ProfileEditor({
   initial,
@@ -95,7 +101,9 @@ export function ProfileEditor({
     }
   }
 
-  const items = summary ? [...summary.likes, ...summary.dislikes].filter((item) => !summary.muted.includes(item.key)) : []
+  const items = summary
+    ? [...summary.likes, ...summary.dislikes].filter((item) => !summary.muted.includes(item.key))
+    : []
 
   return (
     <div className="stack-lg has-sticky-foot">
@@ -118,13 +126,23 @@ export function ProfileEditor({
         </EmptyState>
       ) : (
         <section aria-label={t("pr.title")} className="stack">
-          <Dropzone onFile={(file) => void reimport(file)} className="card card--pad row row--between" overClassName="tile--primary">
+          <Dropzone
+            onFile={(file) => void reimport(file)}
+            className="card card--pad row row--between"
+            overClassName="tile--primary"
+          >
             {(open) => (
               <>
                 <span className="row muted t-sm">
                   <FileUp width={18} height={18} aria-hidden /> {t("hero.drop")}
                 </span>
-                <Button variant="outline" size="sm" icon={<FileUp />} loading={importing} onClick={open}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<FileUp />}
+                  loading={importing}
+                  onClick={open}
+                >
                   {t("pr.reimport")}
                 </Button>
               </>
@@ -147,7 +165,12 @@ export function ProfileEditor({
             />
             <div className="review-foot review-foot--sticky">
               <p />
-              <Button variant="primary" loading={isPending} disabled={salaryError(draft) || !dirty} onClick={() => void onSave()}>
+              <Button
+                variant="primary"
+                loading={isPending}
+                disabled={salaryError(draft) || !dirty}
+                onClick={() => void onSave()}
+              >
                 {t("pr.save")}
               </Button>
             </div>
@@ -161,7 +184,9 @@ export function ProfileEditor({
             {t("pr.taste")}
           </h2>
           {summary && (summary.liked || summary.disliked) ? (
-            <span className="t-sm muted">{t("taste.basis", { likes: summary.liked, passes: summary.disliked })}</span>
+            <span className="t-sm muted">
+              {t("taste.basis", { likes: summary.liked, passes: summary.disliked })}
+            </span>
           ) : null}
         </div>
         {!items.length ? (
@@ -187,13 +212,22 @@ export function ProfileEditor({
         <p className="t-sm muted">{t("taste.howBody")}</p>
         {summary && (summary.liked || summary.disliked) ? (
           <div>
-            <Button variant="danger-ghost" size="sm" icon={<Trash2 />} onClick={() => setConfirmClear(true)}>
+            <Button
+              variant="danger-ghost"
+              size="sm"
+              icon={<Trash2 />}
+              onClick={() => setConfirmClear(true)}
+            >
               {t("taste.clearAll")}
             </Button>
           </div>
         ) : null}
         <Modal open={confirmClear} onClose={() => setConfirmClear(false)} labelledBy="clear-title">
-          <ModalHead title={t("taste.clearAll")} id="clear-title" onClose={() => setConfirmClear(false)} />
+          <ModalHead
+            title={t("taste.clearAll")}
+            id="clear-title"
+            onClose={() => setConfirmClear(false)}
+          />
           <div className="modal__body">
             <p className="muted">{t("taste.clearConfirm")}</p>
           </div>

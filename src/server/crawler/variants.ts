@@ -1,4 +1,4 @@
-import { fold } from "../../../matching/text"
+import { fold } from "@newrole/matching/text"
 import type { JobVariant, ListedJob } from "src/shared/schemas"
 
 const CITIES: Record<string, string> = {

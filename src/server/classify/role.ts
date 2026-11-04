@@ -1,6 +1,6 @@
-import { detectSeniority, normalizeTitle } from "../../../matching/normalization"
-import { SENIORITY_RANK, type Seniority } from "../../../matching/types"
-import { fold } from "../../../matching/text"
+import { detectSeniority, normalizeTitle } from "@newrole/matching/normalization"
+import { SENIORITY_RANK, type Seniority } from "@newrole/matching/types"
+import { fold } from "@newrole/matching/text"
 
 export type TechVerdict = boolean | null
 

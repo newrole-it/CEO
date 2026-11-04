@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG, type MatchingConfig } from "../../../matching/config"
+import { DEFAULT_CONFIG, type MatchingConfig } from "@newrole/matching/config"
 import {
   buildQueryExpansionMessages,
   buildSearchQueries,
@@ -8,8 +8,8 @@ import {
   type ExpansionLLMOutput,
   type QueryExpansion,
   type QueryExpansionInput,
-} from "../../../matching/query-expansion.schema"
-import { fold } from "../../../matching/text"
+} from "@newrole/matching/query-expansion.schema"
+import { fold } from "@newrole/matching/text"
 import {
   SENIORITY_LEVELS,
   SENIORITY_RANK,
@@ -17,9 +17,9 @@ import {
   type MatchProfile,
   type Region,
   type Seniority,
-} from "../../../matching/types"
-import { regionCovers } from "../../../matching/places"
-import examples from "../../../matching/query-expansion.examples.json"
+} from "@newrole/matching/types"
+import { regionCovers } from "@newrole/matching/places"
+import examples from "@newrole/matching/query-expansion.examples.json"
 import type { LlmClient } from "src/server/llm/client"
 import { nbpTable } from "src/server/fx/nbp"
 

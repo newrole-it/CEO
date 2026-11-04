@@ -5,7 +5,7 @@ import { useMutation } from "@blitzjs/rpc"
 import { useRouter } from "next/navigation"
 import { CircleAlert } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button, ButtonLink } from "src/app/components/ds/Button"
+import { Button, ButtonLink } from "@newrole/ui/Button"
 import { safeReturnTo } from "src/shared/return-to"
 import consumeLoginToken from "../../mutations/consumeLoginToken"
 

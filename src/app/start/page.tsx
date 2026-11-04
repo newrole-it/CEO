@@ -1,5 +1,6 @@
 import { linkedInCredentials } from "src/server/auth/linkedin"
-import { linkedInBrowserAvailable } from "src/server/profile/linkedin-browser"
+import { linkedInBrowserAvailable } from "@newrole/profile/linkedin-browser"
+import { isLocalInstall } from "src/server/local-install"
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { indexStats, roundDown } from "src/app/components/landing/stats"
@@ -43,7 +44,7 @@ export default async function StartPage({
       <Onboarding
         initialStep={stepOf(params)}
         linkedIn={Boolean(linkedInCredentials())}
-        browserImport={linkedInBrowserAvailable()}
+        browserImport={linkedInBrowserAvailable(isLocalInstall())}
         firstName={user && user.role !== "GUEST" ? firstName : null}
         photo={user?.imageUrl ?? null}
         after={back ?? "/jobs?welcome=1"}

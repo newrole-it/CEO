@@ -1,4 +1,4 @@
-import type { Source } from "../../../matching/types"
+import type { Source } from "@newrole/matching/types"
 import type { SourceType } from "src/shared/schemas"
 
 /** App source types to the matching pack's coarser Source enum. Unlisted types are not scored. */

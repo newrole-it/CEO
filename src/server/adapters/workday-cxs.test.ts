@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { emptyRobots, parseRobots } from "src/server/crawler/robots"
+import { emptyRobots, parseRobots } from "@newrole/offers/robots"
 import { resolveJobCountries } from "src/server/geo/countries"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import {

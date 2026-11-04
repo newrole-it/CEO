@@ -1,4 +1,4 @@
-import { fold } from "matching/text"
+import { fold } from "@newrole/matching/text"
 import { normalizeText, questionKey } from "./similarity"
 
 /** Limits and cleanup shared by the service, the RPC schemas and the MCP tools. */

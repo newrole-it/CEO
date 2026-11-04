@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { Button } from "src/app/components/ds/Button"
+import { Button } from "@newrole/ui/Button"
 import { useLocaleToggle, useThemeToggle } from "./SiteHeader"
 
 export function FooterSwitches() {
@@ -11,7 +11,12 @@ export function FooterSwitches() {
   const switchLocale = useLocaleToggle()
   return (
     <div className="row">
-      <Button variant="outline" size="sm" onClick={() => switchLocale()} aria-label={t("lang.switch")}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => switchLocale()}
+        aria-label={t("lang.switch")}
+      >
         {t("lang.code")}
       </Button>
       <Button
