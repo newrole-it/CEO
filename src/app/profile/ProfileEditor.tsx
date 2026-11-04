@@ -24,7 +24,7 @@ import {
   fieldsFrom,
   salaryError,
   type DraftField,
-} from "./ProfileReview"
+} from "@newrole/profile-ui/ProfileReview"
 
 export function ProfileEditor({
   initial,

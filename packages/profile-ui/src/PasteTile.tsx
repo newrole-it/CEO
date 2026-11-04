@@ -2,7 +2,7 @@
 
 import { ChevronRight, ClipboardPaste } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
-import { useCopy } from "src/app/i18n/Locale"
+import { useProfileCopy } from "./locale"
 
 /** The "paste text" tile on the first onboarding step; expands into the textarea. */
 export function PasteTile({
@@ -18,7 +18,7 @@ export function PasteTile({
   setText: (text: string) => void
   onRead: () => void
 }) {
-  const { t } = useCopy()
+  const { t } = useProfileCopy()
   const ready = text.trim().length >= 20
   return (
     <div className="tile-wrap" data-open={open} id="paste">

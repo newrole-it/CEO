@@ -2,8 +2,8 @@
 
 import { useId, useState } from "react"
 import { House } from "lucide-react"
-import { useCopy } from "src/app/i18n/Locale"
-import type { CopyKey } from "src/app/i18n/copy"
+import { useProfileCopy } from "./locale"
+import type { ProfileCopyKey } from "./copy"
 import { ChipInput } from "@newrole/ui/interactive"
 import { Chip, Segmented } from "@newrole/ui/primitives"
 import { cx } from "@newrole/ui/cx"
@@ -97,7 +97,7 @@ export function ProfileReview({
   fromCv: Set<DraftField>
   skeleton?: boolean
 }) {
-  const { t } = useCopy()
+  const { t } = useProfileCopy()
   const id = useId()
   const [moreLevels, setMoreLevels] = useState(
     Boolean(draft.seniority && !MAIN_LEVELS.includes(draft.seniority))
@@ -153,7 +153,10 @@ export function ProfileReview({
             value={
               draft.seniority && MAIN_LEVELS.includes(draft.seniority) ? draft.seniority : null
             }
-            options={MAIN_LEVELS.map((value) => ({ value, label: t(`sen.${value}` as CopyKey) }))}
+            options={MAIN_LEVELS.map((value) => ({
+              value,
+              label: t(`sen.${value}` as ProfileCopyKey),
+            }))}
             onChange={(seniority) => patch({ seniority })}
           />
           {moreLevels ? (
@@ -168,7 +171,7 @@ export function ProfileReview({
               <option value="">{t("sen.none")}</option>
               {seniorityValues.map((value) => (
                 <option key={value} value={value}>
-                  {t(`sen.${value}` as CopyKey)}
+                  {t(`sen.${value}` as ProfileCopyKey)}
                 </option>
               ))}
             </select>
@@ -426,7 +429,7 @@ function Section({
   htmlFor?: string
   children: React.ReactNode
 }) {
-  const { t } = useCopy()
+  const { t } = useProfileCopy()
   const Label = htmlFor ? "label" : "p"
   return (
     <div className={cx("review-sec", missing && "is-missing")}>

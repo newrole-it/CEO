@@ -1,0 +1,33 @@
+{
+  "name": "@newrole/profile-ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "The screens that build a profile in newrole.it and its side apps, for React and Next.js: the review of what was read from a CV or LinkedIn, the LinkedIn import (Claude in the person's Chrome, LinkedIn's data export, a saved PDF), pasting a CV, and the form details.",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./profile.css": "./src/profile.css",
+    "./*": "./src/*.tsx",
+    "./copy": "./src/copy.ts",
+    "./copy-profile": "./src/copy-profile.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@newrole/profile": "0.1.0",
+    "@newrole/ui": "0.1.0",
+    "lucide-react": "1.55.0"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "typescript": "5.6.3"
+  }
+}

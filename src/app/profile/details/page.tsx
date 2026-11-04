@@ -7,7 +7,7 @@ import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { getApplicant } from "src/server/profile/applicant"
 import { setupBack } from "src/app/setup/back"
-import { ApplicantForm } from "./ApplicantForm"
+import { NewroleApplicantForm } from "./NewroleApplicantForm"
 
 export async function generateMetadata() {
   const t = translator(await getLocale())
@@ -41,7 +41,7 @@ export default async function ApplicantDetailsPage() {
         />
       </div>
       {details ? (
-        <ApplicantForm saved={details.saved} effective={details.effective} after={back} />
+        <NewroleApplicantForm saved={details.saved} effective={details.effective} after={back} />
       ) : (
         <div className="card settings-sec">
           <p>{t("apl.signIn")}</p>

@@ -3,18 +3,16 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
 import { Puzzle } from "lucide-react"
-import saveApplicantDetails from "src/app/profile/mutations/saveApplicantDetails"
-import { useCopy } from "src/app/i18n/Locale"
-import type { CopyKey } from "src/app/i18n/copy"
 import { Button } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
 import type { ApplicantField, ApplicantInfo } from "@newrole/profile/applicant"
+import type { ProfileCopyKey } from "./copy"
+import { useProfileCopy } from "./locale"
 
 type Row = { key: ApplicantField; type?: string; autoComplete?: string; wide?: boolean }
 
-const GROUPS: { title: CopyKey; rows: Row[] }[] = [
+const GROUPS: { title: ProfileCopyKey; rows: Row[] }[] = [
   {
     title: "apl.group.contact",
     rows: [
@@ -46,29 +44,38 @@ const GROUPS: { title: CopyKey; rows: Row[] }[] = [
   },
 ]
 
-/** Profile → Form details. Empty fields fall back to the account, the profile and the CV header. */
+/**
+ * Profile → Form details. Empty fields show what the app fills in instead (`effective`): newrole.it
+ * the account, the profile and the CV header. `onSave` stores the details and returns both again.
+ */
 export function ApplicantForm({
   saved,
   effective,
+  onSave,
   after = null,
+  extensionHref,
 }: {
   saved: ApplicantInfo
   effective: ApplicantInfo
-  /** /setup mid-checklist: saving ends the step there */
+  onSave: (values: ApplicantInfo) => Promise<{ saved: ApplicantInfo; effective: ApplicantInfo }>
+  /** Where to go once saved (newrole.it's /setup checklist) */
   after?: string | null
+  /** The browser extension's settings, where an app has one */
+  extensionHref?: string
 }) {
-  const { t } = useCopy()
+  const { t } = useProfileCopy()
   const toast = useToast()
   const router = useRouter()
-  const [save, { isPending }] = useMutation(saveApplicantDetails)
+  const [isPending, setPending] = useState(false)
   const [values, setValues] = useState<ApplicantInfo>(saved)
   const [defaults, setDefaults] = useState<ApplicantInfo>(effective)
   const [dirty, setDirty] = useState(false)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
+    setPending(true)
     try {
-      const result = await save(values)
+      const result = await onSave(values)
       setValues(result.saved)
       setDefaults(result.effective)
       setDirty(false)
@@ -76,6 +83,8 @@ export function ApplicantForm({
       if (after) router.push(after)
     } catch {
       toast.show({ message: t("err.save"), tone: "danger" })
+    } finally {
+      setPending(false)
     }
   }
 
@@ -90,14 +99,14 @@ export function ApplicantForm({
               const fallback = !values[row.key] ? defaults[row.key] : undefined
               return (
                 <label key={row.key} className={`field${row.wide ? " apl-wide" : ""}`} htmlFor={id}>
-                  <span className="field__label">{t(`apl.f.${row.key}` as CopyKey)}</span>
+                  <span className="field__label">{t(`apl.f.${row.key}` as ProfileCopyKey)}</span>
                   <input
                     id={id}
                     className="input"
                     type={row.type ?? "text"}
                     autoComplete={row.autoComplete ?? "off"}
                     value={values[row.key] ?? ""}
-                    placeholder={fallback ?? t(`apl.ph.${row.key}` as CopyKey)}
+                    placeholder={fallback ?? t(`apl.ph.${row.key}` as ProfileCopyKey)}
                     onChange={(event) => {
                       setValues((current) => ({ ...current, [row.key]: event.target.value }))
                       setDirty(true)
@@ -111,11 +120,14 @@ export function ApplicantForm({
         </section>
       ))}
       <div className="row row--between apl-foot">
-        <p className="muted t-sm">
-          <Puzzle aria-hidden size={16} style={{ verticalAlign: "-3px", marginRight: 6 }} />
-          {t("apl.extensionNote")}{" "}
-          <Link href="/settings#st-extension">{t("apl.extensionLink")}</Link>
-        </p>
+        {extensionHref ? (
+          <p className="muted t-sm">
+            <Puzzle aria-hidden size={16} style={{ verticalAlign: "-3px", marginRight: 6 }} />
+            {t("apl.extensionNote")} <Link href={extensionHref}>{t("apl.extensionLink")}</Link>
+          </p>
+        ) : (
+          <span />
+        )}
         <Button type="submit" variant="primary" loading={isPending} disabled={!dirty && !isPending}>
           {t("common.save")}
         </Button>

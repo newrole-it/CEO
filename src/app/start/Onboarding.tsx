@@ -30,10 +30,11 @@ import {
   fieldsFrom,
   salaryError,
   type DraftField,
-} from "src/app/profile/ProfileReview"
+} from "@newrole/profile-ui/ProfileReview"
 import { emptyProfileDraft, type ProfileDraft } from "@newrole/profile/schema"
-import { LinkedInImport } from "./LinkedInImport"
-import { PasteTile } from "./PasteTile"
+import { LinkedInImport } from "@newrole/profile-ui/LinkedInImport"
+import { newroleBrowserImport } from "src/app/profile/profile-ui"
+import { PasteTile } from "@newrole/profile-ui/PasteTile"
 import { clearPendingFile, linkedInStartHref, takePendingFile } from "./pending"
 
 export type Step = "source" | "linkedin" | "reading" | "review" | "linkedin-next"
@@ -325,7 +326,7 @@ export function Onboarding({
 
   const importOptions = (
     <LinkedInImport
-      browserImport={browserImport}
+      browser={browserImport ? newroleBrowserImport : null}
       signInHref={linkedIn ? linkedInStartHref() : "/start/linkedin"}
       onDraft={toReview}
       onFile={onFile}

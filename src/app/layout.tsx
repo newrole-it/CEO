@@ -1,6 +1,8 @@
 import "./styles/tailwind.css"
 import "@newrole/ui/styles.css"
 import "./styles/app.css"
+import "@newrole/profile-ui/profile.css"
+import "./styles/pages.css"
 import "./styles/applications.css"
 import "@newrole/cv-editor/cv.css"
 import "@newrole/cv-editor/tailor.css"

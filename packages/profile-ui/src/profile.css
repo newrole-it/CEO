@@ -1,0 +1,321 @@
+/* The screens that build a profile (@newrole/profile-ui): import tiles, the review of what was
+ * read, the steps list, the LinkedIn import and the form details. Load after @newrole/ui/styles.css.
+ * newrole.it loads it between its app.css and pages.css, where these rules always stood. */
+
+.tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), background-color var(--t-fast);
+}
+.tile:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--e1);
+}
+.tile__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  flex: none;
+}
+.tile__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.tile__text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+.tile__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.tile__hint {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.tile__chev {
+  width: 20px;
+  height: 20px;
+  color: var(--text-subtle);
+}
+.tile--primary {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+.tile--primary .tile__icon {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.tile--primary .tile__hint {
+  color: var(--primary-soft-text);
+}
+.tile--primary.is-over {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+.tile-expand {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+.tile-wrap {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.tile-wrap .tile {
+  border: 0;
+  box-shadow: none;
+}
+.tile-wrap[data-open="true"] {
+  border-color: var(--border-strong);
+}
+
+.reading {
+  display: grid;
+  gap: 24px;
+}
+@media (min-width: 960px) {
+  .reading {
+    grid-template-columns: 1fr 280px;
+    gap: 32px;
+    align-items: start;
+  }
+}
+.reading__note {
+  min-height: 22px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.review-card {
+  overflow: hidden;
+}
+.review-late {
+  margin-bottom: 16px;
+}
+.review-sec {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid var(--border);
+}
+.review-sec:first-child {
+  border-top: 0;
+}
+@media (min-width: 768px) {
+  .review-sec {
+    padding: 24px 28px;
+  }
+}
+.review-sec.is-missing {
+  box-shadow: inset 3px 0 0 var(--warning);
+  background: linear-gradient(90deg, var(--warning-soft), transparent 60%);
+}
+.review-sec__label {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.review-sec__label .field__tag {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.review-sec__warn {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--warning);
+}
+.salary-pair {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 600px) {
+  .salary-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.review-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.review-foot p {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.review-foot p svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+@media (max-width: 767px) {
+  .review-foot--sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgb(20 20 31 / 0.08);
+  }
+  .review-foot--sticky .btn {
+    width: 100%;
+  }
+  body.has-tabbar .review-foot--sticky {
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+    padding-bottom: 12px;
+  }
+  .review-foot--sticky p {
+    display: none;
+  }
+  .has-sticky-foot {
+    padding-bottom: 96px;
+  }
+}
+
+.steps-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  counter-reset: step;
+}
+.step-row {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.step-row__n {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-soft-text);
+  font-weight: 700;
+  font-size: 14px;
+}
+.step-row__body {
+  display: grid;
+  gap: 8px;
+  padding-top: 3px;
+}
+.step-row.is-done .step-row__n {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+/* LinkedIn import: three ways in, Claude in Chrome first. */
+.lix {
+  display: grid;
+  gap: 16px;
+}
+.lix-opt {
+  display: grid;
+  gap: 16px;
+}
+.lix-opt--primary {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+.lix-opt__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lix-opt__head .t-h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lix-opt__body {
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.lix-fix {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+  list-style: decimal;
+}
+.lix-lock {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+}
+.lix-foot {
+  text-align: center;
+}
+.dropzone--compact {
+  padding: 16px;
+  justify-items: start;
+}
+@media (max-width: 480px) {
+  .dropzone--compact {
+    justify-items: stretch;
+  }
+}
+
+.settings-sec {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+.settings-sec h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+.settings-sec p {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* profile → form details */
+.apl-grid {
+  display: grid;
+  gap: 14px 16px;
+}
+@media (min-width: 600px) {
+  .apl-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .apl-wide {
+    grid-column: 1 / -1;
+  }
+}
+.apl-foot {
+  align-items: center;
+  gap: 12px;
+}

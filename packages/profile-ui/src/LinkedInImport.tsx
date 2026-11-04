@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
 import {
   Check,
   CircleAlert,
@@ -13,16 +12,32 @@ import {
   RotateCcw,
   SquareTerminal,
 } from "lucide-react"
-import { useCopy } from "src/app/i18n/Locale"
-import type { CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Dropzone } from "@newrole/ui/interactive"
 import { Badge, Banner } from "@newrole/ui/primitives"
-import ensureGuest from "src/app/profile/mutations/ensureGuest"
 import type { ProfileDraft } from "@newrole/profile/schema"
-import { BROWSER_IMPORT_HEADER, LINKEDIN_BROWSER_STAGES } from "@newrole/profile/linkedin-import"
+import { LINKEDIN_BROWSER_STAGES } from "@newrole/profile/linkedin-import"
+import type { ProfileCopyKey } from "./copy"
+import { useProfileCopy } from "./locale"
 
 type Stage = (typeof LINKEDIN_BROWSER_STAGES)[number]
+
+/** One import as the app reports it while it runs (newrole.it: src/server/profile/linkedin-jobs). */
+export type BrowserImportJob = {
+  state?: string
+  stage?: Stage
+  status?: string
+  draft?: ProfileDraft
+}
+
+/**
+ * Reading the person's LinkedIn through Claude in their own Chrome, run by the app's server:
+ * `start` returns the job's id, `poll` its state. Absent where the app cannot drive that Chrome.
+ */
+export type BrowserImport = {
+  start: () => Promise<string>
+  poll: (jobId: string) => Promise<BrowserImportJob>
+}
 type Failure = "not-connected" | "signed-out" | "no-claude" | "failed"
 type State =
   | { kind: "idle" }
@@ -40,19 +55,19 @@ function failureOf(status: unknown): Failure {
 }
 
 export function LinkedInImport({
-  browserImport,
+  browser,
   signInHref,
   onDraft,
   onFile,
 }: {
-  browserImport: boolean
-  signInHref: string
+  browser?: BrowserImport | null
+  /** Where to sign in with LinkedIn, in an app with accounts */
+  signInHref?: string
   onDraft: (draft: ProfileDraft) => void
   onFile: (file: File) => void
 }) {
-  const { t } = useCopy()
+  const { t } = useProfileCopy()
   const [state, setState] = useState<State>({ kind: "idle" })
-  const [ensureSession] = useMutation(ensureGuest)
   const timer = useRef<number | null>(null)
   const alive = useRef(true)
 
@@ -66,17 +81,10 @@ export function LinkedInImport({
 
   async function start() {
     setState({ kind: "running", stage: "connecting" })
+    if (!browser) return
     let jobId: string
     try {
-      // The import runs for a session only, and a first visit has none yet.
-      await ensureSession(null)
-      const response = await fetch("/api/profile/linkedin-browser", {
-        method: "POST",
-        headers: { [BROWSER_IMPORT_HEADER]: "1" },
-      })
-      const body = (await response.json()) as { jobId?: string }
-      if (!response.ok || !body.jobId) throw new Error("start failed")
-      jobId = body.jobId
+      jobId = await browser.start()
     } catch {
       setState({ kind: "error", status: "failed" })
       return
@@ -85,22 +93,14 @@ export function LinkedInImport({
     const poll = async () => {
       if (!alive.current) return
       try {
-        const response = await fetch(
-          `/api/profile/linkedin-browser?id=${encodeURIComponent(jobId)}`
-        )
-        const job = (await response.json()) as {
-          state?: string
-          stage?: Stage
-          status?: string
-          draft?: ProfileDraft
-        }
+        const job = await browser.poll(jobId)
         if (!alive.current) return
         if (job.state === "done" && job.draft) {
           setState({ kind: "running", stage: "analyzing" })
           onDraft(job.draft)
           return
         }
-        if (job.state === "error" || !response.ok) {
+        if (job.state === "error") {
           setState({ kind: "error", status: failureOf(job.status) })
           return
         }
@@ -151,7 +151,7 @@ export function LinkedInImport({
                         <span className="stage__dot" />
                       )}
                     </span>
-                    <span>{t(`lix.stage.${stage}` as CopyKey)}</span>
+                    <span>{t(`lix.stage.${stage}` as ProfileCopyKey)}</span>
                     <span />
                   </li>
                 )
@@ -205,7 +205,7 @@ export function LinkedInImport({
               </Button>
             </div>
           </div>
-        ) : browserImport ? (
+        ) : browser ? (
           <div>
             <Button
               variant="primary"
@@ -303,10 +303,15 @@ export function LinkedInImport({
       </section>
 
       <p className="t-sm muted lix-foot">
-        <Lock aria-hidden className="lix-lock" /> {t("lix.ownOnly")}{" "}
-        <Link className="link" href={signInHref}>
-          {t("lix.signin")}
-        </Link>
+        <Lock aria-hidden className="lix-lock" /> {t("lix.ownOnly")}
+        {signInHref ? (
+          <>
+            {" "}
+            <Link className="link" href={signInHref}>
+              {t("lix.signin")}
+            </Link>
+          </>
+        ) : null}
       </p>
     </div>
   )
