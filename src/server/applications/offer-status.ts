@@ -25,7 +25,7 @@ import { findJobByUrl, type IndexedJob } from "./service"
  * "Did I already apply to this?" for the offer the person is looking at (E5.6). The same offer has
  * many addresses: seen on LinkedIn, sent through the company's ATS. So the address comes first, and
  * after it the company, through the map in CompanyAlias, and the role, by the same rules as
- * matching/dedupe.ts. No model and no fetch: this runs on every offer.
+ * packages/matching/dedupe.ts. No model and no fetch: this runs on every offer.
  */
 
 export type OfferPage = {
@@ -122,7 +122,7 @@ function readRole(title: string) {
 }
 
 /**
- * Two titles at one company that read as one role. Levels as in matching/dedupe.md: "Backend
+ * Two titles at one company that read as one role. Levels as in packages/matching/dedupe.md: "Backend
  * Engineer" and "Senior Backend Engineer" can be one offer, "Senior" and "Junior" cannot, and
  * neither can "Engineering Manager" and "Senior Engineering Manager". Words: most of the shorter
  * title has to be in the longer one, so two teams stay apart: "Engineer, Payments" and "Engineer,

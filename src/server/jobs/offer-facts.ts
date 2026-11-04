@@ -1,6 +1,6 @@
 /**
  * Facts a job seeker can scan: where the job is, monthly base pay in PLN, and a short requirements list.
- * Display only. Matching still uses its own B2B comparison in matching/normalization.ts.
+ * Display only. Matching still uses its own B2B comparison in packages/matching/normalization.ts.
  */
 import { DEFAULT_CONFIG } from "@newrole/matching/config"
 import { CITY_ALIASES, normalizeLocation } from "@newrole/matching/normalization"
@@ -13,7 +13,7 @@ import type { OfferWorkMode, PayNote } from "src/shared/offer-view"
 
 /**
  * Rates into PLN: FX_<CODE>_PLN, else NBP table A (src/server/fx/nbp.ts, read by ensureFxRates),
- * else the defaults in matching/config.ts. Any currency NBP lists converts.
+ * else the defaults in packages/matching/config.ts. Any currency NBP lists converts.
  */
 export const PLN_PER_UNIT = DEFAULT_CONFIG.fx.toPln
 
@@ -327,7 +327,7 @@ export function cityNeedles(city: string): string[] {
   return [...needles]
 }
 
-// The words matching/normalization reads as remote work (RE_REMOTE). Only narrows the database
+// The words @newrole/matching/normalization reads as remote work (RE_REMOTE). Only narrows the database
 // scan; placeInCountry decides. A text "Remote" on an offer stored with another country and no
 // region still reads as open to every country (85 open offers in the list for Poland, 2026-11-03).
 const REMOTE_NEEDLES = [

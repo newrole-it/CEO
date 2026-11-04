@@ -2,7 +2,7 @@
  * Mid exchange rates into PLN from the National Bank of Poland, table A
  * (https://api.nbp.pl/api/exchangerates/tables/A?format=json; 32 currencies on 2026-11-02).
  * Each process keeps the latest table in memory and reads it again after 12 hours. When the API
- * cannot be reached the last table stays, and before any table the defaults in matching/config.ts
+ * cannot be reached the last table stays, and before any table the defaults in packages/matching/config.ts
  * apply. FX_<CODE>_PLN in the environment still wins over both.
  */
 import { DEFAULT_CONFIG } from "@newrole/matching/config"

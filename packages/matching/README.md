@@ -1,4 +1,4 @@
-# Jobscanner — matching pack
+# @newrole/matching
 
 Matching layer for Jobscanner (Poland / Europe-Warsaw). Pure TypeScript + Zod, no I/O except reading prompt `.md` files.
 Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → normalize → dedupe → score (deterministic) → explain (LLM, optional)**.
@@ -34,7 +34,7 @@ Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → no
 ```bash
 # Dependencies (zod, tsx, typescript) are pinned to the same versions as the repo root and
 # resolve from the root node_modules, so no install is needed inside this folder.
-npm test                 # node:test via tsx (or: npm test --prefix matching from the root)
+npm test                 # node:test via tsx (or: npm test -w @newrole/matching from the root)
 npm run typecheck
 npx tsx scripts/score-fixtures.ts --verbose
 npm run gen:examples     # regenerate query-expansion.examples.json

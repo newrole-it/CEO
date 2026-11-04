@@ -1,6 +1,6 @@
 /**
  * Where an offer comes from, and the "why this score" drawer for the For-you feed.
- * The parts use the same ids and maxima as matching/scoring.ts (title 30, seniority 15,
+ * The parts use the same ids and maxima as packages/matching/scoring.ts (title 30, seniority 15,
  * location 25, salary 15, freshness 10, source 5), measured against the profile instead of a
  * saved search. The feed score is exactly: parts + industry + skills + preference delta.
  */
