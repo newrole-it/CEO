@@ -5,7 +5,7 @@ import { Button } from "src/app/components/ds/Button"
 import { Banner } from "src/app/components/ds/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { intlLocale } from "src/app/i18n/copy"
-import { auditCategories, type CvAuditNote } from "src/shared/cv/audit"
+import { auditCategories, type CvAuditNote } from "@newrole/cv-core/audit"
 import type { CvAuditState } from "./useCvAudit"
 
 function progressLine(

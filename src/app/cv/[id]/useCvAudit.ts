@@ -19,8 +19,8 @@ import {
   type AuditCategory,
   type CvAudit,
   type CvAuditNote,
-} from "src/shared/cv/audit"
-import type { CvContent } from "src/shared/cv/schema"
+} from "@newrole/cv-core/audit"
+import type { CvContent } from "@newrole/cv-core/schema"
 import runCvAudit from "../mutations/runCvAudit"
 import setCvAuditDismissed from "../mutations/setCvAuditDismissed"
 import { placeCaret } from "./Editable"

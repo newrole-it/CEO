@@ -1,6 +1,6 @@
 import db from "db"
-import { parseCvContent } from "src/shared/cv/schema"
-import { cvPlainText } from "src/shared/cv/text"
+import { parseCvContent } from "@newrole/cv-core/schema"
+import { cvPlainText } from "@newrole/cv-core/text"
 import { asStringList } from "./schema"
 import { parseStoredDocument, profileText } from "./linkedin"
 

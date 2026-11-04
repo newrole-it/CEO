@@ -31,9 +31,9 @@ import type { LlmClient } from "../src/server/llm/common"
 import { eraseAccount } from "../src/server/privacy/erase"
 import { exportAccount } from "../src/server/privacy/export"
 import type { HttpClient } from "../src/server/security/safe-fetch"
-import { syntheticCv } from "../src/shared/cv/fixtures"
-import { letterSection, type CvContent } from "../src/shared/cv/schema"
-import { readOnlyExcerpt } from "../src/shared/cv/tailor"
+import { syntheticCv } from "@newrole/cv-core/fixtures"
+import { letterSection, type CvContent } from "@newrole/cv-core/schema"
+import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
 
 const db = new PrismaClient()
 const stamp = `tailor-${Date.now()}`
@@ -71,7 +71,8 @@ async function makeJob(
       title: "Staff Engineer",
       normalizedTitle: "staff engineer",
       summary: "",
-      descriptionText: fields.description ?? "Szukamy osoby, która zna się na platformach. Wymagamy Go.",
+      descriptionText:
+        fields.description ?? "Szukamy osoby, która zna się na platformach. Wymagamy Go.",
       llmOptOut: fields.llmOptOut ?? false,
       originalUrl: `https://example.com/jobs/${key}`,
       canonicalUrl: `https://example.com/jobs/${key}`,
@@ -120,7 +121,11 @@ test("tailoring creates a document for the offer with the base and the result in
   const job = await makeJob()
   const base = await general(user.id)
 
-  const result = await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  const result = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: fakeLlm(tailorReply()),
+  })
 
   assert.equal(result.content.header.headline, "Platform Engineering Lead")
   assert.equal(result.content.header.email, base.content.header.email)
@@ -155,7 +160,11 @@ test("tailoring again keeps the person's edits in history and works from the ori
   const user = await makeUser()
   const job = await makeJob()
   const base = await general(user.id)
-  const first = await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  const first = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: fakeLlm(tailorReply()),
+  })
 
   const edited = {
     ...first.content,
@@ -168,7 +177,9 @@ test("tailoring again keeps the person's edits in history and works from the ori
 
   assert.equal(second.id, first.id, "one tailored CV per offer")
   // it read the general CV, not the previous result with its edits
-  assert.ok(llm.calls[0].user.includes(`"headline":${JSON.stringify(base.content.header.headline)}`))
+  assert.ok(
+    llm.calls[0].user.includes(`"headline":${JSON.stringify(base.content.header.headline)}`)
+  )
   assert.ok(!llm.calls[0].user.includes("Mój własny nagłówek"))
   assert.match(llm.calls[0].user, /Attempt 2/, "a new attempt must not hit the reply cache")
 
@@ -274,7 +285,11 @@ test("an offer that opted out of AI never reaches the model; the person's own no
   assert.equal(noted.notes.usedJobText, true)
 })
 
-const greenhouseSource = { sourceType: "GREENHOUSE", sourceBoardId: "acme", externalId: "7" } as const
+const greenhouseSource = {
+  sourceType: "GREENHOUSE",
+  sourceBoardId: "acme",
+  externalId: "7",
+} as const
 
 function greenhouseHttp(content: string): HttpClient {
   return {
@@ -374,10 +389,7 @@ test("the letter builds on the tailored CV and stays out of everything that mean
   assert.deepEqual(await documentsForJob(user.id, job.id), { cvId: cv.id, letterId: letter.id })
 
   // listings and defaults
-  assert.deepEqual(
-    (await listCvs(user.id)).map((row) => row.id).sort(),
-    [base.id, cv.id].sort()
-  )
+  assert.deepEqual((await listCvs(user.id)).map((row) => row.id).sort(), [base.id, cv.id].sort())
   assert.equal((await listCvs(user.id, { letters: true })).length, 3)
   assert.equal((await defaultCv(user.id))?.id, base.id)
 
@@ -520,7 +532,11 @@ test("saving the same content twice does not make a copy; a name goes on the new
   assert.equal(same?.version.number, 1)
   assert.equal(same?.version.label, "Lepsza nazwa")
   const after = await getCv(user.id, id)
-  assert.equal(after?.updatedAt.getTime(), before?.updatedAt.getTime(), "a name changes no document")
+  assert.equal(
+    after?.updatedAt.getTime(),
+    before?.updatedAt.getTime(),
+    "a name changes no document"
+  )
 
   await updateCv(user.id, id, {
     content: { ...content, header: { ...content.header, headline: "Inaczej" } },

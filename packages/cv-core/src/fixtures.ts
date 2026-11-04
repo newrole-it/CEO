@@ -1,3 +1,4 @@
+import { buildLetter } from "./letter"
 import { CV_ACCENT, CV_VERSION, type CvContent } from "./schema"
 
 /**
@@ -137,3 +138,19 @@ export const SYNTHETIC_CV_HTML = `<!DOCTYPE html>
 <p class="consent">Wyrażam zgodę na przetwarzanie moich danych osobowych.</p>
 </article></main>
 </body></html>`
+
+export const SYNTHETIC_LETTER_DATE = new Date("2026-10-30T12:00:00Z")
+
+/** A cover letter built from syntheticCv(1), with a photo on the CV that the letter must drop. */
+export function syntheticLetter(language: "pl" | "en" = "pl"): CvContent {
+  const cv = syntheticCv(1)
+  cv.header.photo = "data:image/png;base64,AAAA"
+  return buildLetter({
+    cv,
+    language,
+    company: "Acme",
+    jobTitle: "Staff Engineer",
+    paragraphs: [" Pierwszy akapit. ", "", "Drugi <b>akapit</b> & reszta."],
+    now: SYNTHETIC_LETTER_DATE,
+  })
+}

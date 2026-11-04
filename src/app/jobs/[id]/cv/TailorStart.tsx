@@ -13,7 +13,7 @@ import generateCoverLetter from "src/app/cv/mutations/generateCoverLetter"
 import tailorCvForJob from "src/app/cv/mutations/tailorCvForJob"
 import getOfferTextStatus from "src/app/cv/queries/getOfferTextStatus"
 import { tailorErrorKey } from "src/app/cv/tailor-errors"
-import type { OfferTextOrigin } from "src/shared/cv/tailor"
+import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 
 export type StartJob = {
   id: string

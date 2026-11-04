@@ -1,4 +1,4 @@
-import { foldMarks } from "src/shared/cv/fields"
+import { foldMarks } from "@newrole/cv-core/fields"
 
 /**
  * The audit's view of an Editable: squiggles are CSS highlights over live Ranges, so they add no

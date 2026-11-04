@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { syntheticCv } from "src/shared/cv/fixtures"
-import { CV_CSS } from "src/shared/cv/styles"
+import { syntheticCv } from "@newrole/cv-core/fixtures"
+import { CV_CSS } from "@newrole/cv-core/styles"
 import { findChrome, renderCvAtoms, renderCvHtml } from "./render"
 
 describe("renderCvHtml", () => {

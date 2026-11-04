@@ -1,8 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react"
-import { assignPages, computePageBreaks, type PageAtom } from "src/shared/cv/paginate"
-import { MM, pageGeometry } from "src/shared/cv/styles"
+import { assignPages, computePageBreaks, type PageAtom } from "@newrole/cv-core/paginate"
+import { MM, pageGeometry } from "@newrole/cv-core/styles"
 
 /** Grey space between sheets on the canvas, in CSS px. */
 export const SHEET_GAP = 24

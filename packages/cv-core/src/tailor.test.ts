@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest"
 import { syntheticCv } from "./fixtures"
 import type { CvContent, CvExperienceSection, CvSection } from "./schema"
-import { applyTailoring, cvForModel, TailorReply, unverifiedNumbers, unverifiedTerms } from "./tailor"
+import {
+  applyTailoring,
+  cvForModel,
+  TailorReply,
+  unverifiedNumbers,
+  unverifiedTerms,
+} from "./tailor"
 import { cvPlainText } from "./text"
 
 const base = (): CvContent => syntheticCv(3)
@@ -65,7 +71,9 @@ describe("applyTailoring", () => {
     expect(result.header.email).toBe(content.header.email)
     const school = section(result, "education")
     expect(school.type === "education" && school.items[0].school).toBe("Politechnika Przykładowa")
-    expect(school.type === "education" && school.items[0].degree).toBe("Magister inżynier, Informatyka")
+    expect(school.type === "education" && school.items[0].degree).toBe(
+      "Magister inżynier, Informatyka"
+    )
   })
 
   it("keeps every role, in its order, even when the reply leaves roles out or reorders them", () => {
@@ -162,7 +170,12 @@ describe("applyTailoring", () => {
 
   it("accepts numbers the CV already has, written differently", () => {
     const content = base()
-    content.sections[0] = { id: "profile", type: "text", title: "Profil", body: "Zespół 1,5 tys. osób od 01.2019." }
+    content.sections[0] = {
+      id: "profile",
+      type: "text",
+      title: "Profil",
+      body: "Zespół 1,5 tys. osób od 01.2019.",
+    }
     const result = tailor(content, {
       sections: [{ id: "profile", body: "Od 2019 prowadzę zespół 1.5 tys. osób." }],
     })
@@ -207,7 +220,9 @@ describe("applyTailoring", () => {
   it("lists new tool names for the person to check", () => {
     const content = base()
     const result = tailor(content, {
-      sections: [{ id: "profile", body: "Buduję platformy na PostgreSQL i Terraform oraz w Kafka." }],
+      sections: [
+        { id: "profile", body: "Buduję platformy na PostgreSQL i Terraform oraz w Kafka." },
+      ],
     })
     expect(result.notes.unverified).toEqual(expect.arrayContaining(["Terraform", "Kafka"]))
     expect(result.notes.unverified).not.toContain("PostgreSQL")
@@ -309,7 +324,9 @@ describe("unverifiedTerms", () => {
   })
 
   it("knows a Polish name in any of its forms", () => {
-    expect(unverifiedTerms(["Pracowałem w Przykładowej Firmie."], "Przykładowa Firma 1")).toEqual([])
+    expect(unverifiedTerms(["Pracowałem w Przykładowej Firmie."], "Przykładowa Firma 1")).toEqual(
+      []
+    )
     expect(unverifiedTerms(["Pracowałem w Przykładowej Firmie."], "Inna Spółka")).toEqual([
       "Przykładowej",
       "Firmie",
@@ -322,7 +339,9 @@ describe("unverifiedTerms", () => {
 
   it("checks only tool-shaped words in a translation, where every word is new", () => {
     expect(
-      unverifiedTerms(["I led the Platform team with Kubernetes and AWS."], "", { translated: true })
+      unverifiedTerms(["I led the Platform team with Kubernetes and AWS."], "", {
+        translated: true,
+      })
     ).toEqual(["AWS"])
   })
 })

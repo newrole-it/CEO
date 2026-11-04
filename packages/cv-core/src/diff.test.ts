@@ -84,7 +84,12 @@ describe("diffCv", () => {
     const before = syntheticCv(1)
     const after = syntheticCv(1)
     after.sections[0] = { id: "profile", type: "text", title: "Profil", body: "Tekst" }
-    before.sections[0] = { id: "profile", type: "text", title: "Profil", body: "<strong>Tekst</strong>" }
+    before.sections[0] = {
+      id: "profile",
+      type: "text",
+      title: "Profil",
+      body: "<strong>Tekst</strong>",
+    }
     expect(hasChanges(diffCv(before, after))).toBe(false)
   })
 

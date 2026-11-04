@@ -21,7 +21,7 @@ import {
   newSkill,
   techLine,
   type CvLocale,
-} from "src/shared/cv/blank"
+} from "@newrole/cv-core/blank"
 import {
   insertBullet,
   insertItem,
@@ -38,14 +38,14 @@ import {
   updateItem,
   updateParagraph,
   updateSection,
-} from "src/shared/cv/edit"
-import { atomKey, type CvAtom } from "src/shared/cv/flow"
+} from "@newrole/cv-core/edit"
+import { atomKey, type CvAtom } from "@newrole/cv-core/flow"
 import {
   CV_SECTION_TYPES,
   type CvContent,
   type CvSection,
   type CvSectionType,
-} from "src/shared/cv/schema"
+} from "@newrole/cv-core/schema"
 import { Editable } from "./Editable"
 
 /**
@@ -162,9 +162,7 @@ function itemControls(
 ): Control[] {
   const { t, edit } = ops
   const items =
-    section.type === "text" || section.type === "letter"
-      ? []
-      : (section.items as { id: string }[])
+    section.type === "text" || section.type === "letter" ? [] : (section.items as { id: string }[])
   const at = items.findIndex((item) => item.id === itemId)
   return [
     { icon: <Plus />, label: t("cv.ctl.add"), onClick: onAdd },

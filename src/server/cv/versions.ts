@@ -1,8 +1,8 @@
 import { createHash } from "crypto"
 import type { Prisma } from "@prisma/client"
 import db from "db"
-import { cvLocale } from "src/shared/cv/blank"
-import { parseCvContent, type CvContent } from "src/shared/cv/schema"
+import { cvLocale } from "@newrole/cv-core/blank"
+import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 
 /**
  * Version history of an editable CV or letter. A version is a whole copy of the content; nothing

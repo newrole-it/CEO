@@ -25,7 +25,7 @@ import { Dropzone, isPdf, Modal, ModalHead, useToast } from "src/app/components/
 import { Badge, EmptyState } from "src/app/components/ds/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "src/app/jobs/format"
-import { importCvHtml } from "src/shared/cv/import-html"
+import { importCvHtml } from "@newrole/cv-core/import-html"
 import { downloadCvPdf, printViewUrl } from "./download"
 import createCvDocument from "./mutations/createCvDocument"
 import deleteCvDocument from "./mutations/deleteCvDocument"

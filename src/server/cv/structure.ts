@@ -1,9 +1,9 @@
 import { z } from "zod"
 import { createLlmClient, type LlmClient } from "src/server/llm/client"
 import { extractPdfText } from "src/server/profile/pdf"
-import { defaultConsent, emptyCv, SECTION_TITLES, type CvLocale } from "src/shared/cv/blank"
-import { textToInline } from "src/shared/cv/sanitize"
-import { cvId, parseCvContent, type CvContent, type CvSection } from "src/shared/cv/schema"
+import { defaultConsent, emptyCv, SECTION_TITLES, type CvLocale } from "@newrole/cv-core/blank"
+import { textToInline } from "@newrole/cv-core/sanitize"
+import { cvId, parseCvContent, type CvContent, type CvSection } from "@newrole/cv-core/schema"
 import { createCv, CvError, storedPdf, type CvDetail } from "./service"
 
 /** Uploaded PDF → editable CV: the model structures the extracted text; plain text is the fallback. */

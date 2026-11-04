@@ -1,5 +1,5 @@
 import { getBlitzContext } from "src/app/blitz-server"
-import { renderCvHtml } from "src/server/cv/render"
+import { renderCvHtml } from "@newrole/cv-engine/render"
 import { getCv } from "src/server/cv/service"
 import { getVersion } from "src/server/cv/versions"
 

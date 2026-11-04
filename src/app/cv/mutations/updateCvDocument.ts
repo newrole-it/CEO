@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { updateCv } from "src/server/cv/service"
-import { CvContent } from "src/shared/cv/schema"
+import { CvContent } from "@newrole/cv-core/schema"
 import { requireMember } from "src/app/feedback/guard"
 import { rethrowCv } from "../guard"
 

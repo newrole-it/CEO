@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { syntheticCv } from "src/shared/cv/fixtures"
+import { syntheticCv } from "@newrole/cv-core/fixtures"
 
 vi.mock("db", () => ({ default: {} }))
 vi.mock("./user", () => ({
@@ -23,7 +23,7 @@ vi.mock("src/server/cv/service", () => ({
   cvText: vi.fn(() => "plain text"),
   cvPdfFileName: vi.fn(() => "Anna_CV.pdf"),
 }))
-vi.mock("src/server/cv/render", () => ({ findChrome: vi.fn(() => "/chrome") }))
+vi.mock("@newrole/cv-engine/render", () => ({ findChrome: vi.fn(() => "/chrome") }))
 vi.mock("fs/promises", () => ({
   mkdir: vi.fn(async () => undefined),
   writeFile: vi.fn(async () => undefined),
@@ -32,7 +32,7 @@ vi.mock("fs/promises", () => ({
 }))
 
 import * as filesModule from "fs/promises"
-import * as chromeModule from "src/server/cv/render"
+import * as chromeModule from "@newrole/cv-engine/render"
 import * as serviceModule from "src/server/cv/service"
 import { exportPath, registerCvTools, withKeptPhoto } from "./tools-cv"
 

@@ -57,9 +57,7 @@ export const TailorNotes = z.object({
   /** False when the model saw only the company and title, not the offer's text */
   usedJobText: z.boolean(),
   /** How much of the offer the model read. Documents written before this was recorded have none. */
-  offerText: z
-    .object({ origin: OfferTextOrigin, chars: z.number(), note: z.boolean() })
-    .optional(),
+  offerText: z.object({ origin: OfferTextOrigin, chars: z.number(), note: z.boolean() }).optional(),
 })
 export type TailorNotes = z.infer<typeof TailorNotes>
 
@@ -117,7 +115,8 @@ function linksIn(content: CvContent): Set<string> {
   return new Set([...json.matchAll(/<a href="([^"]*)">/g)].map((match) => match[1]))
 }
 
-const TECH_SHAPED = /^(?:[^\s]*[A-ZĄĆĘŁŃÓŚŹŻ][^\s]*[A-ZĄĆĘŁŃÓŚŹŻ][^\s]*|[a-z]+[A-Z]\S*|\S*\d\S*[A-Za-z]\S*|[A-Za-z]+\d\S*|\S+[#+]+|\w+\.\w+)$/
+const TECH_SHAPED =
+  /^(?:[^\s]*[A-ZĄĆĘŁŃÓŚŹŻ][^\s]*[A-ZĄĆĘŁŃÓŚŹŻ][^\s]*|[a-z]+[A-Z]\S*|\S*\d\S*[A-Za-z]\S*|[A-Za-z]+\d\S*|\S+[#+]+|\w+\.\w+)$/
 const NAME_SHAPED = /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,}$/
 
 /**
@@ -206,7 +205,9 @@ function createWriter(base: CvContent, evidence: string) {
   /** Dates may change words ("obecnie" to "Present") but never their digits. */
   function dates(next: string | undefined, current: string): string {
     const digits = (value: string) => (value.match(/\d+/g) ?? []).join(",")
-    const clean = inlineToText(next ?? "").replace(/\s+/g, " ").trim()
+    const clean = inlineToText(next ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
     return clean && clean.length <= 100 && digits(clean) === digits(current) ? clean : current
   }
 

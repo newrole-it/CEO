@@ -1,14 +1,14 @@
 import db from "db"
 import { parseApplicant } from "src/shared/applicant"
-import { blankCv, cvLocale, type CvLocale } from "src/shared/cv/blank"
-import { cvFromProfile } from "src/shared/cv/from-profile"
-import { cvPdfFileName } from "src/shared/cv/filename"
-import { letterFileSuffix } from "src/shared/cv/letter"
-import { cvContentError, parseCvContent, type CvContent } from "src/shared/cv/schema"
-import { cvPlainText } from "src/shared/cv/text"
+import { blankCv, cvLocale, type CvLocale } from "@newrole/cv-core/blank"
+import { cvFromProfile } from "@newrole/cv-core/from-profile"
+import { cvPdfFileName } from "@newrole/cv-core/filename"
+import { letterFileSuffix } from "@newrole/cv-core/letter"
+import { cvContentError, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
+import { cvPlainText } from "@newrole/cv-core/text"
 import { parseStoredDocument } from "src/server/profile/linkedin"
 import { asStringList } from "src/server/profile/schema"
-import { renderCvHtml, renderPdfFromHtml } from "./render"
+import { renderCvHtml, renderPdfFromHtml } from "@newrole/cv-engine/render"
 import { toStoredJson, versionBeforeEdit } from "./versions"
 
 /** CV documents: the person's editable CVs and uploaded PDFs (docs/product/plan-aplikacje.md §5.2). */
@@ -132,10 +132,7 @@ function validContent(value: unknown): CvContent {
  * Leaves the content out, so a list never loads photos; an editable row always has content.
  * CVs only, tailored ones included; `letters` adds the cover letters.
  */
-export async function listCvs(
-  userId: number,
-  opts: { letters?: boolean } = {}
-): Promise<CvView[]> {
+export async function listCvs(userId: number, opts: { letters?: boolean } = {}): Promise<CvView[]> {
   const rows = await db.cvDocument.findMany({
     where: { userId, ...(opts.letters ? {} : { docType: "CV" }) },
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
@@ -295,7 +292,12 @@ export async function updateCv(
     }
     const content = validContent(patch.content)
     const checked = await versionBeforeEdit(
-      { id: row.id, content: row.content, language: row.language, versionCheckedAt: row.versionCheckedAt },
+      {
+        id: row.id,
+        content: row.content,
+        language: row.language,
+        versionCheckedAt: row.versionCheckedAt,
+      },
       content
     )
     if (checked) data.versionCheckedAt = checked.checkedAt

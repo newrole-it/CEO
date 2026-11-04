@@ -1,6 +1,6 @@
-import {defineConfig} from "vitest/config"
+import { defineConfig } from "vitest/config"
 import tsconfigPaths from "vite-tsconfig-paths"
-import {testDatabaseUrl} from "./scripts/test-db.mjs"
+import { testDatabaseUrl } from "./scripts/test-db.mjs"
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -17,6 +17,7 @@ export default defineConfig({
       "src/shared/**/*.test.ts",
       "config/**/*.test.ts",
       "mcp/**/*.test.ts",
+      "packages/*/src/**/*.test.ts",
     ],
   },
 })

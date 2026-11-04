@@ -2,7 +2,7 @@
 
 import { invoke } from "@blitzjs/rpc"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { cvContentError, cvTooLongLimit, type CvContent } from "src/shared/cv/schema"
+import { cvContentError, cvTooLongLimit, type CvContent } from "@newrole/cv-core/schema"
 import updateCvDocument from "../mutations/updateCvDocument"
 
 export type CvLanguage = "pl" | "en"

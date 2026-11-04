@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest"
-import { renderCvAtoms, renderCvHtml } from "src/server/cv/render"
 import {
   insertParagraph,
   moveParagraph,
@@ -8,27 +7,16 @@ import {
   updateParagraph,
 } from "./edit"
 import { cvPdfFileName } from "./filename"
-import { syntheticCv } from "./fixtures"
+import { SYNTHETIC_LETTER_DATE, syntheticCv, syntheticLetter } from "./fixtures"
 import { cvFlow, documentLabel, footerText } from "./flow"
 import { buildLetter, letterDate, letterFileSuffix } from "./letter"
 import { applyCvPatch } from "./patch"
 import { letterSection, parseCvContent, type CvContent, type CvLetterSection } from "./schema"
 import { cvPlainText } from "./text"
 
-const NOW = new Date("2026-10-30T12:00:00Z")
+const NOW = SYNTHETIC_LETTER_DATE
 
-function letter(language: "pl" | "en" = "pl"): CvContent {
-  const cv = syntheticCv(1)
-  cv.header.photo = "data:image/png;base64,AAAA"
-  return buildLetter({
-    cv,
-    language,
-    company: "Acme",
-    jobTitle: "Staff Engineer",
-    paragraphs: [" Pierwszy akapit. ", "", "Drugi <b>akapit</b> & reszta."],
-    now: NOW,
-  })
-}
+const letter = syntheticLetter
 
 const sectionOf = (content: CvContent): CvLetterSection => {
   const found = letterSection(content)
@@ -126,27 +114,6 @@ describe("a letter in the page flow", () => {
   })
 })
 
-describe("rendering a letter", () => {
-  it("prints every part, escaped, under the letter's own title", () => {
-    const html = renderCvHtml(letter(), { print: true })
-    expect(html).toContain("· List motywacyjny</title>")
-    expect(html).toContain("Dotyczy: Staff Engineer")
-    expect(html).toContain("Drugi &lt;b&gt;akapit&lt;/b&gt;")
-    expect(html).not.toContain("<b>akapit")
-    expect(html).not.toContain("<img")
-  })
-
-  it("sanitizes rich paragraphs edited by hand", () => {
-    const content = letter()
-    const section = sectionOf(content)
-    const parsed = parseCvContent({
-      ...content,
-      sections: [{ ...section, paragraphs: ["<script>x</script><b>ok</b>"] }],
-    })
-    expect(renderCvAtoms(parsed as CvContent)).toContain('<p class="cv-letter-text"><strong>ok</strong></p>')
-  })
-})
-
 describe("editing a letter", () => {
   it("edits, splits, moves and removes paragraphs", () => {
     const content = letter()
@@ -173,7 +140,9 @@ describe("editing a letter", () => {
     const sid = sectionOf(content).id
     expect(removeItem(content, sid, "x")).toEqual(content)
     expect(() => applyCvPatch(content, { item: { sectionId: sid, id: "x" } })).toThrow(/no items/)
-    expect(() => applyCvPatch(content, { remove: { sectionId: sid, itemId: "x" } })).toThrow(/no items/)
+    expect(() => applyCvPatch(content, { remove: { sectionId: sid, itemId: "x" } })).toThrow(
+      /no items/
+    )
   })
 })
 
@@ -182,7 +151,9 @@ describe("file names", () => {
     expect(cvPdfFileName("Jan Kowalski", letterFileSuffix("pl"))).toBe(
       "Jan_Kowalski_List_motywacyjny.pdf"
     )
-    expect(cvPdfFileName("Jan Kowalski", letterFileSuffix("en"))).toBe("Jan_Kowalski_Cover_Letter.pdf")
+    expect(cvPdfFileName("Jan Kowalski", letterFileSuffix("en"))).toBe(
+      "Jan_Kowalski_Cover_Letter.pdf"
+    )
     expect(cvPdfFileName("Jan Kowalski")).toBe("Jan_Kowalski_CV.pdf")
     expect(cvPdfFileName("", letterFileSuffix("pl"))).toBe("List_motywacyjny.pdf")
   })

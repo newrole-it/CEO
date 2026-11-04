@@ -14,9 +14,9 @@ import { wrapUntrusted, type LlmClient } from "src/server/llm/common"
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import type { HttpClient } from "src/server/security/safe-fetch"
-import { cvLocale } from "src/shared/cv/blank"
-import { buildLetter, LetterReply } from "src/shared/cv/letter"
-import { parseCvContent, type CvContent } from "src/shared/cv/schema"
+import { cvLocale } from "@newrole/cv-core/blank"
+import { buildLetter, LetterReply } from "@newrole/cv-core/letter"
+import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 import {
   applyTailoring,
   cvForModel,
@@ -26,8 +26,8 @@ import {
   unverifiedNumbers,
   unverifiedTerms,
   type TailorNotes,
-} from "src/shared/cv/tailor"
-import { cvPlainText } from "src/shared/cv/text"
+} from "@newrole/cv-core/tailor"
+import { cvPlainText } from "@newrole/cv-core/text"
 import { createCv, CvError, defaultCv, getCv, type CvDetail, type CvLanguage } from "./service"
 import { createEditableFromUpload } from "./structure"
 import { appendVersion, keepCurrentState, toStoredJson } from "./versions"

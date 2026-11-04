@@ -4,6 +4,10 @@
   "description": "newrole.it: global offers, local search. A job finder that runs on your machine and reads employers' own career pages and ATS boards, with a worker, an MCP server for Claude Code and a Chrome extension.",
   "private": true,
   "license": "AGPL-3.0-only",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "go": "node scripts/go.mjs",
     "setup": "node scripts/go.mjs --prepare",
@@ -46,6 +50,8 @@
     "@blitzjs/next": "3.0.2",
     "@blitzjs/rpc": "3.0.2",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@newrole/cv-core": "0.1.0",
+    "@newrole/cv-engine": "0.1.0",
     "@prisma/client": "5.4.2",
     "ajv": "8.20.0",
     "blitz": "3.0.2",

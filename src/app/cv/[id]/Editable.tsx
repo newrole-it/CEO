@@ -1,7 +1,7 @@
 "use client"
 
 import { createElement, useLayoutEffect, useRef } from "react"
-import { escapeHtml, sanitizeInline, textToInline } from "src/shared/cv/sanitize"
+import { escapeHtml, sanitizeInline, textToInline } from "@newrole/cv-core/sanitize"
 
 export type EditableTag = "div" | "span" | "p" | "h1" | "h2" | "h3"
 

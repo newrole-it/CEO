@@ -4,11 +4,11 @@ import { mkdtemp, readFile, rm, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 import { pathToFileURL } from "url"
-import { contactLines, cvFlow, documentLabel, footerText, type CvAtom } from "src/shared/cv/flow"
-import { assignPages, computePageBreaks } from "src/shared/cv/paginate"
-import { escapeAttr, escapeHtml, sanitizeInline } from "src/shared/cv/sanitize"
-import { CV_ACCENT, type CvContent, type CvSection } from "src/shared/cv/schema"
-import { CV_CSS, PAGE_MM } from "src/shared/cv/styles"
+import { contactLines, cvFlow, documentLabel, footerText, type CvAtom } from "@newrole/cv-core/flow"
+import { assignPages, computePageBreaks } from "@newrole/cv-core/paginate"
+import { escapeAttr, escapeHtml, sanitizeInline } from "@newrole/cv-core/sanitize"
+import { CV_ACCENT, type CvContent, type CvSection } from "@newrole/cv-core/schema"
+import { CV_CSS, PAGE_MM } from "@newrole/cv-core/styles"
 
 /**
  * The print/PDF view of a CV: a standalone HTML document with the shared CV stylesheet, the

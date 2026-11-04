@@ -3,9 +3,9 @@
 import { useEffect, useRef } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "src/app/components/ds/Button"
-import { updateHeader } from "src/shared/cv/edit"
-import { normalizeHref } from "src/shared/cv/sanitize"
-import type { CvLink } from "src/shared/cv/schema"
+import { updateHeader } from "@newrole/cv-core/edit"
+import { normalizeHref } from "@newrole/cv-core/sanitize"
+import type { CvLink } from "@newrole/cv-core/schema"
 import type { EditorOps } from "./atoms"
 
 /** Edits the header links: visible text on the sheet, address here. */

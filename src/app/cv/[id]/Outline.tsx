@@ -2,9 +2,9 @@
 
 import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import { Button } from "src/app/components/ds/Button"
-import { defaultConsent } from "src/shared/cv/blank"
-import { moveSection, updateSection } from "src/shared/cv/edit"
-import { atomKey } from "src/shared/cv/flow"
+import { defaultConsent } from "@newrole/cv-core/blank"
+import { moveSection, updateSection } from "@newrole/cv-core/edit"
+import { atomKey } from "@newrole/cv-core/flow"
 import { SectionTypeMenu, type EditorOps } from "./atoms"
 
 /** The left panel: sections in order, with rename, reorder, hide, delete and add. */
