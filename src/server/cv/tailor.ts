@@ -10,7 +10,7 @@ import {
   readOfferText,
   toOfferSource,
 } from "src/server/jobs/offer-text"
-import { wrapUntrusted, type LlmClient } from "src/server/llm/common"
+import { wrapUntrusted, type LlmClient } from "@newrole/llm/common"
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import type { HttpClient } from "src/server/security/safe-fetch"

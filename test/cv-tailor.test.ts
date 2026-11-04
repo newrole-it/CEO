@@ -27,7 +27,7 @@ import {
   restoreVersion,
   saveVersion,
 } from "../src/server/cv/versions"
-import type { LlmClient } from "../src/server/llm/common"
+import type { LlmClient } from "@newrole/llm/common"
 import { eraseAccount } from "../src/server/privacy/erase"
 import { exportAccount } from "../src/server/privacy/export"
 import type { HttpClient } from "../src/server/security/safe-fetch"

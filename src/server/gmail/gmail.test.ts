@@ -3,7 +3,7 @@ import { companyKey, employerDomains, mentions, registrableDomain, toScopedApp }
 import { classifyByRules } from "./classify"
 import { parseFrom } from "./gate"
 import { matchApplication } from "./match"
-import { wrapUntrusted } from "src/server/llm/common"
+import { wrapUntrusted } from "@newrole/llm/common"
 import { revokeGoogleToken } from "./oauth"
 import { targetStatus } from "./policy"
 import { redact, stripQuoted } from "./text"

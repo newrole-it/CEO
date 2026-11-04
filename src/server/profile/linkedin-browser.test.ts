@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { ClaudeRunArgs } from "src/server/llm/claude-cli"
+import type { ClaudeRunArgs } from "@newrole/llm/claude-cli"
 import { hasBrowserImportHeader } from "src/shared/linkedin-import"
 import {
   createStageTracker,

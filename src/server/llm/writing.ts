@@ -1,22 +1,12 @@
-import { createClaudeCliClient } from "./claude-cli"
-import { createLlmClient, llmProvider } from "./client"
-import type { LlmClient } from "./common"
+import { createWritingClient as createClient } from "@newrole/llm/writing"
+import type { LlmClient } from "@newrole/llm/common"
+import { prismaLlmCache } from "./cache"
 
-export const DEFAULT_WRITING_MODEL = "sonnet"
+export { DEFAULT_WRITING_MODEL } from "@newrole/llm/writing"
 
-/**
- * Client for text the person sends to an employer (answers, form fields): with claude-cli it
- * uses CLAUDE_WRITING_MODEL (default sonnet) instead of the fast CLAUDE_CLI_MODEL, and a longer
- * timeout. Other providers use their configured model. Null when no model is available.
- */
+/** The writing client of @newrole/llm (CLAUDE_WRITING_MODEL), with replies cached in Postgres. */
 export function createWritingClient(
   env: Record<string, string | undefined> = process.env
 ): LlmClient | null {
-  if (llmProvider(env) === "claude-cli") {
-    return createClaudeCliClient({
-      model: env.CLAUDE_WRITING_MODEL?.trim() || DEFAULT_WRITING_MODEL,
-      timeoutMs: Number(env.CLAUDE_WRITING_TIMEOUT_MS) || 150_000,
-    })
-  }
-  return createLlmClient()
+  return createClient(env, { cache: prismaLlmCache })
 }

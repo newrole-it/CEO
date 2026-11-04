@@ -10,6 +10,7 @@ import {
   stripFences,
   UNTRUSTED_RULE,
   writeCache,
+  type LlmCacheStore,
   type LlmClient,
   type LlmResult,
 } from "./common"
@@ -173,7 +174,9 @@ export function readStreamLine(line: string): { events: ClaudeStreamEvent[]; res
       const content = item.content
       const text = Array.isArray(content)
         ? content
-            .map((part) => (part && typeof part === "object" ? (part as { text?: unknown }).text : ""))
+            .map((part) =>
+              part && typeof part === "object" ? (part as { text?: unknown }).text : ""
+            )
             .filter((part): part is string => typeof part === "string")
             .join("\n")
         : typeof content === "string"
@@ -354,8 +357,15 @@ function skippedPurposes(): Set<string> {
 }
 
 export function createClaudeCliClient(
-  opts: { model?: string; timeoutMs?: number; maxConcurrent?: number } & ClaudeCliDeps = {}
+  opts: {
+    model?: string
+    timeoutMs?: number
+    maxConcurrent?: number
+    /** Where replies are kept between calls; without one every call runs claude */
+    cache?: LlmCacheStore | null
+  } & ClaudeCliDeps = {}
 ): LlmClient {
+  const store = opts.cache ?? null
   const model = opts.model || process.env.CLAUDE_CLI_MODEL?.trim() || DEFAULT_CLAUDE_MODEL
   const cacheModel = `claude-cli/${model}`
   const run = (prompt: string, system: string) =>
@@ -376,9 +386,9 @@ export function createClaudeCliClient(
     }): Promise<LlmResult<T> | null> {
       if (skippedPurposes().has(args.purpose)) return null
       const system = `${args.system}\n${UNTRUSTED_RULE}\n${JSON_ONLY}`
-      const cache = cachePlan(args.purpose, cacheModel, system, args.user, args.userId)
-      if (cache) {
-        const hit = await readCachedJson(cache.cacheKey, args.schema)
+      const cache = store && cachePlan(args.purpose, cacheModel, system, args.user, args.userId)
+      if (store && cache) {
+        const hit = await readCachedJson(store, cache.cacheKey, args.schema)
         if (hit) return hit
       }
       let tokenInput = 0
@@ -391,8 +401,8 @@ export function createClaudeCliClient(
         tokenOutput += reply.tokenOutput
         const parsed = args.schema.safeParse(extractJson(reply.text))
         if (parsed.success) {
-          if (cache) {
-            await writeCache({
+          if (store && cache) {
+            await writeCache(store, {
               cacheKey: cache.cacheKey,
               purpose: args.purpose,
               model: cacheModel,
@@ -412,15 +422,15 @@ export function createClaudeCliClient(
     async completeText(args): Promise<LlmResult<string> | null> {
       if (skippedPurposes().has(args.purpose)) return null
       const system = `${args.system}\n${UNTRUSTED_RULE}`
-      const cache = cachePlan(args.purpose, cacheModel, system, args.user, args.userId)
-      if (cache) {
-        const hit = await readCachedText(cache.cacheKey)
+      const cache = store && cachePlan(args.purpose, cacheModel, system, args.user, args.userId)
+      if (store && cache) {
+        const hit = await readCachedText(store, cache.cacheKey)
         if (hit) return hit
       }
       const reply = await run(args.user, system)
       if (!reply?.text.trim()) return null
-      if (cache) {
-        await writeCache({
+      if (store && cache) {
+        await writeCache(store, {
           cacheKey: cache.cacheKey,
           purpose: args.purpose,
           model: cacheModel,

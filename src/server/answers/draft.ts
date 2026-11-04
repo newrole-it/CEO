@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { wrapUntrusted } from "src/server/llm/common"
+import { wrapUntrusted } from "@newrole/llm/common"
 import { hasRedaction } from "./filter"
 import {
   detectLanguage,

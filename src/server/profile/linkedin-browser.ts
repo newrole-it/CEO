@@ -1,4 +1,9 @@
-import { extractJson, findClaudeBinary, runClaudePrompt, type ClaudeStreamEvent } from "src/server/llm/claude-cli"
+import {
+  extractJson,
+  findClaudeBinary,
+  runClaudePrompt,
+  type ClaudeStreamEvent,
+} from "@newrole/llm/claude-cli"
 import { isLoopbackOrigin } from "src/server/local-install"
 import { linkedInLayout, sectionsFromUnknown } from "./linkedin-layout"
 
@@ -53,9 +58,7 @@ Do not visit any other profile, the feed, jobs, messaging, notifications, or sea
 
 function modelName(): string {
   return (
-    process.env.LINKEDIN_BROWSER_MODEL?.trim() ||
-    process.env.CLAUDE_CLI_MODEL?.trim() ||
-    "haiku"
+    process.env.LINKEDIN_BROWSER_MODEL?.trim() || process.env.CLAUDE_CLI_MODEL?.trim() || "haiku"
   )
 }
 
@@ -141,10 +144,13 @@ function result(status: LinkedInBrowserStatus): LinkedInBrowserResult {
  * The browser import drives the Chrome on the machine the app runs on, so it only makes
  * sense for a local install. LINKEDIN_BROWSER_IMPORT=on|off overrides the check.
  */
-export function linkedInBrowserAvailable(env: Record<string, string | undefined> = process.env): boolean {
+export function linkedInBrowserAvailable(
+  env: Record<string, string | undefined> = process.env
+): boolean {
   const flag = env.LINKEDIN_BROWSER_IMPORT?.trim().toLowerCase()
   if (flag === "off" || flag === "false" || flag === "0") return false
-  if (flag !== "on" && flag !== "true" && flag !== "1" && !isLoopbackOrigin(env.APP_ORIGIN)) return false
+  if (flag !== "on" && flag !== "true" && flag !== "1" && !isLoopbackOrigin(env.APP_ORIGIN))
+    return false
   return findClaudeBinary() != null
 }
 
@@ -169,7 +175,8 @@ export async function readLinkedInViaClaude(
       chrome: true,
       allowedTools: LINKEDIN_BROWSER_TOOLS,
       maxTurns: MAX_TURNS,
-      timeoutMs: opts.timeoutMs ?? (Number(process.env.LINKEDIN_BROWSER_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS),
+      timeoutMs:
+        opts.timeoutMs ?? (Number(process.env.LINKEDIN_BROWSER_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS),
       onEvent: tracker.onEvent,
     },
     { binary }

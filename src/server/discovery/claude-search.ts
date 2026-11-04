@@ -5,7 +5,7 @@
  */
 import db from "db"
 import { envCount } from "config/env"
-import { extractJson, findClaudeBinary, runClaudePrompt } from "src/server/llm/claude-cli"
+import { extractJson, findClaudeBinary, runClaudePrompt } from "@newrole/llm/claude-cli"
 import type { WebHit } from "./web-search"
 
 export const CLAUDE_SEARCH_SOURCE = "claude_search"

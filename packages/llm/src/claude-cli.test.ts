@@ -11,6 +11,7 @@ import {
   type SpawnFn,
 } from "./claude-cli"
 import { llmProvider } from "./client"
+import type { LlmCacheEntry, LlmCacheStore } from "./common"
 
 type Call = { command: string; args: string[]; stdin: string }
 
@@ -225,5 +226,65 @@ describe("provider selection", () => {
 
   it("never falls back to an API key when Claude is asked for and missing", () => {
     expect(llmProvider({ LLM_PROVIDER: "claude-cli", LLM_API_KEY: "k" }, no)).toBe("none")
+  })
+})
+
+describe("the reply cache", () => {
+  function memoryStore() {
+    const rows = new Map<string, LlmCacheEntry>()
+    const store: LlmCacheStore = {
+      read: async (cacheKey) => rows.get(cacheKey)?.response ?? null,
+      write: async (entry) => {
+        rows.set(entry.cacheKey, entry)
+      },
+    }
+    return { store, rows }
+  }
+
+  it("answers a repeated prompt from the store without running claude again", async () => {
+    const { spawn, calls } = fakeSpawn([cliJson('{"title":"CTO","years":12}')])
+    const { store, rows } = memoryStore()
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude", cache: store })
+    const ask = () =>
+      client.completeJson({ purpose: "query-expansion", system: "s", user: "u", schema })
+    const first = await ask()
+    const second = await ask()
+    expect(first).toMatchObject({ data: { title: "CTO", years: 12 }, cached: false })
+    expect(second).toEqual({
+      data: { title: "CTO", years: 12 },
+      tokenInput: 0,
+      tokenOutput: 0,
+      cached: true,
+    })
+    expect(calls).toHaveLength(1)
+    expect([...rows.values()]).toEqual([
+      expect.objectContaining({
+        purpose: "query-expansion",
+        model: "claude-cli/haiku",
+        userId: null,
+      }),
+    ])
+  })
+
+  it("stores a personal prompt only when it is tied to a user", async () => {
+    const { spawn, calls } = fakeSpawn([cliJson('{"title":"CTO","years":12}')])
+    const { store, rows } = memoryStore()
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude", cache: store })
+    const ask = (userId?: number) =>
+      client.completeJson({ purpose: "cv-tailor", system: "s", user: "u", schema, userId })
+    await ask()
+    await ask()
+    expect(calls).toHaveLength(2)
+    expect(rows.size).toBe(0)
+    await ask(7)
+    expect([...rows.values()].map((row) => row.userId)).toEqual([7])
+  })
+
+  it("calls claude every time without a store", async () => {
+    const { spawn, calls } = fakeSpawn([cliJson('{"title":"CTO","years":12}')])
+    const client = createClaudeCliClient({ spawn, binary: "/bin/claude" })
+    for (let i = 0; i < 2; i++)
+      await client.completeJson({ purpose: "query-expansion", system: "s", user: "u", schema })
+    expect(calls).toHaveLength(2)
   })
 })

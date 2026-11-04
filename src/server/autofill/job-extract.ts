@@ -5,7 +5,7 @@ import { isPlatformName, readCompanyName } from "src/server/companies/names"
 import { hostOf, isAggregatorHost } from "src/server/discovery/careers-detect"
 import { decodeEntities } from "src/server/jobs/text"
 import { createLlmClient } from "src/server/llm/client"
-import { wrapUntrusted } from "src/server/llm/common"
+import { wrapUntrusted } from "@newrole/llm/common"
 
 /**
  * Company, role and location of the posting behind an application page (E5.3):

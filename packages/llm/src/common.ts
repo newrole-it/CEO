@@ -1,8 +1,7 @@
 import { createHash } from "crypto"
 import type { z } from "zod"
-import db from "db"
 
-/** Types, prompt guards and the shared LlmCache used by every provider. */
+/** Types, prompt guards and the reply cache every provider shares. */
 
 export type LlmResult<T> = {
   data: T
@@ -100,27 +99,8 @@ export function cachePlan(
   }
 }
 
-export async function readCachedJson<T>(
-  cacheKey: string,
-  schema: z.ZodType<T>
-): Promise<LlmResult<T> | null> {
-  const cached = await db.llmCache.findUnique({ where: { cacheKey } })
-  if (!cached) return null
-  const parsed = schema.safeParse(cached.response)
-  if (!parsed.success) return null
-  return { data: parsed.data, tokenInput: 0, tokenOutput: 0, cached: true }
-}
-
-export async function readCachedText(cacheKey: string): Promise<LlmResult<string> | null> {
-  const cached = await db.llmCache.findUnique({ where: { cacheKey } })
-  const response = cached?.response
-  if (!response || typeof response !== "object" || Array.isArray(response)) return null
-  const text = (response as { text?: unknown }).text
-  if (typeof text !== "string" || !text.trim()) return null
-  return { data: text, tokenInput: 0, tokenOutput: 0, cached: true }
-}
-
-export async function writeCache(args: {
+/** One cached reply, keyed by hashCacheKey. */
+export type LlmCacheEntry = {
   cacheKey: string
   purpose: string
   model: string
@@ -128,25 +108,41 @@ export async function writeCache(args: {
   tokenInput: number
   tokenOutput: number
   userId: number | null
-}) {
-  await db.llmCache.upsert({
-    where: { cacheKey: args.cacheKey },
-    update: {
-      response: args.response,
-      tokenInput: args.tokenInput,
-      tokenOutput: args.tokenOutput,
-      model: args.model,
-      purpose: args.purpose,
-      userId: args.userId,
-    },
-    create: {
-      cacheKey: args.cacheKey,
-      purpose: args.purpose,
-      model: args.model,
-      response: args.response,
-      tokenInput: args.tokenInput,
-      tokenOutput: args.tokenOutput,
-      userId: args.userId,
-    },
-  })
+}
+
+/**
+ * Where replies are kept between calls. The host application decides: newrole.it keeps them in
+ * Postgres (LlmCache). Without a store every call goes to the model.
+ */
+export type LlmCacheStore = {
+  /** The stored response, or null when there is none */
+  read: (cacheKey: string) => Promise<unknown>
+  write: (entry: LlmCacheEntry) => Promise<void>
+}
+
+export async function readCachedJson<T>(
+  store: LlmCacheStore,
+  cacheKey: string,
+  schema: z.ZodType<T>
+): Promise<LlmResult<T> | null> {
+  const response = await store.read(cacheKey)
+  if (response == null) return null
+  const parsed = schema.safeParse(response)
+  if (!parsed.success) return null
+  return { data: parsed.data, tokenInput: 0, tokenOutput: 0, cached: true }
+}
+
+export async function readCachedText(
+  store: LlmCacheStore,
+  cacheKey: string
+): Promise<LlmResult<string> | null> {
+  const response = await store.read(cacheKey)
+  if (!response || typeof response !== "object" || Array.isArray(response)) return null
+  const text = (response as { text?: unknown }).text
+  if (typeof text !== "string" || !text.trim()) return null
+  return { data: text, tokenInput: 0, tokenOutput: 0, cached: true }
+}
+
+export async function writeCache(store: LlmCacheStore, entry: LlmCacheEntry): Promise<void> {
+  await store.write(entry)
 }
