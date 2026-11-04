@@ -87,6 +87,9 @@ for (const ws of all) {
         continue
       }
       if (aliases.some((alias) => specifier.startsWith(alias))) continue
+      // "node:" is always Node's; node:test and node:sqlite exist only under that prefix, and
+      // builtinModules lists them only from Node 23.5 on
+      if (specifier.startsWith("node:")) continue
       if (BUILTINS.has(specifier) || BUILTINS.has(packageName(specifier))) continue
       const name = packageName(specifier)
       if (!declared.has(name)) {

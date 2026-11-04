@@ -7,7 +7,7 @@ npm install          # once, in the repository root
 npm run cv           # http://127.0.0.1:43124
 ```
 
-For a production build: `npm run cv:build`, then `npm run cv:start`.
+For a production build: `npm run cv:build`, then `npm run cv:start`. Settings go in the shell or in `apps/cv/.env.local`: Next.js reads `.env` files from the app's folder, so newrole.it's `.env` in the repository root does not reach newrole CV.
 
 1. **Your profile** (`/profile`): upload a CV as a PDF, paste its text, upload LinkedIn's data export ZIP, or let Claude read your own LinkedIn page in your Chrome (needs Claude Code and the Claude in Chrome extension on this machine; it opens only your own profile). Check what was read and save it. Add your form details (name, contact, links, terms): they go into the header of a CV made from the profile. "Audit the profile" gives a 0–100 score and specific changes.
 2. **Your CV**: make one from the profile, upload a PDF (the model structures it), import an HTML CV, or start from an empty one.
@@ -28,4 +28,4 @@ Only a 300-character excerpt of an offer is written to disk; the full text is re
 
 Not here, because they need newrole.it: the audits do not compare you with what offers ask for (that needs its index of matched offers), there is no sign-in with LinkedIn (newrole CV has no accounts), and the extension's LinkedIn panel talks to newrole.it.
 
-How it is put together: [docs/architecture.md](../../docs/architecture.md).
+How it is put together: [docs/architecture.md](../../docs/architecture.md). Giving it a repository of its own: [docs/publishing.md](../../docs/publishing.md).
