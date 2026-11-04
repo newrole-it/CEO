@@ -5,7 +5,7 @@ import { parseCvAudit, type CvAudit } from "@newrole/cv-core/audit"
 import { letterSection, parseCvContent } from "@newrole/cv-core/schema"
 import { cvPlainText } from "@newrole/cv-core/text"
 import { cvLocale } from "@newrole/cv-core/blank"
-import { buildCvAudit } from "./audit"
+import { buildCvAudit } from "@newrole/cv-engine/audit"
 import { CvError } from "./service"
 
 export async function latestCvAudit(userId: number, id: string): Promise<CvAudit | null> {

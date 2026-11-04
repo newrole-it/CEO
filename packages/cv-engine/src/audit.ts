@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import { z } from "zod"
-import { wrapUntrusted, type LlmClient } from "src/server/llm/client"
+import { wrapUntrusted, type LlmClient } from "@newrole/llm/common"
 import { factSentence, phraseLabel, type DemandFact } from "@newrole/profile/demand"
 import { auditCategories, CvAudit, CvAuditNote, type AuditCategory } from "@newrole/cv-core/audit"
 import { cvFields, findQuote, type CvField } from "@newrole/cv-core/fields"
