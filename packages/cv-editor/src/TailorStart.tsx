@@ -2,18 +2,15 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
 import { useEffect, useId, useState } from "react"
 import { Check, FileText, LoaderCircle, Sparkles } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
 import { CompanyInitial, Field } from "@newrole/ui/primitives"
-import { useCopy } from "src/app/i18n/Locale"
-import generateCoverLetter from "src/app/cv/mutations/generateCoverLetter"
-import tailorCvForJob from "src/app/cv/mutations/tailorCvForJob"
-import getOfferTextStatus from "src/app/cv/queries/getOfferTextStatus"
-import { tailorErrorKey } from "@newrole/cv-editor/tailor-errors"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
+import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./backend"
+import { useCvCopy } from "./locale"
+import { tailorErrorKey } from "./tailor-errors"
 
 export type StartJob = {
   id: string
@@ -27,17 +24,28 @@ export type StartCv = { id: string; title: string; isDefault: boolean }
 
 type Phase = "idle" | "cv" | "letter"
 
-/** /jobs/[id]/cv before anything exists: what to start from, then the model's two steps. */
-export function TailorStart({
-  job,
-  cvs,
-  hasLetter,
-}: {
+type StartProps = {
   job: StartJob
   cvs: StartCv[]
   hasLetter: boolean
-}) {
-  const { t, locale } = useCopy()
+}
+
+/**
+ * Before anything is written for an offer: what to start from, then the model's two steps. It
+ * opens the CV when done. `backend` as for CvEditor; its offerText says how much of the offer the
+ * model will read.
+ */
+export function TailorStart({ backend, ...props }: StartProps & { backend: CvEditorBackend }) {
+  return (
+    <CvEditorBackendProvider backend={backend}>
+      <Start {...props} />
+    </CvEditorBackendProvider>
+  )
+}
+
+function Start({ job, cvs, hasLetter }: StartProps) {
+  const { t, locale } = useCvCopy()
+  const backend = useCvBackend()
   const toast = useToast()
   const router = useRouter()
   const baseId = useId()
@@ -58,20 +66,23 @@ export function TailorStart({
   useEffect(() => {
     if (job.withheld) return
     let live = true
-    invoke(getOfferTextStatus, { jobId: job.id })
+    const status = backend.offerText
+      ? backend.offerText(job.id)
+      : Promise.resolve({ origin: "none" as const, chars: 0 })
+    status
       .then((status) => live && setOfferText(status))
       .catch(() => live && setOfferText({ origin: "none", chars: 0 }))
     return () => {
       live = false
     }
-  }, [job.id, job.withheld])
+  }, [job.id, job.withheld, backend])
 
   async function start() {
     setError(null)
     setPhase("cv")
     const trimmed = note.trim() || undefined
     try {
-      const cv = await invoke(tailorCvForJob, {
+      const cv = await backend.tailor.cv({
         jobId: job.id,
         baseCvId: base || undefined,
         language,
@@ -82,12 +93,12 @@ export function TailorStart({
       if (withLetter) {
         setPhase("letter")
         try {
-          await invoke(generateCoverLetter, { jobId: job.id, language, note: trimmed })
+          await backend.tailor.letter({ jobId: job.id, language, note: trimmed })
         } catch {
           toast.show({ message: t("tl.err.letter"), tone: "danger", duration: 8000 })
         }
       }
-      router.replace(`/cv/${cv.id}`)
+      router.replace(backend.routes.document(cv.id))
     } catch (failure) {
       setError(t(tailorErrorKey(failure)))
       setPhase("idle")
@@ -95,6 +106,7 @@ export function TailorStart({
   }
 
   const busy = phase !== "idle"
+  const jobPage = backend.routes.job(job.id)
   return (
     <div className="card card--pad cvt-start">
       <div className="cvt-start__job">
@@ -226,11 +238,13 @@ export function TailorStart({
           </div>
         </form>
       )}
-      <p className="t-sm">
-        <Link className="link link--quiet" href={`/jobs/${job.id}`}>
-          {t("tl.start.back")}
-        </Link>
-      </p>
+      {jobPage ? (
+        <p className="t-sm">
+          <Link className="link link--quiet" href={jobPage}>
+            {t("tl.start.back")}
+          </Link>
+        </p>
+      ) : null}
     </div>
   )
 }

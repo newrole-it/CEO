@@ -4,6 +4,7 @@ import { createContext, useContext } from "react"
 import type { CvAudit } from "@newrole/cv-core/audit"
 import type { CvLocale } from "@newrole/cv-core/blank"
 import type { CvContent } from "@newrole/cv-core/schema"
+import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorResult } from "@newrole/cv-core/views"
 
 /**
@@ -41,6 +42,8 @@ export type CvEditorBackend = {
   tailor: {
     cv: (input: {
       jobId: string
+      /** The CV to start from; the store's default without it */
+      baseCvId?: string
       language?: CvLocale
       note?: string
       /** The language of the notes for the person */
@@ -48,6 +51,8 @@ export type CvEditorBackend = {
     }) => Promise<TailorResult>
     letter: (input: { jobId: string; language?: CvLocale; note?: string }) => Promise<TailorResult>
   }
+  /** How much of the offer the model will read (TailorStart); without it the form says "none". */
+  offerText?: (jobId: string) => Promise<{ origin: OfferTextOrigin; chars: number }>
   /** The CV audit; without it the editor shows no audit button. */
   audit?: {
     run: (id: string, locale: CvLocale) => Promise<CvAudit>

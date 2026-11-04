@@ -3,11 +3,11 @@ import { parseApplicant } from "src/shared/applicant"
 import { blankCv, cvLocale, type CvLocale } from "@newrole/cv-core/blank"
 import { cvFromProfile } from "@newrole/cv-core/from-profile"
 import { cvPdfFileName } from "@newrole/cv-core/filename"
-import { letterFileSuffix } from "@newrole/cv-core/letter"
 import { cvContentError, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 import { cvPlainText } from "@newrole/cv-core/text"
 import { parseStoredDocument } from "src/server/profile/linkedin"
 import { asStringList } from "src/server/profile/schema"
+import { documentPdfName } from "@newrole/cv-engine/http"
 import { renderCvHtml, renderPdfFromHtml } from "@newrole/cv-engine/render"
 import { toStoredJson, versionBeforeEdit } from "./versions"
 
@@ -440,10 +440,11 @@ export async function cvPdf(
   }
   const content = row.content == null ? null : parseCvContent(row.content)
   if (!content) return null
-  const name =
-    row.docType === "LETTER"
-      ? cvPdfFileName(content.header.name, letterFileSuffix(cvLocale(row.language)))
-      : cvPdfFileName(content.header.name)
+  const name = documentPdfName(
+    content,
+    row.docType === "LETTER" ? "LETTER" : "CV",
+    cvLocale(row.language)
+  )
   if (row.pdf && row.pdfUpdatedAt && row.pdfUpdatedAt >= row.updatedAt) {
     return { bytes: Buffer.from(row.pdf), name }
   }

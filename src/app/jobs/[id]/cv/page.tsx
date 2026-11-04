@@ -10,7 +10,7 @@ import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { listCvs } from "src/server/cv/service"
 import { documentsForJob, loadTailorJob } from "src/server/cv/tailor"
-import { TailorStart } from "./TailorStart"
+import { NewroleTailorStart } from "./NewroleTailorStart"
 
 export async function generateMetadata() {
   const t = translator(await getLocale())
@@ -40,7 +40,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
         <h1 className="t-h1">{t("tl.start.title")}</h1>
       </header>
       {general.length || profiles ? (
-        <TailorStart
+        <NewroleTailorStart
           job={{
             id: job.id,
             company: job.company,

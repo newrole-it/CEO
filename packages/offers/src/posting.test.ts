@@ -77,6 +77,29 @@ describe("readPosting", () => {
     expect(result.posting.text).not.toMatch(/Home Jobs|© Acme/)
   })
 
+  it("finds the company in a title that names the role, as Greenhouse's job boards have it", async () => {
+    const url = "https://job-boards.greenhouse.io/adyen/jobs/7586281"
+    const http = fakeHttp({
+      "https://job-boards.greenhouse.io/robots.txt": { body: "" },
+      [url]: {
+        body: `<html><head><title>Job Application for  Account Manager at Adyen</title>
+<meta property="og:title" content=" Account Manager"/></head><body><main>Paris</main></body></html>`,
+      },
+    })
+    const result = await readPosting(url, http)
+    expect(result.ok && result.posting).toMatchObject({
+      title: "Account Manager",
+      company: "Adyen",
+    })
+
+    const plain = fakeHttp({
+      "https://careers.example.com/robots.txt": { body: "" },
+      [JOB_URL]: { body: "<html><head><title>Meet us at Kraków</title></head></html>" },
+    })
+    const other = await readPosting(JOB_URL, plain)
+    expect(other.ok && other.posting.company).toBe("careers.example.com")
+  })
+
   it("keeps no text from a site that opts out of AI use", async () => {
     const http = fakeHttp({
       "https://careers.example.com/robots.txt": { body: "" },

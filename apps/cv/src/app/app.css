@@ -1,0 +1,72 @@
+/* newrole CV's own pages. Tokens and components: @newrole/ui/styles.css; the editor: cv.css. */
+
+.cva-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 20px;
+}
+
+.cva-brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cva-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cva-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cva-offer {
+  border-left: 3px solid var(--primary);
+  padding-left: 12px;
+}
+
+.cva-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cva-docs {
+  display: grid;
+  gap: 8px;
+}
+
+.cva-doc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cva-doc__main {
+  min-width: 0;
+}
+
+.cva-doc__title {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cva-foot {
+  padding: 32px 0;
+}
+
+.cva-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

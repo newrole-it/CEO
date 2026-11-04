@@ -1,4 +1,5 @@
 import { getBlitzContext } from "src/app/blitz-server"
+import { printViewResponse } from "@newrole/cv-engine/http"
 import { renderCvHtml } from "@newrole/cv-engine/render"
 import { getCv } from "src/server/cv/service"
 import { getVersion } from "src/server/cv/versions"
@@ -29,13 +30,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     autoPrint: url.searchParams.get("auto") === "1",
     lang: version?.language ?? cv.language,
   })
-  return new Response(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "private, no-store",
-      "Content-Security-Policy":
-        "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
-      "X-Content-Type-Options": "nosniff",
-    },
-  })
+  return printViewResponse(html)
 }

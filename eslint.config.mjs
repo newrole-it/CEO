@@ -26,5 +26,7 @@ export default defineConfig([
     "extension/.wxt/**",
     "matching/node_modules/**",
     "extension/node_modules/**",
+    "apps/*/.next/**",
+    "apps/*/.data/**",
   ]),
 ])

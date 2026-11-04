@@ -46,6 +46,18 @@ function titleTag(html: string): string | undefined {
   return title ? decodeEntities(title).replace(/\s+/g, " ").trim() || undefined : undefined
 }
 
+/**
+ * The company in a page title that names the role, as "Job Application for Account Manager at
+ * Adyen" or "Senior Engineer at Acme | Careers". Only when the role itself comes before "at".
+ */
+function companyFromTitle(pageTitle: string | undefined, role: string): string | undefined {
+  const match = pageTitle?.match(/^(.*)\sat\s+(.+?)(?:\s+[|·–—-]\s+.*)?$/i)
+  if (!match || !role.trim()) return undefined
+  if (!match[1].toLowerCase().includes(role.trim().toLowerCase())) return undefined
+  const company = match[2].trim()
+  return company.length <= 80 ? company : undefined
+}
+
 /** The page's main content without navigation, headers, footers and forms. */
 function contentHtml(html: string): string {
   const main =
@@ -96,14 +108,15 @@ export async function readPosting(
     }
   }
 
-  const title = metaContent(html, "og:title") || titleTag(html)
+  const pageTitle = titleTag(html)
+  const title = metaContent(html, "og:title") || pageTitle
   if (!title) return { ok: false, reason: "The page has no job offer to read.", linkOnly: false }
   return {
     ok: true,
     posting: {
       url: pageUrl,
       title,
-      company: fallbackCompany,
+      company: siteName || companyFromTitle(pageTitle, title) || fallbackCompany,
       location: null,
       text: withheld ? "" : clean(htmlToText(contentHtml(html))),
       source: "page",
