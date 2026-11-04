@@ -5,7 +5,7 @@
 import db from "db"
 import { normalizeLocation } from "@newrole/matching/normalization"
 import { COUNTRY_CODES } from "@newrole/matching/places"
-import { asStringList } from "src/server/profile/schema"
+import { asStringList } from "@newrole/profile/schema"
 import { languagesFromHeader } from "@newrole/app-kit/languages"
 
 const KNOWN = new Set(COUNTRY_CODES)

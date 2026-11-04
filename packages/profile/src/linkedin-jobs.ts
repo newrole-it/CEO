@@ -55,7 +55,10 @@ export function createJobStore(now: () => number = Date.now) {
           job.state = outcome.status === "ok" && outcome.draft ? "done" : "error"
         })
         .catch((error) => {
-          console.error("linkedin browser job failed", error instanceof Error ? error.message : error)
+          console.error(
+            "linkedin browser job failed",
+            error instanceof Error ? error.message : error
+          )
           job.status = "failed"
           job.message = "Could not read the profile. Try again."
           job.state = "error"

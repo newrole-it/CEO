@@ -8,7 +8,7 @@ import { scoreForFeed, type FeedReason, type FeedScore } from "src/server/prefer
 import { buildPreferenceModel } from "src/server/preferences/model"
 import type { OfferForScoring, PreferenceModel } from "src/server/preferences/types"
 import { toSignals, type ProfileSignals } from "src/server/profile/rank"
-import { asStringList } from "src/server/profile/schema"
+import { asStringList } from "@newrole/profile/schema"
 import type { FitOffer, OfferView } from "src/shared/offer-view"
 import { profileReady } from "src/shared/shortlist"
 import {

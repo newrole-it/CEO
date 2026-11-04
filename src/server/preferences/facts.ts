@@ -13,7 +13,7 @@ import {
 } from "@newrole/matching/normalization"
 import { fold, tokens } from "@newrole/matching/text"
 import { monthlyBasePln, placeFacts } from "src/server/jobs/offer-facts"
-import { canonicalIndustry, industryFromRules } from "src/server/profile/industry"
+import { canonicalIndustry, industryFromRules } from "@newrole/profile/industry"
 import type { FeedbackAspect } from "src/shared/feedback-aspects"
 import type { OfferWorkMode } from "src/shared/offer-view"
 import type { Bilingual, OfferForScoring } from "./types"

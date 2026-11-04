@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { DEFAULT_CONFIG } from "@newrole/matching/config"
 import { explainIndustry } from "./explain"
-import { extractJobIndustry, industryDelta, industryFromRules, industryRelation } from "./industry"
+import {
+  extractJobIndustry,
+  industryDelta,
+  industryFromRules,
+  industryRelation,
+} from "@newrole/profile/industry"
 import { rankAgainstProfile, type ProfileSignals } from "./rank"
 import { amountToMonthlyPln } from "./salary"
 import type { LlmClient } from "src/server/llm/client"

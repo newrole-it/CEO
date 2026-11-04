@@ -6,8 +6,8 @@
 import db from "db"
 import { fold } from "@newrole/matching/text"
 import { canonicalCity } from "src/server/jobs/offer-facts"
-import { canonicalIndustry } from "src/server/profile/industry"
-import { asStringList } from "src/server/profile/schema"
+import { canonicalIndustry } from "@newrole/profile/industry"
+import { asStringList } from "@newrole/profile/schema"
 import {
   FEEDBACK_ASPECTS,
   parseAspects,

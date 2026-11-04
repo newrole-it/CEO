@@ -4,7 +4,6 @@ import {
   runClaudePrompt,
   type ClaudeStreamEvent,
 } from "@newrole/llm/claude-cli"
-import { isLoopbackOrigin } from "src/server/local-install"
 import { linkedInLayout, sectionsFromUnknown } from "./linkedin-layout"
 
 /**
@@ -141,16 +140,17 @@ function result(status: LinkedInBrowserStatus): LinkedInBrowserResult {
 }
 
 /**
- * The browser import drives the Chrome on the machine the app runs on, so it only makes
- * sense for a local install. LINKEDIN_BROWSER_IMPORT=on|off overrides the check.
+ * The browser import drives the Chrome on the machine the app runs on, so it only makes sense
+ * when the app runs there (`local`, the app's own judgement). LINKEDIN_BROWSER_IMPORT=on|off
+ * overrides it.
  */
 export function linkedInBrowserAvailable(
+  local: boolean,
   env: Record<string, string | undefined> = process.env
 ): boolean {
   const flag = env.LINKEDIN_BROWSER_IMPORT?.trim().toLowerCase()
   if (flag === "off" || flag === "false" || flag === "0") return false
-  if (flag !== "on" && flag !== "true" && flag !== "1" && !isLoopbackOrigin(env.APP_ORIGIN))
-    return false
+  if (flag !== "on" && flag !== "true" && flag !== "1" && !local) return false
   return findClaudeBinary() != null
 }
 

@@ -73,7 +73,10 @@ const archive = () =>
     { name: "Basic_LinkedInDataExport_10-28-2026/Positions.csv", content: POSITIONS },
     { name: "Basic_LinkedInDataExport_10-28-2026/Skills.csv", content: SKILLS, stored: true },
     { name: "Basic_LinkedInDataExport_10-28-2026/Languages.csv", content: LANGUAGES },
-    { name: "Basic_LinkedInDataExport_10-28-2026/messages.csv", content: "FROM,TO,CONTENT\na,b,secret" },
+    {
+      name: "Basic_LinkedInDataExport_10-28-2026/messages.csv",
+      content: "FROM,TO,CONTENT\na,b,secret",
+    },
   ])
 
 describe("CSV", () => {

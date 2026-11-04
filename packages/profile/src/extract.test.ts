@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { LlmClient } from "src/server/llm/client"
+import type { LlmClient } from "@newrole/llm/common"
 import { extractProfileFromText } from "./extract"
 
 const CV = `Head of Engineering

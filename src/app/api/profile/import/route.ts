@@ -6,7 +6,7 @@ import {
   isZipBytes,
   linkedInExportText,
   MAX_ZIP_BYTES,
-} from "src/server/profile/linkedin-export"
+} from "@newrole/profile/linkedin-export"
 import { extractPdfText } from "@newrole/cv-engine/pdf"
 import { clientIpFrom } from "src/server/security/client-ip"
 import { crossSiteRefused, isSameAppRequest } from "src/server/security/origin"

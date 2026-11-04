@@ -18,8 +18,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const BUILTINS = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]))
 const SKIP_DIRS = new Set(["node_modules", ".next", ".data", "dist", "coverage"])
 const SOURCE = /\.(ts|tsx|mts|cts|js|mjs|cjs)$/
+// Statements only: "import" or "export" at the start of a line (after spaces), not inside a string.
 const SPECIFIER =
-  /(?:import|export)\s[^'"`;]*?from\s*["']([^"']+)["']|import\s*["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)|require\(\s*["']([^"']+)["']\s*\)|reference path=["']([^"']+)["']/g
+  /^\s*(?:import|export)\s[^'"`;]*?from\s*["']([^"']+)["']|^\s*import\s*["']([^"']+)["']|(?<![\w$.-])import\(\s*["']([^"']+)["']\s*\)|(?<![\w$.-])require\(\s*["']([^"']+)["']\s*\)|reference path=["']([^"']+)["']/gm
 
 function workspaces() {
   const found = []

@@ -31,7 +31,7 @@ import {
   salaryError,
   type DraftField,
 } from "src/app/profile/ProfileReview"
-import { emptyProfileDraft, type ProfileDraft } from "src/server/profile/schema"
+import { emptyProfileDraft, type ProfileDraft } from "@newrole/profile/schema"
 import { LinkedInImport } from "./LinkedInImport"
 import { PasteTile } from "./PasteTile"
 import { clearPendingFile, linkedInStartHref, takePendingFile } from "./pending"

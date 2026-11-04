@@ -4,7 +4,7 @@
  *       + industry delta + skill delta (from rankAgainstProfile) + preference delta (±12).
  */
 import { DEFAULT_CONFIG } from "@newrole/matching/config"
-import { industryFromRules } from "src/server/profile/industry"
+import { industryFromRules } from "@newrole/profile/industry"
 import { rankAgainstProfile, type ProfileSignals } from "src/server/profile/rank"
 import {
   clampScore,

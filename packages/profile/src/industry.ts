@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { fold } from "@newrole/matching/text"
-import { wrapUntrusted, type LlmClient } from "src/server/llm/client"
+import { wrapUntrusted, type LlmClient } from "@newrole/llm/common"
 import type { IndustryMode } from "./schema"
 
 export const INDUSTRY_GROUPS: string[][] = [

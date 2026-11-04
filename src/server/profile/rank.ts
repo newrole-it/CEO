@@ -21,9 +21,9 @@ import {
   industryRelation,
   type DomainRequirement,
   type JobIndustry,
-} from "./industry"
+} from "@newrole/profile/industry"
 import { profileMonthlyPln, scoreSalary, type MonthlyRange, type ProfilePay } from "./salary"
-import { asStringList, type IndustryMode } from "./schema"
+import { asStringList, type IndustryMode } from "@newrole/profile/schema"
 import { skillOverlap } from "./skills"
 
 const LEADERSHIP = new Set(["head", "director", "vp", "c_level", "senior_manager"])

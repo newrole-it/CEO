@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ClaudeRunArgs } from "@newrole/llm/claude-cli"
-import { hasBrowserImportHeader } from "src/shared/linkedin-import"
+import { hasBrowserImportHeader } from "./linkedin-import"
 import {
   createStageTracker,
   LINKEDIN_BROWSER_TOOLS,
@@ -108,11 +108,10 @@ describe("readLinkedInViaClaude", () => {
     expect((await readLinkedInViaClaude({ binary: null })).status).toBe("no-claude")
   })
 
-  it("is offered only for a local install unless switched on", () => {
-    expect(linkedInBrowserAvailable({ APP_ORIGIN: "https://newrole.it" })).toBe(false)
-    expect(
-      linkedInBrowserAvailable({ APP_ORIGIN: "https://newrole.it", LINKEDIN_BROWSER_IMPORT: "off" })
-    ).toBe(false)
+  it("is offered only where the app runs locally, unless switched on or off", () => {
+    expect(linkedInBrowserAvailable(false, {})).toBe(false)
+    expect(linkedInBrowserAvailable(true, { LINKEDIN_BROWSER_IMPORT: "off" })).toBe(false)
+    expect(linkedInBrowserAvailable(false, { LINKEDIN_BROWSER_IMPORT: "off" })).toBe(false)
   })
 })
 

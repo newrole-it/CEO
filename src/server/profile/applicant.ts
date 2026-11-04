@@ -5,7 +5,7 @@ import {
   parseApplicant,
   splitName,
   type ApplicantInfo,
-} from "src/shared/applicant"
+} from "@newrole/profile/applicant"
 
 export type ApplicantView = {
   /** What the person saved */

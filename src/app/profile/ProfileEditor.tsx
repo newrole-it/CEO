@@ -15,7 +15,7 @@ import listMyFeedback from "src/app/feedback/queries/listMyFeedback"
 import { TasteChip } from "src/app/jobs/components/Taste"
 import type { PreferenceSummary } from "src/server/preferences/model"
 import { FEEDBACK_ASPECTS } from "src/shared/feedback-aspects"
-import { emptyProfileDraft, type ProfileDraft } from "src/server/profile/schema"
+import { emptyProfileDraft, type ProfileDraft } from "@newrole/profile/schema"
 import ensureGuest from "./mutations/ensureGuest"
 import saveProfile from "./mutations/saveProfile"
 import {

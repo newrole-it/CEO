@@ -1,4 +1,4 @@
-import type { ApplicantInfo } from "src/shared/applicant"
+import type { ApplicantInfo } from "@newrole/profile/applicant"
 import { fold, type FieldKind, type FormField } from "./fields"
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { LlmClient } from "src/server/llm/client"
-import { demandFromOffers } from "src/server/profile/demand"
+import { demandFromOffers } from "@newrole/profile/demand"
 import { locateNote, openNotes } from "@newrole/cv-core/audit"
 import type { CvContent } from "@newrole/cv-core/schema"
 import { buildCvAudit, scoreNotes } from "./audit"

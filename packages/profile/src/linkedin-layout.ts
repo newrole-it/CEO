@@ -72,7 +72,11 @@ function datesLine(value: unknown): string {
 export function linkedInLayout(sections: LinkedInSections): string {
   const lines: string[] = []
   const push = (...values: string[]) => values.filter(Boolean).forEach((value) => lines.push(value))
-  push(oneLine(sections.name, 120), oneLine(sections.headline, 220), oneLine(sections.location, 120))
+  push(
+    oneLine(sections.name, 120),
+    oneLine(sections.headline, 220),
+    oneLine(sections.location, 120)
+  )
 
   const about = clean(sections.about, MAX_FIELD)
   if (about) push("Summary", about)

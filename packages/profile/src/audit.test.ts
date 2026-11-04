@@ -1,7 +1,7 @@
 import { readFileSync } from "fs"
 import { join } from "path"
 import { describe, expect, it } from "vitest"
-import type { LlmClient } from "src/server/llm/client"
+import type { LlmClient } from "@newrole/llm/common"
 import { buildProfileAudit, progressCopy } from "./audit"
 import { demandFromOffers, factSentence, pickLatestRuns } from "./demand"
 import { parseLinkedInProfile, profileText } from "./linkedin"

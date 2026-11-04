@@ -1,8 +1,8 @@
 import db from "db"
 import { createLlmClient } from "src/server/llm/client"
-import { extractProfileFromText } from "./extract"
-import { parseLinkedInProfile } from "./linkedin"
-import type { ProfileDraft } from "./schema"
+import { extractProfileFromText } from "@newrole/profile/extract"
+import { parseLinkedInProfile } from "@newrole/profile/linkedin"
+import type { ProfileDraft } from "@newrole/profile/schema"
 
 /**
  * CV text → profile draft for the review step. The parsed LinkedIn sections are kept for "CV from

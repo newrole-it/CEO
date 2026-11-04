@@ -11,7 +11,7 @@ import { SENIORITY_RANK, type Seniority } from "@newrole/matching/types"
 import { NEW_ATS_LABELS } from "src/shared/ats-labels"
 import { canonicalCity } from "src/server/jobs/offer-facts"
 import { profileMonthlyPln, type ProfilePay } from "src/server/profile/salary"
-import { asStringList } from "src/server/profile/schema"
+import { asStringList } from "@newrole/profile/schema"
 import { roleLabel, titleSimilarity, type OfferProfile } from "./facts"
 import type { Bilingual } from "./types"
 

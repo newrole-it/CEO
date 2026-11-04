@@ -7,7 +7,7 @@ import type { CopyKey } from "src/app/i18n/copy"
 import { ChipInput } from "@newrole/ui/interactive"
 import { Chip, Segmented } from "@newrole/ui/primitives"
 import { cx } from "@newrole/ui/cx"
-import { seniorityValues, type ProfileDraft } from "src/server/profile/schema"
+import { seniorityValues, type ProfileDraft } from "@newrole/profile/schema"
 
 type Seniority = (typeof seniorityValues)[number]
 const MAIN_LEVELS: Seniority[] = ["junior", "mid", "senior", "lead", "head"]

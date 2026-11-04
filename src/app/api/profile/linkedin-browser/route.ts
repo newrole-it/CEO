@@ -1,12 +1,10 @@
 import { getBlitzContext } from "src/app/blitz-server"
 import { draftFromProfileText } from "src/server/profile/import"
-import {
-  linkedInBrowserAvailable,
-  readLinkedInViaClaude,
-} from "src/server/profile/linkedin-browser"
-import { linkedInJobs } from "src/server/profile/linkedin-jobs"
+import { linkedInBrowserAvailable, readLinkedInViaClaude } from "@newrole/profile/linkedin-browser"
+import { isLocalInstall } from "src/server/local-install"
+import { linkedInJobs } from "@newrole/profile/linkedin-jobs"
 import { isAppHostRequest, isSameAppRequest } from "src/server/security/origin"
-import { hasBrowserImportHeader } from "src/shared/linkedin-import"
+import { hasBrowserImportHeader } from "@newrole/profile/linkedin-import"
 
 /**
  * The import reads the person's own LinkedIn in their Chrome, so only they may start it or see the
@@ -31,7 +29,7 @@ export async function POST(request: Request) {
   if (!isSameAppRequest(request) || !hasBrowserImportHeader(request.headers)) {
     return refused()
   }
-  if (!linkedInBrowserAvailable()) {
+  if (!linkedInBrowserAvailable(isLocalInstall())) {
     return Response.json(
       { error: "Reading LinkedIn through Claude works only in a local install with Claude Code." },
       { status: 404 }

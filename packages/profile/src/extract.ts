@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { detectSeniority } from "@newrole/matching/normalization"
 import { fold } from "@newrole/matching/text"
-import { wrapUntrusted, type LlmClient } from "src/server/llm/client"
+import { wrapUntrusted, type LlmClient } from "@newrole/llm/common"
 import { canonicalIndustry, visibleText } from "./industry"
 import { amountsInText, salaryFromText, type SalaryFromText } from "./salary-text"
 import { emptyProfileDraft, profileDraftSchema, seniorityValues, type ProfileDraft } from "./schema"

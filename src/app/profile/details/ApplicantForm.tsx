@@ -10,7 +10,7 @@ import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
 import { Button } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
-import type { ApplicantField, ApplicantInfo } from "src/shared/applicant"
+import type { ApplicantField, ApplicantInfo } from "@newrole/profile/applicant"
 
 type Row = { key: ApplicantField; type?: string; autoComplete?: string; wide?: boolean }
 

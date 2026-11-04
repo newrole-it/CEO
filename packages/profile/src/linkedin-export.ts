@@ -22,7 +22,10 @@ const WANTED = [
 type Wanted = (typeof WANTED)[number]
 
 export class ExportError extends Error {
-  constructor(public code: "not-zip" | "unsupported" | "too-large" | "no-profile", message: string) {
+  constructor(
+    public code: "not-zip" | "unsupported" | "too-large" | "no-profile",
+    message: string
+  ) {
     super(message)
   }
 }

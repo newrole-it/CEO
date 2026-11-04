@@ -19,8 +19,8 @@ import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Dropzone } from "@newrole/ui/interactive"
 import { Badge, Banner } from "@newrole/ui/primitives"
 import ensureGuest from "src/app/profile/mutations/ensureGuest"
-import type { ProfileDraft } from "src/server/profile/schema"
-import { BROWSER_IMPORT_HEADER, LINKEDIN_BROWSER_STAGES } from "src/shared/linkedin-import"
+import type { ProfileDraft } from "@newrole/profile/schema"
+import { BROWSER_IMPORT_HEADER, LINKEDIN_BROWSER_STAGES } from "@newrole/profile/linkedin-import"
 
 type Stage = (typeof LINKEDIN_BROWSER_STAGES)[number]
 type Failure = "not-connected" | "signed-out" | "no-claude" | "failed"
