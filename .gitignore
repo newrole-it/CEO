@@ -21,8 +21,8 @@ node_modules
 apps/*/.next/
 
 # chrome extension build (wxt)
-/apps/extension/.output/
-/apps/extension/.wxt/
+/apps/reo-extension/.output/
+/apps/reo-extension/.wxt/
 
 # production
 /build

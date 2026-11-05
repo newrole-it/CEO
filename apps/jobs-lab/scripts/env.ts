@@ -21,5 +21,5 @@ export function labDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | n
   return url.toString()
 }
 
-/** newrole.it's schema: the engine's tables are its tables (packages/job-index/src/host.ts). */
-export const SCHEMA = resolve(__dirname, "../../newrole/db/schema.prisma")
+/** newrole.it's schema: the engine's tables are its tables (packages/job-index/src/host.ts in this app). */
+export const SCHEMA = resolve(__dirname, "../../resume-engine-optimization/db/schema.prisma")

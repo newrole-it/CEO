@@ -37,7 +37,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma generate --schema apps/newrole/db/schema.prisma
+      - run: npx prisma generate --schema apps/resume-engine-optimization/db/schema.prisma
       - run: npm run test:db
       - run: npm run lint
       - run: npm run check:boundaries

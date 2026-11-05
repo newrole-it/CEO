@@ -1,6 +1,6 @@
 # jobs lab
 
-A test bench for the offer engine that left newrole.it ([@newrole/ats](../../packages/ats/README.md) and [@newrole/job-index](../../packages/job-index/README.md)). It is not part of newrole.it's release: run it after a change to the engine to see that reading boards and offers still works.
+A test bench for the offer engine that left newrole.it ([@newrole/ats](../resume-engine-optimization/packages/ats/README.md) and [@newrole/job-index](packages/job-index/README.md)). It is not part of newrole.it's release: run it after a change to the engine to see that reading boards and offers still works.
 
 ```bash
 npm run jobs-lab          # http://127.0.0.1:43125

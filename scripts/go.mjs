@@ -16,10 +16,10 @@ import { fileURLToPath } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 /** newrole.it itself; the root holds .env and the workspaces. */
-const APP = join(ROOT, "apps", "newrole")
+const APP = join(ROOT, "apps", "resume-engine-optimization")
 const SCHEMA = join(APP, "db", "schema.prisma")
 /** The Chrome extension: an app of its own with its own lockfile, not a workspace. */
-const EXTENSION = join(ROOT, "apps", "extension")
+const EXTENSION = join(ROOT, "apps", "reo-extension")
 const ENV_FILE = join(ROOT, ".env")
 const BIN = (name) => join(ROOT, "node_modules", ".bin", name)
 const MIN_NODE = 22

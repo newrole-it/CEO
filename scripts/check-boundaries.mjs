@@ -1,14 +1,19 @@
 /**
- * npm run check:boundaries: every workspace under packages/ and apps/ stands on its own.
+ * npm run check:boundaries: every app under apps/ stands on its own, and so does every workspace in
+ * it (the app and the packages in its packages/ folder).
  *
  * - A file imports only Node's built-ins, files inside its own workspace, and packages its
  *   package.json declares (dependencies, peerDependencies, devDependencies for tests and config).
- * - Nothing reaches into another workspace's files by path. An app's own folders (apps/newrole's
- *   src/, db, config/, mcp/, test/, which its tsconfig resolves from the app folder) are its own.
+ * - Nothing reaches into another workspace's files by path. An app's own folders (src/, db, config/,
+ *   mcp/, test/, scripts/, which its tsconfig resolves from the app folder) are its own; its
+ *   packages/ folder is not, those are workspaces of their own.
  * - The @newrole/* packages depend on each other without cycles, and none depends on an app.
+ * - An app uses another app's packages only where USES says so. newrole.it
+ *   (apps/resume-engine-optimization) uses no other app's, so deleting apps/jobs-lab breaks nothing;
+ *   jobs lab uses newrole.it's packages, never the other way round.
  *
  * One reach across is declared, in CONTRACTS: newrole.it's tests read the Chrome extension's
- * lib/ (apps/extension, an app with its own lockfile, not a workspace) to prove the two still
+ * lib/ (apps/reo-extension, an app with its own lockfile, not a workspace) to prove the two still
  * agree on what a form field is and what a LinkedIn page holds.
  *
  * TypeScript checks that the imports resolve; this checks that they are allowed.
@@ -19,6 +24,7 @@ import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
+const APPS = join(ROOT, "apps")
 const BUILTINS = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]))
 const SKIP_DIRS = new Set(["node_modules", ".next", ".data", "dist", "coverage"])
 const SOURCE = /\.(ts|tsx|mts|cts|js|mjs|cjs)$/
@@ -30,33 +36,57 @@ const SPECIFIER =
 
 /** Test files of a workspace that may import files of another folder, and which ones. */
 const CONTRACTS = {
-  "@newrole/app": { tests: true, folder: join(ROOT, "apps", "extension", "lib") },
+  "@newrole/app": { tests: true, folder: join(APPS, "reo-extension", "lib") },
+}
+
+/** The apps (folder names under apps/) whose packages an app may depend on, besides its own. */
+const USES = {
+  "jobs-lab": ["resume-engine-optimization"],
 }
 
 const TEST_FILE = /\.test\.(ts|tsx|mjs|js)$/
 
-/** The workspaces the root package.json lists: "group/*" or a single "group/name". */
+/** The folders a workspace pattern of the root package.json names: "a/b/*" or "a/b". */
+function expand(pattern) {
+  const parts = pattern.split("/")
+  let dirs = [ROOT]
+  for (const part of parts) {
+    const next = []
+    for (const dir of dirs) {
+      if (part === "*") {
+        try {
+          for (const name of readdirSync(dir)) {
+            if (!name.startsWith(".") && statSync(join(dir, name)).isDirectory())
+              next.push(join(dir, name))
+          }
+        } catch {
+          // a group that is not there
+        }
+      } else next.push(join(dir, part))
+    }
+    dirs = next
+  }
+  return dirs
+}
+
+/** The workspaces the root package.json lists, each with its app (the folder under apps/). */
 function workspaces() {
   const root = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"))
   const found = []
   for (const pattern of root.workspaces ?? []) {
-    const [group, name] = pattern.split("/")
-    let names = []
-    if (name === "*") {
+    for (const path of expand(pattern)) {
+      let manifest
       try {
-        names = readdirSync(join(ROOT, group))
+        manifest = JSON.parse(readFileSync(join(path, "package.json"), "utf8"))
       } catch {
+        continue // not a workspace, or an app that was deleted
+      }
+      const [app, ...rest] = relative(APPS, path).split(sep)
+      if (!app || app.startsWith("..")) {
+        problems.push(`${relative(ROOT, path)}: a workspace outside apps/`)
         continue
       }
-    } else names = [name]
-    for (const each of names) {
-      const path = join(ROOT, group, each)
-      try {
-        const manifest = JSON.parse(readFileSync(join(path, "package.json"), "utf8"))
-        found.push({ group, path, manifest })
-      } catch {
-        // not a workspace
-      }
+      found.push({ group: rest.length ? "packages" : "apps", app, path, manifest })
     }
   }
   return found
@@ -72,21 +102,18 @@ function ownFolders(ws) {
     return []
   }
   return readdirSync(ws.path)
-    .filter((name) => !SKIP_DIRS.has(name) && !name.startsWith("."))
+    .filter((name) => !SKIP_DIRS.has(name) && !name.startsWith(".") && name !== "packages")
     .map((name) => name.replace(/\.(ts|tsx)$/, ""))
     .filter((name) => !name.includes("."))
 }
 
-/** The repository's own tooling (scripts/), which an app's config files may load. */
-const TOOLING = join(ROOT, "scripts")
-const CONFIG_FILE = /(^|\/)(next|vitest|tailwind|postcss)\.config\.(js|cjs|mjs|ts)$/
-
-function files(dir) {
+function files(dir, nested) {
   const out = []
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name) || name.startsWith(".")) continue
     const path = join(dir, name)
-    if (statSync(path).isDirectory()) out.push(...files(path))
+    if (nested.has(path)) continue
+    if (statSync(path).isDirectory()) out.push(...files(path, nested))
     else if (SOURCE.test(name) && !name.endsWith(".d.ts")) out.push(path)
   }
   return out
@@ -98,9 +125,21 @@ function packageName(specifier) {
   return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0]
 }
 
+const problems = []
 const all = workspaces()
 const byName = new Map(all.map((ws) => [ws.manifest.name, ws]))
-const problems = []
+const roots = new Set(all.map((ws) => ws.path))
+
+/** Workspaces inside a workspace's folder: an app's packages/. */
+function nestedIn(path) {
+  return [...roots].filter((other) => other.startsWith(path + sep))
+}
+
+/** Inside the workspace's folder and not inside a workspace nested in it. */
+function inside(target, ws) {
+  if (!target.startsWith(ws.path + sep)) return false
+  return !nestedIn(ws.path).some((other) => target.startsWith(other + sep))
+}
 
 for (const ws of all) {
   const { manifest, path } = ws
@@ -109,11 +148,20 @@ for (const ws of all) {
     ...Object.keys(manifest.peerDependencies ?? {}),
     ...Object.keys(manifest.devDependencies ?? {}),
   ])
-  // an app's own alias for its folder (@/ in apps/newrole/tsconfig.json)
+  // another app's workspaces it declares, where USES does not allow them
+  for (const name of declared) {
+    const target = byName.get(name)
+    if (target && target.app !== ws.app && !(USES[ws.app] ?? []).includes(target.app))
+      problems.push(
+        `${relative(ROOT, path)}: ${manifest.name} depends on ${name} of apps/${target.app}`
+      )
+  }
+  // an app's own alias for its folder (@/ in the app's tsconfig.json)
   const aliases = ws.group === "apps" ? ["@/"] : []
   const own = new Set(ownFolders(ws))
   const contract = CONTRACTS[manifest.name]
-  for (const file of files(path)) {
+  const nested = new Set(nestedIn(path))
+  for (const file of files(path, nested)) {
     const text = readFileSync(file, "utf8")
     for (const match of text.matchAll(SPECIFIER)) {
       const specifier = match.slice(1).find(Boolean)
@@ -124,8 +172,7 @@ for (const ws of all) {
           contract &&
           (!contract.tests || TEST_FILE.test(file)) &&
           target.startsWith(contract.folder + sep)
-        const tooling = CONFIG_FILE.test(file) && target.startsWith(TOOLING + sep)
-        if (!target.startsWith(path + sep) && !allowed && !tooling)
+        if (!inside(target, ws) && !allowed)
           problems.push(`${where}: "${specifier}" leaves ${relative(ROOT, path)}`)
         continue
       }
@@ -184,4 +231,15 @@ if (problems.length) {
   )
   process.exit(1)
 }
-console.log(`Workspace boundaries hold: ${all.map((ws) => ws.manifest.name).join(", ")}`)
+const apps = [...new Set(all.map((ws) => ws.app))]
+console.log(
+  `Workspace boundaries hold: ${apps
+    .map(
+      (app) =>
+        `apps/${app} (${all
+          .filter((ws) => ws.app === app)
+          .map((ws) => ws.manifest.name)
+          .join(", ")})`
+    )
+    .join("; ")}`
+)

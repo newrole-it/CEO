@@ -1,6 +1,0 @@
-{
-  "//": "The tests run without the extension's own install: ../tsconfig.json extends .wxt/, which `wxt prepare` writes.",
-  "extends": "../../../tsconfig.base.json",
-  "compilerOptions": { "allowJs": true, "types": ["node"] },
-  "include": ["**/*.ts"]
-}

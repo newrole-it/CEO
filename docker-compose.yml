@@ -69,7 +69,9 @@ services:
       retries: 20
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: apps/resume-engine-optimization/Dockerfile
     ports:
       - "127.0.0.1:43123:43123"
     restart: unless-stopped
@@ -80,8 +82,10 @@ services:
         condition: service_healthy
 
   worker:
-    build: .
-    # The image's working folder is apps/newrole (Dockerfile).
+    build:
+      context: .
+      dockerfile: apps/resume-engine-optimization/Dockerfile
+    # The image's working folder is apps/resume-engine-optimization (its Dockerfile).
     command: ["npx", "tsx", "src/worker.ts"]
     restart: unless-stopped
     environment:

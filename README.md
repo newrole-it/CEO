@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/banner.svg" alt="newrole.it" width="900">
+  <img src="apps/resume-engine-optimization/docs/screenshots/banner.svg" alt="newrole.it" width="900">
 </p>
 
 # newrole.it: your CV for every offer
@@ -23,10 +23,10 @@ newrole.it tailors your CV and cover letter to each job offer you work on, on yo
 - ✍️ **A CV and a letter for each offer.** The model gets your CV, your profile and the offer's text; code keeps employers, dates, contact details and numbers as your CV has them, and the notes say what changed and what to check. A site that opts out of AI use gives the model only its company, role and place.
 - 📋 **Application tracker.** Stages from applied to offer, next steps, timeline, your stated salary, statistics with a funnel and response rates, CSV export, one-way sync to your own Google Sheet, and status updates from a Gmail message you open and pick in the extension (the mailbox itself is never searched).
 - 💬 **Answer bank.** Every answer you gave to an application question, grouped by question with per-company variants, and Claude drafts from them.
-- 🧩 **Chrome extension** ([apps/extension](apps/extension/README.md)). Adds the offer you are looking at to newrole.it in one click, fills application forms from your details, CV and answer bank on known ATS hosts, records the application when you submit, turns the Gmail message you have open into a stage change after you confirm it, and scores your LinkedIn profile 0–100. It never fills passwords or consents and never submits for you.
+- 🧩 **Chrome extension** ([apps/reo-extension](apps/reo-extension/README.md)). Adds the offer you are looking at to newrole.it in one click, fills application forms from your details, CV and answer bank on known ATS hosts, records the application when you submit, turns the Gmail message you have open into a stage change after you confirm it, and scores your LinkedIn profile 0–100. It never fills passwords or consents and never submits for you.
 - 🤖 **An MCP server for Claude Code.** Profile, offers, CV, applications and answers as tools, and prompts for onboarding, one application end to end and a weekly review. Model calls run through `claude -p` on your own subscription.
 
-The engine that finds new offers on its own (crawling ATS boards, watched companies, discovery, a ranked feed) is not part of newrole.it any more: it lives in [`@newrole/ats`](packages/ats/README.md) and [`@newrole/job-index`](packages/job-index/README.md), with [apps/jobs-lab](apps/jobs-lab/README.md) to test it, for a separate deployment.
+The engine that finds new offers on its own (crawling ATS boards, watched companies, discovery, a ranked feed) is not part of newrole.it any more: it lives in [`@newrole/ats`](apps/resume-engine-optimization/packages/ats/README.md) and [`@newrole/job-index`](apps/jobs-lab/packages/job-index/README.md), with [apps/jobs-lab](apps/jobs-lab/README.md) to test it, for a separate deployment.
 
 ## Quick start
 
@@ -62,7 +62,7 @@ cp .env.example .env   # set SESSION_SECRET_KEY, OWNER_PASSWORD, POSTGRES_PASSWO
 docker compose up --build
 ```
 
-Postgres, the web app and a worker, published on 127.0.0.1 only. Claude Code and headless Chrome are not in the image, so model calls need `LLM_API_KEY`. See [docs/configuration.md](docs/configuration.md).
+Postgres, the web app and a worker, published on 127.0.0.1 only. Claude Code and headless Chrome are not in the image, so model calls need `LLM_API_KEY`. See [apps/resume-engine-optimization/docs/configuration.md](apps/resume-engine-optimization/docs/configuration.md).
 
 ## Use it from Claude Code
 
@@ -96,27 +96,27 @@ npm workspaces: the apps under `apps/`, the packages they are made of under `pac
 
 | Path | What lives there |
 |---|---|
-| `apps/newrole` | newrole.it: Next 16 App Router UI with Blitz auth (`src/app`), services (`src/server`), the worker (`src/worker.ts`), the MCP server (`mcp/`), Prisma schema and migrations (`db/`) |
-| `apps/extension` | The Chrome extension (WXT), an app of its own with its own lockfile; it talks to newrole.it's `/api/ext/*` |
+| `apps/resume-engine-optimization` | newrole.it: Next 16 App Router UI with Blitz auth (`src/app`), services (`src/server`), the worker (`src/worker.ts`), the MCP server (`mcp/`), Prisma schema and migrations (`db/`) |
+| `apps/reo-extension` | The Chrome extension (WXT), an app of its own with its own lockfile; it talks to newrole.it's `/api/ext/*` |
 | `apps/jobs-lab` | A test bench for the offer engine: read any supported ATS board live, one offer from its link, the boards on a careers page, a smoke run over real boards |
-| `packages/cv-core`, `cv-engine`, `cv-editor` | The CV and letter model and rules; tailoring, letters, the CV audit and printing; the A4 editor |
-| `packages/profile`, `profile-ui` | The profile from a CV, a PDF or LinkedIn, its audit and the facts a model may use; the profile screens |
-| `packages/ats`, `offers` | Reading offers from ATS boards and career sites, one offer from its link; polite fetching, source policies, robots.txt |
-| `packages/job-index` | The engine that keeps an index of offers: crawl, schedule, watched companies, discovery, catalog, harvest, live search (not used by newrole.it) |
-| `packages/matching`, `llm`, `ui`, `app-kit` | Normalization, the scorer and FX rates; model clients; the design system; origin guard and interface language |
+| `apps/resume-engine-optimization/packages/cv-core`, `cv-engine`, `cv-editor` | The CV and letter model and rules; tailoring, letters, the CV audit and printing; the A4 editor |
+| `apps/resume-engine-optimization/packages/profile`, `profile-ui` | The profile from a CV, a PDF or LinkedIn, its audit and the facts a model may use; the profile screens |
+| `apps/resume-engine-optimization/packages/ats`, `offers` | Reading offers from ATS boards and career sites, one offer from its link; polite fetching, source policies, robots.txt |
+| `apps/jobs-lab/packages/job-index` | The engine that keeps an index of offers: crawl, schedule, watched companies, discovery, catalog, harvest, live search (not used by newrole.it) |
+| `apps/resume-engine-optimization/packages/matching`, `llm`, `ui`, `app-kit` | Normalization, the scorer and FX rates; model clients; the design system; origin guard and interface language |
 | `scripts/` | `go.mjs` (`npm run go`), `check-boundaries.mjs`, `test-db.mjs`, the shared env loader |
 
-[docs/architecture.md](docs/architecture.md) has the rules between them.
+[apps/resume-engine-optimization/docs/architecture.md](apps/resume-engine-optimization/docs/architecture.md) has the rules between them.
 
 ## Documentation
 
-- [Configuration and running](docs/configuration.md) — every command, every environment variable, Docker Compose, tests
-- [Accounts, profile and privacy](docs/accounts.md) — sign-in, LinkedIn import without a LinkedIn app, audits, your data
-- [Applications, CV, answers and the extension](docs/applications.md) — the tracker, statistics, Google Sheet, Gmail, CV editor, answer bank
-- [Architecture](docs/architecture.md) — the apps, the packages, and the rules between them
-- [Sources and the offer engine](docs/sources.md) — the source policy and how the engine reads boards
-- [Publishing](docs/publishing.md) — what publishing the packages to npm would take
-- [Chrome extension](apps/extension/README.md) · [Jobs lab](apps/jobs-lab/README.md) · [Product plans](docs/product) · [Source packs](packages/job-index/sources)
+- [Configuration and running](apps/resume-engine-optimization/docs/configuration.md) — every command, every environment variable, Docker Compose, tests
+- [Accounts, profile and privacy](apps/resume-engine-optimization/docs/accounts.md) — sign-in, LinkedIn import without a LinkedIn app, audits, your data
+- [Applications, CV, answers and the extension](apps/resume-engine-optimization/docs/applications.md) — the tracker, statistics, Google Sheet, Gmail, CV editor, answer bank
+- [Architecture](apps/resume-engine-optimization/docs/architecture.md) — the apps, the packages, and the rules between them
+- [Sources and the offer engine](apps/jobs-lab/docs/sources.md) — the source policy and how the engine reads boards
+- [Publishing](apps/resume-engine-optimization/docs/publishing.md) — what publishing the packages to npm would take
+- [Chrome extension](apps/reo-extension/README.md) · [Jobs lab](apps/jobs-lab/README.md) · [Product plans](apps/resume-engine-optimization/docs/product) · [Source packs](apps/jobs-lab/packages/job-index/sources)
 - [Changelog](CHANGELOG.md) — every change by date; the app shows the same list at `/changelog`
 
 ## Contributing
@@ -135,10 +135,10 @@ npm run build       # production build, as CI runs it
 npm run jobs-lab    # the engine's test bench on 127.0.0.1:43125; npm run jobs-lab:smoke reads real boards
 ```
 
-The tests use a database next to the one in `.env`, with `_test` added to its name (`node scripts/test-db.mjs url` prints it; `TEST_DATABASE_URL` overrides it). CI runs lint, types, every test pack and the build on each pull request. The project uses npm; `package-lock.json` is the lockfile. The UI is Polish by default with an English switch; copy lives in `apps/newrole/src/app/i18n`. A change people can notice gets a line under Unreleased in [CHANGELOG.md](CHANGELOG.md).
+The tests use a database next to the one in `.env`, with `_test` added to its name (`node scripts/test-db.mjs url` prints it; `TEST_DATABASE_URL` overrides it). CI runs lint, types, every test pack and the build on each pull request. The project uses npm; `package-lock.json` is the lockfile. The UI is Polish by default with an English switch; copy lives in `apps/resume-engine-optimization/src/app/i18n`. A change people can notice gets a line under Unreleased in [CHANGELOG.md](CHANGELOG.md).
 
 ## Status and licence
 
-newrole.it is in active development and runs locally first. Privacy and terms are drafts pending legal review, and the source policy is documented, not legal advice. Keeping the whole text of an offer a person added, and showing it to them, is new in this version; [docs/product/plan-p0.md](docs/product/plan-p0.md) §3 records the earlier decision to keep 300 characters and asks for a lawyer's view before a public version.
+newrole.it is in active development and runs locally first. Privacy and terms are drafts pending legal review, and the source policy is documented, not legal advice. Keeping the whole text of an offer a person added, and showing it to them, is new in this version; [apps/resume-engine-optimization/docs/product/plan-p0.md](apps/resume-engine-optimization/docs/product/plan-p0.md) §3 records the earlier decision to keep 300 characters and asks for a lawyer's view before a public version.
 
 Licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`). If you change it and let other people use it over a network, you have to offer them your source.

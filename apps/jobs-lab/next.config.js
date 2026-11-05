@@ -1,5 +1,5 @@
-const { REPO_ROOT, loadRootEnv } = require("../../scripts/root-env.js")
-const { workspacePackages } = require("../../scripts/workspaces.js")
+const { REPO_ROOT, loadRootEnv } = require("./scripts/root-env.js")
+const { workspacePackages } = require("./scripts/workspace-packages.js")
 
 // .env lives in the repository root, next to every app (scripts/root-env.js).
 loadRootEnv()
