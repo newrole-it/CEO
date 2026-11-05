@@ -60,19 +60,6 @@ export function AddOffer({
   const set = (key: keyof typeof EMPTY) => (event: { target: { value: string } }) =>
     setForm((value) => ({ ...value, [key]: event.target.value }))
 
-  async function check(event: React.FormEvent) {
-    event.preventDefault()
-    await read(url)
-  }
-
-  useEffect(() => {
-    if (!initialUrl || started.current) return
-    started.current = true
-    void read(initialUrl)
-    // read once, for the link the page was opened with
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialUrl])
-
   async function read(value: string) {
     setError(null)
     if (!value.trim()) {
@@ -109,6 +96,19 @@ export function AddOffer({
     }
     setPending(false)
   }
+
+  async function check(event: React.FormEvent) {
+    event.preventDefault()
+    await read(url)
+  }
+
+  useEffect(() => {
+    if (!initialUrl || started.current) return
+    started.current = true
+    void read(initialUrl)
+    // read once, for the link the page was opened with
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl])
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
