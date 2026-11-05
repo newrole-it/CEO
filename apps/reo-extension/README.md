@@ -34,6 +34,8 @@ Na `/connect/extension` i `/setup` rozszerzenie mówi stronie, że jest zainstal
 - Na znanych ATS (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, SmartRecruiters, Personio, Workday i inne) pokazuje panel „Wypełnij z newrole.it”.
 - Na innych stronach kliknij „Wypełnij formularz na tej stronie” w popupie albo włącz „Działaj na wszystkich stronach”.
 - Fioletowa ramka: wartość z profilu, CV albo bazy odpowiedzi. Żółta ramka: szkic AI, który trzeba sprawdzić.
+- Do pola na CV trafia CV napisane pod tę ofertę, a gdy go nie ma, domyślne.
+- List motywacyjny: gdy formularz ma na niego pole (tekst albo plik), aplikacja czyta całą ofertę i pisze list pod tę ofertę i firmę z Twojego CV, na wzór 3 ostatnich listów (z „Moich CV” i wysłanych w formularzach). Ofertę zna z indeksu albo czyta z jej adresu tak jak „Dodaj ofertę”, a wtedy list zostaje jako list tej oferty w newrole.it i panel ma do niego link. Gdy oferta ma już list, dostaje ten list. Gdy adresu nie da się przeczytać, list powstaje z tekstu otwartej strony i nigdzie się nie zapisuje. Pole tekstowe dostaje tekst przycięty do limitu pola, a pole na plik PDF, ale tylko gdy formularz nie ma pola tekstowego na list. Pisanie trwa dłużej, niż Chrome czeka na odpowiedź (30 s), więc rozszerzenie wypełnia resztę od razu i co 2 s pyta aplikację o list (`GET /api/ext/letter`), najdłużej 4 minuty. Pole na list polecający albo referencje (np. „Reference letter”, „Letter of recommendation”) nie dostaje listu motywacyjnego.
 - Po wysłaniu formularza aplikacja zapisuje się w trackerze razem z pytaniami o pracę i Twoimi odpowiedziami, także z wcześniejszych kroków formularza. Podane wynagrodzenie trafia do osobnej kolumny. Automatyczne śledzenie wyłączysz w popupie.
 - Poza znanymi ATS automatyczny zapis obejmuje tylko prawdziwy formularz albo okno, które wygląda na aplikację (plik do wgrania albo słowa takie jak „aplikuj”, „rekrutacja”, „job”). W pozostałych przypadkach użyj „Zapisz jako aplikację”.
 
@@ -75,7 +77,7 @@ Rozszerzenie nie ma uprawnień do Gmaila: skrypt trafia do karty dopiero po klik
 
 Tylko do Twojej aplikacji (domyślnie `127.0.0.1:43123`):
 
-- Przy wypełnianiu: etykiety pól formularza, adres i tytuł strony oraz do 12 000 znaków tekstu strony.
+- Przy wypełnianiu: etykiety pól formularza, adres i tytuł strony oraz do 12 000 znaków tekstu strony. Gdy formularz ma pole na list motywacyjny, aplikacja czyta ofertę spod tego adresu sama (API systemu rekrutacji albo dane `JobPosting` strony, z limitem odczytów linków na godzinę).
 - Po wysłaniu aplikacji: adres, tytuł i tekst strony oraz odpowiedzi na pytania o pracę, w tym podane wynagrodzenie, okres wypowiedzenia i datę rozpoczęcia. Danych kontaktowych, linków do profili i plików nie wysyła.
 - Sprawdzenie „już aplikowano”: adres otwartej strony oraz firma i stanowisko, jeśli strona je podaje (na znanych ATS tytuł okna). Dzieje się to na znanych ATS i portalach z ofertami, a przy zgodzie na wszystkie strony także na innych. Na LinkedIn tylko na stronach ofert (`/jobs/view/…` albo `currentJobId=` w adresie), nigdy na profilach, w feedzie ani w wiadomościach.
 - Po kliknięciu „Dodaj tę ofertę do newrole.it”: adres otwartej karty. Ofertę czyta aplikacja.

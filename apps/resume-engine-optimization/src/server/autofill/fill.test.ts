@@ -10,6 +10,7 @@ vi.mock("src/server/applications/service", () => ({
 vi.mock("src/server/cv/service", () => ({ defaultCv: vi.fn(), tailoredCv: vi.fn() }))
 vi.mock("src/server/profile/applicant", () => ({ getApplicant: vi.fn() }))
 vi.mock("src/server/llm/client", () => ({ createLlmClient: vi.fn(() => null) }))
+vi.mock("./letter", () => ({ startFormLetter: vi.fn(() => "letter1") }))
 
 import { draftAnswers } from "src/server/answers/service"
 import { findApplicationByUrl, findJobByUrl } from "src/server/applications/service"
@@ -17,6 +18,7 @@ import { defaultCv, tailoredCv } from "src/server/cv/service"
 import { createLlmClient } from "src/server/llm/client"
 import { getApplicant } from "src/server/profile/applicant"
 import { fillForm, planFill } from "./fill"
+import { startFormLetter } from "./letter"
 
 const mocked = (fn: unknown) => fn as ReturnType<typeof vi.fn>
 
@@ -48,6 +50,7 @@ beforeEach(() => {
   mocked(defaultCv).mockReset().mockResolvedValue({ id: "cv1", title: "CV PL" })
   mocked(tailoredCv).mockReset().mockResolvedValue(null)
   mocked(getApplicant).mockReset().mockResolvedValue({ saved: {}, effective: applicant })
+  mocked(startFormLetter).mockClear()
 })
 
 describe("planFill", () => {
@@ -75,10 +78,33 @@ describe("planFill", () => {
     expect(value("b")).toMatchObject({ value: "rafal@example.com", source: "profile" })
     expect(value("c")).toMatchObject({ value: "Poland", source: "profile" })
     expect(value("d")).toMatchObject({ value: "No", kind: "workAuthorization", source: "profile" })
-    expect(value("e")).toMatchObject({ kind: "resume", source: "cv" })
-    expect(value("h")).toMatchObject({ kind: "coverLetter", source: "skip" })
+    expect(value("e")).toMatchObject({ kind: "resume", source: "cv", documentId: "cv1" })
+    expect(value("h")).toMatchObject({ kind: "coverLetter", source: "letter", value: "" })
+    expect(plan.letter).toEqual({})
     expect(plan.questions.map((question) => question.key)).toEqual(["f", "g"])
     expect(plan.questions[0]).toMatchObject({ question: "Why do you want to join?", maxChars: 500 })
+  })
+
+  it("leaves the whole letter to the letter writer, a choice about it to the drafts", () => {
+    const plan = planFill(
+      [
+        f("a", "Cover letter", { type: "textarea", maxLength: 3000 }),
+        f("b", "List motywacyjny", { type: "contenteditable", maxLength: 1500 }),
+        f("c", "Cover Letter", { type: "file" }),
+        f("d", "Cover letter", { type: "select", options: ["Upload", "Type it"] }),
+        f("e", "Reference letter", { type: "file" }),
+        f("f", "Letter of recommendation", { type: "textarea" }),
+      ],
+      applicant,
+      null
+    )
+    for (const key of ["a", "b", "c"]) {
+      expect(plan.values.get(key)).toMatchObject({ kind: "coverLetter", source: "letter" })
+    }
+    expect(plan.letter).toEqual({ maxChars: 1500 })
+    expect(plan.questions.map((question) => question.key)).toEqual(["d"])
+    expect(plan.values.get("e")).toMatchObject({ kind: "other", source: "skip" })
+    expect(plan.values.get("f")).toMatchObject({ kind: "other", source: "skip" })
   })
 
   it("skips never-fill fields, and a CV field when there is no CV", () => {
@@ -95,6 +121,7 @@ describe("planFill", () => {
       null
     )
     expect(plan.questions).toEqual([])
+    expect(plan.letter).toBeNull()
     for (const key of ["a", "b", "c", "d", "e", "f"]) {
       expect(plan.values.get(key)).toMatchObject({ value: "", source: "skip" })
     }
@@ -161,11 +188,40 @@ describe("fillForm", () => {
       { key: "q2", value: "Szkic o migracji.", kind: "openQuestion", source: "ai" },
       { key: "q3", value: "", kind: "openQuestion", source: "skip" },
       { key: "q4", value: "Yes", kind: "choiceQuestion", source: "ai" },
-      { key: "cv", value: "CV PL", kind: "resume", source: "cv" },
+      { key: "cv", value: "CV PL", kind: "resume", source: "cv", documentId: "cv1" },
       { key: "eeo", value: "", kind: "eeo", source: "skip" },
     ])
     expect(result.job).toEqual({ company: "Acme", title: "Staff Engineer" })
     expect(result.applied).toEqual({ id: "app1", status: "SCREENING", appliedAt })
+    expect(result.letter).toBeNull()
+    expect(startFormLetter).not.toHaveBeenCalled()
+  })
+
+  it("starts the cover letter and answers before it is written", async () => {
+    const result = await fillForm({
+      userId: 2,
+      page,
+      fields: [
+        f("why", "Why us?", { type: "textarea" }),
+        f("letter", "Cover letter", { type: "textarea", maxLength: 2500 }),
+      ],
+    })
+    expect(result.letter).toEqual({ id: "letter1" })
+    expect(result.values[1]).toEqual({
+      key: "letter",
+      value: "",
+      kind: "coverLetter",
+      source: "letter",
+    })
+    expect(mocked(draftAnswers).mock.calls[0][0].questions).toHaveLength(1)
+    const started = mocked(startFormLetter).mock.calls[0][0]
+    expect(started).toMatchObject({
+      userId: 2,
+      page: { url: "https://jobs.lever.co/acme/uuid" },
+      maxChars: 2500,
+    })
+    // what fill read about the posting, for a page the index does not know
+    expect(await started.job).toEqual({ company: "Acme", title: "Staff Engineer", location: null })
   })
 
   it("does not call the model when no field needs it", async () => {

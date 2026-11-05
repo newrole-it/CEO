@@ -9,7 +9,7 @@ export const offerAddPl = {
     "Wklej link do ogłoszenia. Pobierzemy całą treść, a potem dopasujesz do niej CV i list motywacyjny.",
   "oa.url": "Link do oferty",
   "oa.urlHint":
-    "Najlepiej ze strony firmy albo jej systemu rekrutacji. Linków z LinkedIn nie czytamy.",
+    "Najlepiej ze strony firmy albo jej systemu rekrutacji. Z LinkedIn i portali z ofertami bierzemy tylko link, a firmę, stanowisko i treść uzupełnisz w formularzu.",
   "oa.check": "Odczytaj ofertę",
   "oa.reading": "Czytam ofertę. To może potrwać kilkanaście sekund…",
   "oa.read": "Odczytaliśmy ofertę ze strony. Sprawdź dane i treść, potem ją dodaj.",
@@ -40,8 +40,6 @@ export const offerAddPl = {
   "oa.tailor": "Dostosuj CV i list",
   "oa.empty": "Nie ma tu tej oferty? Dodaj ją z linku",
   "oa.err.badUrl": "To nie wygląda na link do oferty.",
-  "oa.err.refused":
-    "Tej strony nie czytamy ani nie zapisujemy, bo to nie strona firmy (np. LinkedIn, serwisy społecznościowe, Indeed, Glassdoor). Znajdź tę ofertę na stronie firmy i wklej tamten link.",
   "oa.err.read": "Nie udało się sprawdzić linku. Spróbuj jeszcze raz za chwilę.",
   "oa.err.save": "Nie udało się dodać oferty. Spróbuj jeszcze raz.",
   "src.added": "Dodana przez Ciebie",
@@ -54,7 +52,8 @@ export const offerAddEn: Record<keyof typeof offerAddPl, string> = {
   "oa.lead":
     "Paste the link to a job posting. We read the whole text, then you tailor your CV and cover letter to it.",
   "oa.url": "Offer link",
-  "oa.urlHint": "Best from the company's site or its ATS. LinkedIn links are not read.",
+  "oa.urlHint":
+    "Best from the company's site or its ATS. From LinkedIn and job boards only the link is taken, and you fill in the company, role and text.",
   "oa.check": "Read the offer",
   "oa.reading": "Reading the offer. This can take a dozen seconds or so…",
   "oa.read": "We read the offer from the page. Check the details and the text, then add it.",
@@ -85,8 +84,6 @@ export const offerAddEn: Record<keyof typeof offerAddPl, string> = {
   "oa.tailor": "Tailor CV and letter",
   "oa.empty": "Offer not here? Add it from its link",
   "oa.err.badUrl": "That doesn't look like a link to an offer.",
-  "oa.err.refused":
-    "This site is never read or stored, because it is not a company's own page (e.g. LinkedIn, social sites, Indeed, Glassdoor). Find the offer on the company's own site and paste that link.",
   "oa.err.read": "The link could not be checked. Try again in a moment.",
   "oa.err.save": "The offer could not be added. Try again.",
   "src.added": "Added by you",

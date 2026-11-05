@@ -1,0 +1,12 @@
+{
+  "lastTask": null,
+  "recentSources": [
+    {
+      "source": "skill",
+      "ref": "safe-refactor"
+    }
+  ],
+  "skillUsage": {
+    "safe-refactor": 1
+  }
+}

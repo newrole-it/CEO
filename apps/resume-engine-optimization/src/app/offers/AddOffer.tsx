@@ -71,7 +71,6 @@ export function AddOffer({
     try {
       const result = await invoke(addOfferByLink, { url: value.trim() })
       if (result.kind === "invalid") setError(t("oa.err.badUrl"))
-      else if (result.kind === "refused") setError(t("oa.err.refused"))
       else if (result.kind === "added") {
         toast.show({
           message: result.textChars

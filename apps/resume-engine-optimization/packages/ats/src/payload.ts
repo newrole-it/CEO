@@ -1,12 +1,11 @@
 import { z } from "zod"
 import { stripPersonalData } from "@newrole/offers/hygiene"
 import { policyFor } from "@newrole/offers/polite"
-import { isPolishBoardHost } from "@newrole/offers/polish-boards"
 import { htmlToText } from "@newrole/offers/text"
 import { assertSafeUrl } from "@newrole/offers/url-safety"
 import { buildListedJob } from "./adapters/parse"
+import { isAggregatorHost } from "./careers-detect"
 import { normalizeCompanyName, normalizeWhitespace } from "./normalize"
-import { refusedHost } from "./read"
 import type { ListedJob } from "./schemas"
 
 /**
@@ -71,10 +70,9 @@ export function payloadToJob(
     return { error: error instanceof Error ? error.message : "Invalid URL" }
   }
   const host = url.hostname.toLowerCase()
-  const refused = refusedHost(host)
-  if (refused) return { error: refused }
   const policy = policyFor(url.toString())
-  const linkOnly = isPolishBoardHost(host) || policy.linkOnly
+  // an offer on LinkedIn or a job board: the index keeps its title and link, not its text
+  const linkOnly = isAggregatorHost(host) || policy.linkOnly
   const description = data.description
     ? stripPersonalData(htmlToText(data.description)).slice(0, 20_000)
     : undefined

@@ -1,7 +1,0 @@
-# Common Crawl: notice
-
-`npm run catalog -- discover` (`src/server/catalog/commoncrawl.ts`) reads Common Crawl's URL index to learn which companies have a job board on which platform. It uses the archived addresses only ("kubo.traffit.com/…" names the Traffit board "kubo"), never the archived pages. Each board found is a candidate: it reaches the offer index only after this app's own check on the platform (`src/server/catalog/verify.ts`), which honours that platform's robots.txt and terms like any other read.
-
-Source: Common Crawl Foundation, a California 501(c)(3) non-profit, index files at `https://data.commoncrawl.org/cc-index/collections/<crawl>/indexes/` (CC-MAIN-2026-43, -39 and -34 so far). The index server (index.commoncrawl.org) asks not to be overloaded and points to these files for offline use; the app downloads `cluster.idx` once per crawl and then only the index blocks that hold a platform's addresses, one at a time with a pause.
-
-Terms: https://commoncrawl.org/terms-of-use (read 2026-11-03). They grant a limited, non-exclusive licence "for the purpose of enabling a new wave of innovation, education and research", do not prohibit commercial use but recommend legal advice before it, require respecting third parties' copyrights and rights, note that crawled content may be subject to its owners' terms, and forbid disrupting the service. UNVERIFIED: whether this use needs anything beyond those terms; legal advice is recommended by Common Crawl itself.

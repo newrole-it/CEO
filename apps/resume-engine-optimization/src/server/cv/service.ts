@@ -440,24 +440,30 @@ export async function cvPdf(
   }
   const content = row.content == null ? null : parseCvContent(row.content)
   if (!content) return null
-  const name = documentPdfName(
-    content,
-    row.docType === "LETTER" ? "LETTER" : "CV",
-    cvLocale(row.language)
-  )
+  const docType = row.docType === "LETTER" ? "LETTER" : "CV"
+  const name = documentPdfName(content, docType, cvLocale(row.language))
   if (row.pdf && row.pdfUpdatedAt && row.pdfUpdatedAt >= row.updatedAt) {
     return { bytes: Buffer.from(row.pdf), name }
   }
-  const bytes = await renderPdfFromHtml(
-    renderCvHtml(content, { print: true, lang: cvLocale(row.language) })
-  )
-  if (!bytes) return null
+  const rendered = await contentPdf(content, docType, cvLocale(row.language))
+  if (!rendered) return null
+  const { bytes } = rendered
   // only if nothing changed while Chrome ran; keep updatedAt so the cache counts as current
   await db.cvDocument.updateMany({
     where: { id: row.id, userId, updatedAt: row.updatedAt },
     data: { pdf: bytes, pdfName: name, pdfUpdatedAt: new Date(), updatedAt: row.updatedAt },
   })
   return { bytes, name }
+}
+
+/** A document's PDF from its content, stored nowhere: a letter written for a page outside the index. */
+export async function contentPdf(
+  content: CvContent,
+  docType: CvDocType,
+  language: CvLanguage
+): Promise<{ bytes: Buffer; name: string } | null> {
+  const bytes = await renderPdfFromHtml(renderCvHtml(content, { print: true, lang: language }))
+  return bytes ? { bytes, name: documentPdfName(content, docType, language) } : null
 }
 
 /** Plain text of a CV, for prompts. */

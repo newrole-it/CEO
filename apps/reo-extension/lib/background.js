@@ -108,13 +108,23 @@ function toBase64(buffer) {
   return btoa(binary)
 }
 
-async function cvFile(id) {
-  const query = id ? `?id=${encodeURIComponent(id)}` : ""
-  const result = await api(`/api/ext/cv${query}`, {}, "pdf")
+/** A PDF from the app, as base64 for the content script to attach. */
+async function pdfFile(path, fallbackName) {
+  const result = await api(path, {}, "pdf")
   if (!result.ok) return result
-  const name = decodeURIComponent(result.response.headers.get("X-Cv-Name") || "CV.pdf")
+  const name = decodeURIComponent(result.response.headers.get("X-Cv-Name") || fallbackName)
   const buffer = await result.response.arrayBuffer()
   return { ok: true, data: { base64: toBase64(buffer), name, type: "application/pdf" } }
+}
+
+function cvFile(id) {
+  const query = id ? `?id=${encodeURIComponent(id)}` : ""
+  return pdfFile(`/api/ext/cv${query}`, "CV.pdf")
+}
+
+/** The cover letter a fill started, by the id the app gave it. */
+function letterPath(path, id) {
+  return `${path}?id=${encodeURIComponent(String(id || "").slice(0, 100))}`
 }
 
 // ---------------------------------------------------------------------- badge
@@ -416,6 +426,10 @@ async function handle(message, sender) {
       return { ok: true }
     case "cv":
       return cvFile(message.id)
+    case "letter":
+      return api(letterPath("/api/ext/letter", message.id))
+    case "letterFile":
+      return pdfFile(letterPath("/api/ext/letter/file", message.id), "Cover_Letter.pdf")
     case "takeToast":
       return { ok: true, data: await takeToast(tabId) }
     case "setToken": {

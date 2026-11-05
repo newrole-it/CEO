@@ -13,6 +13,9 @@ export function startContent() {
 
   const PURPLE = "#5b3df5"
   const YELLOW = "#e6a700"
+  // The app writes the letter apart: Chrome stops waiting for a response after 30 s.
+  const LETTER_POLL_MS = 2000
+  const LETTER_WAIT_MS = 4 * 60 * 1000
 
   const state = {
     config: { connected: false, apiBase: "http://127.0.0.1:43123", autoTrack: true },
@@ -75,6 +78,7 @@ export function startContent() {
     main: null,
     save: null,
     message: null,
+    letter: null,
     list: null,
     toast: null,
   }
@@ -115,10 +119,12 @@ export function startContent() {
     ui.save.addEventListener("click", () => void saveManually())
     ui.message = element("div", "msg hidden")
     ui.message.setAttribute("aria-live", "polite")
+    ui.letter = element("div", "msg hidden")
+    ui.letter.setAttribute("aria-live", "polite")
     ui.list = element("ul", "list hidden")
     ui.toast = element("div", "ok hidden")
     ui.toast.setAttribute("role", "status")
-    panel.append(head, ui.main, ui.save, ui.message, ui.list, ui.toast)
+    panel.append(head, ui.main, ui.save, ui.message, ui.letter, ui.list, ui.toast)
     shadow.append(panel)
     document.documentElement.append(host)
     ui.host = host
@@ -153,6 +159,19 @@ export function startContent() {
     link.target = "_blank"
     link.rel = "noreferrer noopener"
     ui.toast.append("Zapisano w trackerze: ", link)
+  }
+
+  /** The cover letter's line, with a link to the letter in the app when it is kept there. */
+  function showLetter(text, tone, documentId) {
+    if (!ui.letter) return
+    ui.letter.textContent = text || ""
+    ui.letter.className = `${tone === "error" ? "err" : "msg"}${text ? "" : " hidden"}`
+    if (!text || !documentId) return
+    const link = element("a", "link", "Otwórz list w newrole.it")
+    link.href = appLink(`/cv/${encodeURIComponent(documentId)}`)
+    link.target = "_blank"
+    link.rel = "noreferrer noopener"
+    ui.letter.append(" ", link)
   }
 
   function showDrafts(drafts) {
@@ -227,6 +246,7 @@ export function startContent() {
     refreshPanel()
     say("Czytam formularz…")
     showDrafts([])
+    showLetter("")
     try {
       const collection = F.collectFields(root)
       await F.enrichComboboxes(collection.entries)
@@ -250,6 +270,18 @@ export function startContent() {
         state.job = { company: result.data.job.company, title: result.data.job.title }
         ui.title.textContent = `${result.data.job.company} · ${result.data.job.title}`
       }
+      const letterId = result.data.letter?.id
+      if (letterId && summary.letters.length) {
+        showLetter("Piszę list motywacyjny pod tę ofertę. To może chwilę potrwać…")
+        const done = await waitForLetter(letterId)
+        if (!done.letter) {
+          showLetter(done.error, "error")
+        } else {
+          const outcome = await fillLetter(summary.letters, letterId, done.letter)
+          showDrafts([...summary.drafts, ...outcome.drafts])
+          showLetter(letterLine(done.letter, outcome), outcome.error ? "error" : "", outcome.link)
+        }
+      }
       return { ok: true }
     } finally {
       state.busy = false
@@ -267,8 +299,11 @@ export function startContent() {
       skipped: 0,
       cvError: null,
       drafts: [],
+      // Filled once the letter is written: { entry }
+      letters: [],
     }
-    let cv = null
+    // By CV id: the CV written for this offer, or the default one when there is none.
+    const cvs = new Map()
     for (const value of data.values) {
       const entry = collection.entries.get(value.key)
       if (!entry) continue
@@ -277,12 +312,18 @@ export function startContent() {
         summary.skipped += 1
         continue
       }
+      if (value.source === "letter") {
+        if (entry.el && !F.neverTouch(entry.field)) summary.letters.push({ entry })
+        continue
+      }
       if (value.source === "cv") {
         if (F.readValue(entry)) {
           summary.kept += 1
           continue
         }
-        if (!cv) cv = await send("cv", {})
+        const id = value.documentId || ""
+        if (!cvs.has(id)) cvs.set(id, await send("cv", id ? { id } : {}))
+        const cv = cvs.get(id)
         if (!cv.ok) {
           summary.cvError = cv.status === 404 ? "Nie masz jeszcze CV w PDF." : errorText(cv)
           continue
@@ -316,6 +357,83 @@ export function startContent() {
     if (summary.cvError) text += ` ${summary.cvError}`
     if (applied) text += ` Już aplikowano: ${formatDate(applied.appliedAt)}.`
     return text
+  }
+
+  // -------------------------------------------------------------------- cover letter
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  /** The letter the fill started, asked for every 2 s: { letter } or { error }. */
+  async function waitForLetter(id) {
+    const until = Date.now() + LETTER_WAIT_MS
+    while (Date.now() < until) {
+      await wait(LETTER_POLL_MS)
+      const result = await send("letter", { id })
+      if (result.status === 404)
+        return { error: "Aplikacja nie ma już tego listu. Wypełnij formularz jeszcze raz." }
+      if (!result.ok) return { error: errorText(result) }
+      if (result.data?.status === "done") return { letter: result.data.letter }
+      if (result.data?.status === "failed") return { error: result.data.error }
+    }
+    return { error: "Pisanie listu motywacyjnego trwa zbyt długo. Wypełnij formularz jeszcze raz." }
+  }
+
+  /**
+   * The letter in its text boxes, marked as a draft to read. One letter per application: the PDF
+   * goes to a file field only when the form has no text box for the letter.
+   */
+  async function fillLetter(letters, id, letter) {
+    const outcome = { filled: 0, attached: 0, kept: 0, drafts: [], error: null, link: null }
+    const live = letters.map(({ entry }) => entry).filter((entry) => entry.el.isConnected)
+    const boxes = live.filter((entry) => entry.el.type !== "file")
+    for (const entry of boxes) {
+      const result = await F.fillEntry(entry, letter.text)
+      if (result === "filled") {
+        outcome.filled += 1
+        outcome.drafts.push({ label: entry.field.label, target: mark(entry, "ai") })
+      } else if (result === "exists") {
+        outcome.kept += 1
+      }
+    }
+    if (!boxes.length) {
+      for (const entry of live) {
+        if (F.readValue(entry)) {
+          outcome.kept += 1
+          continue
+        }
+        const file = await send("letterFile", { id })
+        if (!file.ok) {
+          outcome.error =
+            file.status === 404
+              ? "Nie udało się zrobić PDF z listu motywacyjnego."
+              : errorText(file)
+          break
+        }
+        F.fillFile(entry.el, base64File(file.data))
+        outcome.attached += 1
+        outcome.drafts.push({ label: entry.field.label, target: mark(entry, "ai") })
+      }
+    }
+    if (letter.documentId) outcome.link = letter.documentId
+    return outcome
+  }
+
+  function letterLine(letter, outcome) {
+    if (outcome.error) return outcome.error
+    if (!outcome.filled && !outcome.attached)
+      return outcome.kept ? "List motywacyjny: w polu już coś jest, więc go nie zmieniam." : ""
+    const many = letter.pastLetters
+    const how = !letter.created
+      ? "ten, który masz już dla tej oferty"
+      : many > 1
+      ? `nowy, pod tę ofertę, na wzór ${many} ostatnich listów`
+      : many === 1
+      ? "nowy, pod tę ofertę, na wzór Twojego ostatniego listu"
+      : "nowy, pod tę ofertę"
+    const where = outcome.attached && !outcome.filled ? " (dołączony jako PDF)" : ""
+    return `List motywacyjny: ${how}${where}. Przeczytaj go przed wysłaniem.`
   }
 
   async function onMainClick() {

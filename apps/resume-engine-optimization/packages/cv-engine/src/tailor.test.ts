@@ -133,6 +133,35 @@ describe("writeCoverLetter", () => {
     expect(llm.calls[0].user).toMatch(/^Write in: Polish/)
   })
 
+  it("writes after the candidate's past letters, and counts their facts as the candidate's", async () => {
+    const llm = fakeLlm({ paragraphs: ["Skróciłem wdrożenia o 73%."] })
+    const result = await writeCoverLetter({
+      llm,
+      cv: syntheticCv(1),
+      offer,
+      language: "pl",
+      context: "",
+      pastLetters: [
+        { company: "Beta", title: "SRE", text: "W Becie skróciłem wdrożenia o 73%." },
+        { company: null, title: null, text: "List bez firmy." },
+      ],
+      maxChars: 900,
+    })
+    const user = llm.calls[0].user
+    expect(user).toContain("<untrusted_past_letter>\nWritten for: Beta\nRole: SRE\n\nW Becie")
+    expect(user).toContain("<untrusted_past_letter>\nList bez firmy.\n</untrusted_past_letter>")
+    expect(user).toContain("must stay under 900 characters")
+    expect(llm.calls[0].system).toContain("never carry over another company's name")
+    expect(result?.notes.unverified).not.toContain("73")
+  })
+
+  it("says nothing of past letters or a limit when there are none", async () => {
+    const llm = fakeLlm({ paragraphs: ["List."] })
+    await writeCoverLetter({ llm, cv: syntheticCv(1), offer, language: "en", context: "" })
+    expect(llm.calls[0].user).not.toContain("past_letter")
+    expect(llm.calls[0].user).not.toContain("must stay under")
+  })
+
   it("returns null without a reply", async () => {
     const result = await writeCoverLetter({
       llm: fakeLlm(null),

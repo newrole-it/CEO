@@ -164,6 +164,9 @@ const RELOCATION = /\b(relocat\w*|relokac\w*|przeprowadz\w*|willing to move|move
 const RESUME = /\b(resume|cv|curriculum vitae|zyciorys|resum)\b/
 const COVER_LETTER =
   /\b(cover letter|coverletter|motivation letter|motivational letter|list motywacyjny|listu motywacyjnego|message to (the )?hiring (manager|team)|hiring manager message|wiadomosc do rekrutera|letter)\b/
+/** Someone else's letter about the person: never the cover letter, and never the CV. */
+const OTHER_LETTER =
+  /\b(recommendation|reference|references|referral|polecajac\w*|referencyjn\w*|rekomendac\w*)\b/
 const ATTACHMENT =
   /\b(attach|attachment|upload|zalacz\w*|zalacznik\w*|plik|file|dokument\w*|documents|przeslij|dodaj)\b/
 const HOW_HEARD =
@@ -184,7 +187,7 @@ function kindFromText(text: string, field: FormField): FieldKind | null {
   if (medium && CONFIRM_EMAIL.test(text)) return "email"
   if (medium && EMAIL.test(text) && !/\b(referr\w*|polecaj\w*|manager)\b/.test(text)) return "email"
   if (HOW_HEARD.test(text)) return "howHeard"
-  if (COVER_LETTER.test(text)) return "coverLetter"
+  if (COVER_LETTER.test(text)) return OTHER_LETTER.test(text) ? "other" : "coverLetter"
   if (
     RESUME.test(text) &&
     (field.type === "file" || /\b(upload|attach|zalacz|przeslij|dodaj)\b/.test(text))
@@ -282,7 +285,9 @@ export function classifyField(field: FormField): FieldKind {
   // 2. Files: CV or cover letter; anything else stays untouched.
   if (type === "file") {
     const text = [label, placeholder, attrs, section].join(" ")
-    if (COVER_LETTER.test(text)) return "coverLetter"
+    // the field's own words: a section "Documents and references" holds a cover letter too
+    const own = [label, placeholder, attrs].join(" ")
+    if (COVER_LETTER.test(text)) return OTHER_LETTER.test(own) ? "other" : "coverLetter"
     if (RESUME.test(text)) return "resume"
     if (
       ATTACHMENT.test(text) &&

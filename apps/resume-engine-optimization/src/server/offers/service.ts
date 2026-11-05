@@ -1,6 +1,5 @@
 import { z } from "zod"
 import db from "db"
-import { refusedHost } from "@newrole/ats/read"
 import { isAggregatorHost } from "@newrole/offers/hosts"
 import { stripPersonalData } from "@newrole/offers/hygiene"
 import { isPolishBoardHost } from "@newrole/offers/polish-boards"
@@ -121,8 +120,6 @@ async function ensureText(userId: number, jobId: string): Promise<void> {
 
 export type NewOfferCheck =
   | { kind: "invalid" }
-  /** LinkedIn and social sites, which are never read or stored. */
-  | { kind: "refused" }
   /** Kept for the person: known before (`added` false), or read and stored just now. */
   | {
       kind: "added"
@@ -168,7 +165,6 @@ export async function addOfferByLink(
 ): Promise<NewOfferCheck> {
   const url = offerLink(raw)
   if (!url) return { kind: "invalid" }
-  if (refusedHost(new URL(url).hostname.toLowerCase())) return { kind: "refused" }
   const find = deps.findByUrl ?? findJobByUrl
   for (const candidate of postingUrlCandidates(url)) {
     const job = await find(candidate)

@@ -338,6 +338,156 @@ describe("lib/content.js", () => {
     expect(added[0].type).toBe("application/pdf")
   })
 
+  describe("the cover letter", () => {
+    /** The letter is asked for every 2 s; one round is enough here. */
+    async function afterFirstPoll() {
+      await flush()
+      await new Promise((resolve) => setTimeout(resolve, 2100))
+      await flush()
+    }
+
+    function addField(html: string) {
+      document.getElementById("application_form")!.insertAdjacentHTML("beforeend", html)
+    }
+
+    const fill = (values: unknown[], id: string) => ({
+      ok: true,
+      data: {
+        values,
+        job: { company: "Acme", title: "Staff Engineer" },
+        applied: null,
+        letter: { id },
+      },
+    })
+
+    it("is written after the rest, filled in as a draft and linked in the app", async () => {
+      addField(
+        `<label for="cover_letter">Cover Letter</label><textarea id="cover_letter" name="cover_letter"></textarea>`
+      )
+      const asked: unknown[] = []
+      stubChrome((message) => {
+        if (message.type === "config") return connected()
+        if (message.type === "takeToast") return { ok: true, data: null }
+        if (message.type === "fill")
+          return fill(
+            [
+              { key: "email", value: "a@b.pl", kind: "email", source: "profile" },
+              { key: "cover_letter", value: "", kind: "coverLetter", source: "letter" },
+            ],
+            "L1"
+          )
+        if (message.type === "letter") {
+          asked.push(message.id)
+          const letter = {
+            text: "Szanowni Państwo,\n\nList.",
+            documentId: "doc1",
+            created: true,
+            pastLetters: 3,
+          }
+          return { ok: true, data: { status: "done", letter } }
+        }
+        return { ok: false }
+      })
+      await loadContent()
+      panelButton("Wypełnij").click()
+      await flush()
+      const letter = document.getElementById("cover_letter") as HTMLTextAreaElement
+      expect((document.getElementById("email") as HTMLInputElement).value).toBe("a@b.pl")
+      expect(letter.value).toBe("")
+      expect(panelText()).toContain("Piszę list motywacyjny pod tę ofertę")
+
+      await afterFirstPoll()
+      expect(asked).toEqual(["L1"])
+      expect(letter.value).toBe("Szanowni Państwo,\n\nList.")
+      expect(letter.style.outline).toContain("#e6a700")
+      expect(panelText()).toContain("nowy, pod tę ofertę, na wzór 3 ostatnich listów")
+      expect(panelText()).toContain("Cover Letter")
+      const link = shadow!.querySelector("a[href='http://127.0.0.1:43123/cv/doc1']")
+      expect(link?.textContent).toBe("Otwórz list w newrole.it")
+    })
+
+    it("goes as PDF where the form takes a file, next to the CV written for the offer", async () => {
+      const added: File[] = []
+      ;(globalThis as unknown as { DataTransfer: unknown }).DataTransfer = class {
+        files = added
+        items = { add: (file: File) => added.push(file) }
+      }
+      addField(`<label for="cover">Cover Letter</label><input id="cover" name="cover" type="file">`)
+      for (const id of ["resume", "cover"]) {
+        Object.defineProperty(document.getElementById(id), "files", {
+          configurable: true,
+          writable: true,
+          value: null,
+        })
+      }
+      const seen: Message[] = []
+      const pdf = (name: string) => ({
+        ok: true,
+        data: { base64: btoa("%PDF-1.7"), name, type: "application/pdf" },
+      })
+      stubChrome((message) => {
+        seen.push(message)
+        if (message.type === "config") return connected()
+        if (message.type === "takeToast") return { ok: true, data: null }
+        if (message.type === "cv") return pdf("CV_Acme.pdf")
+        if (message.type === "letterFile") return pdf("List_motywacyjny.pdf")
+        if (message.type === "letter") {
+          const letter = { text: "List.", documentId: null, created: true, pastLetters: 0 }
+          return { ok: true, data: { status: "done", letter } }
+        }
+        if (message.type === "fill")
+          return fill(
+            [
+              {
+                key: "resume",
+                value: "CV Acme",
+                kind: "resume",
+                source: "cv",
+                documentId: "cv-acme",
+              },
+              { key: "cover", value: "", kind: "coverLetter", source: "letter" },
+            ],
+            "L2"
+          )
+        return { ok: false }
+      })
+      await loadContent()
+      panelButton("Wypełnij").click()
+      await afterFirstPoll()
+      expect(seen.find((message) => message.type === "cv")).toMatchObject({ id: "cv-acme" })
+      expect(seen.find((message) => message.type === "letterFile")).toMatchObject({ id: "L2" })
+      expect(added.map((file) => file.name)).toEqual(["CV_Acme.pdf", "List_motywacyjny.pdf"])
+      expect(panelText()).toContain("nowy, pod tę ofertę (dołączony jako PDF)")
+      expect(shadow!.querySelector("a[href*='/cv/']")).toBeNull()
+    })
+
+    it("says why there is none, and leaves the field empty", async () => {
+      addField(
+        `<label for="cover_letter">Cover Letter</label><textarea id="cover_letter" name="cover_letter"></textarea>`
+      )
+      stubChrome((message) => {
+        if (message.type === "config") return connected()
+        if (message.type === "takeToast") return { ok: true, data: null }
+        if (message.type === "fill")
+          return fill(
+            [{ key: "cover_letter", value: "", kind: "coverLetter", source: "letter" }],
+            "L3"
+          )
+        if (message.type === "letter") {
+          const error = "Model nie jest skonfigurowany, więc nie napiszę listu."
+          return { ok: true, data: { status: "failed", error } }
+        }
+        return { ok: false }
+      })
+      await loadContent()
+      panelButton("Wypełnij").click()
+      await afterFirstPoll()
+      expect((document.getElementById("cover_letter") as HTMLTextAreaElement).value).toBe("")
+      expect(panelText()).toContain("Model nie jest skonfigurowany, więc nie napiszę listu.")
+      expect(panelButton("Wypełnij").disabled).toBe(false)
+    })
+  })
+
   it("records one submission, without personal data, and links to the tracker", async () => {
     const submitted: Message[] = []
     stubChrome((message) => {
@@ -1012,6 +1162,29 @@ describe("lib/background.js", () => {
       data: { name: "Rafał CV.pdf", type: "application/pdf" },
     })
     expect(atob((result.data as { base64: string }).base64)).toBe("%PDF")
+  })
+
+  it("asks for the cover letter a fill started, and fetches it as PDF", async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("/letter/file")
+        ? new Response("%PDF", {
+            headers: { "X-Cv-Name": encodeURIComponent("List_motywacyjny.pdf") },
+          })
+        : new Response(JSON.stringify({ status: "pending" }))
+    )
+    const { call } = await loadBackground()
+    expect(await call({ type: "letter", id: "L 1" })).toMatchObject({
+      ok: true,
+      data: { status: "pending" },
+    })
+    expect(fetchMock.mock.calls[0][0]).toBe("http://127.0.0.1:43123/api/ext/letter?id=L%201")
+    const file = await call({ type: "letterFile", id: "L1" })
+    expect(fetchMock.mock.calls[1][0]).toBe("http://127.0.0.1:43123/api/ext/letter/file?id=L1")
+    expect(file).toMatchObject({
+      ok: true,
+      data: { name: "List_motywacyjny.pdf", type: "application/pdf" },
+    })
+    expect(atob((file.data as { base64: string }).base64)).toBe("%PDF")
   })
 
   it("takes a token only from the pairing page or its own pages", async () => {

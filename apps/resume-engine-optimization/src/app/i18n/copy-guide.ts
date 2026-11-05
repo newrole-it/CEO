@@ -24,7 +24,7 @@ export const guidePl = {
   "fs.profile.cta": "Utwórz profil",
   "fs.offer.title": "Dodaj pierwszą ofertę",
   "fs.offer.body":
-    "Wklej link do ogłoszenia ze strony firmy albo jej systemu rekrutacji. newrole.it pobierze całe ogłoszenie i zapisze je przy ofercie. Linków z LinkedIn nie czyta.",
+    "Wklej link do ogłoszenia ze strony firmy albo jej systemu rekrutacji. newrole.it pobierze całe ogłoszenie i zapisze je przy ofercie. Z LinkedIn zapisze tylko link, a treść ogłoszenia wkleisz.",
   "fs.offer.cta": "Wklej link do oferty",
   "fs.tailor.title": "Dopasuj CV do tej oferty",
   "fs.tailor.body":
@@ -58,7 +58,7 @@ export const guideEn: Record<keyof typeof guidePl, string> = {
   "fs.profile.cta": "Create a profile",
   "fs.offer.title": "Add your first offer",
   "fs.offer.body":
-    "Paste a link to a posting on the company's site or its recruitment system. newrole.it reads the whole posting and keeps it with the offer. It does not read LinkedIn links.",
+    "Paste a link to a posting on the company's site or its recruitment system. newrole.it reads the whole posting and keeps it with the offer. From LinkedIn it keeps only the link, and you paste the posting's text.",
   "fs.offer.cta": "Paste an offer's link",
   "fs.tailor.title": "Tailor your CV to that offer",
   "fs.tailor.body":

@@ -14,11 +14,13 @@ import {
   normalizePostingUrl,
   type ExtractedJob,
 } from "./job-extract"
+import { startFormLetter } from "./letter"
 import { pickOption, profileValue, realOptions } from "./values"
 
 /** POST /api/ext/fill (docs/product/plan-aplikacje.md §5.3). */
 
-export type FillSource = "profile" | "answers" | "ai" | "cv" | "skip"
+/** letter: the cover letter, written apart (./letter.ts) and fetched by its id in `letter`. */
+export type FillSource = "profile" | "answers" | "ai" | "cv" | "letter" | "skip"
 
 export type FillValue = {
   key: string
@@ -26,6 +28,8 @@ export type FillValue = {
   kind: FieldKind
   source: FillSource
   answerId?: string
+  /** source cv: the CV to attach, the one written for this offer when there is one */
+  documentId?: string
 }
 
 export type PageInfo = {
@@ -43,6 +47,8 @@ export type FillResult = {
   values: FillValue[]
   job: { company: string; title: string } | null
   applied: AppliedInfo | null
+  /** The cover letter being written for this form's letter fields (GET /api/ext/letter?id=) */
+  letter: { id: string } | null
 }
 
 /** Questions sent to the model in one batch; the rest stay empty. */
@@ -70,11 +76,16 @@ export type FillPlan = {
     options?: string[]
     kind: FieldKind
   }[]
+  /** The form has a place for a cover letter; maxChars is the smallest limit among them */
+  letter: { maxChars?: number } | null
 }
 
+/** Where a whole letter goes: a text box or a file. A select about the letter is a question. */
+const LETTER_TYPES = new Set(["textarea", "contenteditable", "file"])
+
 /**
- * The deterministic part: profile values, the CV, skips, and the questions left for drafting.
- * Pure, so it can be tested without a database.
+ * The deterministic part: profile values, the CV, skips, the letter fields, and the questions
+ * left for drafting. Pure, so it can be tested without a database.
  */
 export function planFill(
   fields: FormField[],
@@ -83,6 +94,8 @@ export function planFill(
 ): FillPlan {
   const values = new Map<string, FillValue>()
   const questions: FillPlan["questions"] = []
+  const limits: number[] = []
+  let letter = false
   const skip = (field: FormField, kind: FieldKind) =>
     values.set(field.key, { key: field.key, value: "", kind, source: "skip" })
 
@@ -95,12 +108,23 @@ export function planFill(
     const type = (field.type || "text").toLowerCase()
     if (kind === "resume") {
       if (type === "file" && cv)
-        values.set(field.key, { key: field.key, value: cv.title, kind, source: "cv" })
+        values.set(field.key, {
+          key: field.key,
+          value: cv.title,
+          kind,
+          source: "cv",
+          documentId: cv.id,
+        })
       else skip(field, kind)
       continue
     }
+    if (kind === "coverLetter" && LETTER_TYPES.has(type)) {
+      letter = true
+      if (type !== "file" && field.maxLength && field.maxLength > 0) limits.push(field.maxLength)
+      values.set(field.key, { key: field.key, value: "", kind, source: "letter" })
+      continue
+    }
     if (type === "file") {
-      // A cover letter upload: nothing to attach.
       skip(field, kind)
       continue
     }
@@ -122,7 +146,11 @@ export function planFill(
     }
     skip(field, kind)
   }
-  return { values, questions: questions.slice(0, MAX_DRAFTED_QUESTIONS) }
+  return {
+    values,
+    questions: questions.slice(0, MAX_DRAFTED_QUESTIONS),
+    letter: letter ? (limits.length ? { maxChars: Math.min(...limits) } : {}) : null,
+  }
 }
 
 /** The CV written for this posting when there is one, else the default. */
@@ -160,8 +188,17 @@ export async function fillForm(input: {
   // Index and rules first; the model runs next to the drafts, only when they miss.
   const rules = extractJobByRules(page)
   const askModel = !indexed && needsModel(page, rules)
+  const modelJob = askModel ? extractJobByModel(page) : Promise.resolve(null)
+  const jobFacts: Promise<ExtractedJob | null> = modelJob.then(
+    (model) => indexed ?? finishJob(page, mergeFacts(rules, model)),
+    () => indexed ?? finishJob(page, rules)
+  )
+  // Started now and fetched later: writing a letter outlasts what Chrome waits for a response.
+  const letter = plan.letter
+    ? { id: startFormLetter({ userId, page, maxChars: plan.letter.maxChars, job: jobFacts }) }
+    : null
   const noDrafts: Record<string, DraftResult> = {}
-  const [drafts, modelJob] = await Promise.all([
+  const [drafts, job] = await Promise.all([
     plan.questions.length
       ? draftAnswers({
           userId,
@@ -184,9 +221,8 @@ export async function fillForm(input: {
           return noDrafts
         })
       : Promise.resolve(noDrafts),
-    askModel ? extractJobByModel(page) : Promise.resolve(null),
+    jobFacts,
   ])
-  const job: ExtractedJob | null = indexed ?? finishJob(page, mergeFacts(rules, modelJob))
 
   for (const question of plan.questions) {
     const draft = drafts[question.key]
@@ -221,5 +257,6 @@ export async function fillForm(input: {
     applied: applied
       ? { id: applied.id, status: applied.status, appliedAt: applied.appliedAt }
       : null,
+    letter,
   }
 }

@@ -1,4 +1,3 @@
-import { isPolishBoardHost } from "@newrole/offers/polish-boards"
 import { aiOptOut, stripPersonalData } from "@newrole/offers/hygiene"
 import { createRobotsCache, policyFor, politeGet, type RobotsCache } from "@newrole/offers/polite"
 import { htmlToText } from "@newrole/offers/text"
@@ -25,13 +24,6 @@ import type { ListedJob, SourceType } from "./schemas"
  * JobPosting, under the source policy, robots.txt, the per-host pace and the daily cap of detail
  * pages. Nothing is stored here; the app keeps what it needs.
  */
-
-/** LinkedIn and social sites are refused outright; Polish job boards stay link-only. */
-export function refusedHost(host: string): string | null {
-  if (isPolishBoardHost(host)) return null
-  if (isAggregatorHost(host)) return "LinkedIn and social sites are never read or stored."
-  return null
-}
 
 /**
  * Pick the posting a URL points at: same canonical URL, an id in the path, or the only one.
@@ -140,10 +132,12 @@ export async function readOfferUrl(
     return { status: "rejected", message: error instanceof Error ? error.message : "Invalid URL" }
   }
   const host = url.hostname.toLowerCase()
-  const refused = refusedHost(host)
-  if (refused) return { status: "rejected", message: refused }
-  if (isPolishBoardHost(host)) {
-    return { status: "link-only", message: "Job boards are never fetched." }
+  // a person may paste one; it is kept as its link, and read for them only when they tailor
+  if (isAggregatorHost(host)) {
+    return {
+      status: "link-only",
+      message: "Job boards, LinkedIn and social sites are never fetched.",
+    }
   }
   const hit = classifyHit(url.toString())
   if (hit.kind === "workday" || hit.kind === "unverified-ats") {

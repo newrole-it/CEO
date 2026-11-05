@@ -188,12 +188,6 @@ async function addOffer(button, base) {
   if (!result?.ok)
     return say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
   const data = result.data
-  if (data.kind === "refused") {
-    return say(
-      "Ofert z LinkedIn i serwisów społecznościowych nie czytamy. Otwórz ofertę na stronie firmy.",
-      "err"
-    )
-  }
   if (data.kind === "invalid") return say("To nie wygląda na stronę oferty.", "err")
   if (data.kind === "added") {
     say(`${data.added ? "Dodano" : "Już masz tę ofertę"}: ${data.company} · ${data.title}`, "ok")

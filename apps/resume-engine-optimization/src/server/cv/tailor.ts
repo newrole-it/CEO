@@ -5,12 +5,19 @@ import {
   tailorCv,
   tailoredCvLanguage,
   writeCoverLetter,
+  type PastLetter,
+  type TailorOffer,
 } from "@newrole/cv-engine/tailor"
 import type { LlmClient } from "@newrole/llm/common"
 import { cvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
 import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
-import { parseTailorNotes, type OfferTextOrigin, type TailorNotes } from "@newrole/cv-core/tailor"
+import {
+  OFFER_TEXT_LIMIT,
+  parseTailorNotes,
+  type OfferTextOrigin,
+  type TailorNotes,
+} from "@newrole/cv-core/tailor"
 import type { TailorContext, TailorResult } from "@newrole/cv-core/views"
 import {
   indexedOfferText,
@@ -22,6 +29,7 @@ import {
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import type { HttpClient } from "src/server/security/safe-fetch"
+import { recentLetters } from "./letters"
 import { createCv, CvError, defaultCv, getCv, type CvDetail, type CvLanguage } from "./service"
 import { createEditableFromUpload } from "./structure"
 import { appendVersion, keepCurrentState, toStoredJson } from "./versions"
@@ -151,6 +159,18 @@ async function findExisting(
     where: { userId_jobId_docType: { userId, jobId, docType } },
     select: { id: true, content: true, language: true, baseCvId: true },
   })
+}
+
+/** The letter already written for an offer, when it has one with content. */
+export async function letterForJob(
+  userId: number,
+  jobId: string
+): Promise<{ id: string; content: CvContent; language: CvLanguage } | null> {
+  const existing = await findExisting(userId, jobId, "LETTER")
+  const content = parseCvContent(existing?.content)
+  return existing && content
+    ? { id: existing.id, content, language: cvLocale(existing.language) }
+    : null
 }
 
 /** Tailoring again starts from the general CV it started from, not from the last result. */
@@ -331,21 +351,39 @@ export async function tailorCvForJob(input: {
 }
 
 /**
+ * The posting as the person sees it, for an offer whose source gave nothing but the index's
+ * excerpt. A site that opts out of AI use keeps its text from the model here too.
+ */
+function withPageText(job: TailorJob, pageText: string | undefined): TailorJob {
+  const text = pageText?.trim().slice(0, OFFER_TEXT_LIMIT) ?? ""
+  if (!text || job.withheld || job.origin === "full" || text.length <= job.text.length) return job
+  return { ...job, text, origin: "full", language: detectLanguage(`${job.title}\n${text}`) }
+}
+
+/**
  * The cover letter for an offer. It builds on the CV tailored to the offer when there is one, so
- * the two tell the same story. Calling it again adds a new version.
+ * the two tell the same story, and on the person's last three letters, so it sounds like them.
+ * Calling it again adds a new version.
  */
 export async function generateLetterForJob(input: {
   userId: number
   jobId: string
   language?: CvLanguage
   note?: string
+  /** The person's last letters; read here when not given */
+  pastLetters?: PastLetter[]
+  /** The most characters the paragraphs may take, for a form field with a limit */
+  maxChars?: number
+  /** The open page's text (the Chrome extension), used when the offer's source cannot be read */
+  pageText?: string
   llm?: LlmClient | null
   http?: HttpClient
 }): Promise<TailorResult> {
   const { userId, jobId, note } = input
   const llm = writingClient(input.llm)
-  const job = await loadTailorJob(jobId, { http: input.http }, userId)
-  if (!job) throw new CvError("job-not-found", "This offer is not in the index.")
+  const loaded = await loadTailorJob(jobId, { http: input.http }, userId)
+  if (!loaded) throw new CvError("job-not-found", "This offer is not in the index.")
+  const job = withPageText(loaded, input.pageText)
   const [existing, tailoredCv] = await Promise.all([
     findExisting(userId, jobId, "LETTER"),
     findExisting(userId, jobId, "CV"),
@@ -359,15 +397,21 @@ export async function generateLetterForJob(input: {
     cv: tailoredCv,
     offer: job.language,
   })
-  const attempt = await attemptNumber(existing?.id)
+  const [attempt, context, pastLetters] = await Promise.all([
+    attemptNumber(existing?.id),
+    candidateContext(userId),
+    input.pastLetters ?? recentLetters(userId, { exceptJobId: jobId }),
+  ])
 
   const generated = await writeCoverLetter({
     llm,
     cv: source,
     offer: job,
     language,
-    context: await candidateContext(userId),
+    context,
     note,
+    pastLetters,
+    maxChars: input.maxChars,
     attempt,
     userId,
   })
@@ -382,4 +426,34 @@ export async function generateLetterForJob(input: {
     notes,
   })
   return { id, content, language, notes, updatedAt }
+}
+
+/**
+ * A cover letter for a posting that is not in the index, such as a company's own careers page
+ * without a JobPosting: written the same way from the person's default CV, and kept nowhere.
+ */
+export async function writeLetterForPage(input: {
+  userId: number
+  offer: TailorOffer
+  pastLetters: PastLetter[]
+  maxChars?: number
+  llm?: LlmClient | null
+}): Promise<{ content: CvContent; language: CvLanguage }> {
+  const { userId, offer } = input
+  const llm = writingClient(input.llm)
+  const [base, context] = await Promise.all([resolveBase(userId), candidateContext(userId)])
+  if (!base.content) throw new CvError("no-base", "There is no CV to write from.")
+  const language = detectLanguage(`${offer.title}\n${offer.text}`)
+  const generated = await writeCoverLetter({
+    llm,
+    cv: base.content,
+    offer,
+    language,
+    context,
+    pastLetters: input.pastLetters,
+    maxChars: input.maxChars,
+    userId,
+  })
+  if (!generated) throw new CvError("llm-failed", "The model did not return a usable letter.")
+  return { content: generated.content, language }
 }

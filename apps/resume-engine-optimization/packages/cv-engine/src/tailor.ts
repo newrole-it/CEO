@@ -80,8 +80,10 @@ This CV changes language: translate everything you return into the target langua
 const LETTER_SYSTEM = `You write the body of a cover letter in the candidate's own voice (first person), for one job offer.
 
 Truth comes first:
-- Use only facts in the candidate's CV and context. Never invent employers, titles, dates, numbers, metrics, technologies, education or motivations they do not support.
+- Use only facts in the candidate's CV, context and past letters. Never invent employers, titles, dates, numbers, metrics, technologies, education or motivations they do not support.
 - About the company say only what the offer says. If the candidate lacks something the offer asks for, leave it out; do not claim it and do not apologise for it.
+
+Past letters: when the candidate's own earlier letters are given, write in their voice: their tone, how they open and close, how long their paragraphs are and the phrasing they use about themselves. What they say there about their own experience counts as the candidate's facts. Everything about the company and role a past letter was written for stays there: never carry over another company's name, product, mission, or the reasons given for wanting to work there. Do not copy a past letter: this one is about this offer.
 
 Content: 3 or 4 short paragraphs, 150 to 250 words in total, enough for one page.
 - First: the role, and the single strongest match with one concrete fact from the CV.
@@ -117,6 +119,26 @@ export type TailorOffer = {
 
 /** A generated document and what to tell the person about it. */
 export type Generated = { content: CvContent; notes: TailorNotes }
+
+/** One of the candidate's earlier cover letters, as plain text. */
+export type PastLetter = { company: string | null; title: string | null; text: string }
+
+/** Characters of one past letter the model reads. */
+export const PAST_LETTER_LIMIT = 3500
+
+function pastLettersPrompt(letters: PastLetter[]): string[] {
+  if (!letters.length) return []
+  const lines = ["", "The candidate's own recent cover letters, newest first:"]
+  for (const letter of letters) {
+    const head = [
+      letter.company ? `Written for: ${letter.company}` : "",
+      letter.title ? `Role: ${letter.title}` : "",
+    ].filter(Boolean)
+    const body = letter.text.slice(0, PAST_LETTER_LIMIT)
+    lines.push(wrapUntrusted("past_letter", head.length ? `${head.join("\n")}\n\n${body}` : body))
+  }
+  return lines
+}
 
 function jobPrompt(job: TailorOffer, note: string | undefined): string[] {
   const lines = [
@@ -251,7 +273,8 @@ export async function tailorCv(input: {
 
 /**
  * The body of a cover letter in the candidate's voice, laid out on the CV's own sheet (letter.ts).
- * Pass the CV tailored to the offer when there is one, so the two tell the same story.
+ * Pass the CV tailored to the offer when there is one, so the two tell the same story, and the
+ * candidate's last letters, so the new one sounds like them.
  */
 export async function writeCoverLetter(input: {
   llm: LlmClient
@@ -261,12 +284,17 @@ export async function writeCoverLetter(input: {
   language: CvLocale
   context: string
   note?: string
+  /** The candidate's last letters, newest first: their voice, and facts about them */
+  pastLetters?: PastLetter[]
+  /** The most characters the paragraphs may take together, blank lines between them included */
+  maxChars?: number
   attempt?: number
   userId?: number
 }): Promise<Generated | null> {
-  const { llm, language, note, userId, context } = input
+  const { llm, language, note, userId, context, maxChars } = input
   const job = input.offer
   const attempt = input.attempt ?? 1
+  const pastLetters = input.pastLetters ?? []
 
   const cvText = cvPlainText(input.cv)
   const reply = await llm.completeJson({
@@ -282,6 +310,13 @@ export async function writeCoverLetter(input: {
       `<cv>\n${cvText}\n</cv>`,
       "",
       ...jobPrompt(job, note),
+      ...pastLettersPrompt(pastLetters),
+      ...(maxChars
+        ? [
+            "",
+            `Length: the paragraphs together, with a blank line between them, must stay under ${maxChars} characters. Write fewer and shorter paragraphs; going under 150 words is fine.`,
+          ]
+        : []),
       ...attemptLine(attempt),
     ].join("\n"),
     schema: LetterReply,
@@ -302,7 +337,15 @@ export async function writeCoverLetter(input: {
   )
   if (!content) return null
 
-  const evidence = [cvText, context, job.company, job.title, job.text, note ?? ""].join("\n")
+  const evidence = [
+    cvText,
+    context,
+    job.company,
+    job.title,
+    job.text,
+    note ?? "",
+    ...pastLetters.map((letter) => letter.text),
+  ].join("\n")
   const notes: TailorNotes = {
     changes: [],
     gaps: [],

@@ -27,6 +27,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- The extension writes the cover letter a form has a place for: the app reads the whole offer and writes a letter for that offer and company from your CV, after your last 3 letters (the ones in My CV and the ones you sent in forms). When the app knows the offer or can read it from its link, the letter is kept as the offer's letter. A text box gets its text and a file field its PDF, both marked as a draft to read. An offer that already has a letter gets that one. A field for a reference letter or a letter of recommendation never gets the cover letter. Writing a letter on an offer's page reads your last 3 letters too.
 - First steps: a card at the top of Offers and My CV leads a new account from its profile to the first offer, a CV tailored to it and the application, one step at a time. Hide puts it away; the account menu brings it back.
 - How to edit: the CV editor explains itself on the first visit, pasting a photo, the buttons next to entries, links, the outline and the shortcuts included. The question-mark button in its toolbar opens it again.
 - /features explains every screen, button and switch of newrole.it and the Chrome extension. It is linked from the header, the footer, the account menu, the home page, First steps and the extension's popup.
@@ -101,6 +102,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Fixed
 
+- The extension attaches the CV written for the offer when there is one; before, it always attached the default CV.
 - A CV uploaded as a PDF keeps its line breaks, so its sections are found and a CV made from the profile has them too. Before, the whole text arrived as one line and landed in a single section.
 - After /setup and after saving a profile, newrole.it sends you to add your first offer instead of an empty My CV.
 - The profile screens, /setup and the page title no longer talk about matches, scores or a job feed that newrole.it does not have.

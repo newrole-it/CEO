@@ -146,19 +146,34 @@ test("a draft the person checked is kept with the text they gave", async () => {
   assert.equal(offer?.textOrigin, "full")
 })
 
-test("LinkedIn is refused before anything is read", async () => {
+test("a LinkedIn link is kept as its link, with the text the person pastes", async () => {
   const user = await makeUser()
   const never = async () => {
     throw new Error("nothing may be read")
   }
-  assert.deepEqual(
-    await addOfferByLink(user.id, "https://www.linkedin.com/jobs/view/1", {
-      findByUrl: never,
-      ingest: never,
-      model: never,
-    }),
-    { kind: "refused" }
-  )
+  const url = `https://www.linkedin.com/jobs/view/senior-backend-engineer-at-acme-corp-3912345678/?ref=${stamp}`
+  const check = await addOfferByLink(user.id, url, { findByUrl: async () => null, model: never })
+  assert.equal(check.kind, "draft")
+  if (check.kind !== "draft") return
+  assert.equal(check.outcome, "link-only")
+  assert.equal(check.text, "")
+  assert.equal(check.facts?.company, "Acme Corp")
+  assert.equal(check.facts?.title, "Senior Backend Engineer")
+
+  const saved = await confirmOffer(user.id, {
+    url: check.url,
+    company: `Acme Corp ${stamp}`,
+    title: "Senior Backend Engineer",
+    text: "Usługi w Go, Kafka i Postgres.",
+    textOrigin: "pasted",
+  })
+  assert.ok("jobId" in saved)
+  if (!("jobId" in saved)) return
+  const job = await db.job.findUniqueOrThrow({ where: { id: saved.jobId } })
+  assert.equal(job.descriptionText, "", "the index keeps no text of a LinkedIn offer")
+  const offer = await getOffer(user.id, saved.jobId)
+  assert.equal(offer?.text, "Usługi w Go, Kafka i Postgres.")
+  assert.equal(offer?.textOrigin, "pasted")
   assert.deepEqual(await addOfferByLink(user.id, "no link here"), { kind: "invalid" })
 })
 

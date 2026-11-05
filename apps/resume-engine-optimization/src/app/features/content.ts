@@ -173,7 +173,7 @@ const tailoringPl: FeatureSection = {
         },
         {
           label: "Napisz też list motywacyjny",
-          body: "List oparty na dostosowanym CV, w tym samym układzie i z historią wersji. Możesz go też dodać później z paska nad CV.",
+          body: "List oparty na dostosowanym CV i napisany na wzór Twoich 3 ostatnich listów, w tym samym układzie i z historią wersji. Możesz go też dodać później z paska nad CV.",
         },
         {
           label: "Treść oferty dla modelu",
@@ -216,7 +216,8 @@ const offersPl: FeatureSection = {
       items: [
         {
           label: "Link do oferty",
-          body: "Najlepiej ze strony firmy albo jej systemu rekrutacji: ofertę czytamy przez API systemu rekrutacji (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, Personio, Traffit, Pinpoint i inne) albo z danych JobPosting strony, z poszanowaniem robots.txt. Linków z LinkedIn, serwisów społecznościowych i stron takich jak Indeed czy Glassdoor nie czytamy. Ogłoszeń z portali z ofertami (justjoin.it, No Fluff Jobs, pracuj.pl, theprotocol.it, Bulldogjob) przy dodawaniu nie pobieramy: wpisujesz firmę i stanowisko, a treść czytamy dopiero przy dopasowaniu CV. Z zapisanej treści usuwamy e-maile i telefony.",
+          // linkedin.com/robots.txt: "User-agent: *" then "Disallow: /" (read 2026-11-05)
+          body: "Najlepiej ze strony firmy albo jej systemu rekrutacji: ofertę czytamy przez API systemu rekrutacji (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, Personio, Traffit, Pinpoint i inne) albo z danych JobPosting strony, z poszanowaniem robots.txt. Ogłoszeń z LinkedIn, portali z ofertami (justjoin.it, No Fluff Jobs, pracuj.pl, theprotocol.it, Bulldogjob), stron takich jak Indeed czy Glassdoor i serwisów społecznościowych przy dodawaniu nie pobieramy: zapisujemy link, sprawdzasz firmę i stanowisko i wklejasz treść. Bez wklejonej treści czytamy ją przy dopasowaniu CV, o ile robots.txt strony na to pozwala. LinkedIn nie pozwala, więc treść oferty z LinkedIn wklej. Z zapisanej treści usuwamy e-maile i telefony.",
         },
         {
           label: "Gdy nie wszystko się odczyta",
@@ -268,7 +269,7 @@ const extensionPl: FeatureSection = {
         },
         {
           label: "Wypełnij formularz na tej stronie",
-          body: "Działa na każdej stronie, także poza znanymi systemami rekrutacji. Wpisuje dane, CV i odpowiedzi; pytania otwarte mogą potrwać kilka sekund. Fioletowa ramka to wartość z profilu, CV albo bazy odpowiedzi, żółta to szkic AI do sprawdzenia. Formularz sprawdzasz i wysyłasz sam.",
+          body: "Działa na każdej stronie, także poza znanymi systemami rekrutacji. Wpisuje dane, CV i odpowiedzi; pytania otwarte mogą potrwać kilka sekund. Gdy formularz ma miejsce na list motywacyjny, aplikacja czyta całą ofertę i pisze list pod tę ofertę i firmę na wzór Twoich 3 ostatnich listów, a panel mówi, kiedy jest gotowy. Oferta, która ma już list w newrole.it, dostaje ten list. Pole na plik dostaje go jako PDF. Fioletowa ramka to wartość z profilu, CV albo bazy odpowiedzi, żółta to szkic AI do sprawdzenia. Formularz sprawdzasz i wysyłasz sam.",
         },
         {
           label: "Dodaj tę ofertę do newrole.it",
@@ -788,7 +789,7 @@ const tailoringEn: FeatureSection = {
         },
         {
           label: "Also write a cover letter",
-          body: "A letter based on the tailored CV, in the same layout and with version history. You can also add it later from the bar above the CV.",
+          body: "A letter based on the tailored CV and written after your last 3 letters, in the same layout and with version history. You can also add it later from the bar above the CV.",
         },
         {
           label: "The offer's text for the model",
@@ -831,7 +832,8 @@ const offersEn: FeatureSection = {
       items: [
         {
           label: "Offer link",
-          body: "Best from the company's site or its recruitment system: the offer is read through the recruitment system's API (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, Personio, Traffit, Pinpoint and others) or from the page's JobPosting data, under robots.txt. LinkedIn, social media and sites such as Indeed or Glassdoor are not read. Postings on job boards (justjoin.it, No Fluff Jobs, pracuj.pl, theprotocol.it, Bulldogjob) are not fetched when you add them: you enter the company and role, and the text is read when you tailor your CV. Emails and phone numbers are removed from the stored text.",
+          // linkedin.com/robots.txt: "User-agent: *" then "Disallow: /" (read 2026-11-05)
+          body: "Best from the company's site or its recruitment system: the offer is read through the recruitment system's API (Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, Personio, Traffit, Pinpoint and others) or from the page's JobPosting data, under robots.txt. Postings on LinkedIn, job boards (justjoin.it, No Fluff Jobs, pracuj.pl, theprotocol.it, Bulldogjob), sites such as Indeed or Glassdoor and social media are not fetched when you add them: the link is kept, you check the company and role and paste the text. Without a pasted text it is read when you tailor your CV, if the site's robots.txt allows it. LinkedIn's does not, so paste the text of a LinkedIn offer. Emails and phone numbers are removed from the stored text.",
         },
         {
           label: "When not everything can be read",
@@ -883,7 +885,7 @@ const extensionEn: FeatureSection = {
         },
         {
           label: "Wypełnij formularz na tej stronie (Fill the form on this page)",
-          body: "Works on any page, outside the known recruitment systems too. It types in your details, CV and answers; open questions can take a few seconds. A purple frame is a value from your profile, CV or answer bank, a yellow one an AI draft to check. You check and submit the form yourself.",
+          body: "Works on any page, outside the known recruitment systems too. It types in your details, CV and answers; open questions can take a few seconds. When the form has a place for a cover letter, the app reads the whole offer and writes a letter for this offer and company after your last 3 letters, and the panel says when it is ready. An offer that already has a letter in newrole.it gets that letter. A file field gets it as PDF. A purple frame is a value from your profile, CV or answer bank, a yellow one an AI draft to check. You check and submit the form yourself.",
         },
         {
           label: "Dodaj tę ofertę do newrole.it (Add this offer)",
