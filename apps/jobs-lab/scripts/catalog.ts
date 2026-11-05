@@ -1,5 +1,5 @@
 /**
- * npm run catalog -- <command>
+ * npm run catalog -w @newrole/jobs-lab -- <command>   (on the lab database, scripts/env.ts)
  *
  *   import [--files greenhouse,ashby]   add freehire's boards as candidates (nothing is crawled)
  *   discover [--providers TRAFFIT,WORKDAY] [--crawl CC-MAIN-2026-43]
@@ -10,7 +10,8 @@
  *   guess "<company name>"              look for the company's board on each platform by slug
  *   status                              candidates, verified and rejected boards by platform and reason
  */
-import db from "db"
+import "./env"
+import { bindLabDatabase } from "./bind"
 import {
   catalogStatus,
   checkCatalogBulk,
@@ -33,6 +34,8 @@ function list(value: string | undefined): string[] {
     .map((part) => part.trim())
     .filter(Boolean)
 }
+
+const db = bindLabDatabase()
 
 async function main() {
   const [command, ...args] = process.argv.slice(2)
@@ -101,7 +104,9 @@ async function main() {
     console.table(status.byReason.map((row) => ({ reason: row.reason, boards: row._count._all })))
     return
   }
-  console.log("Commands: import, check, reconcile, guess, status. See src/catalog.ts.")
+  console.log(
+    "Commands: import, check, reconcile, guess, status. See apps/jobs-lab/scripts/catalog.ts."
+  )
 }
 
 main()

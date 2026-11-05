@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-only",
   "workspaces": [
     "packages/*",
-    "apps/newrole"
+    "apps/newrole",
+    "apps/jobs-lab"
   ],
   "scripts": {
     "go": "node scripts/go.mjs",
@@ -25,14 +26,16 @@
     "typecheck:workspaces": "npm run typecheck --workspaces --if-present",
     "test": "npm run test:workspaces && npm run test:extension && npm run test:flow",
     "test:workspaces": "npm run test --workspaces --if-present",
-    "test:flow": "npm run test:flow -w @newrole/app",
+    "test:flow": "npm run test:flow -w @newrole/app && npm run test:flow -w @newrole/job-index",
     "test:db": "node scripts/test-db.mjs prepare",
     "db:deploy": "npm run db:deploy -w @newrole/app",
     "db:seed": "npm run db:seed -w @newrole/app",
     "db:migrate": "npm run db:migrate -w @newrole/app",
     "ext:build": "node scripts/go.mjs --extension",
     "ext:dev": "node scripts/go.mjs --extension && npm run dev --prefix apps/extension",
-    "test:extension": "vitest run --root apps/extension"
+    "test:extension": "vitest run --root apps/extension",
+    "jobs-lab": "npm run dev -w @newrole/jobs-lab",
+    "jobs-lab:smoke": "npm run smoke -w @newrole/jobs-lab"
   },
   "prettier": {
     "semi": false,

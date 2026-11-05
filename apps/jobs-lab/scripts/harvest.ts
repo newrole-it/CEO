@@ -1,14 +1,15 @@
 /**
- * `npm run harvest`: what a scheduled cloud agent (Claude Code, Cursor, Codex) runs while this
+ * `npm run harvest -w @newrole/jobs-lab`: what a scheduled cloud agent (Claude Code, Cursor, Codex) runs while this
  * computer is off. Reads the due board APIs with the worker's adapters and rules, writes the
  * offers to a harvest branch, and pushes it. No database: the app imports the branch later.
  *
- *   npm run harvest -- --agent claude --every 120 --branch claude/newrole-harvest
- *   npm run harvest -- --hosts        the hosts to allow in the agent's network settings
- *   npm run harvest -- --dry-run      read and report, do not commit or push
+ *   npm run harvest -w @newrole/jobs-lab -- --agent claude --every 120 --branch claude/newrole-harvest
+ *   npm run harvest -w @newrole/jobs-lab -- --hosts        the hosts to allow in the agent's network settings
+ *   npm run harvest -w @newrole/jobs-lab -- --dry-run      read and report, do not commit or push
  */
+import "./env"
+import { createHttpClient } from "@newrole/ats/host"
 import { indexableBoards } from "@newrole/job-index/index/run"
-import { createHttpClient } from "src/server/security/safe-fetch"
 import {
   boardHosts,
   dueBoards,
@@ -126,7 +127,7 @@ async function main() {
   )
   if (blocked.length) {
     console.log(
-      "Some hosts were refused or not found. If the agent's network is restricted, allow the hosts from `npm run harvest -- --hosts`."
+      "Some hosts were refused or not found. If the agent's network is restricted, allow the hosts from `npm run harvest -w @newrole/jobs-lab -- --hosts`."
     )
   }
   if (args.dryRun) {

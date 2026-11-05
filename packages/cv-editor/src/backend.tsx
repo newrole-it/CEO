@@ -9,7 +9,7 @@ import type { CvVersionView, TailorResult } from "@newrole/cv-core/views"
 
 /**
  * Everything the editor asks of the app around it. newrole.it answers through its Blitz
- * mutations, newrole CV through its own HTTP routes. A failed call rejects with an Error whose
+ * mutations; another app may use HTTP routes. A failed call rejects with an Error whose
  * message is a code: "conflict" for a save older than what is stored (useCvDocument.ts), and
  * "llm-unavailable", "no-base" or "job-not-found" for tailoring (tailor-errors.ts).
  *

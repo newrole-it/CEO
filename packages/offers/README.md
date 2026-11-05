@@ -21,4 +21,4 @@ const read = await readPosting("https://jobs.lever.co/acme/123", http)
 if (read.ok) console.log(read.posting.title, read.posting.company)
 ```
 
-Keep only what you need of a posting: newrole.it and newrole CV keep 300 characters of its text at most. Tests: `npm test -w @newrole/offers`.
+Keep only what you need of a posting: newrole.it's shared `Job` row keeps 300 characters of its text at most, and the whole text only as the copy of the person who added the offer. Tests: `npm test -w @newrole/offers`.

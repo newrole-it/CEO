@@ -6,6 +6,20 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ## Unreleased
 
+### Changed
+
+- newrole.it is now the CV app: your profile, My CV, Offers, Applications, Answers. The offer feed, saved offers, companies, sources, sync and coverage are gone from it, with the worker's crawling: the engine that finds offers on its own moved to the @newrole/ats and @newrole/job-index packages, for a separate deployment, and apps/jobs-lab tests it (npm run jobs-lab, npm run jobs-lab:smoke).
+- Add offer reads the whole posting from its link (the employer's ATS or the page's structured data) and keeps it for you: each offer has its own page with its text, which you can edit, paste or read again, the CV and letter written for it, its application and a note. A page without structured data comes back with the text read from it, for you to check before it is added. Tailoring a CV or writing a letter reads that text first.
+- My CV has two tabs: General, the CVs everything starts from, and For offers, the CVs and letters written for one offer, grouped by offer with the application's status.
+- Links to /jobs/… open the offer under /offers.
+- Claude Code: offers_list, offer_add and offer_get replace the job search, feedback and company tools, and the hunt and review prompts.
+- The repository is laid out as apps and packages: newrole.it in apps/newrole, the Chrome extension in apps/extension. npm run go, dev, build, start, worker and mcp still run from the root, and .env stays there.
+
+### Removed
+
+- newrole CV (apps/cv) and npm run export:cv: newrole.it itself is the CV app now.
+- The setup step for the offer index, and the taste section of the profile (what you liked in offers of the feed).
+
 ### Added
 
 - Saved has a CV ready tab: offers you tailored a CV or cover letter for and haven't applied to yet, liked or not. Each saved offer shows the CV and letter written for it; a ready one has Download PDF and Applied, a sent one links to its application. Tailoring adds no Like, so it doesn't change what your feed learns.
