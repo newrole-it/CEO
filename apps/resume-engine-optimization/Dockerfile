@@ -13,6 +13,9 @@ COPY apps/resume-engine-optimization/packages ./apps/resume-engine-optimization/
 RUN npm ci
 
 COPY apps/resume-engine-optimization ./apps/resume-engine-optimization
+# The build checks the types of the tests too, and two of them read the extension's lib/ (the
+# contract in scripts/check-boundaries.mjs).
+COPY apps/reo-extension/lib ./apps/reo-extension/lib
 COPY CHANGELOG.md .mcp.json ./
 # Build-time placeholders. They are not left in the image environment.
 RUN DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner \

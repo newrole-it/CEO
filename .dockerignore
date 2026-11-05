@@ -1,7 +1,9 @@
 node_modules
 apps/*/node_modules
 apps/*/packages/*/node_modules
-apps/reo-extension
+apps/reo-extension/node_modules
+apps/reo-extension/.output
+apps/reo-extension/.wxt
 apps/jobs-lab
 .next
 apps/*/.next
