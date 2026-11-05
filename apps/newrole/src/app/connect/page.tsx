@@ -18,18 +18,22 @@ export async function generateMetadata() {
 }
 
 const TOOL_FOR: Record<ToolKey, string[]> = {
-  search: ["jobs_search", "jobs_for_me"],
   profile: ["profile_import"],
-  feedback: ["job_feedback"],
-  similar: ["jobs_similar"],
-  companies: ["companies_watch", "companies_similar_context"],
-  ingest: ["offer_ingest"],
+  offers: ["offer_add", "offer_get"],
+  cv: ["cv_update", "cv_export_pdf"],
+  answers: ["answer_draft"],
+  applications: ["application_update"],
 }
 
 async function availableTools(app: string): Promise<ToolKey[]> {
   const all = Object.keys(TOOL_FOR) as ToolKey[]
   try {
-    const source = await readFile(path.join(app, "mcp", "tools.ts"), "utf8")
+    const sources = await Promise.all(
+      ["tools.ts", "tools-cv.ts", "tools-answers.ts", "tools-applications.ts"].map((name) =>
+        readFile(path.join(app, "mcp", name), "utf8").catch(() => "")
+      )
+    )
+    const source = sources.join("\n")
     const names = new Set(
       [...source.matchAll(/registerTool\(\s*["'`](\w+)["'`]/g)].map((match) => match[1])
     )

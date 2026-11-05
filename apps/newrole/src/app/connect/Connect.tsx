@@ -2,14 +2,13 @@
 
 import { useEffect } from "react"
 import {
-  Building2,
   ChevronRight,
-  Heart,
+  ClipboardList,
+  FileText,
   Info,
   Link as LinkIcon,
-  Search,
+  MessageSquareText,
   ShieldCheck,
-  Shuffle,
   SquareTerminal,
   UserRound,
 } from "lucide-react"
@@ -19,15 +18,14 @@ import { CodeBlock, CopyButton } from "@newrole/ui/interactive"
 import { Banner } from "@newrole/ui/primitives"
 import { GITHUB_URL } from "src/app/components/site/links"
 
-export type ToolKey = "search" | "profile" | "feedback" | "similar" | "companies" | "ingest"
+export type ToolKey = "profile" | "offers" | "cv" | "answers" | "applications"
 
-const ICONS: Record<ToolKey, typeof Search> = {
-  search: Search,
+const ICONS: Record<ToolKey, typeof UserRound> = {
   profile: UserRound,
-  feedback: Heart,
-  similar: Shuffle,
-  companies: Building2,
-  ingest: LinkIcon,
+  offers: LinkIcon,
+  cv: FileText,
+  answers: MessageSquareText,
+  applications: ClipboardList,
 }
 
 const PROMPTS: { key: CopyKey; id?: string }[] = [
