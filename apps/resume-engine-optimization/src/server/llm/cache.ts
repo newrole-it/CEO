@@ -2,8 +2,7 @@ import db from "db"
 import type { LlmCacheStore } from "@newrole/llm/common"
 
 /**
- * Model replies kept in Postgres (LlmCache), shared by the web app, the worker and the MCP
- * server. Personal prompts are stored only when tied to a user (shouldStoreLlmCache).
+ * Model replies kept in Postgres (LlmCache), shared by the web app and the MCP server. Personal prompts are stored only when tied to a user (shouldStoreLlmCache).
  */
 export const prismaLlmCache: LlmCacheStore = {
   async read(cacheKey) {

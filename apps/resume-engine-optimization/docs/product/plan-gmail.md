@@ -37,7 +37,7 @@ Sygnał „kolejny etap” proponuje `APPLIED → SCREENING`, `SCREENING → INT
 
 - `MailEvent`: jeden wiersz na każdy użyty mail: nadawca, temat, data, sygnał, zdanie z uzasadnieniem, wybrana aplikacja, wynik i statusy przed i po. Bez treści. Wpisy starsze niż 90 dni znikają przy kolejnym zapisie.
 - `ApplicationEvent` typu `mail`: temat na osi czasu.
-- `GmailLink` zostaje tylko dla skrzynek połączonych wcześniej. Nic ich nie czyta: worker nie planuje przeszukiwania, a zadania `GMAIL_SYNC` z kolejki kończą się bez działania. Ustawienia → Gmail pokazują taką skrzynkę z przyciskiem „Odłącz i odwołaj dostęp”, który odwołuje token w Google i usuwa token oraz dziennik. Usunięcie konta też go odwołuje.
+- `GmailLink` zostaje tylko dla skrzynek połączonych wcześniej. Nic ich nie czyta: aplikacja nie planuje przeszukiwania, a zadania `GMAIL_SYNC` z kolejki kończą się bez działania. Ustawienia → Gmail pokazują taką skrzynkę z przyciskiem „Odłącz i odwołaj dostęp”, który odwołuje token w Google i usuwa token oraz dziennik. Usunięcie konta też go odwołuje.
 - Stare adresy `/api/auth/gmail/start` i `/api/auth/gmail/callback` tylko przekierowują do ustawień. Callback nie wymienia kodu na token.
 
 ## 6. Usunięty kod

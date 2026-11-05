@@ -493,7 +493,7 @@ export function registerApplicationTools(server: McpServer) {
     {
       title: "Stan arkusza Google",
       description:
-        "Whether the Google Sheet mirror of the tracker is connected, when it last synced, how many rows, the last error, and whether a sync is waiting for the worker.",
+        "Whether the Google Sheet mirror of the tracker is connected, when it last synced, how many rows, the last error, and whether a sync is waiting in the app's queue.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
@@ -509,7 +509,7 @@ export function registerApplicationTools(server: McpServer) {
                 status.lastSyncedAt ? status.lastSyncedAt.toISOString() : "jeszcze nie",
               ],
               ["Wiersze", status.lastRowCount],
-              ["Automatycznie", status.autoSync ? "tak (worker, ok. 20 s po zmianie)" : "nie"],
+              ["Automatycznie", status.autoSync ? "tak (aplikacja, ok. 20 s po zmianie)" : "nie"],
               ["Notatki w arkuszu", status.includeNotes ? "tak" : "nie"],
               ["Ostatni błąd", status.lastError],
               [
@@ -517,7 +517,7 @@ export function registerApplicationTools(server: McpServer) {
                 status.pendingSince
                   ? `${status.pendingSince.toISOString()}${
                       status.pendingSince.getTime() < Date.now() - 120_000
-                        ? " (worker chyba nie działa: npm run worker)"
+                        ? " (aplikacja chyba nie działa: npm run go)"
                         : ""
                     }`
                   : null,

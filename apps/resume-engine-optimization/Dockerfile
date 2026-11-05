@@ -22,11 +22,12 @@ RUN DATABASE_URL=postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner \
 ENV NODE_ENV=production
 EXPOSE 43123
 
-# The node image ships an unprivileged "node" user; the app and the worker need no root.
+# The node image ships an unprivileged "node" user; the app needs no root.
 RUN chown -R node:node /app
 USER node
 
-# newrole.it runs from its own folder: the app, the worker and the migrations (scripts/docker-start.sh).
+# newrole.it runs from its own folder: the migrations, then the app, which runs its background work
+# itself (scripts/docker-start.sh).
 WORKDIR /app/apps/resume-engine-optimization
 
 CMD ["sh", "scripts/docker-start.sh"]

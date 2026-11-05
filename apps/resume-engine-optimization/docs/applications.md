@@ -16,7 +16,7 @@ The whole process in numbers, scoped to the last 4, 12, 26 or 52 weeks or to eve
 
 ## Google Sheet
 
-Settings → Arkusz Google gives you an Apps Script to paste into your own sheet (Extensions → Apps Script, deploy as a web app). After that the worker sends the whole table about 20 seconds after each change, and `sheet_sync` sends it at once. No Google keys are involved. Sync is one-way, app to sheet.
+Settings → Arkusz Google gives you an Apps Script to paste into your own sheet (Extensions → Apps Script, deploy as a web app). After that the app sends the whole table about 20 seconds after each change, in the background while it runs, and `sheet_sync` sends it at once. No Google keys are involved. Sync is one-way, app to sheet.
 
 ## Gmail
 

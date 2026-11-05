@@ -126,7 +126,7 @@ export async function syncCompanyAliases(
 
 let lastSyncAt = 0
 
-/** New companies reach the index all the time, so the worker keeps the map up to date. */
+/** New companies reach the index all the time, so the app's background loop keeps the map current. */
 export async function maybeSyncCompanyAliases(now = Date.now()): Promise<void> {
   if (now - lastSyncAt < SYNC_EVERY_MS) return
   lastSyncAt = now

@@ -254,14 +254,14 @@ export const applicationsPl = {
   // settings → Google Sheet
   "sheet.title": "Arkusz Google",
   "sheet.lead":
-    "Tracker może prowadzić kopię w Twoim arkuszu Google. Synchronizacja jest jednostronna (aplikacja → arkusz), a tryb automatyczny wymaga działającego workera (npm run worker).",
+    "Tracker może prowadzić kopię w Twoim arkuszu Google. Synchronizacja jest jednostronna (aplikacja → arkusz), a w trybie automatycznym wysyła ją sama aplikacja, dopóki działa.",
   "sheet.connected": "Połączono",
   "sheet.notConnected": "Nie połączono",
   "sheet.lastSync": "Ostatnia synchronizacja: {when}, wiersze: {n}",
   "sheet.never": "Jeszcze nie synchronizowano.",
   "sheet.lastError": "Ostatni błąd: {error}",
   "sheet.queued":
-    "Synchronizacja czeka w kolejce od {when}. Jeśli to trwa, uruchom workera: npm run worker.",
+    "Synchronizacja czeka w kolejce od {when}. Jeśli to trwa, uruchom aplikację ponownie: Ctrl+C, a potem npm run go.",
   "sheet.open": "Otwórz arkusz",
   "sheet.steps": "Jak połączyć arkusz",
   "sheet.step1.title": "Utwórz arkusz Google",
@@ -291,7 +291,7 @@ export const applicationsPl = {
   "sheet.syncNow": "Synchronizuj teraz",
   "sheet.disconnect": "Odłącz",
   "sheet.auto": "Automatyczna synchronizacja",
-  "sheet.autoHint": "Po każdej zmianie, z 20-sekundowym opóźnieniem. Wymaga workera.",
+  "sheet.autoHint": "Po każdej zmianie, z 20-sekundowym opóźnieniem, dopóki aplikacja działa.",
   "sheet.notes": "Notatki w arkuszu",
   "sheet.notesHint": "Wyłącz, jeśli udostępniasz arkusz innym.",
   "sheet.ok": "Wysłano do arkusza (wiersze: {n}).",
@@ -568,14 +568,14 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
 
   "sheet.title": "Google Sheet",
   "sheet.lead":
-    "The tracker can keep a copy in your Google Sheet. Sync is one-way (app → sheet), and automatic mode needs the worker running (npm run worker).",
+    "The tracker can keep a copy in your Google Sheet. Sync is one-way (app → sheet), and in automatic mode the app sends it on its own while it runs.",
   "sheet.connected": "Connected",
   "sheet.notConnected": "Not connected",
   "sheet.lastSync": "Last sync: {when}, rows: {n}",
   "sheet.never": "Not synced yet.",
   "sheet.lastError": "Last error: {error}",
   "sheet.queued":
-    "A sync has been queued since {when}. If it stays there, start the worker: npm run worker.",
+    "A sync has been queued since {when}. If it stays there, restart the app: Ctrl+C, then npm run go.",
   "sheet.open": "Open sheet",
   "sheet.steps": "How to connect a sheet",
   "sheet.step1.title": "Create a Google Sheet",
@@ -605,7 +605,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "sheet.syncNow": "Sync now",
   "sheet.disconnect": "Disconnect",
   "sheet.auto": "Automatic sync",
-  "sheet.autoHint": "After every change, with a 20-second delay. Needs the worker.",
+  "sheet.autoHint": "After every change, with a 20-second delay, while the app is running.",
   "sheet.notes": "Notes in the sheet",
   "sheet.notesHint": "Turn off if you share the sheet with others.",
   "sheet.ok": "Sent to the sheet (rows: {n}).",

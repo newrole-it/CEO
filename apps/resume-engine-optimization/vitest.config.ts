@@ -10,7 +10,6 @@ export default defineConfig({
     env: {
       DATABASE_URL: testDatabaseUrl(),
       LLM_PROVIDER: "",
-      CLAUDE_SEARCH_DAILY_CAP: "",
     },
     include: [
       "src/server/**/*.test.ts",

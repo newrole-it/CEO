@@ -3,24 +3,20 @@ import db from "db"
 import { APP_TASKS, GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 import { enqueueStaleSheetSyncs, syncSheet } from "src/server/applications/sheet"
 import { maybeSyncCompanyAliases } from "src/server/companies/aliases"
-import { beat } from "src/server/setup/heartbeat"
 
 /**
- * newrole.it's worker: the Google Sheet mirror of the applications and the company names the
- * extension matches offers by. It claims only APP_TASKS, so an offer index's worker
- * (@newrole/job-index) can run on the same database without either taking the other's tasks.
+ * newrole.it's background work: the Google Sheet mirror of the applications and the company names
+ * the extension matches offers by. It runs inside the Next server (startInServer, called from
+ * src/instrumentation.ts), not in a process of its own. It claims only APP_TASKS, and claims each
+ * task atomically, so a second server or an offer index's worker (@newrole/job-index) can run on
+ * the same database without two of them taking one task.
  */
 
 const WORKER_ID = `worker-${process.pid}`
 const STALE_MS = 20 * 60 * 1000
 const HEARTBEAT_MS = 30_000
-const SERVICE_BEAT_MS = 30_000
 
 let activeTaskId: string | null = null
-
-export function currentTaskId(): string | null {
-  return activeTaskId
-}
 
 function payloadField(payload: Prisma.JsonValue, key: string): unknown {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null
@@ -165,9 +161,6 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
 export async function workerLoop(signal?: { stopped: boolean }) {
   let backoff = 1000
   let lastRecover = 0
-  // On its own timer: a long task must not look like a stopped worker on /setup.
-  void beat("worker")
-  setInterval(() => void beat("worker"), SERVICE_BEAT_MS).unref()
   while (!signal?.stopped) {
     try {
       if (Date.now() - lastRecover > 60_000) {
@@ -182,7 +175,7 @@ export async function workerLoop(signal?: { stopped: boolean }) {
       backoff = 1000
       if (!did && !signal?.stopped) await sleep(5000)
     } catch (error) {
-      console.error("Worker loop error", error)
+      console.error("Background work error", error)
       await sleep(backoff)
       backoff = Math.min(30_000, backoff * 2)
     }
@@ -196,4 +189,38 @@ export async function workerLoop(signal?: { stopped: boolean }) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const STARTED = Symbol.for("newrole.backgroundWork")
+
+/**
+ * Starts the loop in this process and returns at once. Once per process: register() runs once, and
+ * the mark is on globalThis, which outlives a module that next dev loads again. The loop logs a
+ * failure and retries with its backoff, so a database that is down never stops the server.
+ */
+export function startInServer() {
+  const scope = globalThis as { [STARTED]?: boolean }
+  if (scope[STARTED]) return
+  scope[STARTED] = true
+  const signal = { stopped: false }
+  const stop = (kind: NodeJS.Signals) => {
+    if (signal.stopped) return
+    signal.stopped = true
+    console.log(`newrole.it background work stopping on ${kind}`)
+    // Now, not after a grace period: Next exits as soon as its own cleanup ends, and next dev
+    // kills its server 100 ms after the signal. In next dev, Ctrl+C exits in this same tick
+    // (below), before the write lands. A task that still finishes stays done; one left RUNNING
+    // by a process that died first is recovered by recoverStaleTasks after STALE_MS.
+    void requeueInFlight(activeTaskId).catch((error) =>
+      console.error("Could not requeue in-flight work", error)
+    )
+  }
+  // Ahead of the handlers that exit the process: Next's, and in next dev Blitz's SIGINT handler
+  // (withBlitz in next.config.js), which calls process.exit(0) at once.
+  process.prependListener("SIGINT", () => stop("SIGINT"))
+  process.prependListener("SIGTERM", () => stop("SIGTERM"))
+  console.log("newrole.it background work started: Google Sheet syncs, company names")
+  void workerLoop(signal).catch((error) =>
+    console.error("newrole.it background work stopped", error)
+  )
 }

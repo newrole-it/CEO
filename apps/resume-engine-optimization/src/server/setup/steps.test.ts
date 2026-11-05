@@ -15,7 +15,6 @@ const now = new Date("2026-10-30T12:00:00Z")
 function fresh(overrides: Partial<SetupFacts> = {}): SetupFacts {
   return {
     db: { ok: true, pendingMigrations: 0 },
-    worker: { lastSeenAt: new Date(now.getTime() - 5_000) },
     claude: { provider: "claude-cli", installed: true, loggedIn: true },
     chrome: true,
     user: { signedIn: false, guest: false, email: null },
@@ -30,7 +29,6 @@ function fresh(overrides: Partial<SetupFacts> = {}): SetupFacts {
     },
     mcp: { lastSeenAt: null, command: "claude mcp add newrole -s user -- npm run mcp" },
     sheet: { connected: false, lastSyncedAt: null, lastError: null },
-    now,
     ...overrides,
   }
 }
@@ -41,7 +39,6 @@ describe("buildSteps", () => {
   it("lists the steps in the order a person does them", () => {
     expect(buildSteps(fresh()).map((item) => item.id)).toEqual([
       "db",
-      "worker",
       "claude",
       "account",
       "profile",
@@ -58,13 +55,6 @@ describe("buildSteps", () => {
     expect(down).toMatchObject({ state: "error", note: "down", command: "docker compose up -d db" })
     const behind = step(fresh({ db: { ok: true, pendingMigrations: 2 } }), "db")
     expect(behind).toMatchObject({ state: "error", command: "npm run go", vars: { n: 2 } })
-  })
-
-  it("calls the worker stopped once its heartbeat is old", () => {
-    expect(step(fresh(), "worker").state).toBe("done")
-    const old = fresh({ worker: { lastSeenAt: new Date(now.getTime() - 120_000) } })
-    expect(step(old, "worker")).toMatchObject({ state: "todo", command: "npm run worker" })
-    expect(step(fresh({ worker: { lastSeenAt: null } }), "worker").state).toBe("todo")
   })
 
   it("separates a missing Claude from a signed-out one, and accepts an API key instead", () => {
@@ -117,11 +107,10 @@ describe("isReady", () => {
     profile: true,
   })
 
-  it("needs the database, the worker, an account and a profile", () => {
+  it("needs the database, an account and a profile", () => {
     expect(isReady(ready)).toBe(true)
     expect(isReady({ ...ready, db: { ok: false, pendingMigrations: 0 } })).toBe(false)
     expect(isReady({ ...ready, db: { ok: true, pendingMigrations: 1 } })).toBe(false)
-    expect(isReady({ ...ready, worker: { lastSeenAt: null } })).toBe(false)
     expect(isReady({ ...ready, user: { signedIn: false, guest: true, email: null } })).toBe(false)
     expect(isReady({ ...ready, profile: false })).toBe(false)
   })
@@ -162,7 +151,7 @@ describe("nextStep", () => {
       sheet: { connected: true, lastSyncedAt: now, lastError: null },
     }
     expect(nextStep(buildSteps(all))).toBeNull()
-    expect(progress(buildSteps(all))).toEqual({ done: 10, total: 10 })
+    expect(progress(buildSteps(all))).toEqual({ done: 9, total: 9 })
   })
 })
 
