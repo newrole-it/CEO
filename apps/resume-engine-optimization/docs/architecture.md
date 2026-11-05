@@ -71,7 +71,9 @@ newrole.it depends on nothing in `apps/jobs-lab`: `npm run check:boundaries` fai
    | The profile screens' calls (`@newrole/profile-ui`, as props)                           | `src/app/profile/profile-ui.ts`                                                                | —                                                                |
    | `createOriginGuard(appOrigin)` (`@newrole/app-kit/origin`)                             | `src/server/security/origin.ts` with `APP_ORIGIN`                                              | `src/server/guard.ts`                                            |
 
-   `@newrole/job-index` is the one package that stores: in newrole.it's schema, through the client its app binds. It claims only its own `BackgroundTask` types, and newrole.it's worker only its own (`SHEET_SYNC`, `GMAIL_SYNC`), so both can run on one database.
+   `@newrole/job-index` is the one package that stores: in jobs lab's own schema and database, through the client jobs lab binds. It claims only its own `BackgroundTask` types.
+
+   newrole.it has no separate worker: `register()` in `src/instrumentation.ts` starts its background loop (`src/server/queue/worker.ts`: the Google Sheet sync, leftover `GMAIL_SYNC` tasks, the hourly `CompanyAlias` refresh) inside the Next server, once per process. It claims only `SHEET_SYNC` and `GMAIL_SYNC`, each task atomically, so a second server can share the database.
 
 3. **The writing is the same everywhere.** `tailorCv` and `writeCoverLetter` (`@newrole/cv-engine/tailor`) hold the prompts and the merge that keeps employers, dates, contact details and numbers as the CV has them. newrole.it's `src/server/cv/tailor.ts` only picks the base CV, reads the offer and keeps the result.
 4. **Data rules travel with the code.** `@newrole/offers` applies the source policy and robots.txt and drops personal data; `@newrole/ats` refuses LinkedIn and keeps job boards link-only; `@newrole/llm` stores a prompt with a CV in it only when it is tied to a user; a CV or LinkedIn file imported into the profile is read in memory, and only the sections read from it are kept.
@@ -91,5 +93,5 @@ newrole.it depends on nothing in `apps/jobs-lab`: `npm run check:boundaries` fai
 These are proposals, not done:
 
 1. **A job search deployment.** `@newrole/job-index` holds the engine and its search; its feed screens (ranked offers, saved, companies, sources, sync) were removed from newrole.it with this split and are in git history (commit `ac5855e` on main has them). A deployment would bring them back over the packages, with the ports above.
-2. **The queue in one place.** newrole.it's worker and the engine's share `BackgroundTask` and the same claim and retry code, written twice (`apps/resume-engine-optimization/src/server/queue/worker.ts`, `apps/jobs-lab/packages/job-index/src/worker.ts`).
+2. **The queue in one place.** newrole.it's background loop and the engine's worker use the same claim and retry code, written twice (`src/server/queue/worker.ts` here, `apps/jobs-lab/packages/job-index/src/worker.ts`). As long as jobs lab is to leave the repository, that copy is the price of keeping the two apart.
 3. **Publishing.** [publishing.md](publishing.md) has what publishing the packages to npm would take.

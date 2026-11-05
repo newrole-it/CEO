@@ -828,7 +828,8 @@ model ApiToken {
   @@index([userId])
 }
 
-/// Last sign of life from a process the web app cannot see directly: "worker", "mcp". Read by /setup.
+/// Last sign of life from a process the web app cannot see directly: "mcp". Read by /setup. A "worker"
+/// row is left from the separate worker of earlier versions; the app does that work itself now.
 model ServiceHeartbeat {
   service    String   @id
   lastSeenAt DateTime @default(now())
@@ -931,9 +932,9 @@ model GmailLink {
   useModel      Boolean   @default(true)
   /// Everything before this date is handled; the next search starts just before it
   cursorAt      DateTime?
-  /// Null stops the worker: the person has to connect again
+  /// Null stops the background sync: the person has to connect again
   nextSyncAt    DateTime? @default(now())
-  /// Set while a sync runs, so the worker and "Sprawdź teraz" do not overlap
+  /// Set while a sync runs, so the background sync and "Sprawdź teraz" do not overlap
   syncingAt     DateTime?
   lastSyncedAt  DateTime?
   /// src/server/gmail/types.ts: reconnect | key | rate-limit | network | http

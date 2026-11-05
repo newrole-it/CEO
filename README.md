@@ -40,6 +40,8 @@ npm run go
 
 That is the whole install. `npm run go` creates `.env` with fresh secrets, installs packages, starts Postgres in Docker, runs migrations, builds the Chrome extension, starts the site, and opens http://127.0.0.1:43123/setup. Run it every day: it skips what is already done. Ctrl+C stops everything.
 
+newrole.it runs as one process: the Next server also does its background work (the Google Sheet sync and the company names the extension matches offers by), so there is no worker to start and /setup does not ask for one.
+
 ### Which apps run
 
 `npm run go` reads one flag per app from `.env`, `"on"` or `"off"`:
