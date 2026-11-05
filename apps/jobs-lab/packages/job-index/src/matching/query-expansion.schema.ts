@@ -6,8 +6,8 @@
  */
 import { z } from "zod";
 import { extractJsonObject, loadPromptBlock, type ChatMessage } from "./prompts";
-import { fold } from "./text";
-import { SeniorityEnum, SourceEnum, type Source } from "./types";
+import { fold } from "@newrole/matching/text";
+import { SeniorityEnum, SourceEnum, type Source } from "@newrole/matching/types";
 
 export const QUERY_EXPANSION_VERSION = "qe-v2";
 

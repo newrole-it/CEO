@@ -2,7 +2,6 @@ import { gzipSync } from "zlib"
 import { describe, expect, it } from "vitest"
 import { feedUrlFromLlms, parseJobFeed } from "./job-feed"
 import { extractListingLinks } from "./listing"
-import { rememberCompanyPage } from "../company-pages"
 import { listCareerSite } from "../adapters/career-site"
 import { listSmartRecruiters } from "../adapters/smartrecruiters"
 import type { HttpClient } from "../host"
@@ -161,22 +160,6 @@ describe("job feeds and listing-only pages", () => {
     expect(listed.proven).toBe(true)
     expect(listed.note).toMatch(/disallowed/i)
     expect(seen.some((url) => url.includes("/api/"))).toBe(false)
-  })
-
-  it("keeps Synerise job pages from search and skips link-only hosts", () => {
-    const pages: string[] = []
-    rememberCompanyPage(pages, "https://www.synerise.com/api/cms/job-postings")
-    rememberCompanyPage(pages, "https://revolut.com/careers/position/abc")
-    rememberCompanyPage(pages, "https://www.synerise.com/careers")
-    rememberCompanyPage(pages, "https://www.synerise.com/careers/data-engineer")
-    rememberCompanyPage(pages, "https://example.com/about")
-    rememberCompanyPage(pages, "https://example.com/jobs/1")
-    rememberCompanyPage(pages, "https://example.com/jobs/2")
-    expect(pages).toEqual([
-      "https://www.synerise.com/careers/data-engineer",
-      "https://example.com/about",
-      "https://example.com/jobs/1",
-    ])
   })
 
   it("reads an engineering-manager page before the rest of a large sitemap", async () => {

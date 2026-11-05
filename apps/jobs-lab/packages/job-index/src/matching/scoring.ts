@@ -3,10 +3,10 @@
  * Input: a NormalizedPosting (post-dedupe) + MatchProfile + `now`. No LLM, no randomness, no I/O.
  * Posting text never influences the score except via parsed structured fields and exclusion keywords.
  */
-import { SOURCE_PRIORITY } from "./dedupe";
-import { CITY_ALIASES, LEVEL_TOKENS, normalizeTitle, titleCore, titleTokens } from "./normalization";
-import { diceTokens, fold } from "./text";
-import { SENIORITY_RANK, type MatchProfile, type NormalizedPosting } from "./types";
+import { SOURCE_PRIORITY } from "@newrole/matching/dedupe";
+import { CITY_ALIASES, LEVEL_TOKENS, normalizeTitle, titleCore, titleTokens } from "@newrole/matching/normalization";
+import { diceTokens, fold } from "@newrole/matching/text";
+import { SENIORITY_RANK, type MatchProfile, type NormalizedPosting } from "@newrole/matching/types";
 
 export const SCORING_VERSION = "scoring-v1";
 

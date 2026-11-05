@@ -9,7 +9,7 @@ Reading job offers from ATS boards and career sites, with no storage. newrole.it
 | `read` | `readOfferUrl(url)`: one offer from its link (the ATS's API, else the page's JSON-LD JobPosting, else the page back to the caller); `readOfferSource(source)`: the whole text of a known offer; `pageText(html)` |
 | `payload` | `payloadToJob`: an offer someone read themselves, validated and cleaned |
 | `identity` | `identityFor`, `placeOf`, `countryFields`: the rules that make one posting one row in any store |
-| `boards`, `careers-detect`, `company-pages` | Which ATS a link belongs to, the boards a careers page links to or embeds |
+| `boards`, `careers-detect` | Which ATS a link belongs to, the boards a careers page links to or embeds |
 | `schemas`, `normalize`, `dedupe`, `countries`, `sources` | `ListedJob` and the source types, names, canonical URLs, an offer's countries |
 | `host` | The port: `configureAts({ http, takeDetailSlot, detailFetchesRemaining, cachedCareerListing })` |
 

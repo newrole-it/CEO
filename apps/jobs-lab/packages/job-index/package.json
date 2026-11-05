@@ -11,7 +11,9 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
-    "test:flow": "node ../../scripts/test-db.mjs run tsx --test --test-concurrency=1 \"test/*.test.ts\""
+    "test:flow": "node ../../scripts/test-db.mjs run tsx --test --test-concurrency=1 \"test/*.test.ts\"",
+    "gen:examples": "tsx scripts/gen-examples.ts",
+    "score-fixtures": "tsx scripts/score-fixtures.ts"
   },
   "dependencies": {
     "@newrole/app-kit": "0.1.0",
