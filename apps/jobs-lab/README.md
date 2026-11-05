@@ -8,15 +8,15 @@ Everything the lab is made of lives in this folder: the app (`src/`, `scripts/`)
 
 It uses newrole.it's packages (apps/resume-engine-optimization/packages) as ordinary dependencies: in this repository npm workspaces link them, in a repository of its own they would come from newrole.it's. Nothing is copied.
 
-| Package | What for |
-|---|---|
-| `@newrole/ats` | Reading boards and offers: the platform adapters, career sites, board detection on a careers page, one offer from its link, identity and countries of an offer |
-| `@newrole/offers` | The rules every read follows: SSRF-safe HTTP, robots.txt and the per-host pace, source policies; personal data and AI opt-outs out of offer text; the Polish job boards a search links out to |
-| `@newrole/matching` | Normalizing and deduping postings, salaries into PLN with NBP rates; the engine's scorer builds on it |
-| `@newrole/llm` | The model client and headless Claude (`claude -p`): query expansion, match explanations, role classification, similar companies, Claude search |
-| `@newrole/profile` | Industry, salary and profile shapes the ranking reads |
-| `@newrole/app-kit` | The origin guard on the lab's routes, the languages of a request |
-| `@newrole/ui` | The lab's buttons and styles |
+| Package             | What for                                                                                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@newrole/ats`      | Reading boards and offers: the platform adapters, career sites, board detection on a careers page, one offer from its link, identity and countries of an offer                                |
+| `@newrole/offers`   | The rules every read follows: SSRF-safe HTTP, robots.txt and the per-host pace, source policies; personal data and AI opt-outs out of offer text; the Polish job boards a search links out to |
+| `@newrole/matching` | Normalizing and deduping postings, salaries into PLN with NBP rates; the engine's scorer builds on it                                                                                         |
+| `@newrole/llm`      | The model client and headless Claude (`claude -p`): query expansion, match explanations, role classification, similar companies, Claude search                                                |
+| `@newrole/profile`  | Industry, salary and profile shapes the ranking reads                                                                                                                                         |
+| `@newrole/app-kit`  | The origin guard on the lab's routes, the languages of a request                                                                                                                              |
+| `@newrole/ui`       | The lab's buttons and styles                                                                                                                                                                  |
 
 newrole.it never depends on the lab: `npm run check:boundaries` fails if it does.
 
@@ -63,7 +63,7 @@ npm run harvest -w @newrole/jobs-lab -- --dry-run    # a cloud harvest run, with
 
 The lab reads its own `.env` files first (`apps/jobs-lab/.env.local`, `.env`, …, in the order Next reads them), then the repository root's, where `npm run go` writes them; a variable set in the shell wins over both. The same order holds for the Next app (`next.config.js`) and for the scripts (`scripts/root-env.js`).
 
-[.env.example](.env.example) lists the variables only the lab and its engine read: the lab's databases, `JOBS_LAB_ORIGIN`, web search (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `WEB_SEARCH_PROVIDER`, `CLAUDE_SEARCH_DAILY_CAP`), the size of a scan (`SCAN_SEED_LIMIT`, `DISCOVERY_QUERY_LIMIT`), `OFFER_INDEX` and the neutral match profile (`MATCH_*`). What the shared packages read (`DATABASE_URL`, `LLM_*`, `CLAUDE_CLI_*`, `CRAWLER_NOTE`, `BLOCKED_COUNTRIES`, `FETCH_*`, `FX_*`, …) is in the root `.env.example`.
+[.env.example](.env.example) and [docs/configuration.md](docs/configuration.md), which also covers the cloud harvest and the outside board catalog, list the variables only the lab and its engine read: the lab's databases, `JOBS_LAB_ORIGIN`, web search (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `WEB_SEARCH_PROVIDER`, `CLAUDE_SEARCH_DAILY_CAP`), the size of a scan (`SCAN_SEED_LIMIT`, `DISCOVERY_QUERY_LIMIT`), `OFFER_INDEX` and the neutral match profile (`MATCH_*`). What the shared packages read (`DATABASE_URL`, `LLM_*`, `CLAUDE_CLI_*`, `CRAWLER_NOTE`, `BLOCKED_COUNTRIES`, `FETCH_*`, `FX_*`, …) is in the root `.env.example`.
 
 ## Running it from the repository root
 
