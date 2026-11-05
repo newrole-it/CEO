@@ -133,6 +133,22 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
             {t("ow.source")} <ExternalLink aria-hidden size={14} />
           </a>
         </div>
+        <div className="row offer-head__actions">
+          {offer.cvId ? (
+            <ButtonLink href={`/cv/${offer.cvId}`} variant="primary" icon={<FileText />}>
+              {t("ow.docs.openCv")}
+            </ButtonLink>
+          ) : (
+            <ButtonLink href={`/offers/${offer.jobId}/cv`} variant="primary" icon={<FileText />}>
+              {t("ow.docs.tailor")}
+            </ButtonLink>
+          )}
+          {offer.letterId ? (
+            <ButtonLink href={`/cv/${offer.letterId}`} variant="outline" icon={<Mail />}>
+              {t("ow.docs.openLetter")}
+            </ButtonLink>
+          ) : null}
+        </div>
       </header>
 
       <div className="offer-ws">

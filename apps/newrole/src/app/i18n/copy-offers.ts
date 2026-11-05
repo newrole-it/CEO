@@ -5,7 +5,7 @@
 export const offersPl = {
   "of.title": "Oferty",
   "of.sub":
-    "Oferty, nad którymi pracujesz. Wklej link, a pobierzemy całe ogłoszenie. Potem dopasujesz do niego CV i list.",
+    "Oferty, nad którymi pracujesz. Każda ma swoją stronę: całe ogłoszenie, CV i list pod nie oraz aplikację.",
   "of.empty.title": "Nie masz jeszcze żadnej oferty",
   "of.empty.body":
     "Wklej wyżej link do ogłoszenia ze strony firmy albo jej systemu rekrutacji. Treść pobierzemy sami.",
@@ -86,7 +86,7 @@ export const offersPl = {
 export const offersEn: Record<keyof typeof offersPl, string> = {
   "of.title": "Offers",
   "of.sub":
-    "The offers you work on. Paste a link and we read the whole posting. Then tailor your CV and letter to it.",
+    "The offers you work on. Each has its page: the whole posting, the CV and letter for it, and its application.",
   "of.empty.title": "No offers yet",
   "of.empty.body":
     "Paste a link above, to the posting on the company's site or its ATS. We read the text ourselves.",

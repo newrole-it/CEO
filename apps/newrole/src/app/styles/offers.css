@@ -104,6 +104,15 @@
   font-size: 14px;
   color: var(--text-muted);
 }
+.offer-head__facts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.offer-head__actions {
+  margin-top: 8px;
+}
 .offer-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
