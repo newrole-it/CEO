@@ -70,12 +70,18 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
 
   const refresh = () =>
     run("refresh", async () => {
-      const { read } = await invoke(refreshOfferText, { jobId: offer.jobId })
+      const { result } = await invoke(refreshOfferText, { jobId: offer.jobId })
       toast.show({
-        message: read ? t("ow.text.refreshed") : t("ow.text.refreshFail"),
-        tone: read ? undefined : "danger",
+        message:
+          result === "kept"
+            ? t("ow.text.refreshed")
+            : result === "board"
+            ? t("ow.text.board")
+            : t("ow.text.refreshFail"),
+        tone: result === "failed" ? "danger" : undefined,
+        ...(result === "board" ? { duration: 10_000 } : {}),
       })
-      if (read) router.refresh()
+      if (result === "kept") router.refresh()
     })
 
   const saveNote = () =>

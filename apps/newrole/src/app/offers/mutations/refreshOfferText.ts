@@ -11,6 +11,6 @@ export default resolver.pipe(
   async ({ jobId }, ctx) => {
     const userId = requireMember(ctx.session)
     await assertOfferReadLimit(userId)
-    return { read: await refreshOfferText(userId, jobId) }
+    return { result: await refreshOfferText(userId, jobId) }
   }
 )

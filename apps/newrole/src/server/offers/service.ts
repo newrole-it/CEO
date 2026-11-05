@@ -1,7 +1,9 @@
 import { z } from "zod"
 import db from "db"
 import { refusedHost } from "@newrole/ats/read"
+import { isAggregatorHost } from "@newrole/offers/hosts"
 import { stripPersonalData } from "@newrole/offers/hygiene"
+import { isPolishBoardHost } from "@newrole/offers/polish-boards"
 import { OFFER_TEXT_LIMIT } from "@newrole/cv-core/tailor"
 import { readOffer, type ReadOfferDeps } from "src/server/applications/read-offer"
 import { formatSalary, urlKey } from "src/server/applications/logic"
@@ -65,6 +67,20 @@ function cleanText(text: string | null | undefined): string | null {
   return value || null
 }
 
+/**
+ * A job board's or LinkedIn's page is read for the person when they tailor (a person's read in
+ * @newrole/offers), kept in memory for 15 minutes and never stored: their terms forbid copying the
+ * listings. Only a text the person pastes is kept for such an offer.
+ */
+export function readOnlyWhenTailoring(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return isPolishBoardHost(host) || isAggregatorHost(host)
+  } catch {
+    return false
+  }
+}
+
 /** Keeps the offer in the person's list; a text, when there is one, replaces the copy they had. */
 export async function keepOffer(
   userId: number,
@@ -91,7 +107,7 @@ async function ensureText(userId: number, jobId: string): Promise<void> {
   if (saved?.text) return
   try {
     const job = await db.job.findUnique({ where: { id: jobId }, select: offerSourceSelect })
-    if (!job) return
+    if (!job || readOnlyWhenTailoring(job.originalUrl)) return
     const read = await readOfferText(toOfferSource(job))
     if (read.origin === "full") await keepOffer(userId, jobId, { text: read.text, origin: "full" })
   } catch (error) {
@@ -369,13 +385,17 @@ export async function updateOffer(
 }
 
 /** Read the offer from its source again and keep the text. False when nothing could be read. */
-export async function refreshOfferText(userId: number, jobId: string): Promise<boolean> {
+export async function refreshOfferText(
+  userId: number,
+  jobId: string
+): Promise<"kept" | "board" | "failed"> {
   const job = await db.job.findUnique({ where: { id: jobId }, select: offerSourceSelect })
-  if (!job) return false
+  if (!job) return "failed"
+  if (readOnlyWhenTailoring(job.originalUrl)) return "board"
   const read = await readOfferText(toOfferSource(job))
-  if (read.origin !== "full") return false
+  if (read.origin !== "full") return "failed"
   await keepOffer(userId, jobId, { text: read.text, origin: "full" })
-  return true
+  return "kept"
 }
 
 /** Out of the person's list. The documents written for it and the application stay. */

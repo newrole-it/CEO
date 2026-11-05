@@ -188,20 +188,43 @@ describe("readOfferText", () => {
     expect(urls).toEqual(["https://careers.acme.example/robots.txt"])
   })
 
-  it.each([
-    ["a site where only the listing may be read", "https://kariera.wp.pl/oferta/7"],
-    ["a Polish job board", "https://justjoin.it/job-offer/7"],
-    ["LinkedIn", "https://www.linkedin.com/jobs/view/7"],
-  ])("sends no request to %s", async (_label, originalUrl) => {
-    const { http, urls } = fakeHttp(() => ({ body: careerPage(LONG) }))
+  const pasted = (originalUrl: string) =>
+    source({ sourceType: "WEB_SEARCH", sourceBoardId: null, externalId: null, originalUrl })
 
-    const read = await readOfferText(
-      source({ sourceType: "WEB_SEARCH", sourceBoardId: null, externalId: null, originalUrl }),
-      http
-    )
+  it.each([
+    ["a Polish job board", "https://justjoin.it/job-offer/acme-staff-engineer"],
+    ["LinkedIn", "https://www.linkedin.com/jobs/view/7"],
+    ["a site the crawler reads only the listing of", "https://kariera.wp.pl/oferta/7"],
+  ])("reads the offer on %s for the person who asked", async (_label, originalUrl) => {
+    const { http, urls } = careerHttp(careerPage(`<p>${LONG}</p>`))
+
+    const read = await readOfferText(pasted(originalUrl), http)
+
+    expect(read.origin).toBe("full")
+    expect(read.text).toContain("Wymagamy: Go, Kubernetes.")
+    expect(urls).toEqual([`${new URL(originalUrl).origin}/robots.txt`, originalUrl])
+  })
+
+  it("keeps to a job board's robots.txt all the same", async () => {
+    const { http, urls } = careerHttp(careerPage(LONG), "User-agent: *\nDisallow: /job-offer/")
+
+    const read = await readOfferText(pasted("https://justjoin.it/job-offer/7"), http)
+
+    expect(read).toEqual({ text: STORED, origin: "excerpt" })
+    expect(urls).toEqual(["https://justjoin.it/robots.txt"])
+  })
+
+  it("sends no request to a site whose owner asked not to be read", async () => {
+    const previous = process.env.CRAWLER_OPT_OUT_HOSTS
+    process.env.CRAWLER_OPT_OUT_HOSTS = "justjoin.it"
+    const { http, urls } = careerHttp(careerPage(LONG))
+
+    const read = await readOfferText(pasted("https://justjoin.it/job-offer/7"), http)
 
     expect(read).toEqual({ text: STORED, origin: "excerpt" })
     expect(urls).toEqual([])
+    if (previous === undefined) delete process.env.CRAWLER_OPT_OUT_HOSTS
+    else process.env.CRAWLER_OPT_OUT_HOSTS = previous
   })
 
   it.each([

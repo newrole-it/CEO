@@ -5,7 +5,6 @@ import { htmlToText } from "@newrole/offers/text"
 import { assertSafeUrl } from "@newrole/offers/url-safety"
 import { hydrateAvature } from "./adapters/avature"
 import { hydrateBamboo } from "./adapters/bamboohr"
-import { detailPagesAllowed } from "./adapters/career-site"
 import { hydrateErecruiter } from "./adapters/erecruiter"
 import { hydrateGreenhouse } from "./adapters/greenhouse"
 import { hydrateJobvite } from "./adapters/jobvite"
@@ -280,14 +279,17 @@ export function pageText(html: string): string {
   return text.length >= PAGE_TEXT_MIN ? text : ""
 }
 
-/** A company's own page: source policy, robots.txt and the daily cap, like the crawler. */
+/**
+ * The offer's own page, on any site, job boards and LinkedIn included: a person asked for it, so it
+ * is a person's read (Reader in @newrole/offers). robots.txt, the owner's opt-out, the page's AI
+ * opt-out and the daily cap still apply.
+ */
 async function readPage(source: OfferSource, http: HttpClient): Promise<LiveText> {
-  const policy = policyFor(source.originalUrl)
+  const policy = policyFor(source.originalUrl, "person")
   if (!policy.allow) return null
   const { hostname } = new URL(source.originalUrl)
-  if (!detailPagesAllowed(hostname)) return null
   if (!(await takeDetailSlot(hostname))) return null
-  const page = await politeGet(source.originalUrl, http, createRobotsCache())
+  const page = await politeGet(source.originalUrl, http, createRobotsCache(), { reader: "person" })
   if (!page.ok) return null
   const body = page.response.body
   const url = page.response.url || source.originalUrl

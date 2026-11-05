@@ -15,7 +15,7 @@ export const offerAddPl = {
   "oa.read": "Odczytaliśmy ofertę ze strony. Sprawdź dane i treść, potem ją dodaj.",
   "oa.partial": "Odczytaliśmy tylko część danych. Sprawdź je i uzupełnij resztę.",
   "oa.linkOnly":
-    "Tej strony nie czytamy automatycznie. Wpisz firmę i stanowisko i wklej treść ogłoszenia.",
+    "Przy dodawaniu tej strony nie czytamy, więc wpisz firmę i stanowisko. Treść oferty wklej tutaj albo pobierzemy ją ze strony przy dostosowaniu CV, o ile strona na to pozwala.",
   "oa.unreadable":
     "Nie udało się odczytać tej strony. Wpisz firmę i stanowisko i wklej treść ogłoszenia.",
   "oa.company": "Firma",
@@ -60,7 +60,7 @@ export const offerAddEn: Record<keyof typeof offerAddPl, string> = {
   "oa.read": "We read the offer from the page. Check the details and the text, then add it.",
   "oa.partial": "We could read only part of it. Check it and fill in the rest.",
   "oa.linkOnly":
-    "This site is not read automatically. Enter the company and role and paste the posting's text.",
+    "This site is not read when adding an offer, so enter the company and role. Paste the offer's text here, or it is read from its page when you tailor your CV, if the site allows it.",
   "oa.unreadable":
     "The page could not be read. Enter the company and role and paste the posting's text.",
   "oa.company": "Company",

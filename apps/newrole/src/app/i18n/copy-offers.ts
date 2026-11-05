@@ -39,6 +39,8 @@ export const offersPl = {
   "ow.text.refresh": "Pobierz ponownie",
   "ow.text.refreshed": "Pobrano treść ze źródła.",
   "ow.text.refreshFail": "Nie udało się pobrać treści. Możesz ją wkleić.",
+  "ow.text.board":
+    "To ogłoszenie z portalu z ofertami. Jego treść czytamy przy dopasowaniu CV, ale jej nie zapisujemy. Jeśli chcesz ją tu mieć, wklej ją.",
   "ow.text.more": "Pokaż całość",
   "ow.text.less": "Zwiń",
   "ow.docs.title": "Dokumenty pod tę ofertę",
@@ -120,6 +122,8 @@ export const offersEn: Record<keyof typeof offersPl, string> = {
   "ow.text.refresh": "Read again",
   "ow.text.refreshed": "Read the text from the source.",
   "ow.text.refreshFail": "The text could not be read. You can paste it.",
+  "ow.text.board":
+    "This offer is on a job board. Its text is read when you tailor your CV but not stored. Paste it if you want it here.",
   "ow.text.more": "Show all",
   "ow.text.less": "Collapse",
   "ow.docs.title": "Documents for this offer",

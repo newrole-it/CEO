@@ -5,9 +5,10 @@ import { createRobotsCache, politeGet, type RobotsCache } from "./polite"
 import { decodeEntities, htmlToText } from "./text"
 
 /**
- * One job offer read from the link a person gave: the source policy, robots.txt and the safe
- * fetch first (polite.ts), then the page's schema.org JobPosting, or its visible text when it has
- * none. Nothing is stored here.
+ * One job offer read from the link a person gave, from any site, job boards and LinkedIn included:
+ * robots.txt, the site owner's opt-out and the safe fetch first (polite.ts, as a person's read),
+ * then the page's schema.org JobPosting, or its visible text when it has none. Nothing is stored
+ * here.
  */
 
 export type Posting = {
@@ -81,7 +82,7 @@ export async function readPosting(
   http: HttpClient,
   opts: { robots?: RobotsCache } = {}
 ): Promise<PostingResult> {
-  const page = await politeGet(url, http, opts.robots ?? createRobotsCache())
+  const page = await politeGet(url, http, opts.robots ?? createRobotsCache(), { reader: "person" })
   if (!page.ok) return page
   const html = page.response.body
   const pageUrl = page.response.url || url

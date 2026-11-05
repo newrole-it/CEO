@@ -252,14 +252,6 @@ function workdayTarget(boardId: string, companyName?: string): CareerTarget | nu
   }
 }
 
-/** False on sites where only the listing may be read. Someone asking for an offer does not change that. */
-export function detailPagesAllowed(hostname: string): boolean {
-  const host = hostname.toLowerCase()
-  return !Object.values(KNOWN).some(
-    (target) => target.detail === "none" && sameSite(host, target.host.toLowerCase())
-  )
-}
-
 function targetFor(boardId: string, companyName?: string): CareerTarget | null {
   const known = KNOWN[boardId.toLowerCase()]
   if (known) {

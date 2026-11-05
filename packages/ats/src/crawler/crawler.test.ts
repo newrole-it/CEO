@@ -130,6 +130,19 @@ describe("source policy", () => {
     if (previous === undefined) delete process.env.CRAWLER_OPT_OUT_HOSTS
     else process.env.CRAWLER_OPT_OUT_HOSTS = previous
   })
+
+  it("lets a person have one offer read from any site, unless its owner opted out", () => {
+    const board = new URL("https://justjoin.it/job-offer/acme-staff-engineer")
+    expect(decideFetch(board).allow).toBe(false)
+    expect(decideFetch(board, "person").allow).toBe(true)
+    expect(decideFetch(new URL("https://www.linkedin.com/jobs/view/1"), "person").allow).toBe(true)
+    expect(decideFetch(new URL("https://acme.icims.com/jobs/1/job"), "person").allow).toBe(true)
+    const previous = process.env.CRAWLER_OPT_OUT_HOSTS
+    process.env.CRAWLER_OPT_OUT_HOSTS = "justjoin.it"
+    expect(decideFetch(board, "person").allow).toBe(false)
+    if (previous === undefined) delete process.env.CRAWLER_OPT_OUT_HOSTS
+    else process.env.CRAWLER_OPT_OUT_HOSTS = previous
+  })
 })
 
 describe("robots and sitemaps", () => {
