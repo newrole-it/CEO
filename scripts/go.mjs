@@ -5,6 +5,11 @@
  * because this runs before anything is installed. `--prepare` stops before starting the app
  * (npm run setup), `--no-open` leaves the browser alone, and `--extension` only installs and
  * rebuilds the Chrome extension (npm run ext:build).
+ *
+ * Which apps it prepares and starts is up to their flags in .env (APP_…="on" or "off"). newrole.it
+ * and its Chrome extension are built in here. Any other app under apps/ joins by a "go" field in
+ * its package.json: its flag, its default, the script that prepares it and the scripts it runs.
+ * An app whose folder is gone is skipped, so deleting one breaks nothing.
  */
 import { spawn, spawnSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
@@ -15,12 +20,16 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+const APPS = join(ROOT, "apps")
 /** newrole.it itself; the root holds .env and the workspaces. */
-const APP = join(ROOT, "apps", "newrole")
+const APP = join(APPS, "resume-engine-optimization")
 const SCHEMA = join(APP, "db", "schema.prisma")
 /** The Chrome extension: an app of its own with its own lockfile, not a workspace. */
-const EXTENSION = join(ROOT, "apps", "extension")
+const EXTENSION = join(APPS, "reo-extension")
 const ENV_FILE = join(ROOT, ".env")
+/** The flags of the two apps built in here. Other apps name theirs in package.json ("go"). */
+const CV_FLAG = { flag: "APP_RESUME_ENGINE_OPTIMIZATION", default: "on", label: "newrole.it" }
+const EXTENSION_FLAG = { flag: "APP_REO_EXTENSION", default: "on", label: "Chrome extension" }
 const BIN = (name) => join(ROOT, "node_modules", ".bin", name)
 const MIN_NODE = 22
 const DEFAULT_PORT = 5432
@@ -128,6 +137,113 @@ async function ensureEnv() {
   text = setLine(text, "OWNER_PASSWORD", randomBytes(18).toString("hex"))
   writeFileSync(ENV_FILE, text, { mode: 0o600 })
   ok(`.env created with fresh secrets${port === DEFAULT_PORT ? "" : ` (database on port ${port})`}`)
+}
+
+/** The shell wins, then .env.local, then .env: the same order Next reads them in. */
+function readEnv() {
+  const local = join(ROOT, ".env.local")
+  return {
+    ...parseEnv(readFileSync(ENV_FILE, "utf8")),
+    ...(existsSync(local) ? parseEnv(readFileSync(local, "utf8")) : {}),
+    ...process.env,
+  }
+}
+
+// -------------------------------------------------------------------- apps
+
+const ON = /^(on|1|true|yes)$/i
+const OFF = /^(off|0|false|no)$/i
+const FLAGS_HEADER = "# Apps npm run go prepares and starts"
+
+/** Apps that join npm run go by a "go" field in their package.json, besides the two built in. */
+function optionalApps() {
+  if (!existsSync(APPS)) return []
+  const found = []
+  for (const name of readdirSync(APPS).sort()) {
+    const dir = join(APPS, name)
+    if (dir === APP || dir === EXTENSION) continue
+    let manifest
+    try {
+      manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
+    } catch {
+      continue // not an app, or one that was deleted
+    }
+    const go = manifest.go
+    if (!go || typeof go.flag !== "string" || !/^[A-Z][A-Z0-9_]*$/.test(go.flag)) continue
+    found.push({ name, dir, manifest, go: { ...go, label: go.label ?? name } })
+  }
+  return found
+}
+
+function isOn({ flag, default: fallback = "off", label }, env) {
+  const value = (env[flag] ?? "").trim()
+  if (ON.test(value)) return true
+  if (OFF.test(value)) return false
+  if (value) info(`${flag}="${value}" is neither on nor off: ${label} stays ${fallback}`)
+  return ON.test(fallback)
+}
+
+/**
+ * Each app's flag goes into .env once, with its default, so it is there to switch. Only the flags
+ * of apps that are here: a deleted app leaves its line behind, and that line does nothing.
+ */
+function ensureFlags(apps) {
+  const text = readFileSync(ENV_FILE, "utf8")
+  const present = parseEnv(text)
+  const flags = [
+    existsSync(join(APP, "package.json")) && CV_FLAG,
+    existsSync(join(EXTENSION, "package.json")) && EXTENSION_FLAG,
+    ...apps.map((app) => app.go),
+  ].filter((flag) => flag && !(flag.flag in present))
+  if (!flags.length) return
+  const header = text.includes(FLAGS_HEADER)
+    ? ""
+    : `${FLAGS_HEADER}: "on" or "off". An app whose folder is gone is skipped.\n`
+  const lines = flags.map(
+    ({ flag, default: fallback = "off", label }) =>
+      `# ${label}\n${flag}="${ON.test(fallback) ? "on" : "off"}"`
+  )
+  writeFileSync(ENV_FILE, `${text.trimEnd()}\n\n${header}${lines.join("\n")}\n`)
+  ok(`.env: added ${flags.map(({ flag }) => flag).join(", ")}`)
+}
+
+/** Which apps run this time, and a word on flags that name no app here. */
+function chooseApps(apps, env) {
+  const cv = existsSync(join(APP, "package.json")) && isOn(CV_FLAG, env)
+  const extension = existsSync(join(EXTENSION, "package.json")) && isOn(EXTENSION_FLAG, env)
+  const others = apps.filter((app) => isOn(app.go, env))
+  const known = new Set([CV_FLAG.flag, EXTENSION_FLAG.flag, ...apps.map((app) => app.go.flag)])
+  for (const [key, value] of Object.entries(env)) {
+    if (/^APP_[A-Z0-9_]+$/.test(key) && !known.has(key) && ON.test(value.trim()))
+      info(`${key} is on, but no app in apps/ answers to it: nothing to start for it`)
+  }
+  const labels = [cv && CV_FLAG.label, extension && EXTENSION_FLAG.label]
+    .concat(others.map((app) => app.go.label))
+    .filter(Boolean)
+  const off = apps.filter((app) => !others.includes(app)).map((app) => app.go.label)
+  if (!labels.length) {
+    fail(
+      "Every app is off in .env.",
+      `Turn one on, for example ${CV_FLAG.flag}="on".`,
+      `Apps here: ${[CV_FLAG.label, EXTENSION_FLAG.label, ...apps.map((app) => app.go.label)].join(
+        ", "
+      )}`
+    )
+  }
+  ok(`Apps: ${labels.join(", ")}${off.length ? ` (off: ${off.join(", ")})` : ""}`)
+  return { cv, extension, others }
+}
+
+/** An optional app's own preparation (its database, its seed data), through its own script. */
+function prepareApp(app, env) {
+  const script = app.go.prepare
+  if (!script) return
+  if (!app.manifest.scripts?.[script]) {
+    fail(`${app.go.label}: apps/${app.name}/package.json has no "${script}" script.`)
+  }
+  info(`${app.go.label}: preparing...`)
+  run(npm, ["run", "--silent", script], { cwd: app.dir, env, title: `Preparing ${app.go.label}` })
+  ok(`${app.go.label}: ready`)
 }
 
 // ------------------------------------------------------------ dependencies
@@ -298,80 +414,129 @@ function openBrowser(url) {
     .unref()
 }
 
-async function start(env) {
-  const url = appUrl(env)
-  const origin = url.origin
-  const port = url.port || "43123"
-  if (await isOurApp(origin)) {
-    ok(`Already running: ${origin}/setup`)
-    openBrowser(`${origin}/setup`)
+/** Answers on its address at all: for an app started by its own scripts, any HTTP reply will do. */
+async function answers(url) {
+  try {
+    await fetch(url, { signal: AbortSignal.timeout(4000) })
+    return true
+  } catch {
+    return false
+  }
+}
+
+const quote = (value) => JSON.stringify(value)
+const COLORS = ["cyan", "magenta", "yellow", "green", "blue", "red"]
+
+async function start(env, { cv, others }) {
+  const commands = []
+  const ready = []
+  if (cv) {
+    const url = appUrl(env)
+    const origin = url.origin
+    const port = url.port || "43123"
+    if (await isOurApp(origin)) {
+      ok(`${CV_FLAG.label} already running: ${origin}/setup`)
+      ready.push({ label: CV_FLAG.label, url: `${origin}/setup`, check: () => true })
+    } else {
+      if (!(await portFree(Number(port)))) {
+        fail(
+          `Port ${port} is taken by another program.`,
+          `Stop it, or set APP_ORIGIN="http://127.0.0.1:<another port>" in .env.`
+        )
+      }
+      // Same as `npm run dev`: webpack, because Turbopack breaks Blitz RPC resolvers on Next 16.
+      commands.push({
+        name: "web",
+        command: `cd ${quote(APP)} && ${quote(BIN("next"))} dev --webpack -p ${port} -H 127.0.0.1`,
+      })
+      ready.push({ label: CV_FLAG.label, url: `${origin}/setup`, check: () => isOurApp(origin) })
+    }
+  }
+  for (const app of others) {
+    const scripts = Object.entries(app.go.start ?? {})
+    const url = app.go.url ? new URL(app.go.url) : null
+    if (url?.port && !(await portFree(Number(url.port)))) {
+      info(`${app.go.label}: port ${url.port} is taken (already running?), not started`)
+      continue
+    }
+    for (const [name, script] of scripts) {
+      if (!app.manifest.scripts?.[script]) {
+        fail(`${app.go.label}: apps/${app.name}/package.json has no "${script}" script.`)
+      }
+      commands.push({ name, command: `cd ${quote(app.dir)} && npm run --silent ${script}` })
+    }
+    if (url && scripts.length) {
+      ready.push({ label: app.go.label, url: url.href, check: () => answers(url.href) })
+    }
+  }
+  if (!commands.length) {
+    if (ready[0]) openBrowser(ready[0].url)
     return
   }
-  if (!(await portFree(Number(port)))) {
-    fail(
-      `Port ${port} is taken by another program.`,
-      `Stop it, or set APP_ORIGIN="http://127.0.0.1:<another port>" in .env.`
-    )
-  }
-  console.log(`\n  Starting the app and the worker. Open ${origin}/setup when it is ready.`)
-  console.log("  Press Ctrl+C to stop both.\n")
+  const names = commands.map((command) => command.name)
+  console.log(`\n  Starting ${names.join(", ")}. Press Ctrl+C to stop them all.`)
+  for (const { label, url } of ready) console.log(`  ${label}: ${url}`)
+  console.log("")
   const child = spawn(
     BIN("concurrently"),
     [
       "-k",
       "-n",
-      "web,worker",
+      names.join(","),
       "-c",
-      "cyan,magenta",
-      // Same as `npm run dev`: webpack, because Turbopack breaks Blitz RPC resolvers on Next 16.
-      `${JSON.stringify(BIN("next"))} dev --webpack -p ${port} -H 127.0.0.1`,
-      `${JSON.stringify(BIN("tsx"))} src/worker.ts`,
+      commands.map((_, index) => COLORS[index % COLORS.length]).join(","),
+      ...commands.map((command) => command.command),
     ],
-    { cwd: APP, env, stdio: "inherit" }
+    { cwd: ROOT, env, stdio: "inherit" }
   )
   child.on("exit", (code) => process.exit(code ?? 0))
   for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => child.kill(signal))
   // The first page compiles on demand, so wait for it before opening the browser.
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  const waiting = [...ready]
+  for (let attempt = 0; attempt < 120 && waiting.length; attempt += 1) {
     await new Promise((done) => setTimeout(done, 2000))
-    if (await isOurApp(origin)) {
-      console.log(`\n  Ready: ${origin}/setup\n`)
-      openBrowser(`${origin}/setup`)
-      return
+    for (const app of [...waiting]) {
+      if (!(await app.check())) continue
+      waiting.splice(waiting.indexOf(app), 1)
+      console.log(`\n  Ready: ${app.label} on ${app.url}\n`)
+      if (app === ready[0]) openBrowser(app.url)
     }
   }
-  console.log(`\n  Still starting. Open ${origin}/setup in a moment.\n`)
+  for (const app of waiting)
+    console.log(`\n  Still starting: ${app.label}. Open ${app.url} in a moment.\n`)
 }
 
 async function main() {
   console.log("\n  newrole.it\n")
   checkNode()
   if (process.argv.includes("--extension")) {
+    if (!existsSync(join(EXTENSION, "package.json"))) {
+      fail("There is no Chrome extension here: apps/reo-extension is missing.")
+    }
     installExtension()
     buildExtension({ force: true })
     console.log(`\n  Load this folder at chrome://extensions:`)
     console.log(`  ${join(EXTENSION, ".output", "chrome-mv3")}\n`)
     return
   }
+  const apps = optionalApps()
   await ensureEnv()
-  // The shell wins, then .env.local, then .env: the same order Next reads them in.
-  const local = join(ROOT, ".env.local")
-  const env = {
-    ...parseEnv(readFileSync(ENV_FILE, "utf8")),
-    ...(existsSync(local) ? parseEnv(readFileSync(local, "utf8")) : {}),
-    ...process.env,
-  }
-  install(ROOT, join("node_modules", ".bin", "next"), "App")
-  installExtension()
-  await ensureDatabase(env)
-  migrate(env)
-  buildExtension()
+  ensureFlags(apps)
+  const env = readEnv()
+  const { cv, extension, others } = chooseApps(apps, env)
+  const workspaces = cv || others.length > 0
+  if (workspaces) install(ROOT, join("node_modules", ".bin", "next"), "Packages")
+  if (extension) installExtension()
+  if (workspaces) await ensureDatabase(env)
+  if (cv) migrate(env)
+  for (const app of others) prepareApp(app, env)
+  if (extension) buildExtension()
   reportClaude()
   if (prepareOnly) {
     console.log("\n  Ready. Start it with: npm run go\n")
     return
   }
-  await start(env)
+  await start(env, { cv, others })
 }
 
 main().catch((error) => fail("Setup stopped.", String(error?.message ?? error)))

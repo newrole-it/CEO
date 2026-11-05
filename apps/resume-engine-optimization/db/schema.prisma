@@ -1,0 +1,982 @@
+// Jobscanner data model.
+// Follows the spirit of the product spec (companies, career pages, jobs,
+// observations, saved searches, matches) narrowed to one owner.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --------------------------------------
+// Auth (Blitz). Session/Token shapes are what @blitzjs/auth expects.
+
+model User {
+  id              Int       @id @default(autoincrement())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  name            String?
+  email           String    @unique
+  hashedPassword  String?
+  role            String    @default("USER")
+  emailVerifiedAt DateTime?
+  linkedinSub     String?   @unique
+  imageUrl        String?
+  timezone        String    @default("Europe/Warsaw")
+  locale          String    @default("en")
+  deletedAt       DateTime?
+  /// Contact and form details the Chrome extension fills (src/shared/applicant.ts)
+  applicant       Json      @default("{}")
+
+  tokens           Token[]
+  sessions         Session[]
+  searches         SavedSearch[]
+  audits           AuditEvent[]
+  candidateProfile CandidateProfile?
+  profileAudits    ProfileAuditRun[]
+  llmCaches        LlmCache[]
+  offerFeedback    OfferFeedback[]
+  watchedCompanies WatchedCompany[]
+  applications     Application[]
+  cvDocuments      CvDocument[]
+  offers           UserOffer[]
+  answers          Answer[]
+  apiTokens        ApiToken[]
+  sheetLink        SheetLink?
+  gmailLink        GmailLink?
+  mailEvents       MailEvent[]
+}
+
+model Session {
+  id                 Int       @id @default(autoincrement())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  expiresAt          DateTime?
+  handle             String    @unique
+  hashedSessionToken String?
+  antiCSRFToken      String?
+  publicData         String?
+  privateData        String?
+
+  user   User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int?
+}
+
+model Token {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  hashedToken String
+  type        String
+  expiresAt   DateTime
+  sentTo      String
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  @@unique([hashedToken, type])
+}
+
+model LoginLink {
+  id          String    @id @default(cuid())
+  email       String
+  hashedToken String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requestIp   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
+model AuthRateLimit {
+  key         String   @id
+  windowStart DateTime
+  count       Int      @default(0)
+}
+
+model CandidateProfile {
+  id                 String    @id @default(cuid())
+  userId             Int       @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline           String?
+  currentTitle       String?
+  pastTitles         Json      @default("[]")
+  seniority          String?
+  yearsExperience    Float?
+  skills             Json      @default("[]")
+  industries         Json      @default("[]")
+  locations          Json      @default("[]")
+  languages          Json      @default("[]")
+  salaryFloor        Float?
+  salaryTarget       Float?
+  salaryCurrency     String?
+  salaryPeriod       String?
+  salaryContract     String?
+  industryMode       String    @default("prefer")
+  contracts          Json      @default("[]")
+  remotePreference   String?
+  homeCity           String?
+  relocation         Boolean?
+  linkedinDocument   Json?
+  linkedinImportedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+// Audits of the LinkedIn profile: one row per audit the Chrome extension ran on the person's own
+// profile page (src/server/profile/linkedin-audit.ts). The CV audit lives on CvDocument.audit.
+model ProfileAuditRun {
+  id            String   @id @default(cuid())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score         Int
+  previousScore Int?
+  summary       String
+  topChanges    Json
+  annotations   Json
+  demand        Json
+  documentHash  String
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// --------------------------------------
+
+enum SourceType {
+  GREENHOUSE
+  LEVER
+  ASHBY
+  WORKABLE
+  SMARTRECRUITERS
+  TRAFFIT
+  RECRUITEE
+  TEAMTAILOR
+  PERSONIO
+  PINPOINT
+  BREEZY
+  BAMBOOHR
+  GENERIC_HTML
+  WEB_SEARCH
+  SUCCESSFACTORS
+  WORKDAY
+  ICIMS
+  PHENOM
+  AVATURE
+  ERECRUITER
+  JOBVITE
+  CAREER_SITE
+  EIGHTFOLD
+  SOFTGARDEN
+  BULLHORN
+  ZOHO_RECRUIT
+  RIPPLING
+  GEM
+  DOVER
+  POLYMER
+  COMEET
+  HOMERUN
+  DVINCI
+  MANATAL
+  ONLYFY
+  REXX
+  JAZZHR
+  CATSONE
+  LOXO
+  TALENTLYFT
+  FACTORIAL
+}
+
+enum ResolutionStatus {
+  PENDING
+  RESOLVED_ATS
+  RESOLVED_GENERIC
+  NO_CAREER_PAGE_FOUND
+  TEMPORARY_FAILURE
+  BLOCKED_OR_NOT_PERMITTED
+  MANUAL_REVIEW
+  PERMANENTLY_UNAVAILABLE
+}
+
+enum WorkplaceType {
+  REMOTE
+  HYBRID
+  ONSITE
+  UNKNOWN
+}
+
+enum JobStatus {
+  ACTIVE
+  POSSIBLY_CLOSED
+  CLOSED
+  UNKNOWN
+}
+
+enum FetchStatus {
+  HEALTHY
+  TEMPORARY_ERROR
+  RATE_LIMITED
+  NOT_FOUND
+  NOT_PERMITTED
+  PARSE_ERROR
+}
+
+enum SearchRunStatus {
+  QUEUED
+  RUNNING
+  RETRYING
+  SUCCEEDED
+  FAILED
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD
+}
+
+model Company {
+  id                  String    @id @default(cuid())
+  name                String
+  normalizedName      String    @unique
+  canonicalDomain     String?   @unique
+  description         String?
+  industry            String?
+  headquartersCountry String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastEnrichedAt      DateTime?
+  isTech              Boolean?
+
+  aliases     CompanyAlias[]
+  careerPages CareerPage[]
+  jobs        Job[]
+  watchers    WatchedCompany[]
+}
+
+model CompanyAlias {
+  id              String  @id @default(cuid())
+  companyId       String
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  alias           String
+  normalizedAlias String
+  confidence      Float   @default(1)
+
+  @@unique([companyId, normalizedAlias])
+}
+
+model DiscoverySource {
+  id              String    @id @default(cuid())
+  sourceType      String
+  sourceName      String    @unique
+  sourceUrl       String?
+  termsUrl        String?
+  enabled         Boolean   @default(true)
+  rateLimitConfig Json?
+  lastRunAt       DateTime?
+  lastSuccessAt   DateTime?
+  lastErrorAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  runs DiscoveryRun[]
+}
+
+model DiscoveryRun {
+  id                  String           @id @default(cuid())
+  sourceId            String?
+  source              DiscoverySource? @relation(fields: [sourceId], references: [id])
+  searchRunId         String?
+  searchRun           SearchRun?       @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  query               String?
+  startedAt           DateTime         @default(now())
+  finishedAt          DateTime?
+  status              String
+  resultsCount        Int              @default(0)
+  newCompaniesCount   Int              @default(0)
+  newCareerPagesCount Int              @default(0)
+  errorCode           String?
+  errorSummary        String?
+  estimatedCost       Float            @default(0)
+}
+
+model CareerPage {
+  id                    String           @id @default(cuid())
+  companyId             String
+  company               Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  url                   String
+  normalizedUrl         String
+  provider              SourceType
+  providerBoardId       String?
+  resolutionStatus      ResolutionStatus @default(RESOLVED_ATS)
+  confidence            Float            @default(1)
+  enabled               Boolean          @default(true)
+  lastCheckedAt         DateTime?
+  lastSuccessfulFetchAt DateTime?
+  nextCheckAt           DateTime?
+  lastErrorCode         String?
+  fetchNote             String?
+  etag                  String?
+  lastModified          String?
+  listedCount           Int              @default(0)
+  indexComplete         Boolean          @default(false)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  jobs         Job[]
+  observations JobObservation[]
+
+  @@unique([provider, providerBoardId])
+  @@index([normalizedUrl])
+}
+
+model Job {
+  id                 String        @id @default(cuid())
+  companyId          String
+  company            Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  careerPageId       String?
+  careerPage         CareerPage?   @relation(fields: [careerPageId], references: [id])
+  externalId         String?
+  sourceType         SourceType
+  sourceBoardId      String?
+  title              String
+  normalizedTitle    String
+  summary            String        @db.Text
+  descriptionText    String        @db.Text
+  locationText       String?
+  normalizedLocation String?
+  /// The first of `countries`: the country an offer is listed under.
+  countryCode        String?
+  /// ISO 3166-1 alpha-2 codes, blocked countries removed. Written by every ingest.
+  countries          String[]      @default([])
+  /// Remote regions the location names (EU, EMEA, WORLD, ...). UNKNOWN is not stored.
+  remoteRegions      String[]      @default([])
+  /// structured (the ATS field) | location (the location text) | board (the board's only country)
+  countrySource      String?
+  workplaceType      WorkplaceType @default(UNKNOWN)
+  employmentType     String?
+  salaryMin          Float?
+  salaryMax          Float?
+  salaryCurrency     String?
+  salarySourceUrl    String?
+  salarySourceRaw    String?
+  originalUrl        String
+  canonicalUrl       String
+  publishedAt        DateTime?
+  firstSeenAt        DateTime      @default(now())
+  lastSeenAt         DateTime      @default(now())
+  lastVerifiedAt     DateTime?
+  closedAt           DateTime?
+  status             JobStatus     @default(ACTIVE)
+  contentHash        String
+  identityKey        String        @unique
+  fingerprint        String
+  variants           Json?
+  llmOptOut          Boolean       @default(false)
+  seniorityLevel     String?
+  isTechRole         Boolean?
+  classifiedAt       DateTime?
+  /// Listed by a recruiter or job platform for an employer it does not name as the offer's company.
+  viaIntermediary    Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  observations JobObservation[]
+  matches      JobMatch[]
+  feedback     OfferFeedback[]
+  applications Application[]
+  cvDocuments  CvDocument[]
+  userOffers   UserOffer[]
+
+  @@index([fingerprint])
+  /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
+  @@index([lastSeenAt, id])
+  @@index([countries], type: Gin)
+  @@index([status, classifiedAt])
+  @@index([canonicalUrl])
+  @@index([companyId])
+  @@index([careerPageId, status])
+}
+
+model JobObservation {
+  id           String      @id @default(cuid())
+  jobId        String
+  job          Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  careerPageId String?
+  careerPage   CareerPage? @relation(fields: [careerPageId], references: [id])
+  searchRunId  String?
+  searchRun    SearchRun?  @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  observedAt   DateTime    @default(now())
+  contentHash  String
+  fetchStatus  FetchStatus
+  evidence     Json?
+  createdAt    DateTime    @default(now())
+
+  @@index([jobId])
+  @@index([searchRunId])
+}
+
+model SavedSearch {
+  id               String   @id @default(cuid())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  phrase           String
+  locationHint     String?
+  workMode         String   @default("ANY")
+  targetTitles     Json
+  includedKeywords Json
+  excludedKeywords Json
+  seniority        Json
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  runs    SearchRun[]
+  matches JobMatch[]
+
+  @@index([userId, createdAt])
+}
+
+model SearchRun {
+  id               String          @id @default(cuid())
+  savedSearchId    String
+  savedSearch      SavedSearch     @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  status           SearchRunStatus @default(QUEUED)
+  phase            String          @default("queued")
+  progress         Int             @default(0)
+  message          String?
+  expansion        Json?
+  stats            Json?
+  tokenInput       Int             @default(0)
+  tokenOutput      Int             @default(0)
+  estimatedCost    Float           @default(0)
+  errorSummary     String?
+  startedAt        DateTime        @default(now())
+  finishedAt       DateTime?
+  discoveredBoards Int             @default(0)
+  fetchedJobs      Int             @default(0)
+  matchedJobs      Int             @default(0)
+  newJobs          Int             @default(0)
+
+  observations JobObservation[]
+  matches      JobMatch[]
+  logs         SearchLog[]
+  discoveries  DiscoveryRun[]
+
+  @@index([savedSearchId, startedAt])
+}
+
+model SearchLog {
+  id          String    @id @default(cuid())
+  searchRunId String
+  searchRun   SearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  level       String    @default("info")
+  message     String
+
+  @@index([searchRunId, createdAt])
+}
+
+model JobMatch {
+  id               String      @id @default(cuid())
+  jobId            String
+  job              Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedSearchId    String
+  savedSearch      SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  searchRunId      String
+  searchRun        SearchRun   @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  score            Float
+  scoreBreakdown   Json
+  reason           String
+  isNew            Boolean     @default(false)
+  seenAt           DateTime?
+  dismissedAt      DateTime?
+  interestedAt     DateTime?
+  fitIndustry      String?
+  fitSalaryMonthly Float?
+  matchedAt        DateTime    @default(now())
+  lastEvaluatedAt  DateTime    @updatedAt
+
+  @@unique([jobId, searchRunId])
+  @@index([savedSearchId])
+  @@index([searchRunId, score])
+}
+
+model LlmCache {
+  id          String   @id @default(cuid())
+  cacheKey    String   @unique
+  purpose     String
+  model       String
+  response    Json
+  tokenInput  Int      @default(0)
+  tokenOutput Int      @default(0)
+  createdAt   DateTime @default(now())
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// One run of the model, for the AI usage tab. Counts only: no prompt, no reply, no user.
+model LlmCall {
+  id               String   @id @default(cuid())
+  purpose          String
+  /// claude-cli or openai
+  provider         String
+  model            String
+  /// Input tokens read without the prompt cache
+  tokenInput       Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  cacheReadTokens  Int      @default(0)
+  tokenOutput      Int      @default(0)
+  webSearches      Int      @default(0)
+  /// What the provider reported itself (claude -p total_cost_usd). Null when it reports none.
+  reportedUsd      Float?
+  /// False when the run ended without a usage report (timeout, crash), so its tokens are unknown
+  usageKnown       Boolean  @default(true)
+  durationMs       Int?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model BackgroundTask {
+  id          String     @id @default(cuid())
+  type        String
+  payload     Json
+  status      TaskStatus @default(PENDING)
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(3)
+  runAt       DateTime   @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  finishedAt  DateTime?
+
+  @@index([status, runAt])
+}
+
+model CrawlBudget {
+  host          String   @id
+  day           String
+  detailFetches Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// One person's verdict on one offer, across every search. "What I liked" lives in aspects.
+model OfferFeedback {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// LIKE | DISLIKE | APPLIED
+  verdict   String
+  /// Aspect keys from src/shared/feedback-aspects.ts, e.g. ["stack", "remote", "salary"]
+  aspects   Json     @default("[]")
+  /// Concrete phrases the person picked, e.g. skills or the company name
+  tags      Json     @default("[]")
+  note      String?  @db.Text
+  /// web | mcp
+  channel   String   @default("web")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId, verdict])
+}
+
+/// Companies a person wants watched even when they never post on aggregators.
+model WatchedCompany {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// user | similar | mcp
+  source    String   @default("user")
+  /// Why it was suggested, e.g. "similar to Allegro (liked)"
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+}
+
+// --------------------------------------
+// Applications, CVs, the answer bank and the Chrome extension (docs/product/plan-aplikacje.md)
+
+/// One job application the person sent, and where it stands.
+model Application {
+  id              String      @id @default(cuid())
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId           String?
+  job             Job?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  company         String
+  title           String
+  url             String?
+  /// Lowercased host + path without query or hash, for matching the same posting again
+  urlKey          String?
+  location        String?
+  salaryText      String?
+  /// src/shared/applications.ts: APPLIED | SCREENING | INTERVIEW | TASK | FINAL | OFFER | ACCEPTED | REJECTED | WITHDRAWN | GHOSTED
+  status          String      @default("APPLIED")
+  /// Free label for the step, e.g. "2. rozmowa techniczna"
+  stageNote       String?
+  /// The stage reached before REJECTED or WITHDRAWN
+  closedAtStage   String?
+  appliedAt       DateTime    @default(now())
+  statusChangedAt DateTime    @default(now())
+  nextStep        String?
+  nextStepAt      DateTime?
+  contact         String?
+  notes           String?     @db.Text
+  /// The salary the person gave in the application form, as they wrote it
+  statedSalary    String?
+  /// The form as sent: [{ question, answer, kind }]. Answer keeps distinct answers for reuse.
+  formAnswers     Json        @default("[]")
+  /// nowarola (the web app, named before the rename to newrole.it) | extension | manual | mcp | gmail | sheet | csv
+  source          String      @default("manual")
+  /// Where the offer was found, as the person wrote it in the sheet or a CSV ("LinkedIn", "polecenie")
+  origin          String?
+  cvDocumentId    String?
+  cvDocument      CvDocument? @relation(fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  events     ApplicationEvent[]
+  answers    Answer[]
+  mailEvents MailEvent[]
+  sheetRow   SheetRow?
+
+  @@index([userId, status])
+  @@index([userId, urlKey])
+  @@index([userId, jobId])
+}
+
+model ApplicationEvent {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  /// created | status | note | next-step | answers | edit | mail
+  type          String
+  fromStatus    String?
+  toStatus      String?
+  note          String?     @db.Text
+  /// web | mcp | extension | gmail
+  channel       String      @default("web")
+  at            DateTime    @default(now())
+
+  @@index([applicationId, at])
+}
+
+/// A CV the person keeps here: an editable document (content) or an uploaded PDF. A cover letter
+/// is the same document with one "letter" section, so it shares the editor, PDF and versions.
+model CvDocument {
+  id               String       @id @default(cuid())
+  userId           Int
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  /// pl | en
+  language         String       @default("pl")
+  /// EDITABLE | UPLOADED
+  kind             String       @default("EDITABLE")
+  /// CV | LETTER
+  docType          String       @default("CV")
+  /// Structured CV (@newrole/cv-core/schema). Null for an uploaded PDF without an editable copy.
+  content          Json?
+  /// The uploaded PDF, or the last one rendered from content
+  pdf              Bytes?
+  pdfName          String?
+  pdfUpdatedAt     DateTime?
+  /// The latest audit of this CV (@newrole/cv-core/audit). Writing it keeps updatedAt.
+  audit            Json?
+  isDefault        Boolean      @default(false)
+  /// The offer this document was written for; null for a general CV
+  jobId            String?
+  job              Job?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  /// Company and role at that moment: the offer can leave the index. Set on every tailored document.
+  targetCompany    String?
+  targetTitle      String?
+  /// What this one started from: a tailored CV's general CV, an editable copy's uploaded PDF
+  baseCvId         String?
+  baseCv           CvDocument?  @relation("CvBase", fields: [baseCvId], references: [id], onDelete: SetNull)
+  tailored         CvDocument[] @relation("CvBase")
+  /// What the model changed and what to check (@newrole/cv-core/tailor)
+  tailorNotes      Json?
+  /// When an edit last considered taking an automatic version (src/server/cv/versions.ts)
+  versionCheckedAt DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  applications Application[]
+  versions     CvVersion[]
+
+  /// One tailored CV and one letter per offer; general CVs have no jobId and are not limited
+  @@unique([userId, jobId, docType])
+  @@index([userId, updatedAt])
+}
+
+/// An offer one person works on: added by its link (or by Claude, or from a tailored CV), with the
+/// whole posting as it was read, kept for that person only. Job keeps at most 300 characters of an
+/// offer for everyone; this is the person's own copy, shown to them and given to the model when
+/// they tailor a CV or a letter. Deleted with the person.
+model UserOffer {
+  id         String    @id @default(cuid())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId      String
+  job        Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// The posting's text, personal data removed; null when it could not be read and none was pasted
+  text       String?   @db.Text
+  /// full: read from the offer's source. pasted: the person put it in
+  textOrigin String?
+  textReadAt DateTime?
+  /// The person's own notes on the offer
+  note       String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId, createdAt])
+}
+
+/// A saved state of a CV or letter. Restoring adds a new version, so history is never rewritten.
+model CvVersion {
+  id           String     @id @default(cuid())
+  documentId   String
+  document     CvDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  /// 1, 2, 3… within the document
+  number       Int
+  /// auto | manual | base | generated | restored
+  origin       String
+  /// The name the person gave it
+  label        String?
+  /// origin restored: the number of the version it came from
+  sourceNumber Int?
+  /// pl | en
+  language     String
+  content      Json
+  /// sha256 of the content, to tell whether anything changed without loading it
+  contentHash  String
+  createdAt    DateTime   @default(now())
+
+  @@unique([documentId, number])
+}
+
+/// One reusable answer to an application question. The same question can have variants.
+model Answer {
+  id            String       @id @default(cuid())
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question      String       @db.Text
+  /// Folded question without punctuation, for grouping variants
+  questionKey   String
+  answer        String       @db.Text
+  tags          Json         @default("[]")
+  /// pl | en
+  language      String?
+  company       String?
+  jobTitle      String?
+  sourceUrl     String?
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  /// manual | extension | mcp | draft
+  origin        String       @default("manual")
+  useCount      Int          @default(1)
+  lastUsedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([userId, questionKey])
+  @@index([userId, updatedAt])
+}
+
+/// Bearer tokens for the Chrome extension. Only the sha256 is stored; the token is shown once.
+model ApiToken {
+  id          String    @id @default(cuid())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  hashedToken String    @unique
+  /// The first characters, shown in settings
+  prefix      String
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Last sign of life from a process the web app cannot see directly: "mcp". Read by /setup. A "worker"
+/// row is left from the separate worker of earlier versions; the app does that work itself now.
+model ServiceHeartbeat {
+  service    String   @id
+  lastSeenAt DateTime @default(now())
+}
+
+/// One look at the harvest branches a cloud agent pushes (src/server/harvest). The newest 50 are kept.
+model HarvestImport {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// imported | nothing_new | no_branch | unavailable | failed
+  status     String
+  /// Per branch: name, commit, generatedAt and the runs its manifest lists
+  branches   Json      @default("[]")
+  /// Boards written to the index: key and the cloud read time
+  applied    Json      @default("[]")
+  boards     Int       @default(0)
+  stored     Int       @default(0)
+  closed     Int       @default(0)
+  error      String?
+
+  @@index([startedAt])
+}
+
+/// A board imported from an outside list (freehire's MIT board catalog). It reaches the index
+/// only after its own check against the platform: proven, the same company, IT jobs, a country.
+model CatalogBoard {
+  id              String     @id @default(cuid())
+  provider        SourceType
+  providerBoardId String
+  /// The company name the outside list gave. The platform's own name wins once checked.
+  listedName      String
+  /// freehire@<commit>
+  origin          String
+  /// candidate | verified | rejected
+  status          String     @default("candidate")
+  /// Why a check refused it: not_found, no_jobs, identity, no_it_jobs, no_country, blocked_country, junk_name, error
+  reason          String?
+  note            String?
+  companyName     String?
+  /// Jobs the platform listed, and how many passed the IT and country checks.
+  listedJobs      Int        @default(0)
+  itJobs          Int        @default(0)
+  countries       String[]   @default([])
+  checkedAt       DateTime?
+  verifiedAt      DateTime?
+  /// Every read of a verified board is a new check. Null on a candidate never checked.
+  nextCheckAt     DateTime?
+  checks          Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@unique([provider, providerBoardId])
+  @@index([status, checkedAt])
+  @@index([nextCheckAt])
+}
+
+/// Where the applications table is mirrored: a Google Apps Script web app bound to the person's sheet.
+model SheetLink {
+  id             String    @id @default(cuid())
+  userId         Int       @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// https://script.google.com/macros/s/.../exec
+  webhookUrl     String?
+  /// Sent in the request body; the script compares it
+  secret         String
+  spreadsheetUrl String?
+  autoSync       Boolean   @default(true)
+  includeNotes   Boolean   @default(true)
+  lastSyncedAt   DateTime?
+  lastError      String?
+  lastRowCount   Int?
+  /// The tab in the person's spreadsheet that newrole.it reads and writes
+  tabName        String    @default("Aplikacje")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+/// An application as newrole.it last wrote it to the sheet: tells a sheet edit from a system edit.
+model SheetRow {
+  applicationId String      @id
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  /// Hash of the row's fields as written (src/server/applications/sheet-layout.ts)
+  hash          String
+  syncedAt      DateTime
+}
+
+/// Read-only link to the person's Gmail (src/server/gmail, docs/product/plan-gmail.md).
+model GmailLink {
+  id            String    @id @default(cuid())
+  userId        Int       @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The mailbox address Google reported
+  email         String
+  /// AES-256-GCM (src/server/gmail/token-crypto.ts). Never exported, logged or sent to the client.
+  refreshToken  String
+  /// Change statuses without asking. The safeguards in src/server/gmail/policy.ts still apply.
+  autoApply     Boolean   @default(true)
+  /// Send unclear messages, trimmed and redacted, to the language model
+  useModel      Boolean   @default(true)
+  /// Everything before this date is handled; the next search starts just before it
+  cursorAt      DateTime?
+  /// Null stops the background sync: the person has to connect again
+  nextSyncAt    DateTime? @default(now())
+  /// Set while a sync runs, so the background sync and "Sprawdź teraz" do not overlap
+  syncingAt     DateTime?
+  lastSyncedAt  DateTime?
+  /// src/server/gmail/types.ts: reconnect | key | rate-limit | network | http
+  lastErrorCode String?
+  /// Counts from the last sync: listed, skipped, read, applied, created, pending
+  lastStats     Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([nextSyncAt])
+}
+
+/// One message whose body was read, and what came of it. The body itself is never stored.
+model MailEvent {
+  id            String       @id @default(cuid())
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Gmail message id, so one message is handled once
+  messageId     String
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  fromAddress   String
+  subject       String
+  receivedAt    DateTime
+  /// src/shared/gmail.ts: CONFIRMATION | NEXT_STAGE | SCREENING | INTERVIEW | TASK | FINAL | OFFER | REJECTED | OTHER
+  signal        String
+  /// rules | model
+  reader        String
+  /// Why: the sentence that matched, or the model's short quote
+  evidence      String?
+  /// src/shared/gmail.ts: APPLIED | CREATED | NOTED | PENDING | IGNORED | DISMISSED | UNDONE
+  outcome       String
+  fromStatus    String?
+  toStatus      String?
+  /// From a confirmation that matches nothing in the tracker
+  company       String?
+  title         String?
+  /// DKIM, DMARC or SPF passed for the From domain, as Gmail reported it
+  authenticated Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+
+  @@unique([userId, messageId])
+  @@index([userId, outcome, receivedAt])
+  @@index([applicationId])
+}

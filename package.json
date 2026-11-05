@@ -1,22 +1,21 @@
 {
   "name": "newrole",
   "version": "1.0.0",
-  "description": "newrole.it: your CV tailored to every job offer, on your machine. npm workspaces: the apps under apps/ and the packages they are made of under packages/.",
+  "description": "newrole.it: your CV tailored to every job offer, on your machine. npm workspaces: each app under apps/ with the packages it is made of in its own packages/ folder.",
   "private": true,
   "license": "AGPL-3.0-only",
   "workspaces": [
-    "packages/*",
-    "apps/newrole",
-    "apps/jobs-lab"
+    "apps/resume-engine-optimization",
+    "apps/resume-engine-optimization/packages/*",
+    "apps/jobs-lab",
+    "apps/jobs-lab/packages/*"
   ],
   "scripts": {
     "go": "node scripts/go.mjs",
     "setup": "node scripts/go.mjs --prepare",
     "prepare": "husky install",
     "dev": "npm run dev -w @newrole/app",
-    "worker": "npm run worker -w @newrole/app",
     "mcp": "npm run --silent mcp -w @newrole/app",
-    "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
     "build": "npm run build -w @newrole/app",
     "start": "npm run start -w @newrole/app",
     "studio": "npm run studio -w @newrole/app",
@@ -26,16 +25,14 @@
     "typecheck:workspaces": "npm run typecheck --workspaces --if-present",
     "test": "npm run test:workspaces && npm run test:extension && npm run test:flow",
     "test:workspaces": "npm run test --workspaces --if-present",
-    "test:flow": "npm run test:flow -w @newrole/app && npm run test:flow -w @newrole/job-index",
-    "test:db": "node scripts/test-db.mjs prepare",
+    "test:flow": "npm run test:flow --workspaces --if-present",
+    "test:db": "npm run test:db --workspaces --if-present",
     "db:deploy": "npm run db:deploy -w @newrole/app",
     "db:seed": "npm run db:seed -w @newrole/app",
     "db:migrate": "npm run db:migrate -w @newrole/app",
     "ext:build": "node scripts/go.mjs --extension",
-    "ext:dev": "node scripts/go.mjs --extension && npm run dev --prefix apps/extension",
-    "test:extension": "vitest run --root apps/extension",
-    "jobs-lab": "npm run dev -w @newrole/jobs-lab",
-    "jobs-lab:smoke": "npm run smoke -w @newrole/jobs-lab"
+    "ext:dev": "node scripts/go.mjs --extension && npm run dev --prefix apps/reo-extension",
+    "test:extension": "vitest run --root apps/reo-extension"
   },
   "prettier": {
     "semi": false,

@@ -1,0 +1,34 @@
+{
+  "name": "@newrole/job-index",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "newrole.it's engine for finding new job offers: it keeps an index of offers read from employers' ATS boards and career sites (@newrole/ats), refreshes it on a schedule, watches companies, discovers boards from catalogs and web search, imports offline harvests, and runs a live search ranked against a profile. Stores in Postgres, in the tables of @newrole/jobs-lab-db, through the client its app binds.",
+  "sideEffects": false,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "test:flow": "node ../../scripts/test-db.mjs run tsx --test --test-concurrency=1 \"test/*.test.ts\"",
+    "gen:examples": "tsx scripts/gen-examples.ts",
+    "score-fixtures": "tsx scripts/score-fixtures.ts"
+  },
+  "dependencies": {
+    "@newrole/app-kit": "0.1.0",
+    "@newrole/ats": "0.1.0",
+    "@newrole/jobs-lab-db": "0.1.0",
+    "@newrole/llm": "0.1.0",
+    "@newrole/matching": "0.1.0",
+    "@newrole/offers": "0.1.0",
+    "@newrole/profile": "0.1.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.6.3",
+    "vitest": "0.25.3",
+    "tsx": "4.23.15"
+  }
+}

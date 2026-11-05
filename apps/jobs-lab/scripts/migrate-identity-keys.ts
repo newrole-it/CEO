@@ -6,7 +6,7 @@
  *   npm run identity-keys -w @newrole/jobs-lab -- --database-url postgresql://.../jobscanner_test
  *   npm run identity-keys -w @newrole/jobs-lab -- --database-url postgresql://.../jobscanner_test --apply
  */
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient } from "@newrole/jobs-lab-db"
 import { configureJobIndex } from "@newrole/job-index/host"
 import { repairIdentityKeys } from "@newrole/job-index/maintenance/identity-keys"
 

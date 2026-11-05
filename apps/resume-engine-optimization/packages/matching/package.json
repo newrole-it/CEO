@@ -1,0 +1,24 @@
+{
+  "name": "@newrole/matching",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "description": "newrole.it's matching pack: title, seniority, company, place, work-mode and salary normalization, exchange rates into PLN (NBP), and dedupe of postings. Rules only, no model.",
+  "sideEffects": false,
+  "exports": {
+    "./*": "./*.ts"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "typescript": "5.6.3"
+  }
+}

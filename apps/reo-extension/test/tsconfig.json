@@ -1,0 +1,21 @@
+{
+  "//": "The tests run without the extension's own install: ../tsconfig.json extends .wxt/, which `wxt prepare` writes. So this one carries its own options.",
+  "compilerOptions": {
+    "target": "es2017",
+    "downlevelIteration": true,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

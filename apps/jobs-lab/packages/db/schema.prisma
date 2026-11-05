@@ -1,0 +1,552 @@
+// The jobs lab's database: the tables of the offer index (@newrole/job-index) and nothing else.
+//
+// It started as a copy of newrole.it's schema (apps/resume-engine-optimization/db), because the lab
+// used to migrate its database with newrole.it's migrations. migrations/ keeps that history as it
+// was, so a lab database made that way moves on without a reset, and
+// 20261105120000_lab_tables_only drops the tables only newrole.it uses (sign-in, CVs,
+// applications, the answer bank, mail and sheet links, the model's cache and usage log).
+// From here on the lab's migrations are its own.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Generated into this package's own node_modules, never over the @prisma/client that newrole.it
+// generates from its schema in the repository's node_modules.
+generator client {
+  provider = "prisma-client-js"
+  output   = "./node_modules/.prisma/client"
+}
+
+// --------------------------------------
+// People. The lab's searches, saved searches, profiles, feedback and watched companies belong to a
+// user; no one signs in to the lab.
+
+model User {
+  id              Int       @id @default(autoincrement())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  name            String?
+  email           String    @unique
+  hashedPassword  String?
+  role            String    @default("USER")
+  emailVerifiedAt DateTime?
+  linkedinSub     String?   @unique
+  imageUrl        String?
+  timezone        String    @default("Europe/Warsaw")
+  locale          String    @default("en")
+  deletedAt       DateTime?
+  applicant       Json      @default("{}")
+
+  searches         SavedSearch[]
+  candidateProfile CandidateProfile?
+  offerFeedback    OfferFeedback[]
+  watchedCompanies WatchedCompany[]
+}
+
+model CandidateProfile {
+  id                 String    @id @default(cuid())
+  userId             Int       @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline           String?
+  currentTitle       String?
+  pastTitles         Json      @default("[]")
+  seniority          String?
+  yearsExperience    Float?
+  skills             Json      @default("[]")
+  industries         Json      @default("[]")
+  locations          Json      @default("[]")
+  languages          Json      @default("[]")
+  salaryFloor        Float?
+  salaryTarget       Float?
+  salaryCurrency     String?
+  salaryPeriod       String?
+  salaryContract     String?
+  industryMode       String    @default("prefer")
+  contracts          Json      @default("[]")
+  remotePreference   String?
+  homeCity           String?
+  relocation         Boolean?
+  linkedinDocument   Json?
+  linkedinImportedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+// --------------------------------------
+
+enum SourceType {
+  GREENHOUSE
+  LEVER
+  ASHBY
+  WORKABLE
+  SMARTRECRUITERS
+  TRAFFIT
+  RECRUITEE
+  TEAMTAILOR
+  PERSONIO
+  PINPOINT
+  BREEZY
+  BAMBOOHR
+  GENERIC_HTML
+  WEB_SEARCH
+  SUCCESSFACTORS
+  WORKDAY
+  ICIMS
+  PHENOM
+  AVATURE
+  ERECRUITER
+  JOBVITE
+  CAREER_SITE
+  EIGHTFOLD
+  SOFTGARDEN
+  BULLHORN
+  ZOHO_RECRUIT
+  RIPPLING
+  GEM
+  DOVER
+  POLYMER
+  COMEET
+  HOMERUN
+  DVINCI
+  MANATAL
+  ONLYFY
+  REXX
+  JAZZHR
+  CATSONE
+  LOXO
+  TALENTLYFT
+  FACTORIAL
+}
+
+enum ResolutionStatus {
+  PENDING
+  RESOLVED_ATS
+  RESOLVED_GENERIC
+  NO_CAREER_PAGE_FOUND
+  TEMPORARY_FAILURE
+  BLOCKED_OR_NOT_PERMITTED
+  MANUAL_REVIEW
+  PERMANENTLY_UNAVAILABLE
+}
+
+enum WorkplaceType {
+  REMOTE
+  HYBRID
+  ONSITE
+  UNKNOWN
+}
+
+enum JobStatus {
+  ACTIVE
+  POSSIBLY_CLOSED
+  CLOSED
+  UNKNOWN
+}
+
+enum FetchStatus {
+  HEALTHY
+  TEMPORARY_ERROR
+  RATE_LIMITED
+  NOT_FOUND
+  NOT_PERMITTED
+  PARSE_ERROR
+}
+
+enum SearchRunStatus {
+  QUEUED
+  RUNNING
+  RETRYING
+  SUCCEEDED
+  FAILED
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD
+}
+
+model Company {
+  id                  String    @id @default(cuid())
+  name                String
+  normalizedName      String    @unique
+  canonicalDomain     String?   @unique
+  description         String?
+  industry            String?
+  headquartersCountry String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastEnrichedAt      DateTime?
+  isTech              Boolean?
+
+  aliases     CompanyAlias[]
+  careerPages CareerPage[]
+  jobs        Job[]
+  watchers    WatchedCompany[]
+}
+
+model CompanyAlias {
+  id              String  @id @default(cuid())
+  companyId       String
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  alias           String
+  normalizedAlias String
+  confidence      Float   @default(1)
+
+  @@unique([companyId, normalizedAlias])
+}
+
+model DiscoverySource {
+  id              String    @id @default(cuid())
+  sourceType      String
+  sourceName      String    @unique
+  sourceUrl       String?
+  termsUrl        String?
+  enabled         Boolean   @default(true)
+  rateLimitConfig Json?
+  lastRunAt       DateTime?
+  lastSuccessAt   DateTime?
+  lastErrorAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  runs DiscoveryRun[]
+}
+
+model DiscoveryRun {
+  id                  String           @id @default(cuid())
+  sourceId            String?
+  source              DiscoverySource? @relation(fields: [sourceId], references: [id])
+  searchRunId         String?
+  searchRun           SearchRun?       @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  query               String?
+  startedAt           DateTime         @default(now())
+  finishedAt          DateTime?
+  status              String
+  resultsCount        Int              @default(0)
+  newCompaniesCount   Int              @default(0)
+  newCareerPagesCount Int              @default(0)
+  errorCode           String?
+  errorSummary        String?
+  estimatedCost       Float            @default(0)
+}
+
+model CareerPage {
+  id                    String           @id @default(cuid())
+  companyId             String
+  company               Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  url                   String
+  normalizedUrl         String
+  provider              SourceType
+  providerBoardId       String?
+  resolutionStatus      ResolutionStatus @default(RESOLVED_ATS)
+  confidence            Float            @default(1)
+  enabled               Boolean          @default(true)
+  lastCheckedAt         DateTime?
+  lastSuccessfulFetchAt DateTime?
+  nextCheckAt           DateTime?
+  lastErrorCode         String?
+  fetchNote             String?
+  etag                  String?
+  lastModified          String?
+  listedCount           Int              @default(0)
+  indexComplete         Boolean          @default(false)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  jobs         Job[]
+  observations JobObservation[]
+
+  @@unique([provider, providerBoardId])
+  @@index([normalizedUrl])
+}
+
+model Job {
+  id                 String        @id @default(cuid())
+  companyId          String
+  company            Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  careerPageId       String?
+  careerPage         CareerPage?   @relation(fields: [careerPageId], references: [id])
+  externalId         String?
+  sourceType         SourceType
+  sourceBoardId      String?
+  title              String
+  normalizedTitle    String
+  summary            String        @db.Text
+  descriptionText    String        @db.Text
+  locationText       String?
+  normalizedLocation String?
+  /// The first of `countries`: the country an offer is listed under.
+  countryCode        String?
+  /// ISO 3166-1 alpha-2 codes, blocked countries removed. Written by every ingest.
+  countries          String[]      @default([])
+  /// Remote regions the location names (EU, EMEA, WORLD, ...). UNKNOWN is not stored.
+  remoteRegions      String[]      @default([])
+  /// structured (the ATS field) | location (the location text) | board (the board's only country)
+  countrySource      String?
+  workplaceType      WorkplaceType @default(UNKNOWN)
+  employmentType     String?
+  salaryMin          Float?
+  salaryMax          Float?
+  salaryCurrency     String?
+  salarySourceUrl    String?
+  salarySourceRaw    String?
+  originalUrl        String
+  canonicalUrl       String
+  publishedAt        DateTime?
+  firstSeenAt        DateTime      @default(now())
+  lastSeenAt         DateTime      @default(now())
+  lastVerifiedAt     DateTime?
+  closedAt           DateTime?
+  status             JobStatus     @default(ACTIVE)
+  contentHash        String
+  identityKey        String        @unique
+  fingerprint        String
+  variants           Json?
+  llmOptOut          Boolean       @default(false)
+  seniorityLevel     String?
+  isTechRole         Boolean?
+  classifiedAt       DateTime?
+  /// Listed by a recruiter or job platform for an employer it does not name as the offer's company.
+  viaIntermediary    Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  observations JobObservation[]
+  matches      JobMatch[]
+  feedback     OfferFeedback[]
+
+  @@index([fingerprint])
+  /// Newest first, read in batches.
+  @@index([lastSeenAt, id])
+  @@index([countries], type: Gin)
+  @@index([status, classifiedAt])
+  @@index([canonicalUrl])
+  @@index([companyId])
+  @@index([careerPageId, status])
+}
+
+model JobObservation {
+  id           String      @id @default(cuid())
+  jobId        String
+  job          Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  careerPageId String?
+  careerPage   CareerPage? @relation(fields: [careerPageId], references: [id])
+  searchRunId  String?
+  searchRun    SearchRun?  @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  observedAt   DateTime    @default(now())
+  contentHash  String
+  fetchStatus  FetchStatus
+  evidence     Json?
+  createdAt    DateTime    @default(now())
+
+  @@index([jobId])
+  @@index([searchRunId])
+}
+
+model SavedSearch {
+  id               String   @id @default(cuid())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  phrase           String
+  locationHint     String?
+  workMode         String   @default("ANY")
+  targetTitles     Json
+  includedKeywords Json
+  excludedKeywords Json
+  seniority        Json
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  runs    SearchRun[]
+  matches JobMatch[]
+
+  @@index([userId, createdAt])
+}
+
+model SearchRun {
+  id               String          @id @default(cuid())
+  savedSearchId    String
+  savedSearch      SavedSearch     @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  status           SearchRunStatus @default(QUEUED)
+  phase            String          @default("queued")
+  progress         Int             @default(0)
+  message          String?
+  expansion        Json?
+  stats            Json?
+  tokenInput       Int             @default(0)
+  tokenOutput      Int             @default(0)
+  estimatedCost    Float           @default(0)
+  errorSummary     String?
+  startedAt        DateTime        @default(now())
+  finishedAt       DateTime?
+  discoveredBoards Int             @default(0)
+  fetchedJobs      Int             @default(0)
+  matchedJobs      Int             @default(0)
+  newJobs          Int             @default(0)
+
+  observations JobObservation[]
+  matches      JobMatch[]
+  logs         SearchLog[]
+  discoveries  DiscoveryRun[]
+
+  @@index([savedSearchId, startedAt])
+}
+
+model SearchLog {
+  id          String    @id @default(cuid())
+  searchRunId String
+  searchRun   SearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  level       String    @default("info")
+  message     String
+
+  @@index([searchRunId, createdAt])
+}
+
+model JobMatch {
+  id               String      @id @default(cuid())
+  jobId            String
+  job              Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedSearchId    String
+  savedSearch      SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  searchRunId      String
+  searchRun        SearchRun   @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  score            Float
+  scoreBreakdown   Json
+  reason           String
+  isNew            Boolean     @default(false)
+  seenAt           DateTime?
+  dismissedAt      DateTime?
+  interestedAt     DateTime?
+  fitIndustry      String?
+  fitSalaryMonthly Float?
+  matchedAt        DateTime    @default(now())
+  lastEvaluatedAt  DateTime    @updatedAt
+
+  @@unique([jobId, searchRunId])
+  @@index([savedSearchId])
+  @@index([searchRunId, score])
+}
+
+model BackgroundTask {
+  id          String     @id @default(cuid())
+  type        String
+  payload     Json
+  status      TaskStatus @default(PENDING)
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(3)
+  runAt       DateTime   @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  finishedAt  DateTime?
+
+  @@index([status, runAt])
+}
+
+model CrawlBudget {
+  host          String   @id
+  day           String
+  detailFetches Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
+/// One person's verdict on one offer, across every search. "What I liked" lives in aspects.
+model OfferFeedback {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// LIKE | DISLIKE | APPLIED
+  verdict   String
+  /// Aspect keys, e.g. ["stack", "remote", "salary"]
+  aspects   Json     @default("[]")
+  /// Concrete phrases the person picked, e.g. skills or the company name
+  tags      Json     @default("[]")
+  note      String?  @db.Text
+  /// web | mcp
+  channel   String   @default("web")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId, verdict])
+}
+
+/// Companies a person wants watched even when they never post on aggregators.
+model WatchedCompany {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// user | similar | mcp
+  source    String   @default("user")
+  /// Why it was suggested, e.g. "similar to Allegro (liked)"
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+}
+
+/// One look at the harvest branches a cloud agent pushes (@newrole/job-index/harvest). The newest 50 are kept.
+model HarvestImport {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// imported | nothing_new | no_branch | unavailable | failed
+  status     String
+  /// Per branch: name, commit, generatedAt and the runs its manifest lists
+  branches   Json      @default("[]")
+  /// Boards written to the index: key and the cloud read time
+  applied    Json      @default("[]")
+  boards     Int       @default(0)
+  stored     Int       @default(0)
+  closed     Int       @default(0)
+  error      String?
+
+  @@index([startedAt])
+}
+
+/// A board imported from an outside list (freehire's MIT board catalog). It reaches the index
+/// only after its own check against the platform: proven, the same company, IT jobs, a country.
+model CatalogBoard {
+  id              String     @id @default(cuid())
+  provider        SourceType
+  providerBoardId String
+  /// The company name the outside list gave. The platform's own name wins once checked.
+  listedName      String
+  /// freehire@<commit>
+  origin          String
+  /// candidate | verified | rejected
+  status          String     @default("candidate")
+  /// Why a check refused it: not_found, no_jobs, identity, no_it_jobs, no_country, blocked_country, junk_name, error
+  reason          String?
+  note            String?
+  companyName     String?
+  /// Jobs the platform listed, and how many passed the IT and country checks.
+  listedJobs      Int        @default(0)
+  itJobs          Int        @default(0)
+  countries       String[]   @default([])
+  checkedAt       DateTime?
+  verifiedAt      DateTime?
+  /// Every read of a verified board is a new check. Null on a candidate never checked.
+  nextCheckAt     DateTime?
+  checks          Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@unique([provider, providerBoardId])
+  @@index([status, checkedAt])
+  @@index([nextCheckAt])
+}

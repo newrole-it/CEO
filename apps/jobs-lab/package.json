@@ -4,12 +4,25 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "A test bench for the offer engine (@newrole/ats, @newrole/job-index): read a board of any supported ATS live, one offer from its link, the boards a careers page links to, and a smoke run over real boards. Not part of newrole.it's release.",
+  "go": {
+    "flag": "APP_JOBS_LAB",
+    "default": "off",
+    "label": "jobs lab",
+    "prepare": "go:prepare",
+    "start": {
+      "lab": "dev",
+      "lab-worker": "worker"
+    },
+    "url": "http://127.0.0.1:43125"
+  },
   "scripts": {
     "dev": "next dev --webpack -p 43125 -H 127.0.0.1",
     "build": "next build --webpack",
     "start": "next start -H 127.0.0.1 -p 43125",
     "smoke": "tsx scripts/smoke.ts",
     "db:prepare": "tsx scripts/db.ts",
+    "go:prepare": "tsx scripts/go-prepare.ts",
+    "test:db": "node scripts/test-db.mjs prepare",
     "seed": "tsx scripts/seed.ts",
     "index": "tsx scripts/index-board.ts",
     "worker": "tsx scripts/worker.ts",
@@ -23,10 +36,10 @@
     "@newrole/app-kit": "0.1.0",
     "@newrole/ats": "0.1.0",
     "@newrole/job-index": "0.1.0",
+    "@newrole/jobs-lab-db": "0.1.0",
     "@newrole/offers": "0.1.0",
     "@newrole/ui": "0.1.0",
     "@next/env": "16.4.3",
-    "@prisma/client": "5.4.2",
     "lucide-react": "1.55.0",
     "next": "16.4.3",
     "react": "19.2.8",

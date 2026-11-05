@@ -1,11 +1,14 @@
 node_modules
-packages/*/node_modules
-apps/extension/node_modules
-apps/extension/.output
-apps/extension/.wxt
+apps/*/node_modules
+apps/*/packages/*/node_modules
+apps/reo-extension/node_modules
+apps/reo-extension/.output
+apps/reo-extension/.wxt
+apps/jobs-lab
 .next
 apps/*/.next
 apps/*/.data
+apps/*/docs
 uploads
 agent-tools
 .git
@@ -13,7 +16,6 @@ agent-tools
 .claude
 .agents
 coverage
-docs
 sources
 *.tsbuildinfo
 .env
