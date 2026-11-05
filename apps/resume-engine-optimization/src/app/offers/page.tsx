@@ -5,6 +5,8 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { listOffers } from "src/server/offers/service"
+import { FirstSteps } from "src/app/components/onboarding/FirstSteps"
+import { visibleFirstSteps } from "src/app/components/onboarding/first-steps"
 import { AddOffer } from "./AddOffer"
 import { OfferList } from "./OfferList"
 
@@ -32,12 +34,14 @@ export default async function OffersPage({
   }
   const t = translator(locale)
   const offers = await listOffers(user.id)
+  const steps = await visibleFirstSteps(user.id, offers)
   return (
     <SiteFrame user={user} locale={locale} width="narrow">
       <header className="page-head">
         <h1 className="t-h1">{t("of.title")}</h1>
         <p>{t("of.sub")}</p>
       </header>
+      {steps ? <FirstSteps steps={steps} /> : null}
       <div className="stack-lg">
         <AddOffer autoFocus={offers.length === 0} initialUrl={add} />
         <OfferList offers={offers} />

@@ -5,12 +5,14 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import {
+  BookOpen,
   BriefcaseBusiness,
   ChevronDown,
   ClipboardList,
   Coins,
   FileSearch,
   FileText,
+  Flag,
   MessageSquareText,
   ListChecks,
   LogOut,
@@ -28,6 +30,7 @@ import { useCopy } from "src/app/i18n/Locale"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Modal } from "@newrole/ui/interactive"
 import { LOCALE_COOKIE } from "@newrole/app-kit/languages"
+import { FIRST_STEPS_HIDDEN_COOKIE } from "src/server/onboarding/first-steps"
 import { LogoLockup } from "./Brand"
 import type { ShellUser } from "./links"
 
@@ -136,6 +139,14 @@ export function SiteHeader({
     }
   }, [menu])
 
+  /** Brings the "First steps" card back after "Hide", on Offers where it starts. */
+  function showFirstSteps() {
+    document.cookie = `${FIRST_STEPS_HIDDEN_COOKIE}=; path=/; max-age=0; samesite=lax`
+    setMenu(false)
+    router.push("/offers")
+    router.refresh()
+  }
+
   async function signOut() {
     await logoutMutation()
     setMenu(false)
@@ -188,6 +199,9 @@ export function SiteHeader({
             </nav>
           ) : (
             <nav className="nav" aria-label={t("nav.main")}>
+              <Link href="/features" aria-current={cur("/features")}>
+                {t("nav.features")}
+              </Link>
               <Link href="/connect" aria-current={cur("/connect")}>
                 {t("nav.claude")}
               </Link>
@@ -258,6 +272,9 @@ export function SiteHeader({
                             <Coins aria-hidden /> {t("nav.usage")}
                           </Link>
                         ) : null}
+                        <Link className="menu__item" role="menuitem" href="/features">
+                          <BookOpen aria-hidden /> {t("nav.featuresLong")}
+                        </Link>
                         <Link className="menu__item" role="menuitem" href="/login?returnTo=/cv">
                           <LogIn aria-hidden /> {t("nav.signin")}
                         </Link>
@@ -295,6 +312,17 @@ export function SiteHeader({
                         </Link>
                         <Link className="menu__item" role="menuitem" href="/settings">
                           <Settings aria-hidden /> {t("nav.settings")}
+                        </Link>
+                        <button
+                          type="button"
+                          className="menu__item"
+                          role="menuitem"
+                          onClick={showFirstSteps}
+                        >
+                          <Flag aria-hidden /> {t("fs.menu")}
+                        </button>
+                        <Link className="menu__item" role="menuitem" href="/features">
+                          <BookOpen aria-hidden /> {t("nav.featuresLong")}
                         </Link>
                         {setup ? (
                           <Link className="menu__item" role="menuitem" href="/setup">
@@ -386,6 +414,9 @@ export function SiteHeader({
             icon={<X />}
           />
         </div>
+        <Link className="nav-drawer__link" href="/features">
+          <BookOpen aria-hidden /> {t("nav.features")}
+        </Link>
         <Link className="nav-drawer__link" href="/connect">
           <SquareTerminal aria-hidden /> {t("nav.claude")}
         </Link>

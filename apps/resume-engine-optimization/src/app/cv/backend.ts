@@ -38,5 +38,6 @@ export const newroleCvBackend: CvEditorBackend = {
     list: "/cv",
     document: (id) => `/cv/${id}`,
     job: (jobId) => `/offers/${jobId}`,
+    guide: "/features#cv-editor",
   },
 }

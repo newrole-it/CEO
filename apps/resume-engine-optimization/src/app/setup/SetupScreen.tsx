@@ -171,7 +171,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
               <strong>{t("setup.ready.title")}</strong> {t("setup.ready.body")}
             </p>
             <div style={{ marginTop: 8 }}>
-              <ButtonLink href="/cv" variant="primary" size="sm">
+              <ButtonLink href="/offers" variant="primary" size="sm">
                 {t("setup.ready.cta")}
               </ButtonLink>
             </div>
@@ -221,7 +221,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
           <Button variant="ghost" onClick={closeCelebration}>
             {t("setup.done.stay")}
           </Button>
-          <ButtonLink href="/cv" variant="primary" onClick={closeCelebration}>
+          <ButtonLink href="/offers" variant="primary" onClick={closeCelebration}>
             {t("setup.done.cta")}
           </ButtonLink>
         </div>

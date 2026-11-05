@@ -1184,6 +1184,11 @@ button.chip:hover {
 .tab:hover {
   color: var(--text);
 }
+/* .tabs scrolls sideways and clips anything outside the tab, so the focus ring sits inside it. */
+.tab:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
 .tab[aria-selected="true"],
 .tab[aria-current="page"] {
   color: var(--text);

@@ -249,6 +249,7 @@ async function init() {
   show("actions", true)
   $("tracker").href = `${base}/applications`
   $("answers").href = `${base}/answers`
+  $("help").href = `${base}/features#extension`
 
   $("fill").addEventListener(
     "click",

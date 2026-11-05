@@ -39,25 +39,49 @@
       </form>
       <p id="message" class="muted hidden" role="status"></p>
       <label class="toggle">
-        <input id="autoTrack" type="checkbox" />
-        <span>Automatyczne śledzenie wysłanych aplikacji</span>
+        <input id="autoTrack" type="checkbox" aria-describedby="autoTrackHint" />
+        <span>
+          Automatyczne śledzenie wysłanych aplikacji
+          <small id="autoTrackHint" class="hint">
+            Wysłany formularz aplikacji sam zapisuje się w trackerze.
+          </small>
+        </span>
       </label>
       <label class="toggle">
-        <input id="offerCheck" type="checkbox" />
-        <span>Pokazuj na ofertach, czy już aplikowano</span>
+        <input id="offerCheck" type="checkbox" aria-describedby="offerCheckHint" />
+        <span>
+          Pokazuj na ofertach, czy już aplikowano
+          <small id="offerCheckHint" class="hint">
+            Panel na stronie oferty i znak na ikonie, gdy aplikacja na nią albo do tej firmy już
+            jest.
+          </small>
+        </span>
       </label>
       <label class="toggle">
-        <input id="linkedinAuto" type="checkbox" />
-        <span>Oceniaj mój profil LinkedIn, gdy go otworzę</span>
+        <input id="linkedinAuto" type="checkbox" aria-describedby="linkedinAutoHint" />
+        <span>
+          Oceniaj mój profil LinkedIn, gdy go otworzę
+          <small id="linkedinAutoHint" class="hint">
+            Ocena 0–100 i podpowiedzi na Twoim profilu. Sama nie ocenia cudzych profili.
+          </small>
+        </span>
       </label>
       <label class="toggle">
-        <input id="allSites" type="checkbox" />
-        <span>Działaj na wszystkich stronach</span>
+        <input id="allSites" type="checkbox" aria-describedby="allSitesHint" />
+        <span>
+          Działaj na wszystkich stronach
+          <small id="allSitesHint" class="hint">
+            Wyłączone: rozszerzenie działa samo tylko na znanych systemach rekrutacji, portalach z
+            ofertami i LinkedIn. Włączone: także na innych stronach https, np. karierach firm.
+            Chrome poprosi o zgodę.
+          </small>
+        </span>
       </label>
       <nav class="links">
         <a id="tracker" href="#" target="_blank" rel="noreferrer noopener">Tracker</a>
         <a id="answers" href="#" target="_blank" rel="noreferrer noopener">Baza odpowiedzi</a>
         <a id="options" href="options.html" target="_blank">Opcje</a>
+        <a id="help" href="#" target="_blank" rel="noreferrer noopener">Co robią te opcje?</a>
       </nav>
     </section>
 

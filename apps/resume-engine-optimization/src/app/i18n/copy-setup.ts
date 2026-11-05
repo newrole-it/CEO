@@ -10,13 +10,14 @@ export const setupPl = {
   "setup.sub": "Oto wszystko, co jest potrzebne, i co już działa. Status odświeża się sam.",
   "setup.progress": "Gotowe: {done} z {total}",
   "setup.progressLabel": "Postęp konfiguracji",
-  "setup.ready.title": "Podstawy działają. Możesz szukać ofert.",
-  "setup.ready.body": "Pozostałe kroki są opcjonalne. Wrócisz do nich z menu „Konfiguracja”.",
-  "setup.ready.cta": "Przejdź do CV",
+  "setup.ready.title": "Podstawy działają. Dodaj pierwszą ofertę.",
+  "setup.ready.body":
+    "Wklej link do ogłoszenia, a newrole.it dopasuje do niego CV i list. Pozostałe kroki są opcjonalne. Wrócisz do nich z menu „Konfiguracja”.",
+  "setup.ready.cta": "Dodaj pierwszą ofertę",
   "setup.done.title": "Wszystko połączone",
   "setup.done.body":
     "Wszystkie kroki konfiguracji są gotowe. Możesz dodawać oferty i dopasowywać do nich CV.",
-  "setup.done.cta": "Przejdź do CV",
+  "setup.done.cta": "Przejdź do ofert",
   "setup.done.stay": "Zostań tutaj",
   "setup.skip": "Pomiń na razie",
   "setup.offline": "Nie mogę odczytać statusu. Sprawdź, czy aplikacja działa w terminalu.",
@@ -64,7 +65,7 @@ export const setupPl = {
   "setup.account.cta": "Załóż konto lub zaloguj się",
 
   "setup.profile.title": "Profil z CV",
-  "setup.profile.why": "Oferty układają się według roli, stacku, wynagrodzenia i trybu pracy.",
+  "setup.profile.why": "Z profilu powstaje CV, a model czyta go, gdy pisze CV i list pod ofertę.",
   "setup.profile.ok": "Profil zapisany.",
   "setup.profile.none":
     "Wgraj CV w PDF albo zaimportuj profil z LinkedIn. To zajmuje około minuty.",
@@ -123,12 +124,13 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.sub": "Everything you need, and what already works. The status updates by itself.",
   "setup.progress": "Done: {done} of {total}",
   "setup.progressLabel": "Setup progress",
-  "setup.ready.title": "The basics work. You can look for jobs.",
-  "setup.ready.body": "The other steps are optional. Come back to them from the “Setup” menu.",
-  "setup.ready.cta": "Go to your CV",
+  "setup.ready.title": "The basics work. Add your first offer.",
+  "setup.ready.body":
+    "Paste a link to a posting and newrole.it tailors your CV and letter to it. The other steps are optional. Come back to them from the “Setup” menu.",
+  "setup.ready.cta": "Add your first offer",
   "setup.done.title": "Everything is connected",
   "setup.done.body": "Every setup step is done. Add offers and tailor your CV to them.",
-  "setup.done.cta": "Go to your CV",
+  "setup.done.cta": "Go to offers",
   "setup.done.stay": "Stay here",
   "setup.skip": "Skip for now",
   "setup.offline": "Can't read the status. Check that the app is running in your terminal.",
@@ -175,7 +177,8 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.account.cta": "Create an account or sign in",
 
   "setup.profile.title": "Profile from your CV",
-  "setup.profile.why": "Offers are ranked by role, stack, salary and work mode.",
+  "setup.profile.why":
+    "Your CV is made from your profile, and the model reads it when it writes a CV and letter for an offer.",
   "setup.profile.ok": "Profile saved.",
   "setup.profile.none":
     "Upload a CV as a PDF or import your LinkedIn profile. It takes about a minute.",

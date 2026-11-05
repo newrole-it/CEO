@@ -7,6 +7,8 @@ import { LinkTabs } from "@newrole/ui/primitives"
 import { listCvs } from "src/server/cv/service"
 import { listOffers } from "src/server/offers/service"
 import { setupBack } from "src/app/setup/back"
+import { FirstSteps } from "src/app/components/onboarding/FirstSteps"
+import { visibleFirstSteps } from "src/app/components/onboarding/first-steps"
 import { CvList, type OfferState } from "./CvList"
 
 export async function generateMetadata() {
@@ -30,6 +32,7 @@ export default async function CvPage({
     setupBack(user?.id ?? null),
     user ? listOffers(user.id) : [],
   ])
+  const steps = user ? await visibleFirstSteps(user.id, offers) : null
   const tab = query.tab === "offers" ? "offers" : "general"
   const general = cvs.filter((cv) => !cv.target).length
   const tailored = new Set(cvs.flatMap((cv) => (cv.target ? [cv.target.jobId ?? cv.id] : []))).size
@@ -49,6 +52,7 @@ export default async function CvPage({
         <h1 className="t-h1">{t("cv.title")}</h1>
         <p>{t("cv.sub")}</p>
       </header>
+      {steps ? <FirstSteps steps={steps} /> : null}
       {user ? (
         <div className="cv-tabs">
           <LinkTabs

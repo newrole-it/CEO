@@ -15,8 +15,11 @@ import {
   FileText,
   FileUp,
   LogIn,
+  Mail,
   MoreHorizontal,
   Pencil,
+  Plus,
+  Search,
   Star,
   Trash2,
   UserRound,
@@ -26,7 +29,7 @@ import { Dropzone, isPdf, Modal, ModalHead, useToast } from "@newrole/ui/interac
 import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "@newrole/ui/time"
-import { statusLabel } from "src/shared/applications"
+import { statusLabel, statusTone } from "src/shared/applications"
 import { importCvHtml } from "@newrole/cv-core/import-html"
 import { downloadPdf } from "@newrole/cv-editor/download"
 import { cvPdfUrl, cvPrintUrl } from "./urls"
@@ -51,28 +54,46 @@ export type CvRow = {
   target: { jobId: string | null; company: string; title: string } | null
 }
 
-/** Tailored documents grouped by offer, CV before letter, newest offer first. */
-function byOffer(
+type OfferGroup = {
+  key: string
+  target: NonNullable<CvRow["target"]>
   rows: CvRow[]
-): { key: string; target: NonNullable<CvRow["target"]>; rows: CvRow[] }[] {
-  const groups = new Map<
-    string,
-    { key: string; target: NonNullable<CvRow["target"]>; rows: CvRow[] }
-  >()
+  /** The newest change to any of its documents */
+  updatedAt: number
+}
+
+/** Tailored documents grouped by offer, CV before letter, the offer worked on last first. */
+function byOffer(rows: CvRow[]): OfferGroup[] {
+  const groups = new Map<string, OfferGroup>()
   for (const row of rows) {
     if (!row.target) continue
     const key = row.target.jobId ?? row.id
-    const group = groups.get(key) ?? { key, target: row.target, rows: [] }
+    const group = groups.get(key) ?? { key, target: row.target, rows: [], updatedAt: 0 }
     group.rows.push(row)
+    group.updatedAt = Math.max(group.updatedAt, new Date(row.updatedAt).getTime())
     groups.set(key, group)
   }
-  return [...groups.values()].map((group) => ({
-    ...group,
-    rows: group.rows.sort(
-      (a, b) => Number(a.docType === "LETTER") - Number(b.docType === "LETTER")
-    ),
-  }))
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      rows: group.rows.sort(
+        (a, b) => Number(a.docType === "LETTER") - Number(b.docType === "LETTER")
+      ),
+    }))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
 }
+
+/** Lower case without Polish accents, so "lodz" finds "Łódź". */
+function fold(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ł/g, "l")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+}
+
+/** Above this many offers the tab gets a search field. */
+const SEARCH_FROM = 4
 
 /** What the offers of the tailored documents are at: their application and whether they closed. */
 export type OfferState = { applicationId: string | null; status: string | null; closed: boolean }
@@ -132,6 +153,7 @@ export function CvList({
   const [rows, setRows] = useState<CvRow[]>(initial)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<CvRow | null>(null)
+  const [query, setQuery] = useState("")
   const newMenu = useMenu()
   const htmlInput = useRef<HTMLInputElement>(null)
 
@@ -375,11 +397,11 @@ export function CvList({
                   </Button>
                 </EmptyState>
               ) : (
-                <ul className="cvl-grid" role="list">
+                <ul className="card cvl-list" role="list">
                   {rows
                     .filter((row) => !row.target)
                     .map((row) => (
-                      <CvCard
+                      <DocRow
                         key={row.id}
                         row={row}
                         onDownload={() => void download(row)}
@@ -393,58 +415,16 @@ export function CvList({
               {rows.length > 0 ? <p className="t-caption muted">{t("cv.drop")}</p> : null}
             </>
           ) : rows.some((row) => row.target) ? (
-            <>
-              <p className="t-sm muted">{t("cvt.offers.sub")}</p>
-              {byOffer(rows).map((group) => {
-                const jobId = group.target.jobId
-                const offer = jobId ? offers[jobId] : undefined
-                return (
-                  <section
-                    key={group.key}
-                    className="cvo-group"
-                    aria-label={`${group.target.company} · ${group.target.title}`}
-                  >
-                    <div className="cvo-group__head">
-                      {jobId ? (
-                        <Link className="cvo-group__title" href={`/offers/${jobId}`}>
-                          {group.target.title}
-                        </Link>
-                      ) : (
-                        <span className="cvo-group__title">{group.target.title}</span>
-                      )}
-                      <span className="muted">{group.target.company}</span>
-                      {offer?.status ? (
-                        <Badge tone="primary">{statusLabel(offer.status, locale)}</Badge>
-                      ) : null}
-                      {offer?.closed || !jobId ? (
-                        <Badge tone="warning">{t("of.closed")}</Badge>
-                      ) : null}
-                      {offer?.applicationId ? (
-                        <Link
-                          className="link cvo-group__app"
-                          href={`/applications?id=${offer.applicationId}`}
-                        >
-                          {t("ow.app.open")}
-                        </Link>
-                      ) : null}
-                    </div>
-                    <ul className="cvl-grid" role="list">
-                      {group.rows.map((row) => (
-                        <CvCard
-                          key={row.id}
-                          row={row}
-                          label={t(row.docType === "LETTER" ? "tl.bar.letter" : "tl.bar.cv")}
-                          onDownload={() => void download(row)}
-                          onDuplicate={() => void duplicate(row)}
-                          onDefault={() => void makeDefault(row)}
-                          onDelete={() => setConfirm(row)}
-                        />
-                      ))}
-                    </ul>
-                  </section>
-                )
-              })}
-            </>
+            <OffersTab
+              groups={byOffer(rows)}
+              offers={offers}
+              query={query}
+              onQuery={setQuery}
+              onDownload={(row) => void download(row)}
+              onDuplicate={(row) => void duplicate(row)}
+              onDefault={(row) => void makeDefault(row)}
+              onDelete={(row) => setConfirm(row)}
+            />
           ) : (
             <EmptyState
               icon={<BriefcaseBusiness />}
@@ -485,7 +465,147 @@ export function CvList({
   )
 }
 
-function CvCard({
+type RowActions = {
+  onDownload: (row: CvRow) => void
+  onDuplicate: (row: CvRow) => void
+  onDefault: (row: CvRow) => void
+  onDelete: (row: CvRow) => void
+}
+
+/**
+ * "For offers": one card per offer, the one worked on last first. The card says which offer and
+ * where its application is; inside, the CV and the letter as rows, and a row to write the letter
+ * when there is none yet.
+ */
+function OffersTab({
+  groups,
+  offers,
+  query,
+  onQuery,
+  ...actions
+}: {
+  groups: OfferGroup[]
+  offers: Record<string, OfferState>
+  query: string
+  onQuery: (query: string) => void
+} & RowActions) {
+  const { t, locale } = useCopy()
+  const words = fold(query).split(/\s+/).filter(Boolean)
+  const shown = words.length
+    ? groups.filter((group) => {
+        const text = fold(`${group.target.company} ${group.target.title}`)
+        return words.every((word) => text.includes(word))
+      })
+    : groups
+  return (
+    <>
+      <p className="t-sm muted">{t("cvt.offers.sub")}</p>
+      {groups.length >= SEARCH_FROM ? (
+        <label className="cvo-search">
+          <Search aria-hidden />
+          <input
+            className="input"
+            type="search"
+            value={query}
+            placeholder={t("cvt.search")}
+            aria-label={t("cvt.search")}
+            onChange={(event) => onQuery(event.target.value)}
+          />
+        </label>
+      ) : null}
+      {shown.length ? (
+        <div className="cvo-list">
+          {shown.map((group) => {
+            const jobId = group.target.jobId
+            const offer = jobId ? offers[jobId] : undefined
+            const cv = group.rows.find((row) => row.docType === "CV")
+            const letter = group.rows.find((row) => row.docType === "LETTER")
+            const closed = offer?.closed || !jobId
+            return (
+              <section
+                key={group.key}
+                className="card cvo-card"
+                aria-label={`${group.target.title} · ${group.target.company}`}
+              >
+                <header className="cvo-card__head">
+                  <div className="cvo-card__offer">
+                    <h3 className="cvo-card__title">
+                      {jobId ? (
+                        <Link href={`/offers/${jobId}`}>{group.target.title}</Link>
+                      ) : (
+                        group.target.title
+                      )}
+                    </h3>
+                    <p className="t-sm muted">{group.target.company}</p>
+                  </div>
+                  <div className="cvo-card__state">
+                    {closed ? <Badge tone="warning">{t("of.closed")}</Badge> : null}
+                    {offer?.status && offer.applicationId ? (
+                      <Link
+                        className="status-pill cvo-card__status"
+                        data-tone={statusTone(offer.status)}
+                        href={`/applications?id=${offer.applicationId}`}
+                        title={t("ow.app.open")}
+                      >
+                        {statusLabel(offer.status, locale)}
+                      </Link>
+                    ) : (
+                      <span className="status-pill" data-tone="muted">
+                        {t("cvt.noApp")}
+                      </span>
+                    )}
+                  </div>
+                </header>
+                <ul className="cvl-list cvl-list--inner" role="list">
+                  {group.rows.map((row) => (
+                    <DocRow
+                      key={row.id}
+                      row={row}
+                      label={t(row.docType === "LETTER" ? "tl.bar.letter" : "tl.bar.cv")}
+                      onDownload={() => actions.onDownload(row)}
+                      onDuplicate={() => actions.onDuplicate(row)}
+                      onDefault={() => actions.onDefault(row)}
+                      onDelete={() => actions.onDelete(row)}
+                    />
+                  ))}
+                  {cv && !letter && jobId ? (
+                    <li className="cvl-row cvl-row--missing">
+                      <span className="cvl-row__icon" aria-hidden>
+                        <Mail />
+                      </span>
+                      <div className="cvl-row__main">
+                        <span className="cvl-row__title">{t("tl.bar.letter")}</span>
+                        <span className="cvl-row__meta">{t("cvt.letter.none")}</span>
+                      </div>
+                      <div className="cvl-row__actions">
+                        <ButtonLink
+                          href={`/offers/${jobId}`}
+                          size="sm"
+                          variant="ghost"
+                          icon={<Plus />}
+                        >
+                          {t("cvt.letter.write")}
+                        </ButtonLink>
+                      </div>
+                    </li>
+                  ) : null}
+                </ul>
+              </section>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="muted cvo-empty">{t("cvt.noMatch", { q: query.trim() })}</p>
+      )}
+    </>
+  )
+}
+
+/**
+ * One CV or letter as a row: what it is, its language and last change, then Edit, PDF and the
+ * rest in a menu. Only what is not the usual shows as a badge: the default CV and an uploaded PDF.
+ */
+function DocRow({
   row,
   label,
   onDownload,
@@ -505,44 +625,43 @@ function CvCard({
   const menu = useMenu()
   const uploaded = row.kind === "UPLOADED"
   const letter = row.docType === "LETTER"
+  const name = label ?? row.title
   return (
-    <li className="card card--pad cvl-card">
-      <div className="cvl-card__top">
-        <span className={`cvl-card__icon${uploaded ? " cvl-card__icon--pdf" : ""}`} aria-hidden>
-          <FileText />
-        </span>
-        <div className="cvl-card__main">
-          <Link className="cvl-card__title" href={`/cv/${row.id}`}>
-            {label ?? row.title}
+    <li className="cvl-row">
+      <span className={`cvl-row__icon${uploaded ? " cvl-row__icon--pdf" : ""}`} aria-hidden>
+        {letter ? <Mail /> : <FileText />}
+      </span>
+      <div className="cvl-row__main">
+        <span className="cvl-row__name">
+          <Link className="cvl-row__title" href={`/cv/${row.id}`}>
+            {name}
           </Link>
-          <div className="cvl-card__meta">
-            {row.isDefault ? (
-              <Badge tone="primary" icon={<Star fill="currentColor" />}>
-                {t("cv.default")}
-              </Badge>
-            ) : null}
-            {letter ? (
-              label ? null : (
-                <Badge tone="primary">{t("tl.list.letter")}</Badge>
-              )
-            ) : (
-              <Badge tone={uploaded ? "plain" : "success"}>
-                {t(uploaded ? "cv.kind.pdf" : "cv.kind.editable")}
-              </Badge>
-            )}
-            <Badge tone="plain">{t(row.language === "en" ? "cv.lang.en" : "cv.lang.pl")}</Badge>
-          </div>
-          <span className="t-caption muted">
-            {t("cv.updated", { when: relativeTime(row.updatedAt, t) ?? "" })}
-          </span>
-        </div>
+          {row.isDefault ? (
+            <Badge tone="primary" icon={<Star fill="currentColor" />}>
+              {t("cv.default")}
+            </Badge>
+          ) : null}
+          {uploaded ? <Badge tone="plain">{t("cv.kind.pdf")}</Badge> : null}
+          {letter && !label ? <Badge tone="primary">{t("tl.list.letter")}</Badge> : null}
+        </span>
+        <span className="cvl-row__meta">
+          {t(row.language === "en" ? "cv.lang.en" : "cv.lang.pl")} ·{" "}
+          {t("cv.updated", { when: relativeTime(row.updatedAt, t) ?? "" })}
+        </span>
       </div>
-      <div className="cvl-card__actions">
+      <div className="cvl-row__actions">
         <ButtonLink href={`/cv/${row.id}`} size="sm" variant="outline" icon={<Pencil />}>
           {t(uploaded ? "cv.act.open" : "cv.act.edit")}
         </ButtonLink>
-        <Button size="sm" variant="outline" icon={<Download />} onClick={onDownload}>
-          {t("cv.act.download")}
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Download />}
+          aria-label={t("cvt.pdfOf", { title: name })}
+          title={t("cv.act.download")}
+          onClick={onDownload}
+        >
+          {t("cvt.pdf")}
         </Button>
         <div className="rel">
           <Button
@@ -585,7 +704,7 @@ function CvCard({
                   {t("cv.act.setDefault")}
                 </button>
               )}
-              <div className="menu__sep" />
+              {letter && (row.isDefault || row.target) ? null : <div className="menu__sep" />}
               <button
                 type="button"
                 className="menu__item menu__item--danger"

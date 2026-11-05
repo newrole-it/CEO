@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Configuration and running
+    url: https://github.com/newrole-it/newrole.it/blob/main/apps/resume-engine-optimization/docs/configuration.md
+    about: Every command, every environment variable, Docker Compose and tests.
+  - name: Documentation
+    url: https://github.com/newrole-it/newrole.it/tree/main/apps/resume-engine-optimization/docs
+    about: Accounts and privacy, applications and the extension, architecture.
+  - name: Security vulnerability
+    url: https://github.com/newrole-it/newrole.it/blob/main/SECURITY.md
+    about: Do not open an issue for it. SECURITY.md says how to report it privately.

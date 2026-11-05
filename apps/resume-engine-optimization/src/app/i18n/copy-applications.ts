@@ -58,7 +58,7 @@ export const applicationsPl = {
   "app.changeStatus": "Status: {company}, {title}",
   "app.empty.title": "Nie śledzisz jeszcze żadnej aplikacji.",
   "app.empty.body":
-    "Oznacz ofertę jako „Aplikowano” albo zainstaluj rozszerzenie Chrome, a aplikacje zapiszą się same.",
+    "Na stronie oferty kliknij „Dodaj do aplikacji” albo zainstaluj rozszerzenie Chrome, a aplikacje zapiszą się same.",
   "app.empty.offers": "Twoje oferty",
   "app.empty.extension": "Rozszerzenie Chrome",
   "app.empty.filter": "Brak aplikacji w tym widoku.",
@@ -171,7 +171,7 @@ export const applicationsPl = {
   "stx.range.truncated": "Wykresy pokazują ostatnie 52 tygodnie.",
   "stx.empty.title": "Statystyki pojawią się po pierwszych aplikacjach.",
   "stx.empty.body":
-    "Oznacz ofertę jako „Aplikowano” albo dodaj aplikację w trackerze, a tu zobaczysz lejek, odsetek odpowiedzi i etapy, na których odpadasz.",
+    "Na stronie oferty kliknij „Dodaj do aplikacji” albo dodaj aplikację w trackerze, a tu zobaczysz lejek, odsetek odpowiedzi i etapy, na których odpadasz.",
   "stx.empty.tracker": "Przejdź do aplikacji",
   "stx.empty.range": "Brak aplikacji wysłanych w tym okresie. Wybierz dłuższy zakres.",
   "stx.k.sent": "Wysłane aplikacje",
@@ -254,7 +254,7 @@ export const applicationsPl = {
   // settings → Google Sheet
   "sheet.title": "Arkusz Google",
   "sheet.lead":
-    "Tracker może prowadzić kopię w Twoim arkuszu Google. Synchronizacja jest jednostronna (aplikacja → arkusz), a w trybie automatycznym wysyła ją sama aplikacja, dopóki działa.",
+    "Tracker może prowadzić kopię w Twoim arkuszu Google. Synchronizacja działa w obie strony: nowe wiersze, zmiany i usunięcia z arkusza trafiają do newrole.it (wygrywa nowsza zmiana), a potem cała tabela wraca do arkusza. W trybie automatycznym robi to sama aplikacja, dopóki działa.",
   "sheet.connected": "Połączono",
   "sheet.notConnected": "Nie połączono",
   "sheet.lastSync": "Ostatnia synchronizacja: {when}, wiersze: {n}",
@@ -376,7 +376,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.changeStatus": "Status: {company}, {title}",
   "app.empty.title": "You're not tracking any applications yet.",
   "app.empty.body":
-    "Mark an offer as “Applied” or install the Chrome extension, and applications will save themselves.",
+    "Click “Add to applications” on an offer's page, or install the Chrome extension, and applications will save themselves.",
   "app.empty.offers": "Your offers",
   "app.empty.extension": "Chrome extension",
   "app.empty.filter": "No applications in this view.",
@@ -485,7 +485,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "stx.range.truncated": "Charts show the last 52 weeks.",
   "stx.empty.title": "Statistics appear after your first applications.",
   "stx.empty.body":
-    "Mark an offer as “Applied” or add an application in the tracker, and you'll see the funnel, the response rate and the stages where you drop out.",
+    "Click “Add to applications” on an offer's page or add an application in the tracker, and you'll see the funnel, the response rate and the stages where you drop out.",
   "stx.empty.tracker": "Go to applications",
   "stx.empty.range": "No applications sent in this period. Pick a longer range.",
   "stx.k.sent": "Applications sent",
@@ -568,7 +568,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
 
   "sheet.title": "Google Sheet",
   "sheet.lead":
-    "The tracker can keep a copy in your Google Sheet. Sync is one-way (app → sheet), and in automatic mode the app sends it on its own while it runs.",
+    "The tracker can keep a copy in your Google Sheet. Sync goes both ways: new rows, edits and deletions in the sheet come into newrole.it (the newer change wins), then the whole table goes back to the sheet. In automatic mode the app does it on its own while it runs.",
   "sheet.connected": "Connected",
   "sheet.notConnected": "Not connected",
   "sheet.lastSync": "Last sync: {when}, rows: {n}",

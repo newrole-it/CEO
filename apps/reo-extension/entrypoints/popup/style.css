@@ -125,6 +125,13 @@ p {
 .toggle input {
   margin: 2px 0 0;
 }
+.hint {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
 .field {
   display: grid;
   gap: 4px;

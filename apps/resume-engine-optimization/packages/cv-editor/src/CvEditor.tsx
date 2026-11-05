@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   ArrowLeft,
   Bold,
+  CircleQuestionMark,
   CircleAlert,
   Download,
   FileSearch,
@@ -33,6 +34,7 @@ import { downloadPdf } from "./download"
 import { AuditBar, AuditRail } from "./AuditPanel"
 import { DocumentPanel, type PanelTab } from "./DocumentPanel"
 import { placeCaret } from "./Editable"
+import { EditorHelp, useEditorHelp } from "./EditorHelp"
 import { LinksPopover } from "./LinksPopover"
 import { useCvCopy } from "./locale"
 import { Outline } from "./Outline"
@@ -187,6 +189,7 @@ function Editor({
     })
   }, [])
 
+  const help = useEditorHelp()
   const photoInput = useRef<HTMLInputElement>(null)
   const [linksOpen, setLinksOpen] = useState<{ top: number; left: number } | null>(null)
   const [outlineOpen, setOutlineOpen] = useState(true)
@@ -505,6 +508,16 @@ function Editor({
         >
           {t("tl.v.button")}
         </Button>
+        <Button
+          size="sm"
+          variant={help.open ? "soft" : "ghost"}
+          iconOnly
+          icon={<CircleQuestionMark />}
+          aria-label={t("cv.help.button")}
+          title={t("cv.help.button")}
+          aria-haspopup="dialog"
+          onClick={help.show}
+        />
         <ButtonLink
           href={backend.printUrl(id)}
           external
@@ -678,6 +691,14 @@ function Editor({
           </div>
         </form>
       ) : null}
+
+      <EditorHelp
+        open={help.open}
+        onClose={help.close}
+        isLetter={isLetter}
+        tailored={Boolean(tailor)}
+        guide={backend.routes.guide}
+      />
 
       {linksOpen ? (
         <LinksPopover ops={ops} at={linksOpen} onClose={() => setLinksOpen(null)} />

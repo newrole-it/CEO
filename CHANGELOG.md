@@ -8,6 +8,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Changed
 
+- My CV is easier to scan. For offers shows one card per offer, the one changed last on top, with the application's status in the tracker's colours or "Not applied", the CV and letter as compact rows, a "Write a letter" row when the letter is missing, and a search from four offers up. General lists its CVs as the same rows.
 - newrole.it is now the CV app: your profile, My CV, Offers, Applications, Answers. The offer feed, saved offers, companies, sources, sync and coverage are gone from it, with the worker's crawling: the engine that finds offers on its own moved to the @newrole/ats and @newrole/job-index packages, for a separate deployment, and apps/jobs-lab tests it (npm run jobs-lab, npm run jobs-lab:smoke).
 - Add offer reads the whole posting from its link (the employer's ATS or the page's structured data) and keeps it for you: each offer has its own page with its text, which you can edit, paste or read again, the CV and letter written for it, its application and a note. A page without structured data comes back with the text read from it, for you to check before it is added. Tailoring a CV or writing a letter reads that text first.
 - Tailoring a CV or cover letter reads the offer's text from its page on any site, job boards such as justjoin.it included, so you no longer paste it by hand. From a job board or LinkedIn it is read when you tailor, kept in memory for 15 minutes and never stored. robots.txt, a site owner's opt-out, an AI opt-out on the page and login or bot walls still stop it; LinkedIn's robots.txt disallows every page, so a LinkedIn offer still needs its text pasted. The engine's crawler still never reads job boards or LinkedIn.
@@ -26,6 +27,11 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Added
 
+- First steps: a card at the top of Offers and My CV leads a new account from its profile to the first offer, a CV tailored to it and the application, one step at a time. Hide puts it away; the account menu brings it back.
+- How to edit: the CV editor explains itself on the first visit, pasting a photo, the buttons next to entries, links, the outline and the shortcuts included. The question-mark button in its toolbar opens it again.
+- /features explains every screen, button and switch of newrole.it and the Chrome extension. It is linked from the header, the footer, the account menu, the home page, First steps and the extension's popup.
+- The extension's popup says under each switch what it does, and "Co robią te opcje?" opens /features.
+- CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, issue forms, a pull request checklist, .editorconfig and .nvmrc.
 - Saved has a CV ready tab: offers you tailored a CV or cover letter for and haven't applied to yet, liked or not. Each saved offer shows the CV and letter written for it; a ready one has Download PDF and Applied, a sent one links to its application. Tailoring adds no Like, so it doesn't change what your feed learns.
 - Add offer under Offers: paste the link to an offer newrole.it doesn't have and it is read from the page (ATS, structured data, or the page text), checked by you and added, so you can tailor your CV and cover letter to it, save it or mark it as applied like any other offer. It shows as Added by you. LinkedIn links are refused; for a job board that is never read you enter the company and role and paste the offer's text when tailoring. A Google Careers link from your recommendations, which asks for a Google sign-in, is read from its public page instead.
 - Tailoring a CV picks up to 15 keywords from the offer, in its own words, and works those your CV or profile backs into the bullets, skills and profile where they belong, once or twice each, never as a list. The Tailoring tab shows how many are in the CV, which you have but this version leaves out, and which your data doesn't show. A keyword the model added without backing is listed under Check before sending.
@@ -95,6 +101,11 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Fixed
 
+- A CV uploaded as a PDF keeps its line breaks, so its sections are found and a CV made from the profile has them too. Before, the whole text arrived as one line and landed in a single section.
+- After /setup and after saving a profile, newrole.it sends you to add your first offer instead of an empty My CV.
+- The profile screens, /setup and the page title no longer talk about matches, scores or a job feed that newrole.it does not have.
+- The profile's "Szukam też" chips are now labelled "Wcześniejsze stanowiska" (Earlier roles): they hold the earlier job titles read from your CV, and that is how the model gets them.
+- Settings, the tracker's empty state and the MCP sheet_sync tool say what really happens: the Google Sheet sync goes both ways, and an offer is tracked with "Add to applications" on its page.
 - The offer list in a country loads in milliseconds instead of seconds: the database keeps the offers in newest-first order, and the country filter reads the stored countries instead of matching dozens of place names in every offer's location text.
 - Importing a CV or a pasted profile reads the expected salary: the minimum, the target, the currency and the contract. A yearly amount is saved as a monthly one, also when you confirm a draft that came in yearly.
 - Workable and SmartRecruiters offers with an empty department, city or contract type are kept instead of skipped.

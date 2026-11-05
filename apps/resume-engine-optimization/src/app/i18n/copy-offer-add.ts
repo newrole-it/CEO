@@ -41,7 +41,7 @@ export const offerAddPl = {
   "oa.empty": "Nie ma tu tej oferty? Dodaj ją z linku",
   "oa.err.badUrl": "To nie wygląda na link do oferty.",
   "oa.err.refused":
-    "Ofert z LinkedIn i serwisów społecznościowych nie czytamy ani nie zapisujemy. Znajdź tę ofertę na stronie firmy i wklej tamten link.",
+    "Tej strony nie czytamy ani nie zapisujemy, bo to nie strona firmy (np. LinkedIn, serwisy społecznościowe, Indeed, Glassdoor). Znajdź tę ofertę na stronie firmy i wklej tamten link.",
   "oa.err.read": "Nie udało się sprawdzić linku. Spróbuj jeszcze raz za chwilę.",
   "oa.err.save": "Nie udało się dodać oferty. Spróbuj jeszcze raz.",
   "src.added": "Dodana przez Ciebie",
@@ -86,7 +86,7 @@ export const offerAddEn: Record<keyof typeof offerAddPl, string> = {
   "oa.empty": "Offer not here? Add it from its link",
   "oa.err.badUrl": "That doesn't look like a link to an offer.",
   "oa.err.refused":
-    "Offers on LinkedIn and social sites are never read or stored. Find the offer on the company's own site and paste that link.",
+    "This site is never read or stored, because it is not a company's own page (e.g. LinkedIn, social sites, Indeed, Glassdoor). Find the offer on the company's own site and paste that link.",
   "oa.err.read": "The link could not be checked. Try again in a moment.",
   "oa.err.save": "The offer could not be added. Try again.",
   "src.added": "Added by you",

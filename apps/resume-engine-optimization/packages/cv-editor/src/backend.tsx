@@ -64,6 +64,8 @@ export type CvEditorBackend = {
     document: (id: string) => string
     /** The offer's page in the app; null to link the offer's own URL instead */
     job: (jobId: string) => string | null
+    /** A page that explains every feature; "How to edit" links to it when it is set */
+    guide?: string
   }
 }
 

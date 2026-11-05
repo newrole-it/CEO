@@ -83,6 +83,13 @@ export const offersPl = {
   "cvt.offers.empty.body": "Dodaj ofertę z linku i kliknij „Dostosuj CV i list”.",
   "cvt.offers.add": "Dodaj ofertę",
   "cvt.offer.open": "Oferta",
+  "cvt.search": "Szukaj po firmie lub stanowisku",
+  "cvt.noMatch": "Żadna oferta nie pasuje do „{q}”.",
+  "cvt.noApp": "Nie aplikowano",
+  "cvt.letter.none": "Nie ma jeszcze listu do tej oferty.",
+  "cvt.letter.write": "Napisz list",
+  "cvt.pdf": "PDF",
+  "cvt.pdfOf": "Pobierz PDF: {title}",
 }
 
 export const offersEn: Record<keyof typeof offersPl, string> = {
@@ -167,4 +174,11 @@ export const offersEn: Record<keyof typeof offersPl, string> = {
   "cvt.offers.empty.body": "Add an offer by its link and click “Tailor CV and letter”.",
   "cvt.offers.add": "Add an offer",
   "cvt.offer.open": "Offer",
+  "cvt.search": "Search by company or role",
+  "cvt.noMatch": "No offer matches “{q}”.",
+  "cvt.noApp": "Not applied",
+  "cvt.letter.none": "No letter for this offer yet.",
+  "cvt.letter.write": "Write a letter",
+  "cvt.pdf": "PDF",
+  "cvt.pdfOf": "Download PDF: {title}",
 }

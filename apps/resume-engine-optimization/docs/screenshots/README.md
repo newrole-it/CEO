@@ -1,6 +1,16 @@
 # Screenshots
 
-Screenshots used by the root README. They come from a local install signed in as a temporary demo account with a fictional profile, light theme, 1440×900 at 2× (desktop) and 390×844 at 2× (phone). Offers and companies are real public postings from the local index.
+Screenshots for the root README and the docs. The older ones below come from a local install signed in as a temporary demo account with a fictional profile, light theme, 1440×900 at 2× (desktop) and 390×844 at 2× (phone). Offers and companies are real public postings from the local index.
+
+| File | Page |
+|---|---|
+| `reo-offers.png` | `/offers` — First steps at step 3 of 4, above Add an offer by its link (English UI) |
+| `reo-editor-help.png` | `/cv/[id]` — the CV editor with How to edit open (English UI) |
+| `reo-features.png` | `/features#extension` — what each button and switch of the Chrome extension does (English UI) |
+
+The three `reo-*.png` files are the ones the root README shows. They come from a fresh clone (`npm run go`) with a fictional profile (Anna Przykładowa) and a fictional offer on example.com, 1440×900 at 2×, light theme, without the Next.js dev badge.
+
+The files below come from before newrole.it became the CV app, and the root README does not use them. Some show the feed, saved offers, companies and sources, which newrole.it no longer has.
 
 | File | Page |
 |---|---|

@@ -542,7 +542,7 @@ export function registerApplicationTools(server: McpServer) {
     {
       title: "Synchronizuj arkusz",
       description:
-        "Send the whole application tracker to the connected Google Sheet now (one-way: newrole.it → sheet, the 'Aplikacje' tab is rewritten). Without a connected sheet it says so; then offer applications_export.",
+        "Sync the application tracker with the connected Google Sheet now. Two-way: new rows, edits and deletions in the sheet come into newrole.it (the newer change wins), then the merged table is written back to the tab. Without a connected sheet it says so; then offer applications_export.",
       inputSchema: {},
       annotations: { destructiveHint: true },
     },

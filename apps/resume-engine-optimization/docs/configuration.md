@@ -26,7 +26,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open http://127.0.0.1:43123. Search is public. The owner account is `OWNER_EMAIL` / `OWNER_PASSWORD`. Everyone else signs in with email or LinkedIn.
+Open http://127.0.0.1:43123. The owner account is `OWNER_EMAIL` / `OWNER_PASSWORD`. Everyone else signs in with email or LinkedIn.
 
 ### Embedding the MCP server
 

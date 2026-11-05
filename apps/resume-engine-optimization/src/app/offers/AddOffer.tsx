@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { invoke } from "@blitzjs/rpc"
 import { Link2 } from "lucide-react"
+import { ADD_OFFER_ANCHOR } from "src/app/components/onboarding/FirstSteps"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
 import { Button } from "@newrole/ui/Button"
@@ -152,7 +153,11 @@ export function AddOffer({
   ) : null
 
   return (
-    <section className="card card--pad offer-add" aria-labelledby={`${id}-title`}>
+    <section
+      id={ADD_OFFER_ANCHOR}
+      className="card card--pad offer-add"
+      aria-labelledby={`${id}-title`}
+    >
       <h2 id={`${id}-title`} className="t-h3">
         {t("oa.title")}
       </h2>

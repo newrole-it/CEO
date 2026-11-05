@@ -1,4 +1,4 @@
-export const GITHUB_URL = "https://github.com/newrole-it/CEO"
+export const GITHUB_URL = "https://github.com/newrole-it/newrole.it"
 export const GITHUB_ISSUES = `${GITHUB_URL}/issues/new`
 
 /** Set by "Skip for now" on /setup: / stops sending this browser to the checklist. */

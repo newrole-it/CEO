@@ -107,6 +107,11 @@ export function Landing({
               </li>
             ))}
           </ol>
+          <p className="landing-more">
+            <Link className="link" href="/features">
+              {t("land.features")}
+            </Link>
+          </p>
         </div>
       </section>
 

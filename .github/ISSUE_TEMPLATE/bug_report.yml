@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in newrole.it does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. Please do not paste CV contents, tokens, passwords or anything from your `.env` (secrets, API keys, `DATABASE_URL`). Replace personal data with made-up data.
+
+        A security problem goes through [SECURITY.md](https://github.com/newrole-it/newrole.it/blob/main/SECURITY.md), not an issue.
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      options:
+        - newrole.it web app
+        - Chrome extension
+        - MCP server
+        - Install with npm run go
+        - Docker Compose
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: For the Chrome extension, add the Chrome version.
+      placeholder: macOS 15, Ubuntu 24.04, Windows 11 with WSL…
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: What `node --version` prints.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: There are no releases yet, so say which commit you ran. `git rev-parse --short HEAD` prints it.
+  - type: textarea
+    id: go-output
+    attributes:
+      label: Output of npm run go
+      description: If the problem is with the install, paste what `npm run go` printed. Check it for secrets first.
+      render: shell
+  - type: checkboxes
+    id: no-secrets
+    attributes:
+      label: Before you submit
+      options:
+        - label: This issue contains no CV contents, tokens, passwords or secrets from `.env`.
+          required: true

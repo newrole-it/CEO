@@ -107,7 +107,6 @@ export function ProfileReview({
   const [more, setMore] = useState(false)
   const patch = (partial: Partial<ProfileDraft>) => onChange({ ...draft, ...partial })
   const tag = (field: DraftField) => (fromCv.has(field) ? t("onb.fromCv") : null)
-  const missingSalary = draft.salaryFloor == null && draft.salaryTarget == null
   const missingRole = !draft.currentTitle
   const cities = draft.homeCity
     ? [draft.homeCity, ...draft.locations.filter((city) => city !== draft.homeCity)]
@@ -214,7 +213,7 @@ export function ProfileReview({
         />
       </Section>
 
-      <Section label={t("f.salary")} tag={tag("salary")} missing={missingSalary}>
+      <Section label={t("f.salary")} tag={tag("salary")}>
         <div className="salary-pair">
           <label className="field">
             <span className="field__label">{t("f.salaryMin")}</span>

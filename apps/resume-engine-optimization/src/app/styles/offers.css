@@ -152,3 +152,159 @@
 .cv-tabs {
   margin-bottom: 20px;
 }
+
+/* My CV as rows: one card per offer on "For offers", one list on "General" (src/app/cv/CvList.tsx). */
+.cvl-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cvl-list > .cvl-row + .cvl-row {
+  border-top: 1px solid var(--border);
+}
+.cvl-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.cvl-list--inner .cvl-row {
+  padding-inline: 20px;
+}
+.cvl-row__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--primary-soft);
+  color: var(--primary-soft-text);
+}
+.cvl-row__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.cvl-row__icon--pdf,
+.cvl-row--missing .cvl-row__icon {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.cvl-row__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cvl-row__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.cvl-row__title {
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+a.cvl-row__title:hover {
+  color: var(--primary);
+}
+.cvl-row--missing .cvl-row__title {
+  color: var(--text-muted);
+}
+.cvl-row__meta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.cvl-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 599px) {
+  .cvl-row {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .cvl-row__actions {
+    grid-column: 2;
+    flex-wrap: wrap;
+  }
+}
+
+.cvo-search {
+  position: relative;
+  display: block;
+  max-width: 420px;
+}
+.cvo-search svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.cvo-search .input {
+  width: 100%;
+  padding-left: 36px;
+}
+.cvo-list {
+  display: grid;
+  gap: 16px;
+}
+.cvo-card {
+  overflow: visible;
+}
+.cvo-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cvo-card__offer {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cvo-card__title {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.cvo-card__title a {
+  color: var(--text);
+}
+.cvo-card__title a:hover {
+  color: var(--primary);
+}
+.cvo-card__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: none;
+}
+a.cvo-card__status:hover {
+  filter: brightness(0.96);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cvo-empty {
+  padding: 24px 0;
+}
+@media (max-width: 599px) {
+  .cvo-card__head {
+    flex-direction: column;
+  }
+  .cvo-card__state {
+    justify-content: flex-start;
+  }
+}

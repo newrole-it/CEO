@@ -43,7 +43,8 @@ export default async function StartPage({
         browserImport={linkedInBrowserAvailable(isLocalInstall())}
         firstName={user && user.role !== "GUEST" ? firstName : null}
         photo={user?.imageUrl ?? null}
-        after={back ?? "/cv?welcome=1"}
+        // A saved profile is enough to tailor: the next thing to do is the first offer.
+        after={back ?? "/offers"}
       />
     </SiteFrame>
   )

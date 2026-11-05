@@ -128,7 +128,40 @@ export const cvPl = {
   "cv.photo.circle": "W kole",
   "cv.photo.square": "W kwadracie",
   "cv.photo.remove": "Usuń zdjęcie",
-  "cv.photo.err": "Nie udało się wczytać tego zdjęcia. Wybierz plik JPEG lub PNG.",
+  "cv.photo.err": "Nie udało się wczytać tego zdjęcia. Wybierz plik JPEG, PNG albo WebP.",
+
+  // "How to edit": shown on the first visit to the editor, and from its toolbar
+  "cv.help.button": "Jak edytować",
+  "cv.help.title": "Jak edytować CV",
+  "cv.help.titleLetter": "Jak edytować list",
+  "cv.help.sub":
+    "Najważniejsze w pół minuty. Wrócisz tu przyciskiem ze znakiem zapytania na pasku.",
+  "cv.help.type.t": "Piszesz prosto na stronie",
+  "cv.help.type.b":
+    "Kliknij dowolny tekst na arkuszu i pisz. Zmiany zapisują się same, a pasek pokazuje „Zapisano” i liczbę stron.",
+  "cv.help.photo.t": "Zdjęcie",
+  "cv.help.photo.b":
+    "Skopiuj zdjęcie do schowka i wklej je tutaj: {paste}. Wkleja się, gdy w schowku jest sam obraz, bez tekstu. Możesz też najechać na nagłówek CV i kliknąć ikonę „Dodaj albo wklej zdjęcie”. Kliknij zdjęcie, żeby je zmienić, ustawić w kole albo w kwadracie lub usunąć. JPEG, PNG albo WebP, przycięte do kwadratu.",
+  "cv.help.blocks.t": "Przyciski przy wpisach",
+  "cv.help.blocks.b":
+    "Najedź na wpis, punkt albo sekcję: obok pojawią się małe przyciski. Przesuniesz nimi w górę i w dół, dodasz coś pod spodem albo usuniesz, a przy doświadczeniu dodasz punkt, opis lub linię technologii.",
+  "cv.help.links.t": "Linki",
+  "cv.help.links.b":
+    "Najedź na nagłówek i kliknij ikonę łańcucha, żeby dodać linki pod danymi kontaktowymi. W opisie albo punkcie zaznacz słowa i naciśnij {link}.",
+  "cv.help.outline.t": "Konspekt",
+  "cv.help.outline.b":
+    "Lista sekcji z boku: zmienisz nazwę sekcji, ukryjesz ją bez usuwania, przestawisz kolejność, dodasz nową sekcję albo klauzulę RODO.",
+  "cv.help.keys.t": "Skróty",
+  "cv.help.keys.b":
+    "{bold} pogrubienie i {italic} kursywa w opisach i punktach, {undo} cofa, {redo} ponawia.",
+  "cv.help.bar.t": "Pasek u góry",
+  "cv.help.bar.b":
+    "Język CV, Audyt z uwagami na tekście, Wersje do porównania i przywrócenia, Podgląd wydruku i Pobierz PDF.",
+  "cv.help.tailor.t": "CV pod ofertę",
+  "cv.help.tailor.b":
+    "Zakładka „Dopasowanie” mówi, co model zmienił, czego oferta wymaga, a w Twoich danych nie ma, i co sprawdzić przed wysłaniem.",
+  "cv.help.all": "Wszystkie funkcje",
+  "cv.help.ok": "Rozumiem",
 
   // outline
   "cv.out.title": "Konspekt",
@@ -345,7 +378,39 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.photo.circle": "In a circle",
   "cv.photo.square": "In a square",
   "cv.photo.remove": "Remove photo",
-  "cv.photo.err": "Couldn't read that photo. Choose a JPEG or PNG file.",
+  "cv.photo.err": "Couldn't read that photo. Choose a JPEG, PNG or WebP file.",
+
+  "cv.help.button": "How to edit",
+  "cv.help.title": "How to edit your CV",
+  "cv.help.titleLetter": "How to edit your letter",
+  "cv.help.sub":
+    "The essentials in half a minute. Come back with the question-mark button in the toolbar.",
+  "cv.help.type.t": "You type on the page",
+  "cv.help.type.b":
+    "Click any text on the sheet and type. Changes save by themselves, and the toolbar shows “Saved” and the number of pages.",
+  "cv.help.photo.t": "Photo",
+  "cv.help.photo.b":
+    "Copy a photo to the clipboard and paste it here: {paste}. It pastes when the clipboard holds only an image, with no text. You can also point at the CV's header and click the “Add or paste a photo” icon. Click the photo to change it, frame it in a circle or a square, or remove it. JPEG, PNG or WebP, cropped to a square.",
+  "cv.help.blocks.t": "Buttons next to entries",
+  "cv.help.blocks.b":
+    "Point at an entry, a bullet or a section: small buttons appear next to it. Use them to move it up or down, add something below or delete it, and on experience to add a bullet, a description or a technology line.",
+  "cv.help.links.t": "Links",
+  "cv.help.links.b":
+    "Point at the header and click the chain icon to add links under your contact details. In a description or bullet, select words and press {link}.",
+  "cv.help.outline.t": "Outline",
+  "cv.help.outline.b":
+    "The list of sections at the side: rename a section, hide it without deleting it, change the order, add a new section or a GDPR clause.",
+  "cv.help.keys.t": "Shortcuts",
+  "cv.help.keys.b":
+    "{bold} bold and {italic} italic in descriptions and bullets, {undo} undoes, {redo} redoes.",
+  "cv.help.bar.t": "The toolbar",
+  "cv.help.bar.b":
+    "CV language, Audit with notes on the text, Versions to compare and restore, Print preview and Download PDF.",
+  "cv.help.tailor.t": "A CV for an offer",
+  "cv.help.tailor.b":
+    "The “Tailoring” tab says what the model changed, what the offer asks for that your data doesn't have, and what to check before you send it.",
+  "cv.help.all": "Every feature",
+  "cv.help.ok": "Got it",
 
   "cv.out.title": "Outline",
   "cv.out.add": "Add a section",

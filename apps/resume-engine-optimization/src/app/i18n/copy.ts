@@ -4,6 +4,7 @@ import { applicationsEn, applicationsPl } from "./copy-applications"
 import { cvEn, cvPl, tailorEn, tailorPl } from "@newrole/cv-editor/copy"
 import { extensionEn, extensionPl } from "./copy-extension"
 import { gmailEn, gmailPl } from "./copy-gmail"
+import { guideEn, guidePl } from "./copy-guide"
 import { offerAddEn, offerAddPl } from "./copy-offer-add"
 import { offersEn, offersPl } from "./copy-offers"
 import { setupEn, setupPl } from "./copy-setup"
@@ -104,11 +105,12 @@ const basePl = {
   "onb.cancel": "Anuluj",
   "onb.retry": "Spróbuj ponownie",
   "onb.review.title": "Tak Cię widzimy",
-  "onb.review.sub": "Popraw, co trzeba. Na tej podstawie liczymy dopasowanie.",
+  "onb.review.sub":
+    "Popraw, co trzeba. Z tego profilu powstaje CV, a model czyta go, gdy pisze CV i list pod ofertę.",
   "onb.review.other": "Wczytaj inny plik",
   "onb.deleted":
-    "Pliku nie zapisujemy. Zostają sekcje odczytane z CV i to podsumowanie, gdy je zatwierdzisz.",
-  "onb.cta": "Pokaż moje dopasowania",
+    "Pliku nie zapisujemy. Sekcje odczytane z CV są już na Twoim koncie, a to podsumowanie zapiszemy, gdy je zatwierdzisz.",
+  "onb.cta": "Zapisz profil",
   "onb.saving": "Zapisuję…",
   "onb.coach": "Polub ofertę, a zapytamy, co Ci się w niej podoba. Tak uczymy się Twojego gustu.",
   "onb.coach.ok": "Rozumiem",
@@ -124,7 +126,7 @@ const basePl = {
   "li.hi": "Cześć, {name}!",
   "li.hiAnon": "Cześć!",
   "li.honest":
-    "LinkedIn przy logowaniu przekazuje nam tylko imię, e-mail i zdjęcie — bez doświadczenia i umiejętności. Żeby dopasować oferty, potrzebujemy Twojego profilu. Wybierz, jak go pobrać:",
+    "LinkedIn przy logowaniu przekazuje nam tylko imię, e-mail i zdjęcie — bez doświadczenia i umiejętności. Żeby pisać CV pod oferty, potrzebujemy Twojego profilu. Wybierz, jak go pobrać:",
   "li.paste": "Wolę wkleić tekst",
   "li.setup.title": "Logowanie przez LinkedIn (opcjonalne)",
   "li.setup.sub":
@@ -504,10 +506,11 @@ const basePl = {
 
   // profile and settings
   "pr.title": "Twój profil",
-  "pr.sub": "To, na podstawie czego liczymy dopasowanie. Zmiany działają od razu.",
+  "pr.sub":
+    "Z profilu powstaje CV, a model czyta go, gdy pisze CV i list pod ofertę. Zmiany działają od razu.",
   "pr.reimport": "Zaktualizuj z nowego CV",
   "pr.save": "Zapisz zmiany",
-  "pr.saved": "Zapisano. Wyniki zaktualizowane.",
+  "pr.saved": "Zapisano.",
   "pr.taste": "Twój gust",
   "pr.tabProfile": "Profil",
   "pr.tabAudit": "Audyt CV",
@@ -534,7 +537,7 @@ const basePl = {
     "Profil, decyzje, aplikacje, CV, baza odpowiedzi i zapisane wyszukiwania w jednym pliku.",
   "st.delProfile": "Usuń CV i profil",
   "st.delProfileBody":
-    "Usuwa odczytany profil. Polubienia, aplikacje, dokumenty CV z ich audytami i konto zostają (CV usuniesz w zakładce Moje CV). Dopasowania wrócą po ponownym wgraniu CV.",
+    "Usuwa odczytany profil, oceny profilu LinkedIn i zapamiętane odpowiedzi modelu o Tobie. Aplikacje, dokumenty CV z ich audytami, dane do formularzy i konto zostają (CV usuniesz w zakładce Moje CV). Profil utworzysz znów z nowego CV.",
   "st.delProfileDone": "Profil usunięty.",
   "st.delAccount": "Usuń konto",
   "st.delAccountBody":
@@ -632,6 +635,7 @@ const pl = {
   ...usagePl,
   ...offerAddPl,
   ...offersPl,
+  ...guidePl,
 }
 
 export type CopyKey = keyof typeof pl
@@ -651,6 +655,7 @@ const en: Dict = {
   ...usageEn,
   ...offerAddEn,
   ...offersEn,
+  ...guideEn,
   skip: "Skip to content",
   brandHome: "newrole.it, home",
   "nav.forYou": "For you",
@@ -733,11 +738,12 @@ const en: Dict = {
   "onb.cancel": "Cancel",
   "onb.retry": "Try again",
   "onb.review.title": "Here's how we see you",
-  "onb.review.sub": "Fix anything that's off. This is what we match on.",
+  "onb.review.sub":
+    "Fix anything that's off. Your CV is made from this profile, and the model reads it when it writes a CV and letter for an offer.",
   "onb.review.other": "Load a different file",
   "onb.deleted":
-    "The file is not saved. We keep the sections read from the CV, and this summary once you confirm it.",
-  "onb.cta": "Show my matches",
+    "The file is not saved. The sections read from the CV are already on your account; this summary is saved once you confirm it.",
+  "onb.cta": "Save profile",
   "onb.saving": "Saving…",
   "onb.coach":
     "Like an offer and we'll ask what you like about it. That's how we learn your taste.",
@@ -753,7 +759,7 @@ const en: Dict = {
   "li.hi": "Hi, {name}!",
   "li.hiAnon": "Hi!",
   "li.honest":
-    "When you sign in, LinkedIn only shares your name, email and photo — no experience or skills. To match offers we need your profile. Choose how to bring it over:",
+    "When you sign in, LinkedIn only shares your name, email and photo — no experience or skills. To write CVs for offers we need your profile. Choose how to bring it over:",
   "li.paste": "I'd rather paste text",
   "li.setup.title": "Sign in with LinkedIn (optional)",
   "li.setup.sub":
@@ -1124,10 +1130,11 @@ const en: Dict = {
   "cc.copyPrompt": "Copy prompt",
 
   "pr.title": "Your profile",
-  "pr.sub": "This is what we match on. Changes apply right away.",
+  "pr.sub":
+    "Your CV is made from your profile, and the model reads it when it writes a CV and letter for an offer. Changes apply right away.",
   "pr.reimport": "Update from a new CV",
   "pr.save": "Save changes",
-  "pr.saved": "Saved. Scores updated.",
+  "pr.saved": "Saved.",
   "pr.taste": "Your taste",
   "pr.tabProfile": "Profile",
   "pr.tabAudit": "CV audit",
@@ -1154,7 +1161,7 @@ const en: Dict = {
     "Your profile, decisions, applications, CVs, answer bank and saved searches in one file.",
   "st.delProfile": "Delete CV and profile",
   "st.delProfileBody":
-    "Deletes the profile we read. Your likes, applications, CV documents with their audits and account stay (delete CVs under My CV). Matching returns when you upload a CV again.",
+    "Deletes the profile we read, your LinkedIn profile scores and the model's cached answers about you. Applications, CV documents with their audits, form details and the account stay (delete CVs under My CV). Make a new profile from a CV any time.",
   "st.delProfileDone": "Profile deleted.",
   "st.delAccount": "Delete account",
   "st.delAccountBody":

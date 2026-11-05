@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest something new for newrole.it, or a change to what it does.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything larger, this issue comes before a pull request, so we agree on the change first. See [CONTRIBUTING.md](https://github.com/newrole-it/newrole.it/blob/main/CONTRIBUTING.md).
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      options:
+        - newrole.it web app
+        - Chrome extension
+        - MCP server
+        - Install with npm run go
+        - Docker Compose
+        - Documentation
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem it solves
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Other ways you considered
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Pull request
+      options:
+        - label: I would like to make the pull request myself.

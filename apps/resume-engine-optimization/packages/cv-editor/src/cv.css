@@ -21,71 +21,6 @@
   right: auto;
   left: 0;
 }
-.cvl-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.cvl-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  justify-content: space-between;
-}
-.cvl-card__top {
-  display: flex;
-  gap: 12px;
-  min-width: 0;
-}
-.cvl-card__icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-md);
-  background: var(--primary-soft);
-  color: var(--primary-soft-text);
-}
-.cvl-card__icon svg {
-  width: 20px;
-  height: 20px;
-}
-.cvl-card__icon--pdf {
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
-.cvl-card__main {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.cvl-card__title {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.cvl-card__title:hover {
-  color: var(--primary);
-}
-.cvl-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.cvl-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-@media (max-width: 767px) {
-  .cvl-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 /* ---------------------------------------------------------------- toolbar */
 
@@ -1001,5 +936,53 @@
   .cve-block:focus-within > .cve-ctl {
     opacity: 1;
     pointer-events: auto;
+  }
+}
+
+/* "How to edit" (EditorHelp.tsx): what the sheet does not show by itself. */
+.cve-help__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cve-help__tip {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.cve-help__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md, 8px);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.cve-help__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.cve-help__title {
+  margin-bottom: 2px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.cve-help__tip .kbd {
+  white-space: nowrap;
+}
+.cve-help .modal__foot {
+  align-items: center;
+}
+.cve-help__all {
+  margin-right: auto;
+}
+@media (max-width: 640px) {
+  .cve-help__list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

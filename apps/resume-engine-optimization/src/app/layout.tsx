@@ -33,15 +33,13 @@ const mono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
   const pl = locale === "pl"
-  const title = pl
-    ? "newrole.it: oferty z całego świata, wyniki z Twojego kraju"
-    : "newrole.it: global offers, local search"
+  const title = pl ? "newrole.it: Twoje CV pod każdą ofertę" : "newrole.it: your CV for every offer"
   const description = pl
-    ? "Oferty w tech prosto ze stron pracodawców z całego świata. Szukasz w swoim kraju i widzisz jego oferty oraz pracę zdalną dostępną stamtąd, dopasowane do Twojego profilu."
-    : "Tech jobs straight from employers' own sites, worldwide. Search in your country and see its offers plus remote roles open to you there, ranked against your profile."
+    ? "Wklej link do oferty, a newrole.it pobierze całe ogłoszenie i dopasuje do niego Twoje CV i list motywacyjny. Tracker aplikacji, baza odpowiedzi i rozszerzenie Chrome. Open source, działa na Twoim komputerze."
+    : "Paste a link to an offer and newrole.it reads the whole posting and tailors your CV and cover letter to it. An application tracker, an answer bank and a Chrome extension. Open source, runs on your machine."
   const ogAlt = pl
-    ? "newrole.it: oferty z całego świata, wyniki z Twojego kraju."
-    : "newrole.it: global offers, local search."
+    ? "newrole.it: Twoje CV pod każdą ofertę."
+    : "newrole.it: your CV for every offer."
   const ogImage = pl ? "/og-image-pl.png" : "/og-image-en.png"
   return {
     metadataBase: new URL(publicAppUrl()),

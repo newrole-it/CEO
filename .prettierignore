@@ -8,6 +8,7 @@ apps/*/db/migrations
 .pnp.*
 node_modules
 README.md
+CODE_OF_CONDUCT.md
 matching
 sources
 apps/resume-engine-optimization/config/seed-companies.json
