@@ -1,4 +1,5 @@
-// The .env files of the repository root, for this app's next.config.js: npm run go writes .env there.
+// The .env files the lab reads: its own folder's, then the repository root's when it sits in one
+// (npm run go writes .env there). For next.config.js and for the lab's scripts.
 const { readFileSync } = require("node:fs")
 const { dirname, join, resolve } = require("node:path")
 const { processEnv, updateInitialEnv } = require("@next/env")
@@ -25,29 +26,63 @@ function findRepoRoot(from = APP_DIR) {
 
 const REPO_ROOT = findRepoRoot()
 
-/**
- * Next reads the .env files of the folder it runs in and has done so before next.config.js runs.
- * This adds the root's, in the order Next uses (.env.<mode>.local, .env.local, .env.<mode>, .env),
- * never over a variable that is already set, so the shell still wins. They also join Next's
- * initial environment, so a reload of the app folder's own files keeps them.
- */
-function loadRootEnv(dev = process.env.NODE_ENV !== "production") {
-  if (REPO_ROOT === APP_DIR) return {}
+const log = { info: () => undefined, error: (...args) => console.error(...args) }
+
+/** A folder's .env files in the order Next reads them: .env.<mode>.local, .env.local, .env.<mode>, .env. */
+function envFiles(dir, dev) {
   const mode = process.env.NODE_ENV === "test" ? "test" : dev ? "development" : "production"
   const names = [`.env.${mode}.local`, mode !== "test" && ".env.local", `.env.${mode}`, ".env"]
   const files = []
-  for (const path of names.filter(Boolean)) {
+  for (const name of names.filter(Boolean)) {
     try {
-      files.push({ path, contents: readFileSync(join(REPO_ROOT, path), "utf8"), env: {} })
+      files.push({
+        path: join(dir, name),
+        contents: readFileSync(join(dir, name), "utf8"),
+        env: {},
+      })
     } catch {
       // that file is optional
     }
   }
+  return files
+}
+
+/**
+ * Sets what the files hold (the first file that names a variable wins) and puts back any variable
+ * that was set before: @next/env compares with the environment it first saw, not the current one.
+ */
+function addEnv(files) {
   if (!files.length) return {}
-  const log = { info: () => undefined, error: (...args) => console.error(...args) }
-  const [, parsed = {}] = processEnv(files, REPO_ROOT, log, true)
+  const before = { ...process.env }
+  const [, parsed = {}] = processEnv(files, "", log, true)
+  for (const key of Object.keys(parsed)) {
+    if (before[key] === undefined) continue
+    process.env[key] = before[key]
+    delete parsed[key]
+  }
+  return parsed
+}
+
+/**
+ * Next reads the .env files of the folder it runs in and has done so before next.config.js runs.
+ * This adds the root's, never over a variable that is already set, so the shell and the app's own
+ * files still win. They also join Next's initial environment, so a reload of the app folder's own
+ * files keeps them.
+ */
+function loadRootEnv(dev = process.env.NODE_ENV !== "production") {
+  if (REPO_ROOT === APP_DIR) return {}
+  const parsed = addEnv(envFiles(REPO_ROOT, dev))
   updateInitialEnv(parsed)
   return parsed
 }
 
-module.exports = { APP_DIR, REPO_ROOT, findRepoRoot, loadRootEnv }
+/**
+ * For the lab's scripts, which Next does not start: the app's own .env files first, then the
+ * root's, as next.config.js ends up with them. Nothing overrides the shell.
+ */
+function loadAppEnv(dev = process.env.NODE_ENV !== "production") {
+  const root = REPO_ROOT === APP_DIR ? [] : envFiles(REPO_ROOT, dev)
+  return addEnv([...envFiles(APP_DIR, dev), ...root])
+}
+
+module.exports = { APP_DIR, REPO_ROOT, findRepoRoot, loadAppEnv, loadRootEnv }

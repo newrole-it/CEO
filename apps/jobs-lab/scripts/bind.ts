@@ -1,17 +1,18 @@
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient } from "@newrole/jobs-lab-db"
 import { configureJobIndex } from "@newrole/job-index/host"
-import { labDatabaseUrl } from "./env"
+import { labDatabase } from "./env"
 
-/** A Prisma client on the lab's database, bound to the engine. Exits when there is none. */
+/**
+ * A Prisma client on the lab's database, bound to the engine. Exits when there is none, or when it
+ * would be newrole.it's own (scripts/databases.js).
+ */
 export function bindLabDatabase(): PrismaClient {
-  const url = labDatabaseUrl()
-  if (!url) {
-    console.error(
-      "No database: set DATABASE_URL in .env (npm run go writes it) or JOBS_LAB_DATABASE_URL."
-    )
+  const target = labDatabase()
+  if ("reason" in target) {
+    console.error(`jobs lab: ${target.reason}`)
     process.exit(2)
   }
-  const db = new PrismaClient({ datasources: { db: { url } } })
+  const db = new PrismaClient({ datasources: { db: { url: target.url } } })
   configureJobIndex({ db })
   return db
 }

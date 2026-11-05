@@ -3,7 +3,7 @@
  * yet, search career-page-first ("<company> kariera", site:<domain> <role>, ATS
  * hosts) and feed hits to watchCompany / ingestOfferUrl. Bounded and logged.
  */
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@newrole/jobs-lab-db"
 import db from "../db"
 import { createHttpClient, type HttpClient } from "@newrole/ats/host"
 import { watchCompany } from "../watchlist/watch"

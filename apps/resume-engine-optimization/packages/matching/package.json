@@ -4,16 +4,14 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
-  "description": "newrole.it's matching pack: query expansion, title and seniority normalization, places, dedupe, the explainable 0–100 scorer and match explanations. Deterministic; a model only expands queries and explains scores.",
+  "description": "newrole.it's matching pack: title, seniority, company, place, work-mode and salary normalization, exchange rates into PLN (NBP), and dedupe of postings. Rules only, no model.",
   "sideEffects": false,
   "exports": {
-    "./query-expansion.examples.json": "./query-expansion.examples.json",
     "./*": "./*.ts"
   },
   "scripts": {
     "test": "tsx --test test/*.test.ts",
-    "typecheck": "tsc --noEmit",
-    "gen:examples": "tsx scripts/gen-examples.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "zod": "3.25.76"

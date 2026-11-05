@@ -1,46 +1,43 @@
 /**
- * The test database, next to the one in .env. `npm run go` writes a random database password and
- * may pick another port, so the flow tests cannot hardcode jobscanner:jobscanner@127.0.0.1:5432.
+ * The lab's test database, apart from newrole.it's (`<db>_test`) because the two schemas differ.
+ * `npm run go` writes a random database password and may pick another port, so the flow tests
+ * cannot hardcode jobscanner:jobscanner@127.0.0.1:5432.
  *
  *   node scripts/test-db.mjs url              print the test database URL
- *   node scripts/test-db.mjs prepare          create it if missing and apply the migrations
- *   node scripts/test-db.mjs run <command…>   run a command with DATABASE_URL pointing at it
+ *   node scripts/test-db.mjs prepare          create it if missing and apply the lab's migrations
+ *   node scripts/test-db.mjs run <command…>   prepare it, then run a command with DATABASE_URL on it
  *
- * TEST_DATABASE_URL wins when set. Otherwise the database name in DATABASE_URL gets "_test".
+ * JOBS_LAB_TEST_DATABASE_URL wins when set. Otherwise the database name in DATABASE_URL gets
+ * "_lab_test". The shell first, then the lab's .env files, then the repository root's.
  */
 import { spawnSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import databases from "./databases.js"
 import rootEnv from "./root-env.js"
 
-const APP = join(dirname(fileURLToPath(import.meta.url)), "..")
-// For now newrole.it's schema and migrations: the engine's tables are its tables.
-const SCHEMA = join(APP, "..", "resume-engine-optimization", "db", "schema.prisma")
-const FALLBACK = "postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner"
-// Only for tests: Blitz needs a 32-character secret, and these sessions never leave the test DB.
-const TEST_SESSION_SECRET = "jobscanner-dev-session-secret-key-32b"
+rootEnv.loadAppEnv()
 
-/** The app's own .env first, then the repository root's, where npm run go writes it. */
-function fromDotEnv(name) {
-  for (const dir of [...new Set([APP, rootEnv.REPO_ROOT])]) {
-    const file = join(dir, ".env")
-    if (!existsSync(file)) continue
-    for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
-      const match = line.match(new RegExp(`^\\s*${name}\\s*=\\s*(.*)\\s*$`))
-      if (match) return match[1].replace(/^(["'])(.*)\1$/, "$2")
-    }
+function prepare(url) {
+  const name = databases.nameOf(url)
+  if (!name.endsWith("_test")) {
+    console.error(`Refusing to prepare ${name}: a test database name ends in _test.`)
+    return 1
   }
-  return undefined
-}
-
-export function testDatabaseUrl(env = process.env) {
-  const explicit = env.TEST_DATABASE_URL || fromDotEnv("TEST_DATABASE_URL")
-  if (explicit) return explicit
-  const url = new URL(env.DATABASE_URL || fromDotEnv("DATABASE_URL") || FALLBACK)
-  const name = url.pathname.replace(/^\//, "") || "jobscanner"
-  url.pathname = `/${name.endsWith("_test") ? name : `${name}_test`}`
-  return url.toString()
+  const refused = databases.refusal(url)
+  if (refused) {
+    console.error(`jobs lab: ${refused}`)
+    return 1
+  }
+  const created = databases.createDatabase(url)
+  if (!created.ok) {
+    console.error(`jobs lab: could not create ${databases.describe(url)}: ${created.reason}`)
+    return 1
+  }
+  const migrated = databases.migrateDatabase(url)
+  if (!migrated.ok) {
+    console.error(`jobs lab: could not migrate ${databases.describe(url)}: ${migrated.reason}`)
+    return 1
+  }
+  return 0
 }
 
 /** In the folder it was called from: `npm run test:flow -w @newrole/job-index` runs in apps/jobs-lab/packages/job-index. */
@@ -49,47 +46,23 @@ function run(command, args, env) {
   return result.status ?? 1
 }
 
-function prepare(url) {
-  const admin = new URL(url)
-  const name = admin.pathname.replace(/^\//, "")
-  if (!/^[A-Za-z0-9_]+_test$/.test(name)) {
-    console.error(`Refusing to prepare ${name}: a test database name ends in _test.`)
-    return 1
-  }
-  admin.pathname = "/postgres"
-  // CREATE DATABASE has no IF NOT EXISTS in Postgres; an "already exists" error is fine here.
-  const created = spawnSync(
-    "npx",
-    ["prisma", "db", "execute", "--url", admin.toString(), "--stdin"],
-    { cwd: APP, input: `CREATE DATABASE "${name}";`, encoding: "utf8" }
-  )
-  if (created.status !== 0 && !/already exists/i.test(`${created.stdout}${created.stderr}`)) {
-    process.stderr.write(created.stderr || created.stdout)
-    return created.status ?? 1
-  }
-  return run("npx", ["prisma", "migrate", "deploy", "--schema", SCHEMA], {
-    ...process.env,
-    DATABASE_URL: url,
-  })
+const [mode, ...rest] = process.argv.slice(2)
+let url
+try {
+  url = databases.labTestDatabaseUrl()
+} catch {
+  console.error("jobs lab: DATABASE_URL does not parse as a database URL")
+  process.exit(2)
 }
-
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]
-if (isMain) {
-  const [mode, ...rest] = process.argv.slice(2)
-  const url = testDatabaseUrl()
-  if (mode === "url") {
-    console.log(url)
-  } else if (mode === "prepare") {
-    process.exit(prepare(url))
-  } else if (mode === "run" && rest.length) {
-    const env = {
-      ...process.env,
-      DATABASE_URL: url,
-      SESSION_SECRET_KEY: process.env.TEST_SESSION_SECRET_KEY || TEST_SESSION_SECRET,
-    }
-    process.exit(run(rest[0], rest.slice(1), env))
-  } else {
-    console.error("Usage: node scripts/test-db.mjs url | prepare | run <command…>")
-    process.exit(2)
-  }
+if (mode === "url") {
+  console.log(url)
+} else if (mode === "prepare") {
+  process.exit(prepare(url))
+} else if (mode === "run" && rest.length) {
+  const prepared = prepare(url)
+  if (prepared !== 0) process.exit(prepared)
+  process.exit(run(rest[0], rest.slice(1), { ...process.env, DATABASE_URL: url }))
+} else {
+  console.error("Usage: node scripts/test-db.mjs url | prepare | run <command…>")
+  process.exit(2)
 }

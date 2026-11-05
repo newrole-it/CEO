@@ -1,33 +1,27 @@
 # @newrole/matching
 
-Matching layer for Jobscanner (Poland / Europe-Warsaw). Pure TypeScript + Zod, no I/O except reading prompt `.md` files.
-Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → normalize → dedupe → score (deterministic) → explain (LLM, optional)**.
+Matching layer for Jobscanner (Poland / Europe-Warsaw). Pure TypeScript + Zod: rules only, no model. The only I/O is reading NBP's exchange-rate table (`fx.ts`).
+What it does: **normalize a posting (title, seniority, company, places, work mode, salary) → dedupe postings**.
+
+The scorer, the matching pipeline, query expansion and match explanations (with their prompts, fixtures and tests) are used only by the offer index and live in [@newrole/job-index](../../../jobs-lab/packages/job-index/README.md) (`src/matching/`), which builds on this package.
 
 > No existing Jobscanner code or specs were found under `/workspace/jobscanner` when this pack was written (only an empty `scripts/`),
 > so the types in `types.ts` are proposals; the MVP should adopt them or map to its own names.
-> `fixtures/profile.json` is **example data**, not anyone's real preferences.
 
 ## Files
 
 | path | what |
 |---|---|
-| `query-expansion.prompt.md` | System prompt + usage notes for role-phrase expansion (EN/PL) |
-| `query-expansion.schema.ts` | Zod schemas (`QueryExpansionInputSchema`, `ExpansionLLMOutputSchema`, `QueryExpansionSchema`), message builder, deterministic `site:` query builder, `finalizeExpansion()` |
-| `query-expansion.examples.json` | 5 worked examples: Head of Engineering, CTO, Engineering Manager, Kierownik działu IT, VP Engineering (generated + validated by `scripts/gen-examples.ts`) |
 | `normalization.md` / `normalization.ts` | Title, seniority ladder, company, PL cities/countries, work mode (zdalnie/hybrydowo/stacjonarnie), salary parsing & conversion (PLN/EUR/USD, B2B/UoP/UZ/UoD, net/gross, h/day/month/year), injection heuristic |
 | `places.ts` | Countries (249 ISO codes, Intl names in 8 languages + cited aliases), US/CA/AU subdivisions, city aliases, UN M49 remote regions (`regionCovers`, `remoteOpenTo`), the location matcher used by `normalizeLocation` |
 | `config.ts` | FX placeholders, 168 h/month, 21 days, 12 months, contract→B2B-equivalent factors (all config) |
+| `fx.ts`, `live-config.ts` | NBP table A rates into PLN, read every 12 hours (`ensureFxRates`); `liveMatchingConfig()` with those rates and the `FX_*_PLN` overrides |
 | `dedupe.md` / `dedupe.ts` | ATS keys, canonical URLs, fingerprints, near-duplicate thresholds, merge winner rules |
-| `scoring.md` / `scoring.ts` | Explainable 0–100 score: weights, gate, penalties, bands, worked examples |
-| `match-explanation.prompt.md` / `match-explanation.schema.ts` | Injection-safe explanation prompt, strict Zod output, invariant enforcement, deterministic fallback |
 | `types.ts` | Shared enums/schemas: `RawPosting`, `NormalizedPosting`, `MatchProfile`, `SalaryRange`, … |
-| `text.ts`, `prompts.ts`, `pipeline.ts` | Helpers (fold/diacritics, Dice, shingles, FNV), prompt loader + JSON extraction, `runMatching()` |
-| `fixtures/profile.json` | Example profile (targets HoE/CTO/EM/VP/Director; Warszawa hybrid; remote PL/EU/EMEA; floor 30k PLN B2B-net/month) |
-| `fixtures/postings.json` | 24 fictional postings (EN/PL, 11 sources, PLN/EUR/USD, B2B/UoP/UZ, h/day/month/year, 3 duplicates, 1 injection, irrelevant roles) with expected score ranges, bands and reasons |
-| `fixtures/scored-output.txt` | Current full score breakdown for all fixtures |
-| `test/matching.test.ts` | 46 tests: fixture ranges/bands/reasons, dedupe, injection invariance, explanation invariants, normalization units, example validation |
+| `text.ts` | Helpers: fold/diacritics, Dice, shingles, FNV |
+| `test/matching.test.ts` | Normalization units: titles, seniority, company, locations and work modes, salaries, URLs and ATS keys |
 | `test/places.test.ts` | Countries, subdivisions, cities, false-positive guards, remote regions and `remoteOpenTo` |
-| `scripts/score-fixtures.ts` | Print ranked fixtures with breakdown (`--verbose`) |
+| `test/fx.test.ts` | Reading NBP table A |
 
 ## Use
 
@@ -36,33 +30,21 @@ Pipeline: **role phrase → query expansion (LLM) → search (JS Sources) → no
 # resolve from the root node_modules, so no install is needed inside this folder.
 npm test                 # node:test via tsx (or: npm test -w @newrole/matching from the root)
 npm run typecheck
-npx tsx scripts/score-fixtures.ts --verbose
-npm run gen:examples     # regenerate query-expansion.examples.json
 ```
 
 ```ts
-import { buildQueryExpansionMessages, finalizeExpansion, QUERY_EXPANSION_REQUEST } from "./query-expansion.schema";
-const messages = buildQueryExpansionMessages({ phrase: "Kierownik działu IT", locationHint: "Warszawa" });
-// POST {LLM_BASE_URL}/chat/completions { model: LLM_MODEL, messages, ...QUERY_EXPANSION_REQUEST }
-const expansion = finalizeExpansion(choice.message.content, { phrase: "Kierownik działu IT" }); // throws ZodError → retry once
-
-import { runMatching } from "./pipeline";
-const { ranked, postings, merges } = runMatching(rawPostings, profile, new Date());
+import { normalizePosting } from "./normalization";
+import { dedupePostings } from "./dedupe";
+const { postings, merges } = dedupePostings(rawPostings.map((raw) => normalizePosting(raw)));
 ```
 
-LLM calls use only plain chat completions with `response_format: {type: "json_object"}` (OpenAI-compatible; no vendor-specific features).
-Output is always re-validated with Zod.
-
 ## Key design decisions
-1. LLM only where language understanding helps (expansion, explanation); scoring/dedupe/normalization are deterministic and unit-tested.
-2. `site:` queries are built in code from the LLM's titles, so search syntax and board coverage never depend on the model.
-3. Salary compared on one basis — monthly PLN, B2B net-of-VAT equivalent — with every conversion step recorded as an assumption string.
-4. Relevance gate + "ineligible" penalties so perfect-on-paper but unworkable roles (US-only remote, on-site in another city) don't float to the top.
-5. Injection safety by construction: score computed before the LLM sees the text; model output can't change score/band; random delimiters; strict schema; fallback.
-6. Dedupe prefers direct ATS records, keeps the earliest postedAt and the union of sources; all merges logged with rule + detail.
+1. Normalization and dedupe are deterministic and unit-tested.
+2. Salary compared on one basis — monthly PLN, B2B net-of-VAT equivalent — with every conversion step recorded as an assumption string.
+3. Dedupe prefers direct ATS records, keeps the earliest postedAt and the union of sources; all merges logged with rule + detail.
 
 ## What each person sets
-These come from the person's profile in the database, never from this pack:
+These come from the person's profile in the database, never from this pack (`MatchProfile` in `types.ts` is their shape):
 - Salary floor and target (and in which basis — B2B net or UoP gross?).
 - Accepted contracts (B2B only? UoP ok? foreign employment / EoR?).
 - Home city and hybrid/on-site cities; relocation (in PL / abroad); acceptable remote regions (PL only, EU, EMEA, worldwide).

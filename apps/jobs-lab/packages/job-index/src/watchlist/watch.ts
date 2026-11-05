@@ -2,7 +2,7 @@
  * Watched companies: a person names a company (URL or name) and newrole.it keeps
  * reading its own careers page or ATS board, even when it never posts on aggregators.
  */
-import type { SourceType } from "@prisma/client"
+import type { SourceType } from "@newrole/jobs-lab-db"
 import db from "../db"
 import { safeCanonicalUrl } from "@newrole/ats/dedupe"
 import { normalizeCompanyName, normalizeWhitespace } from "@newrole/ats/normalize"

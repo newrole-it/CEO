@@ -1,7 +1,7 @@
 import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient } from "@newrole/jobs-lab-db"
 import { companySuggestions } from "../src/discovery/similar-companies"
 
 const db = new PrismaClient()

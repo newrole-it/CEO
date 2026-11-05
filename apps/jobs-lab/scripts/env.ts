@@ -1,25 +1,30 @@
-import { loadEnvConfig } from "@next/env"
-import { resolve } from "path"
+import { loadAppEnv } from "./root-env"
+import { labDatabaseUrl, refusal } from "./databases"
 import "../src/server/http"
 
 /**
- * Imported first by the lab's scripts: the repository root's .env, the lab's HTTP client for
- * @newrole/ats, and the database the engine may write to. That is never newrole.it's own:
- * JOBS_LAB_DATABASE_URL, or DATABASE_URL's database with "_lab" added.
+ * Imported first by the lab's scripts: the lab's .env files, then the repository root's
+ * (scripts/root-env.js), the lab's HTTP client for @newrole/ats, and the database the engine may
+ * write to. That is never newrole.it's own: JOBS_LAB_DATABASE_URL, or DATABASE_URL's database with
+ * "_lab" added (scripts/databases.js).
  */
-loadEnvConfig(resolve(__dirname, "../../.."), process.env.NODE_ENV !== "production", {
-  info: () => undefined,
-  error: (...args: unknown[]) => console.error(...args),
-})
+loadAppEnv()
 
-export function labDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
-  if (env.JOBS_LAB_DATABASE_URL?.trim()) return env.JOBS_LAB_DATABASE_URL.trim()
-  if (!env.DATABASE_URL) return null
-  const url = new URL(env.DATABASE_URL)
-  const name = url.pathname.replace(/^\//, "") || "jobscanner"
-  url.pathname = `/${name.endsWith("_lab") ? name : `${name}_lab`}`
-  return url.toString()
+/** The lab's database URL, or a one-line reason why there is none the lab may use. */
+export function labDatabase(
+  env: NodeJS.ProcessEnv = process.env
+): { url: string } | { reason: string } {
+  let url: string | null
+  try {
+    url = labDatabaseUrl(env)
+  } catch {
+    return { reason: "DATABASE_URL does not parse as a database URL" }
+  }
+  if (!url)
+    return {
+      reason:
+        "no database: set DATABASE_URL in .env (npm run go writes it) or JOBS_LAB_DATABASE_URL",
+    }
+  const refused = refusal(url, env)
+  return refused ? { reason: refused } : { url }
 }
-
-/** newrole.it's schema: the engine's tables are its tables (packages/job-index/src/host.ts in this app). */
-export const SCHEMA = resolve(__dirname, "../../resume-engine-optimization/db/schema.prisma")

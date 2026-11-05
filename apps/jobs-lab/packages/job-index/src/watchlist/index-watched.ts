@@ -2,7 +2,7 @@
  * Index runs for watched companies. ATS boards go through the normal indexer;
  * company sites with JSON-LD are read here, a few pages a day, inside the host cap.
  */
-import type { CareerPage, Company, SourceType } from "@prisma/client"
+import type { CareerPage, Company, SourceType } from "@newrole/jobs-lab-db"
 import db from "../db"
 import type { SeedBoard } from "../config/seed-boards"
 import { parseJsonLdJobs } from "@newrole/ats/adapters/jsonld"

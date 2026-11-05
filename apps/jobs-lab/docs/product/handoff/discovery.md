@@ -1,5 +1,7 @@
 # Discovery: handoff notes
 
+> Written before the engine left newrole.it: paths such as `src/server/…` and `db/schema.prisma` are newrole.it's of that time. The engine's code is now in [packages/job-index](../../../packages/job-index/README.md), its tables in [packages/db/schema.prisma](../../../packages/db/schema.prisma).
+
 Changes the Discovery agent needs in files it does not own, plus operational notes. Path, what, why.
 
 ## Must do before the feature is live

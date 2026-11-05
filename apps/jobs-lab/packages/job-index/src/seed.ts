@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import type { PrismaClient } from "@newrole/jobs-lab-db"
 import { canonicalUrl } from "@newrole/ats/dedupe"
 import { normalizeCompanyName } from "@newrole/ats/normalize"
 import { seedBoards } from "./config/seed-boards"

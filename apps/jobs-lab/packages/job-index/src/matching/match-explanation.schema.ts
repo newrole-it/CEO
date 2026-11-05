@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { extractJsonObject, loadPromptBlock, type ChatMessage } from "./prompts";
 import type { ScoreResult } from "./scoring";
-import type { MatchProfile, NormalizedPosting } from "./types";
+import type { MatchProfile, NormalizedPosting } from "@newrole/matching/types";
 
 export const MATCH_EXPLANATION_VERSION = "mx-v1";
 const ComponentRef = z.enum(["title", "seniority", "location", "salary", "freshness", "source", "penalty", "posting"]);

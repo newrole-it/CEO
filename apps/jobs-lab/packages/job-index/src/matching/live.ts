@@ -8,7 +8,7 @@ import {
   type ExpansionLLMOutput,
   type QueryExpansion,
   type QueryExpansionInput,
-} from "@newrole/matching/query-expansion.schema"
+} from "./query-expansion.schema"
 import { fold } from "@newrole/matching/text"
 import {
   SENIORITY_LEVELS,
@@ -19,7 +19,7 @@ import {
   type Seniority,
 } from "@newrole/matching/types"
 import { regionCovers } from "@newrole/matching/places"
-import examples from "@newrole/matching/query-expansion.examples.json"
+import examples from "./query-expansion.examples.json"
 import type { LlmClient } from "../llm"
 import { liveMatchingConfig } from "@newrole/matching/live-config"
 

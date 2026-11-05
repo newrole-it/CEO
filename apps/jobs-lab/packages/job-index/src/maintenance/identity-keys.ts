@@ -13,7 +13,7 @@
  * Idempotent: a second run finds nothing to change. A row is left alone, and counted, when its new
  * key already belongs to another row, or when another employer's board has touched it.
  */
-import type { Prisma } from "@prisma/client"
+import type { Prisma } from "@newrole/jobs-lab-db"
 import { safeCanonicalUrl } from "@newrole/ats/dedupe"
 import { identityFor } from "@newrole/ats/identity"
 import type { ListedJob } from "@newrole/ats/schemas"
@@ -27,7 +27,7 @@ export type IdentityRepairReport = {
   canonicalFixed: number
   /** New key already held by another row (the same job stored twice). Left as is. */
   taken: number
-  /** Of those, rows with feedback, applications or CVs attached. */
+  /** Of those, rows a person gave feedback on. */
   takenWithUserData: number
   /** Rows another employer's board has written or observed. Left as is. */
   collided: number
@@ -46,7 +46,7 @@ type Row = {
   careerPage: { providerBoardId: string | null } | null
   company: { name: string }
   observations: Array<{ careerPage: { providerBoardId: string | null } | null }>
-  _count: { feedback: number; applications: number; cvDocuments: number }
+  _count: { feedback: number }
 }
 
 const GH_PARAM = /[?&]gh_(?!src=)[a-z_]+=/i
@@ -95,7 +95,7 @@ export async function repairIdentityKeys(opts: {
         careerPage: { select: { providerBoardId: true } },
         company: { select: { name: true } },
         observations: { select: { careerPage: { select: { providerBoardId: true } } } },
-        _count: { select: { feedback: true, applications: true, cvDocuments: true } },
+        _count: { select: { feedback: true } },
       },
       orderBy: { id: "asc" },
       take: 500,
@@ -139,10 +139,7 @@ export async function repairIdentityKeys(opts: {
           note(`collided ${row.identityKey} (board ${row.sourceBoardId}, also ${otherBoard})`)
         } else if (holder && holder.id !== row.id) {
           report.taken += 1
-          const counts = row._count
-          if (counts.feedback + counts.applications + counts.cvDocuments > 0) {
-            report.takenWithUserData += 1
-          }
+          if (row._count.feedback > 0) report.takenWithUserData += 1
           note(`taken ${row.identityKey} -> ${next} (held by ${holder.id})`)
         } else {
           data.identityKey = next

@@ -2,8 +2,8 @@ import {
   buildMatchExplanationMessages,
   fallbackExplanation,
   finalizeExplanation,
-} from "@newrole/matching/match-explanation.schema"
-import type { ScoreResult } from "@newrole/matching/scoring"
+} from "./match-explanation.schema"
+import type { ScoreResult } from "./scoring"
 import type { MatchProfile, NormalizedPosting } from "@newrole/matching/types"
 import type { LlmClient } from "../llm"
 
