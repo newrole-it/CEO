@@ -16,6 +16,8 @@ When you change something people can notice, add a line under Unreleased in the 
 - The extension's popup has Add this offer to newrole.it: the app reads the offer on the open tab and keeps its whole text, then its page opens; a page that needs checking opens Offers with the link filled in.
 - Claude Code: offers_list, offer_add and offer_get replace the job search, feedback and company tools, and the hunt and review prompts.
 - The repository is laid out as apps and packages: newrole.it in apps/newrole, the Chrome extension in apps/extension. npm run go, dev, build, start, worker and mcp still run from the root, and .env stays there.
+- The repository holds three apps, each with its own packages and docs: newrole.it in apps/resume-engine-optimization, the Chrome extension in apps/reo-extension, and jobs lab, the offer search over ATS boards, in apps/jobs-lab. npm run go, dev, build, start and mcp still run from the root, and .env stays there.
+- .env has a flag per app, "on" or "off": APP_RESUME_ENGINE_OPTIMIZATION, APP_REO_EXTENSION and, written in by npm run go the first time it sees jobs lab, APP_JOBS_LAB (off). npm run go prepares and starts only the apps that are on, and skips one whose folder is gone.
 
 ### Removed
 

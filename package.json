@@ -15,9 +15,7 @@
     "setup": "node scripts/go.mjs --prepare",
     "prepare": "husky install",
     "dev": "npm run dev -w @newrole/app",
-    "worker": "npm run worker -w @newrole/app",
     "mcp": "npm run --silent mcp -w @newrole/app",
-    "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
     "build": "npm run build -w @newrole/app",
     "start": "npm run start -w @newrole/app",
     "studio": "npm run studio -w @newrole/app",
@@ -34,9 +32,7 @@
     "db:migrate": "npm run db:migrate -w @newrole/app",
     "ext:build": "node scripts/go.mjs --extension",
     "ext:dev": "node scripts/go.mjs --extension && npm run dev --prefix apps/reo-extension",
-    "test:extension": "vitest run --root apps/reo-extension",
-    "jobs-lab": "npm run dev -w @newrole/jobs-lab",
-    "jobs-lab:smoke": "npm run smoke -w @newrole/jobs-lab"
+    "test:extension": "vitest run --root apps/reo-extension"
   },
   "prettier": {
     "semi": false,

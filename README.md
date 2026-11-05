@@ -26,7 +26,7 @@ newrole.it tailors your CV and cover letter to each job offer you work on, on yo
 - 🧩 **Chrome extension** ([apps/reo-extension](apps/reo-extension/README.md)). Adds the offer you are looking at to newrole.it in one click, fills application forms from your details, CV and answer bank on known ATS hosts, records the application when you submit, turns the Gmail message you have open into a stage change after you confirm it, and scores your LinkedIn profile 0–100. It never fills passwords or consents and never submits for you.
 - 🤖 **An MCP server for Claude Code.** Profile, offers, CV, applications and answers as tools, and prompts for onboarding, one application end to end and a weekly review. Model calls run through `claude -p` on your own subscription.
 
-The engine that finds new offers on its own (crawling ATS boards, watched companies, discovery, a ranked feed) is not part of newrole.it any more: it lives in [`@newrole/ats`](apps/resume-engine-optimization/packages/ats/README.md) and [`@newrole/job-index`](apps/jobs-lab/packages/job-index/README.md), with [apps/jobs-lab](apps/jobs-lab/README.md) to test it, for a separate deployment.
+The engine that finds new offers on its own (crawling ATS boards, watched companies, discovery, a ranked feed) is not part of newrole.it: it is [apps/jobs-lab](apps/jobs-lab/README.md), an app of its own with the index in [`@newrole/job-index`](apps/jobs-lab/packages/job-index/README.md), built on newrole.it's [`@newrole/ats`](apps/resume-engine-optimization/packages/ats/README.md). It is off by default and is meant to move to a repository of its own.
 
 ## Quick start
 
@@ -38,13 +38,25 @@ cd newrole.it
 npm run go
 ```
 
-That is the whole install. `npm run go` creates `.env` with fresh secrets, installs packages, starts Postgres in Docker, runs migrations, builds the Chrome extension, starts the site and the worker, and opens http://127.0.0.1:43123/setup. Run it every day: it skips what is already done. Ctrl+C stops everything.
+That is the whole install. `npm run go` creates `.env` with fresh secrets, installs packages, starts Postgres in Docker, runs migrations, builds the Chrome extension, starts the site, and opens http://127.0.0.1:43123/setup. Run it every day: it skips what is already done. Ctrl+C stops everything.
+
+### Which apps run
+
+`npm run go` reads one flag per app from `.env`, `"on"` or `"off"`:
+
+| Flag | App | Default |
+|---|---|---|
+| `APP_RESUME_ENGINE_OPTIMIZATION` | newrole.it (`apps/resume-engine-optimization`) | on |
+| `APP_REO_EXTENSION` | the Chrome extension build (`apps/reo-extension`) | on |
+| `APP_JOBS_LAB` | jobs lab and its worker on http://127.0.0.1:43125 (`apps/jobs-lab`) | off |
+
+Another app under `apps/` joins by a `go` field in its `package.json`: its flag and default, the script that prepares it, the scripts it runs and its address. `npm run go` writes the flag into `.env` the first time it sees the app. An app whose folder is gone is skipped, so deleting `apps/jobs-lab` breaks nothing; `npm run check:boundaries` checks that newrole.it does not depend on it.
 
 `/setup` lists what to do next, in order, and shows what already works:
 
 | Step | How |
 |---|---|
-| Database, worker | `npm run go` handles them |
+| Database | `npm run go` handles it |
 | Claude Code | Optional. One command to install, one to sign in. No API keys |
 | Account | Enter an email. The first email creates the account |
 | Profile | Upload a CV PDF, or import your LinkedIn profile |
@@ -62,7 +74,7 @@ cp .env.example .env   # set SESSION_SECRET_KEY, OWNER_PASSWORD, POSTGRES_PASSWO
 docker compose up --build
 ```
 
-Postgres, the web app and a worker, published on 127.0.0.1 only. Claude Code and headless Chrome are not in the image, so model calls need `LLM_API_KEY`. See [apps/resume-engine-optimization/docs/configuration.md](apps/resume-engine-optimization/docs/configuration.md).
+Postgres and the web app, published on 127.0.0.1 only. Claude Code and headless Chrome are not in the image, so model calls need `LLM_API_KEY`. See [apps/resume-engine-optimization/docs/configuration.md](apps/resume-engine-optimization/docs/configuration.md).
 
 ## Use it from Claude Code
 
@@ -92,19 +104,30 @@ Things to ask:
 
 ## Layout
 
-npm workspaces: the apps under `apps/`, the packages they are made of under `packages/`. The root holds `.env`, the shared scripts and the docs; `npm run go`, `dev`, `build`, `start`, `worker`, `mcp` and the `db:*` scripts run from it.
+npm workspaces. Each app lives under `apps/` with the packages it is made of in its own `packages/` folder, its docs and its own tooling, so an app can leave the repository with everything it needs. The root holds only what runs them: `package.json` and the lockfile, `.env`, `npm run go` (`scripts/go.mjs`), `npm run check:boundaries` (`scripts/check-boundaries.mjs`), `docker-compose.yml`, this README, the changelog and the licence. `npm run go`, `dev`, `build`, `start`, `mcp` and the `db:*` scripts run newrole.it from it.
+
+```
+apps/
+├── resume-engine-optimization/   newrole.it, the CV app (@newrole/app)
+│   ├── src/  db/  mcp/  config/  Next 16 + Blitz UI and services, Prisma schema and migrations, MCP server
+│   ├── packages/                 cv-core, cv-engine, cv-editor, profile, profile-ui, ats, offers,
+│   │                             matching, llm, ui, app-kit
+│   └── docs/                     configuration, accounts, applications, architecture, product plans
+├── reo-extension/                the Chrome extension (WXT, its own lockfile)
+└── jobs-lab/                     the ATS offer search and its test bench (@newrole/jobs-lab)
+    ├── packages/job-index/       the engine that keeps an index of offers
+    └── docs/                     sources and the offer engine
+```
 
 | Path | What lives there |
 |---|---|
-| `apps/resume-engine-optimization` | newrole.it: Next 16 App Router UI with Blitz auth (`src/app`), services (`src/server`), the worker (`src/worker.ts`), the MCP server (`mcp/`), Prisma schema and migrations (`db/`) |
-| `apps/reo-extension` | The Chrome extension (WXT), an app of its own with its own lockfile; it talks to newrole.it's `/api/ext/*` |
-| `apps/jobs-lab` | A test bench for the offer engine: read any supported ATS board live, one offer from its link, the boards on a careers page, a smoke run over real boards |
-| `apps/resume-engine-optimization/packages/cv-core`, `cv-engine`, `cv-editor` | The CV and letter model and rules; tailoring, letters, the CV audit and printing; the A4 editor |
-| `apps/resume-engine-optimization/packages/profile`, `profile-ui` | The profile from a CV, a PDF or LinkedIn, its audit and the facts a model may use; the profile screens |
-| `apps/resume-engine-optimization/packages/ats`, `offers` | Reading offers from ATS boards and career sites, one offer from its link; polite fetching, source policies, robots.txt |
-| `apps/jobs-lab/packages/job-index` | The engine that keeps an index of offers: crawl, schedule, watched companies, discovery, catalog, harvest, live search (not used by newrole.it) |
-| `apps/resume-engine-optimization/packages/matching`, `llm`, `ui`, `app-kit` | Normalization, the scorer and FX rates; model clients; the design system; origin guard and interface language |
-| `scripts/` | `go.mjs` (`npm run go`), `check-boundaries.mjs`, `test-db.mjs`, the shared env loader |
+| `apps/resume-engine-optimization` | newrole.it: the UI with Blitz auth (`src/app`), services (`src/server`), the MCP server (`mcp/`), Prisma schema and migrations (`db/`) |
+| `…/packages/cv-core`, `cv-engine`, `cv-editor` | The CV and letter model and rules; tailoring, letters, the CV audit and printing; the A4 editor |
+| `…/packages/profile`, `profile-ui` | The profile from a CV, a PDF or LinkedIn, its audit and the facts a model may use; the profile screens |
+| `…/packages/ats`, `offers` | Reading one offer from its link on ATS boards and career sites; polite fetching, source policies, robots.txt |
+| `…/packages/matching`, `llm`, `ui`, `app-kit` | Normalization, dedupe and FX rates; model clients; the design system; origin guard and interface language |
+| `apps/reo-extension` | The Chrome extension; it talks to newrole.it's `/api/ext/*` |
+| `apps/jobs-lab` | Read any supported ATS board live, one offer from its link, the boards on a careers page, a smoke run over real boards; the offer index on its own database. It uses newrole.it's packages; newrole.it uses nothing of it |
 
 [apps/resume-engine-optimization/docs/architecture.md](apps/resume-engine-optimization/docs/architecture.md) has the rules between them.
 
@@ -124,18 +147,18 @@ npm workspaces: the apps under `apps/`, the packages they are made of under `pac
 Bug reports and pull requests are welcome. For anything larger, open an issue first. A pull request needs your agreement to the [contributor licence agreement](CLA.md).
 
 ```bash
-npm run go          # first run: Postgres, migrations, extension, web + worker
-npm run dev:all     # later: web on 127.0.0.1:43123 plus the worker
+npm run go          # Postgres, migrations, extension, then every app that is on in .env
+npm run dev         # newrole.it alone on 127.0.0.1:43123
 npm run test:db     # create the test database if needed and migrate it (again after new migrations)
 npm test            # every workspace's tests, the extension's, and the node:test flow tests
-npm run check:boundaries   # packages and apps import only what they declare
+npm run check:boundaries   # every workspace imports only what it declares; no app uses jobs lab
 npm run lint        # eslint
 npm run typecheck   # types, workspace by workspace
 npm run build       # production build, as CI runs it
-npm run jobs-lab    # the engine's test bench on 127.0.0.1:43125; npm run jobs-lab:smoke reads real boards
+npm run smoke -w @newrole/jobs-lab   # jobs lab: read real boards from the command line
 ```
 
-The tests use a database next to the one in `.env`, with `_test` added to its name (`node scripts/test-db.mjs url` prints it; `TEST_DATABASE_URL` overrides it). CI runs lint, types, every test pack and the build on each pull request. The project uses npm; `package-lock.json` is the lockfile. The UI is Polish by default with an English switch; copy lives in `apps/resume-engine-optimization/src/app/i18n`. A change people can notice gets a line under Unreleased in [CHANGELOG.md](CHANGELOG.md).
+The tests use a database next to the one in `.env`, with `_test` added to its name (`node apps/resume-engine-optimization/scripts/test-db.mjs url` prints it; `TEST_DATABASE_URL` overrides it). CI runs lint, types, every test pack and the build on each pull request. The project uses npm; `package-lock.json` is the lockfile. The UI is Polish by default with an English switch; copy lives in `apps/resume-engine-optimization/src/app/i18n`. A change people can notice gets a line under Unreleased in [CHANGELOG.md](CHANGELOG.md).
 
 ## Status and licence
 
