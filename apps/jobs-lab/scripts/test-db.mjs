@@ -47,7 +47,13 @@ function run(command, args, env) {
 }
 
 const [mode, ...rest] = process.argv.slice(2)
-const url = databases.labTestDatabaseUrl()
+let url
+try {
+  url = databases.labTestDatabaseUrl()
+} catch {
+  console.error("jobs lab: DATABASE_URL does not parse as a database URL")
+  process.exit(2)
+}
 if (mode === "url") {
   console.log(url)
 } else if (mode === "prepare") {

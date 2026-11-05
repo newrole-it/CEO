@@ -14,7 +14,12 @@ loadAppEnv()
 export function labDatabase(
   env: NodeJS.ProcessEnv = process.env
 ): { url: string } | { reason: string } {
-  const url = labDatabaseUrl(env)
+  let url: string | null
+  try {
+    url = labDatabaseUrl(env)
+  } catch {
+    return { reason: "DATABASE_URL does not parse as a database URL" }
+  }
   if (!url)
     return {
       reason:

@@ -98,7 +98,7 @@ function refusal(url, env = process.env) {
     if (same)
       return `refusing ${describe(url)}: it is ${
         other.label
-      }. Set JOBS_LAB_DATABASE_URL to a database of the lab's own, or leave it empty for DATABASE_URL's name with _lab`
+      }. Give the lab a database of its own (apps/jobs-lab/.env.example)`
   }
   return null
 }

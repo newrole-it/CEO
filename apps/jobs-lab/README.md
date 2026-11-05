@@ -55,7 +55,7 @@ npm run catalog -w @newrole/jobs-lab -- status       # the outside catalog
 npm run harvest -w @newrole/jobs-lab -- --dry-run    # a cloud harvest run, without pushing
 ```
 
-`go:prepare` is safe to run again and takes a second or two when nothing changed; it generates the client only when the schema changed. On failure it exits non-zero with one line saying why.
+`go:prepare` is safe to run again and takes about two seconds when nothing changed; it generates the client only when the schema changed. On failure it exits non-zero with one line saying why.
 
 **Tests.** `npm test -w @newrole/jobs-lab` and `npm test -w @newrole/job-index` need no database. `npm run test:flow -w @newrole/job-index` creates and migrates the lab's test database first: `JOBS_LAB_TEST_DATABASE_URL`, or the database in `DATABASE_URL` with `_lab_test` added. It is apart from newrole.it's `<db>_test` because the two schemas differ.
 
