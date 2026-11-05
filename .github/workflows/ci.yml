@@ -37,14 +37,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx prisma generate
+      - run: npx prisma generate --schema apps/newrole/db/schema.prisma
       - run: npm run test:db
       - run: npm run lint
       - run: npm run check:boundaries
-      - run: npx tsc --noEmit
-      - run: npm run typecheck:workspaces
-      - run: npx vitest run
+      - run: npm run typecheck
       - run: npm run test:workspaces
+      - run: npm run test:extension
       - run: npm run test:flow
       - run: npm run build
-      - run: npm run cv:build

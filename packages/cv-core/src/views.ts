@@ -4,7 +4,7 @@ import type { TailorNotes } from "./tailor"
 
 /**
  * What a store tells the editor about a document: its versions and the offer it was written for.
- * Both newrole.it (Postgres) and newrole CV (files) return these shapes.
+ * A store returns these shapes (newrole.it's: Postgres, apps/newrole/src/server/cv).
  */
 
 export type CvVersionOrigin = "auto" | "manual" | "base" | "generated" | "restored"

@@ -109,7 +109,7 @@ describe("readPosting", () => {
     expect(result.ok && result.posting).toMatchObject({ withheld: true, text: "" })
   })
 
-  it("respects robots.txt and never fetches LinkedIn", async () => {
+  it("respects robots.txt", async () => {
     const blocked = fakeHttp({
       "https://careers.example.com/robots.txt": { body: "User-agent: *\nDisallow: /jobs/" },
       [JOB_URL]: { body: jsonLdPage() },
@@ -117,11 +117,38 @@ describe("readPosting", () => {
     const robots = await readPosting(JOB_URL, blocked)
     expect(robots).toMatchObject({ ok: false, linkOnly: true })
     expect(blocked.urls).not.toContain(JOB_URL)
+  })
 
-    const linkedin = fakeHttp({})
-    const refused = await readPosting("https://www.linkedin.com/jobs/view/123", linkedin)
-    expect(refused).toMatchObject({ ok: false, linkOnly: true })
-    expect(linkedin.urls).toEqual([])
+  it("reads an offer on a job board, which the crawler never reads", async () => {
+    const url = "https://justjoin.it/job-offer/example-senior-platform-engineer-krakow-devops"
+    const http = fakeHttp({
+      "https://justjoin.it/robots.txt": { body: "User-agent: *\nDisallow: /api/" },
+      [url]: { body: jsonLdPage() },
+    })
+    const result = await readPosting(url, http)
+    expect(result.ok && result.posting).toMatchObject({
+      title: "Senior Platform Engineer",
+      company: "Example Sp. z o.o.",
+      source: "jsonld",
+    })
+  })
+
+  it("stops at LinkedIn's robots.txt and at a site whose owner opted out", async () => {
+    const url = "https://www.linkedin.com/jobs/view/123"
+    const linkedin = fakeHttp({
+      "https://www.linkedin.com/robots.txt": { body: "User-agent: *\nDisallow: /" },
+      [url]: { body: jsonLdPage() },
+    })
+    expect(await readPosting(url, linkedin)).toMatchObject({ ok: false, linkOnly: true })
+    expect(linkedin.urls).not.toContain(url)
+
+    const previous = process.env.CRAWLER_OPT_OUT_HOSTS
+    process.env.CRAWLER_OPT_OUT_HOSTS = "example.com"
+    const optedOut = fakeHttp({ [JOB_URL]: { body: jsonLdPage() } })
+    expect(await readPosting(JOB_URL, optedOut)).toMatchObject({ ok: false, linkOnly: true })
+    expect(optedOut.urls).toEqual([])
+    if (previous === undefined) delete process.env.CRAWLER_OPT_OUT_HOSTS
+    else process.env.CRAWLER_OPT_OUT_HOSTS = previous
   })
 
   it("says so when the page holds no offer", async () => {

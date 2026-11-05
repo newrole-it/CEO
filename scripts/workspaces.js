@@ -1,4 +1,4 @@
-// The names of the packages under packages/, for next.config.js in the root and in apps/*.
+// The names of the packages under packages/, for the next.config.js of every app in apps/.
 const { readdirSync, readFileSync, existsSync } = require("node:fs")
 const { join } = require("node:path")
 

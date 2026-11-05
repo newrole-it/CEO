@@ -1,5 +1,14 @@
 export type PolicyState = "enabled" | "limited" | "link_only"
 
+/**
+ * Who a request reads for. "crawler": the index, with every verdict below. "person": one offer a
+ * person asked for, to tailor a CV or a letter to it, read when asked and not stored. These
+ * verdicts are about crawling, so they do not apply to it; what the site itself says still does:
+ * its owner's opt-out here, robots.txt and a login or bot wall in polite.ts, an AI opt-out on the
+ * page in hygiene.ts.
+ */
+export type Reader = "crawler" | "person"
+
 export type SourcePolicy = {
   platform: string
   state: PolicyState
@@ -707,7 +716,7 @@ function pathAllowed(pathAndQuery: string, policy: SourcePolicy): boolean {
   return (policy.allowPaths ?? []).some((prefix) => haystack.includes(prefix.toLowerCase()))
 }
 
-export function decideFetch(url: URL): FetchDecision {
+export function decideFetch(url: URL, reader: Reader = "crawler"): FetchDecision {
   const host = url.hostname.toLowerCase().replace(/\.$/, "")
   if (optedOut(host)) {
     return {
@@ -715,6 +724,14 @@ export function decideFetch(url: URL): FetchDecision {
       state: "link_only",
       platform: "Opt-out",
       reason: "The site's owner asked not to be read. Link out.",
+    }
+  }
+  if (reader === "person") {
+    return {
+      allow: true,
+      state: "enabled",
+      platform: "Person",
+      reason: "One offer a person asked for. robots.txt and the page's AI opt-out still apply.",
     }
   }
   if (host === "api.smartrecruiters.com") {

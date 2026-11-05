@@ -6,7 +6,8 @@ export type PolishBoardLink = {
 
 /**
  * Polish boards have no public API and their terms forbid automated downloading.
- * These are outbound links only. The server must never fetch them.
+ * These are outbound links only, and the crawler never fetches them. One offer a person asks for
+ * is a person's read (Reader in source-policies.ts), which robots.txt still limits.
  */
 export function polishBoardLinks(phrase: string): PolishBoardLink[] {
   const query = phrase.trim() || "engineering manager"

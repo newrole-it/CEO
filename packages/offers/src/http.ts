@@ -2,6 +2,7 @@ import type { LookupAddress, LookupOptions } from "dns"
 import { lookup } from "dns/promises"
 import { isIP } from "net"
 import { Agent } from "undici"
+import type { Reader } from "./source-policies"
 import { assertSourcePolicy } from "./source-policy"
 import { assertPublicAddresses, assertSafeUrl, UnsafeUrlError } from "./url-safety"
 
@@ -29,6 +30,8 @@ export type HttpClient = {
       timeoutMs?: number
       headers?: Record<string, string>
       encoding?: "utf8" | "base64"
+      /** Whom the read is for; the crawler by default. It follows redirects. */
+      reader?: Reader
     }
   ) => Promise<HttpResponse>
   post: (
@@ -49,7 +52,7 @@ export type SafeFetchConfig = {
   /** Sent with every request; it should say who reads and why */
   userAgent: () => string
   /** Throws an UnsafeUrlError for a URL that may not be read; the source policy by default */
-  policy?: (url: URL) => void
+  policy?: (url: URL, reader: Reader) => void
   /**
    * Reserves the host's next slot in a pace every process shares and returns the delay to wait,
    * or null to pace in this process only. A throw also falls back to the in-process pace.
@@ -65,6 +68,7 @@ export type SafeFetchOptions = {
   timeoutMs?: number
   headers?: Record<string, string>
   encoding?: "utf8" | "base64"
+  reader?: Reader
   fetchImpl?: FetchLike
   lookupImpl?: LookupFn
   redirectCount?: number
@@ -204,7 +208,7 @@ export function createSafeFetch(config: SafeFetchConfig): SafeFetch {
     if (redirectCount > 3) throw new UnsafeUrlError("Too many redirects")
 
     const url = assertSafeUrl(rawUrl)
-    policy(url)
+    policy(url, options?.reader ?? "crawler")
     const addresses = await lookupImpl(url.hostname)
     assertPublicAddresses(addresses)
     const agent = options?.fetchImpl ? undefined : pinAgent(addresses[0])

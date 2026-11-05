@@ -18,10 +18,11 @@ node_modules
 # next.js
 /.next/
 /out/
+apps/*/.next/
 
 # chrome extension build (wxt)
-/extension/.output/
-/extension/.wxt/
+/apps/extension/.output/
+/apps/extension/.wxt/
 
 # production
 /build

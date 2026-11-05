@@ -1,6 +1,6 @@
 # @newrole/profile
 
-A person's professional profile, as newrole.it and newrole CV build it. Node only; it keeps no data: the app stores the profile, the sections and the form details.
+A person's professional profile, as newrole.it builds it. Node only; it keeps no data: the app stores the profile, the sections and the form details.
 
 | Module | What it does |
 |---|---|
