@@ -31,8 +31,8 @@ export default async function TermsPage() {
         ) : (
           <p className="lede">
             {locale === "pl"
-              ? "Wyniki prowadzą do ogłoszeń pracodawców. newrole.it nie jest stroną aplikacji i nie gwarantuje, że oferta jest nadal otwarta. Indeks czyta publiczne strony kariery z limitem co najmniej 1 sekundy między zapytaniami do jednego hosta. To szkic regulaminu."
-              : "Results link to employers' postings. newrole.it is not a party to an application and does not guarantee an offer is still open. The index reads public career pages and waits at least 1 second between requests to one host. This is a draft of the terms."}
+              ? "Oferty, które dodajesz, prowadzą do ogłoszeń pracodawców. newrole.it nie jest stroną aplikacji i nie gwarantuje, że oferta jest nadal otwarta. Ogłoszenie z linku czytamy na Twoją prośbę, z limitem co najmniej 1 sekundy między zapytaniami do jednego hosta. Za treść CV i listów, które wysyłasz, odpowiadasz Ty. To szkic regulaminu."
+              : "The offers you add link to employers' postings. newrole.it is not a party to an application and does not guarantee an offer is still open. A posting is read from its link when you ask, at least 1 second apart between requests to one host. You are responsible for the CVs and letters you send. This is a draft of the terms."}
           </p>
         )}
       </article>

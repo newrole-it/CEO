@@ -18,13 +18,13 @@ export const setupPl = {
     "Wszystkie kroki konfiguracji są gotowe. Możesz dodawać oferty i dopasowywać do nich CV.",
   "setup.done.cta": "Przejdź do CV",
   "setup.done.stay": "Zostań tutaj",
-  "setup.skip": "Pomiń na razie, pokaż oferty",
+  "setup.skip": "Pomiń na razie",
   "setup.offline": "Nie mogę odczytać statusu. Sprawdź, czy aplikacja działa w terminalu.",
 
   "setup.group.run": "Uruchomienie",
   "setup.group.run.sub": "To robi samo polecenie npm run go.",
   "setup.group.you": "Twoje dane",
-  "setup.group.you.sub": "Na ich podstawie newrole.it dobiera oferty i wypełnia formularze.",
+  "setup.group.you.sub": "Z nich newrole.it robi CV pod oferty i wypełnia formularze.",
   "setup.group.connect": "Integracje",
   "setup.group.connect.sub": "Żeby aplikowanie i śledzenie działały same.",
 
@@ -136,13 +136,13 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.done.body": "Every setup step is done. Add offers and tailor your CV to them.",
   "setup.done.cta": "Go to your CV",
   "setup.done.stay": "Stay here",
-  "setup.skip": "Skip for now, show offers",
+  "setup.skip": "Skip for now",
   "setup.offline": "Can't read the status. Check that the app is running in your terminal.",
 
   "setup.group.run": "Running",
   "setup.group.run.sub": "npm run go does this for you.",
   "setup.group.you": "Your details",
-  "setup.group.you.sub": "newrole.it uses them to pick offers and fill in forms.",
+  "setup.group.you.sub": "newrole.it builds your CVs for offers and fills in forms from them.",
   "setup.group.connect": "Integrations",
   "setup.group.connect.sub": "So applying and tracking work by themselves.",
 

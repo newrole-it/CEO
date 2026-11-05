@@ -16,7 +16,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <span className="site-footer__tag">{t("footer.tagline")}</span>
         </div>
         <nav aria-label={t("footer.nav")}>
-          <Link href="/sources">{t("footer.sources")}</Link>
+          <Link href="/bot">{t("footer.sources")}</Link>
           <Link href="/privacy">{t("footer.privacy")}</Link>
           <Link href="/terms">{t("footer.terms")}</Link>
           <Link href="/changelog">{t("footer.changelog")}</Link>
