@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@newrole/jobs-lab-db"
 import db from "../db"
 import { runMatching } from "../matching/pipeline"
 import type { QueryExpansion } from "../matching/query-expansion.schema"

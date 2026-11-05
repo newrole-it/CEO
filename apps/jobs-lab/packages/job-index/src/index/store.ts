@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@newrole/jobs-lab-db"
 import db from "../db"
 import type { BoardList } from "@newrole/ats/adapters/types"
 import { excerpt, wellFormed } from "@newrole/offers/hygiene"

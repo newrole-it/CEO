@@ -3,7 +3,7 @@
  * Polish boards are never fetched: a card comes from the search hit. A career
  * page or ATS URL is stored only after a successful fetch that yields a job.
  */
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@newrole/jobs-lab-db"
 import db from "../db"
 import { parseJsonLdJobs } from "@newrole/ats/adapters/jsonld"
 import { saveDiscoveredJob } from "../index/store"

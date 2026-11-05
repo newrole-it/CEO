@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@newrole/jobs-lab-db"
 import db from "../db"
 import { indexableBoards } from "../index/run"
 import { INDEX_STALE_MS } from "../index/progress"

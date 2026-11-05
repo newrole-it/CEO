@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client"
+import type { PrismaClient } from "@newrole/jobs-lab-db"
 import { jobIndexHost } from "./host"
 
 /**

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@newrole/jobs-lab-db"
 import db from "../db"
 import { selectSeedBoards, type SeedBoard } from "../config/seed-boards"
 import { tenantHost } from "@newrole/ats/adapters/hosts"

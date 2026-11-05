@@ -1,4 +1,4 @@
-import type { JobStatus } from "@prisma/client"
+import type { JobStatus } from "@newrole/jobs-lab-db"
 
 /** Missing jobs step active → possibly closed → closed. A job that reappears is active again. */
 export function nextStatus(current: JobStatus, seen: boolean): JobStatus | null {
