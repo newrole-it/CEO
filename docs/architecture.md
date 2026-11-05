@@ -77,6 +77,7 @@ newrole.it does not depend on `@newrole/job-index`; `npm run check:boundaries` w
 - **Moje CV** (`/cv`): two tabs, _Ogólne_ (general CVs: new, from the profile, from a PDF or HTML) and _Pod oferty_ (the CVs and letters written for one offer, grouped by offer, with its application status).
 - **Oferty** (`/offers`): add an offer by its link, then the list. A page that could not be read as a posting comes back as a draft with the text read from it, for the person to check. Each offer has its page (`/offers/[id]`): the whole text (edit, paste, read again), the CV and letter for it, its application and a note. Old `/jobs/...` links redirect here.
 - **Aplikacje**, **Odpowiedzi**, **Profil**, **/setup**, **/settings**, **/usage**, **/connect**: as before.
+- **The extension** adds the offer on the open tab from its popup (`POST /api/ext/offer`, the same `addOfferByLink`); a draft opens `/offers?add=<link>`, where the link is read at once.
 
 ## Next steps
 
@@ -84,5 +85,4 @@ These are proposals, not done:
 
 1. **A job search deployment.** `@newrole/job-index` holds the engine and its search; its feed screens (ranked offers, saved, companies, sources, sync) were removed from newrole.it with this split and are in git history (commit `ac5855e` on main has them). A deployment would bring them back over the packages, with the ports above.
 2. **The queue in one place.** newrole.it's worker and the engine's share `BackgroundTask` and the same claim and retry code, written twice (`apps/newrole/src/server/queue/worker.ts`, `packages/job-index/src/worker.ts`).
-3. **The extension adds offers.** It already tells the person on an offer page whether they applied (`/api/ext/status`); a button that adds the offer by its link would fit the CV app.
-4. **Publishing.** [publishing.md](publishing.md) has what publishing the packages to npm would take.
+3. **Publishing.** [publishing.md](publishing.md) has what publishing the packages to npm would take.

@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { invoke } from "@blitzjs/rpc"
 import { Link2 } from "lucide-react"
@@ -38,12 +38,20 @@ const OUTCOME_HINT: Record<OfferOutcome, CopyKey> = {
  * open. A page without structured data comes back as a draft with the text read from it, for the
  * person to check before it is kept.
  */
-export function AddOffer({ autoFocus = false }: { autoFocus?: boolean }) {
+export function AddOffer({
+  autoFocus = false,
+  initialUrl = null,
+}: {
+  autoFocus?: boolean
+  /** A link handed over by the extension (/offers?add=…): read at once */
+  initialUrl?: string | null
+}) {
   const { t } = useCopy()
   const id = useId()
   const router = useRouter()
   const toast = useToast()
-  const [url, setUrl] = useState("")
+  const [url, setUrl] = useState(initialUrl ?? "")
+  const started = useRef(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [pending, setPending] = useState(false)
@@ -54,14 +62,26 @@ export function AddOffer({ autoFocus = false }: { autoFocus?: boolean }) {
 
   async function check(event: React.FormEvent) {
     event.preventDefault()
+    await read(url)
+  }
+
+  useEffect(() => {
+    if (!initialUrl || started.current) return
+    started.current = true
+    void read(initialUrl)
+    // read once, for the link the page was opened with
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl])
+
+  async function read(value: string) {
     setError(null)
-    if (!url.trim()) {
+    if (!value.trim()) {
       setError(t("oa.err.badUrl"))
       return
     }
     setPending(true)
     try {
-      const result = await invoke(addOfferByLink, { url: url.trim() })
+      const result = await invoke(addOfferByLink, { url: value.trim() })
       if (result.kind === "invalid") setError(t("oa.err.badUrl"))
       else if (result.kind === "refused") setError(t("oa.err.refused"))
       else if (result.kind === "added") {

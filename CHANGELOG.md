@@ -12,6 +12,7 @@ When you change something people can notice, add a line under Unreleased in the 
 - Add offer reads the whole posting from its link (the employer's ATS or the page's structured data) and keeps it for you: each offer has its own page with its text, which you can edit, paste or read again, the CV and letter written for it, its application and a note. A page without structured data comes back with the text read from it, for you to check before it is added. Tailoring a CV or writing a letter reads that text first.
 - My CV has two tabs: General, the CVs everything starts from, and For offers, the CVs and letters written for one offer, grouped by offer with the application's status.
 - Links to /jobs/… open the offer under /offers.
+- The extension's popup has Add this offer to newrole.it: the app reads the offer on the open tab and keeps its whole text, then its page opens; a page that needs checking opens Offers with the link filled in.
 - Claude Code: offers_list, offer_add and offer_get replace the job search, feedback and company tools, and the hunt and review prompts.
 - The repository is laid out as apps and packages: newrole.it in apps/newrole, the Chrome extension in apps/extension. npm run go, dev, build, start, worker and mcp still run from the root, and .env stays there.
 

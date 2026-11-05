@@ -15,9 +15,21 @@ export async function generateMetadata() {
   return { title: t("of.title") }
 }
 
-export default async function OffersPage() {
-  const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
-  if (!user) redirect("/login?returnTo=/offers")
+export default async function OffersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ add?: string }>
+}) {
+  const [locale, user, query] = await Promise.all([
+    getLocale(),
+    invoke(getCurrentUser, null),
+    searchParams,
+  ])
+  const add = typeof query.add === "string" ? query.add.slice(0, 2000) : null
+  if (!user) {
+    const back = add ? `/offers?add=${encodeURIComponent(add)}` : "/offers"
+    redirect(`/login?returnTo=${encodeURIComponent(back)}`)
+  }
   const t = translator(locale)
   const offers = await listOffers(user.id)
   return (
@@ -27,7 +39,7 @@ export default async function OffersPage() {
         <p>{t("of.sub")}</p>
       </header>
       <div className="stack-lg">
-        <AddOffer autoFocus={offers.length === 0} />
+        <AddOffer autoFocus={offers.length === 0} initialUrl={add} />
         <OfferList offers={offers} />
       </div>
     </SiteFrame>

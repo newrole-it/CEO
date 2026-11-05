@@ -37,6 +37,10 @@ Na `/connect/extension` i `/setup` rozszerzenie mówi stronie, że jest zainstal
 - Po wysłaniu formularza aplikacja zapisuje się w trackerze razem z pytaniami o pracę i Twoimi odpowiedziami, także z wcześniejszych kroków formularza. Podane wynagrodzenie trafia do osobnej kolumny. Automatyczne śledzenie wyłączysz w popupie.
 - Poza znanymi ATS automatyczny zapis obejmuje tylko prawdziwy formularz albo okno, które wygląda na aplikację (plik do wgrania albo słowa takie jak „aplikuj”, „rekrutacja”, „job”). W pozostałych przypadkach użyj „Zapisz jako aplikację”.
 
+## Dodaj ofertę do newrole.it
+
+Na stronie oferty kliknij w popupie „Dodaj tę ofertę do newrole.it”. Rozszerzenie wysyła tylko adres otwartej karty, a ofertę czyta aplikacja, tak jak „Dodaj ofertę” w zakładce Oferty (`POST /api/ext/offer`): przez API systemu rekrutacji albo dane `JobPosting` strony, z zapisaniem całej treści dla Ciebie. Potem otwiera stronę tej oferty w aplikacji. Gdy strona nie ma danych strukturalnych, otwiera Oferty z wklejonym linkiem, żebyś sprawdził firmę, stanowisko i treść przed dodaniem. Ofert z LinkedIn aplikacja nie czyta.
+
 ## Status aplikacji na ofercie
 
 Na ofertach na LinkedIn, justjoin.it, No Fluff Jobs, pracuj.pl, theprotocol.it, Bulldogjob i znanych ATS rozszerzenie pyta aplikację, czy już aplikowano. Po włączeniu „Działaj na wszystkich stronach” robi to też na innych stronach, np. karierach firm. Jeśli nie aplikowano, nic się nie pokazuje.
@@ -74,6 +78,7 @@ Tylko do Twojej aplikacji (domyślnie `127.0.0.1:43123`):
 - Przy wypełnianiu: etykiety pól formularza, adres i tytuł strony oraz do 12 000 znaków tekstu strony.
 - Po wysłaniu aplikacji: adres, tytuł i tekst strony oraz odpowiedzi na pytania o pracę, w tym podane wynagrodzenie, okres wypowiedzenia i datę rozpoczęcia. Danych kontaktowych, linków do profili i plików nie wysyła.
 - Sprawdzenie „już aplikowano”: adres otwartej strony oraz firma i stanowisko, jeśli strona je podaje (na znanych ATS tytuł okna). Dzieje się to na znanych ATS i portalach z ofertami, a przy zgodzie na wszystkie strony także na innych. Na LinkedIn tylko na stronach ofert (`/jobs/view/…` albo `currentJobId=` w adresie), nigdy na profilach, w feedzie ani w wiadomościach.
+- Po kliknięciu „Dodaj tę ofertę do newrole.it”: adres otwartej karty. Ofertę czyta aplikacja.
 - Na Twoim profilu LinkedIn: adres profilu i tekst jego sekcji widoczny na stronie. Nic z innych stron LinkedIn ani z cudzych profili.
 - W Gmailu, tylko po kliknięciu „Użyj tego maila w aplikacji”: nadawcę, temat, datę, identyfikator i tekst jednej otwartej wiadomości (albo tylko zaznaczony fragment). Po potwierdzeniu wysyła wybraną aplikację i status, już bez tekstu.
 

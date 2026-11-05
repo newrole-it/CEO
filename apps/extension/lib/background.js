@@ -395,6 +395,14 @@ async function handle(message, sender) {
     }
     case "status":
       return api(statusPath({ url: message.url }))
+    case "addOffer":
+      // The popup's "add this offer": the app reads the posting and keeps it for the person.
+      if (!fromExtensionPage(sender)) return { ok: false, error: "forbidden" }
+      if (!isWebUrl(message.url)) return { ok: false, error: "restricted" }
+      return api("/api/ext/offer", {
+        method: "POST",
+        body: JSON.stringify({ url: message.url }),
+      })
     case "offerStatus": {
       const result = await api(statusPath(message.offer))
       if (tabId != null) await setOfferBadge(tabId, result.ok ? result.data : null)

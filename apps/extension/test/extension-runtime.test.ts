@@ -889,6 +889,38 @@ describe("lib/background.js", () => {
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ tabId: 7, text: "✓" })
   })
 
+  it("adds the open tab's offer for the popup, and refuses a page's script", async () => {
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            kind: "added",
+            jobId: "job1",
+            company: "Acme",
+            title: "SRE",
+            path: "/offers/job1",
+          })
+        )
+    )
+    const { call } = await loadBackground()
+    const url = "https://jobs.lever.co/acme/1"
+    const added = await call({ type: "addOffer", url })
+    expect(added).toMatchObject({ ok: true, data: { kind: "added", path: "/offers/job1" } })
+    expect(fetchMock.mock.calls[0][0]).toBe("http://127.0.0.1:43123/api/ext/offer")
+    expect(fetchMock.mock.calls[0][1].method).toBe("POST")
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ url })
+    const fromPage = await call(
+      { type: "addOffer", url },
+      { id: ID, tab: { id: 3 }, url: "https://evil.example/" }
+    )
+    expect(fromPage).toEqual({ ok: false, error: "forbidden" })
+    expect(await call({ type: "addOffer", url: "chrome://settings" })).toEqual({
+      ok: false,
+      error: "restricted",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it("asks about an offer with what the page read and puts the status on the icon", async () => {
     const applied = {
       id: "a1",

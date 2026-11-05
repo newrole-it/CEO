@@ -177,6 +177,32 @@ async function readMail(button) {
   show("mailForm", true)
 }
 
+/** The offer on this tab into newrole.it, read whole there; its page opens in the app. */
+async function addOffer(button, base) {
+  const tab = await activeTab()
+  if (!tab?.url || !/^https?:/.test(tab.url)) return say(ERRORS.restricted, "err")
+  button.disabled = true
+  say("Czytam ofertę. To może potrwać kilkanaście sekund…")
+  const result = await ask({ type: "addOffer", url: tab.url })
+  button.disabled = false
+  if (!result?.ok)
+    return say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+  const data = result.data
+  if (data.kind === "refused") {
+    return say(
+      "Ofert z LinkedIn i serwisów społecznościowych nie czytamy. Otwórz ofertę na stronie firmy.",
+      "err"
+    )
+  }
+  if (data.kind === "invalid") return say("To nie wygląda na stronę oferty.", "err")
+  if (data.kind === "added") {
+    say(`${data.added ? "Dodano" : "Już masz tę ofertę"}: ${data.company} · ${data.title}`, "ok")
+  } else {
+    say("Sprawdź dane oferty w newrole.it i dodaj ją.", "ok")
+  }
+  await chrome.tabs.create({ url: `${base}${data.path}` })
+}
+
 async function act(type, button, working) {
   const tab = await activeTab()
   if (!tab?.id) return say(ERRORS.restricted, "err")
@@ -229,6 +255,7 @@ async function init() {
     () => void act("fillTab", $("fill"), "Wypełniam. Pytania otwarte mogą potrwać kilka sekund…")
   )
   $("save").addEventListener("click", () => void act("saveTab", $("save"), "Zapisuję…"))
+  $("addOffer").addEventListener("click", () => void addOffer($("addOffer"), base))
 
   // On a LinkedIn profile the form actions make no sense; the audit takes their place.
   const tab = await activeTab()
@@ -237,6 +264,7 @@ async function init() {
   const onMail = isGmail(tab?.url)
   show("fill", !onProfile && !onMail)
   show("save", !onProfile && !onMail)
+  show("addOffer", !onProfile && !onMail && /^https:/.test(tab?.url || ""))
   show("audit", onProfile)
   show("readMail", onMail)
   $("audit").addEventListener("click", () => void auditProfile($("audit")))
