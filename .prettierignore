@@ -2,7 +2,7 @@
 .env*
 *.ico
 *.lock
-db/migrations
+apps/newrole/db/migrations
 .next
 .yarn
 .pnp.*
@@ -10,5 +10,5 @@ node_modules
 README.md
 matching
 sources
-config/seed-companies.json
-config/seed-companies-pl.json
+apps/newrole/config/seed-companies.json
+apps/newrole/config/seed-companies-pl.json

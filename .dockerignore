@@ -1,8 +1,8 @@
 node_modules
 packages/*/node_modules
-extension/node_modules
-extension/.output
-extension/.wxt
+apps/extension/node_modules
+apps/extension/.output
+apps/extension/.wxt
 .next
 apps/*/.next
 apps/*/.data

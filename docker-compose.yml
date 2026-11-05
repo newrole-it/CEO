@@ -81,6 +81,7 @@ services:
 
   worker:
     build: .
+    # The image's working folder is apps/newrole (Dockerfile).
     command: ["npx", "tsx", "src/worker.ts"]
     restart: unless-stopped
     environment:

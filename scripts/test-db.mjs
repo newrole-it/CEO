@@ -14,6 +14,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
+// newrole.it's schema and migrations; every app that keeps a database uses them.
+const SCHEMA = join(ROOT, "apps", "newrole", "db", "schema.prisma")
 const FALLBACK = "postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner"
 // Only for tests: Blitz needs a 32-character secret, and these sessions never leave the test DB.
 const TEST_SESSION_SECRET = "jobscanner-dev-session-secret-key-32b"
@@ -37,8 +39,9 @@ export function testDatabaseUrl(env = process.env) {
   return url.toString()
 }
 
+/** In the folder it was called from: `npm run test:flow -w @newrole/app` runs in apps/newrole. */
 function run(command, args, env) {
-  const result = spawnSync(command, args, { cwd: ROOT, stdio: "inherit", env, shell: false })
+  const result = spawnSync(command, args, { stdio: "inherit", env, shell: false })
   return result.status ?? 1
 }
 
@@ -60,7 +63,10 @@ function prepare(url) {
     process.stderr.write(created.stderr || created.stdout)
     return created.status ?? 1
   }
-  return run("npx", ["prisma", "migrate", "deploy"], { ...process.env, DATABASE_URL: url })
+  return run("npx", ["prisma", "migrate", "deploy", "--schema", SCHEMA], {
+    ...process.env,
+    DATABASE_URL: url,
+  })
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]

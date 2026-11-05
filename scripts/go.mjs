@@ -15,6 +15,11 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+/** newrole.it itself; the root holds .env and the workspaces. */
+const APP = join(ROOT, "apps", "newrole")
+const SCHEMA = join(APP, "db", "schema.prisma")
+/** The Chrome extension: an app of its own with its own lockfile, not a workspace. */
+const EXTENSION = join(ROOT, "apps", "extension")
 const ENV_FILE = join(ROOT, ".env")
 const BIN = (name) => join(ROOT, "node_modules", ".bin", name)
 const MIN_NODE = 22
@@ -205,8 +210,8 @@ async function ensureDatabase(env) {
 }
 
 function migrate(env) {
-  const result = spawnSync(BIN("prisma"), ["migrate", "deploy", "--schema", "db/schema.prisma"], {
-    cwd: ROOT,
+  const result = spawnSync(BIN("prisma"), ["migrate", "deploy", "--schema", SCHEMA], {
+    cwd: APP,
     env,
     encoding: "utf8",
   })
@@ -222,22 +227,23 @@ function migrate(env) {
     }
     fail("Database migration failed.", ...output.trim().split("\n").slice(-20))
   }
-  run(BIN("prisma"), ["generate", "--schema", "db/schema.prisma"], {
+  run(BIN("prisma"), ["generate", "--schema", SCHEMA], {
+    cwd: APP,
     env,
     title: "Generating the database client",
   })
-  run(BIN("tsx"), ["db/seed.ts"], { env, title: "Loading the starting data" })
+  run(BIN("tsx"), ["db/seed.ts"], { cwd: APP, env, title: "Loading the starting data" })
   ok("Database up to date, starting data loaded")
 }
 
 // --------------------------------------------------------------- extension
 
 function installExtension() {
-  install(join(ROOT, "extension"), join("node_modules", ".bin", "wxt"), "Extension")
+  install(EXTENSION, join("node_modules", ".bin", "wxt"), "Extension")
 }
 
 function buildExtension({ force = false } = {}) {
-  const dir = join(ROOT, "extension")
+  const dir = EXTENSION
   const manifest = join(dir, ".output", "chrome-mv3", "manifest.json")
   const built = existsSync(manifest) ? statSync(manifest).mtimeMs : 0
   const sources = ["entrypoints", "lib", "icons", "wxt.config.ts", "package.json"]
@@ -318,10 +324,10 @@ async function start(env) {
       "-c",
       "cyan,magenta",
       // Same as `npm run dev`: webpack, because Turbopack breaks Blitz RPC resolvers on Next 16.
-      `npx next dev --webpack -p ${port} -H 127.0.0.1`,
-      "npx tsx src/worker.ts",
+      `${JSON.stringify(BIN("next"))} dev --webpack -p ${port} -H 127.0.0.1`,
+      `${JSON.stringify(BIN("tsx"))} src/worker.ts`,
     ],
-    { cwd: ROOT, env, stdio: "inherit" }
+    { cwd: APP, env, stdio: "inherit" }
   )
   child.on("exit", (code) => process.exit(code ?? 0))
   for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => child.kill(signal))
@@ -344,7 +350,7 @@ async function main() {
     installExtension()
     buildExtension({ force: true })
     console.log(`\n  Load this folder at chrome://extensions:`)
-    console.log(`  ${join(ROOT, "extension", ".output", "chrome-mv3")}\n`)
+    console.log(`  ${join(EXTENSION, ".output", "chrome-mv3")}\n`)
     return
   }
   await ensureEnv()
