@@ -1,5 +1,7 @@
 # Handoff: Dopasowanie (matching / preferences)
 
+> Written before the engine left newrole.it: paths such as `src/server/…` and `db/schema.prisma` are newrole.it's of that time. The engine's code is now in [packages/job-index](../../../packages/job-index/README.md), its tables in [packages/db/schema.prisma](../../../packages/db/schema.prisma).
+
 Changes needed in files I do not own. Everything below is optional for correctness of my files,
 but needed for the product to use them everywhere.
 

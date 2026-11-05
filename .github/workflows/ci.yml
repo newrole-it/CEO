@@ -37,12 +37,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # newrole.it's client goes to the root node_modules; the jobs lab's (@newrole/jobs-lab-db)
+      # to its own package. npm ci has generated the lab's already (postinstall); this step shows it.
+      # --workspaces --if-present: steps for the lab run when apps/jobs-lab is there and skip when not.
       - run: npx prisma generate --schema apps/resume-engine-optimization/db/schema.prisma
+      - run: npm run generate --workspaces --if-present
+      # newrole.it's <db>_test, then the lab's <db>_lab_test: the two schemas differ.
       - run: npm run test:db
+      - run: npm run test:db --workspaces --if-present
       - run: npm run lint
       - run: npm run check:boundaries
       - run: npm run typecheck
       - run: npm run test:workspaces
       - run: npm run test:extension
       - run: npm run test:flow
-      - run: npm run build
+      # newrole.it, and the jobs lab when it is there.
+      - run: npm run build --workspaces --if-present
