@@ -1,8 +1,8 @@
 import db from "db"
 
 /**
- * The worker, the web app and the MCP server are separate processes, and /bot promises a site at
- * least one request per interval from all of them together. So the next free moment for a host
+ * The web app and the MCP server are separate processes, and /bot promises a site at least one
+ * request per interval from all of them together. So the next free moment for a host
  * lives in Postgres: one atomic upsert reserves it and says how long this caller has to wait.
  *
  * The row reuses AuthRateLimit (key, windowStart) so no migration is needed: windowStart holds the

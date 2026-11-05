@@ -1,12 +1,12 @@
 import db from "db"
 
-export type HeartbeatService = "worker" | "mcp"
+export type HeartbeatService = "mcp"
 
 const EVERY_MS = 30_000
 const lastBeat = new Map<HeartbeatService, number>()
 
 /**
- * A sign of life for /setup, which cannot see these processes directly. At most one write
+ * A sign of life for /setup, which cannot see the MCP server's process directly. At most one write
  * per 30 s per process, and it never fails the caller: a missing heartbeat only shows on /setup.
  */
 export async function beat(service: HeartbeatService, now = Date.now()): Promise<void> {

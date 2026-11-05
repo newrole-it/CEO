@@ -10,24 +10,13 @@ x-app-env: &app-env
   LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
   LLM_INPUT_USD_PER_MILLION: ${LLM_INPUT_USD_PER_MILLION:-}
   LLM_OUTPUT_USD_PER_MILLION: ${LLM_OUTPUT_USD_PER_MILLION:-}
-  BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
-  SERPER_API_KEY: ${SERPER_API_KEY:-}
-  SCAN_SEED_LIMIT: ${SCAN_SEED_LIMIT:-40}
-  DISCOVERY_QUERY_LIMIT: ${DISCOVERY_QUERY_LIMIT:-14}
   CAREER_DETAIL_LIMIT: ${CAREER_DETAIL_LIMIT:-40}
   CRAWLER_NOTE: ${CRAWLER_NOTE:-}
   CRAWLER_OPT_OUT_HOSTS: ${CRAWLER_OPT_OUT_HOSTS:-}
-  OFFER_INDEX: ${OFFER_INDEX:-}
   OPERATOR_NAME: ${OPERATOR_NAME:-}
   OPERATOR_CONTACT: ${OPERATOR_CONTACT:-}
   OPERATOR_PROCESSORS: ${OPERATOR_PROCESSORS:-}
   SMARTRECRUITERS_POSTING_API: ${SMARTRECRUITERS_POSTING_API:-off}
-  MATCH_SALARY_FLOOR_PLN: ${MATCH_SALARY_FLOOR_PLN:-1}
-  MATCH_ACCEPTED_CONTRACTS: ${MATCH_ACCEPTED_CONTRACTS:-}
-  MATCH_HOME_CITY: ${MATCH_HOME_CITY:-Warsaw}
-  MATCH_HOME_COUNTRY: ${MATCH_HOME_COUNTRY:-PL}
-  MATCH_HYBRID_CITIES: ${MATCH_HYBRID_CITIES:-}
-  MATCH_RELOCATION_OK: ${MATCH_RELOCATION_OK:-true}
   FETCH_TIMEOUT_MS: ${FETCH_TIMEOUT_MS:-}
   FETCH_MAX_BYTES: ${FETCH_MAX_BYTES:-}
   FX_EUR_PLN: ${FX_EUR_PLN:-}
@@ -74,19 +63,6 @@ services:
       dockerfile: apps/resume-engine-optimization/Dockerfile
     ports:
       - "127.0.0.1:43123:43123"
-    restart: unless-stopped
-    environment:
-      <<: *app-env
-    depends_on:
-      db:
-        condition: service_healthy
-
-  worker:
-    build:
-      context: .
-      dockerfile: apps/resume-engine-optimization/Dockerfile
-    # The image's working folder is apps/resume-engine-optimization (its Dockerfile).
-    command: ["npx", "tsx", "src/worker.ts"]
     restart: unless-stopped
     environment:
       <<: *app-env

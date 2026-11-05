@@ -43,13 +43,7 @@ export const setupPl = {
   "setup.db.ok": "Połączona i aktualna.",
   "setup.db.down": "Nie mogę połączyć się z bazą. Uruchom Docker Desktop, a potem:",
   "setup.db.pending":
-    "Baza wymaga aktualizacji (migracje do wykonania: {n}). Zatrzymaj aplikację i worker (Ctrl+C), a potem:",
-
-  "setup.worker.title": "Worker",
-  "setup.worker.why": "Aktualizuje w tle Twój arkusz Google z aplikacjami.",
-  "setup.worker.ok": "Działa w tle.",
-  "setup.worker.stopped":
-    "Nie działa, więc oferty się nie aktualizują. Uruchom go w osobnym terminalu:",
+    "Baza wymaga aktualizacji (migracje do wykonania: {n}). Zatrzymaj aplikację (Ctrl+C), a potem:",
 
   "setup.claude.title": "Claude Code",
   "setup.claude.why":
@@ -161,13 +155,7 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.db.ok": "Connected and up to date.",
   "setup.db.down": "Can't reach the database. Start Docker Desktop, then:",
   "setup.db.pending":
-    "The database needs an update (migrations to run: {n}). Stop the app and the worker (Ctrl+C), then:",
-
-  "setup.worker.title": "Worker",
-  "setup.worker.why": "Keeps your Google Sheet of applications up to date in the background.",
-  "setup.worker.ok": "Running in the background.",
-  "setup.worker.stopped":
-    "Not running, so offers aren't updating. Start it in a separate terminal:",
+    "The database needs an update (migrations to run: {n}). Stop the app (Ctrl+C), then:",
 
   "setup.claude.title": "Claude Code",
   "setup.claude.why":

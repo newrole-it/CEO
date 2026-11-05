@@ -459,7 +459,8 @@ export async function importCsv(
 
 /**
  * Pulls edits made in the sheet: a sync for every connected sheet with automatic sync whose last
- * sync is older than this. The worker calls it; enqueueing skips people with one already queued.
+ * sync is older than this. The app's background loop calls it; enqueueing skips people with one
+ * already queued.
  */
 export const SHEET_PULL_MS = 5 * 60_000
 
@@ -573,7 +574,7 @@ export type SheetStatus = {
   lastRowCount: number | null
   lastError: string | null
   lastErrorCode: SyncErrorCode | null
-  /** When a queued sync was due; a time well in the past means the worker is not running */
+  /** When a queued sync was due; a time well in the past means the app is not running */
   pendingSince: Date | null
 }
 

@@ -50,7 +50,7 @@ async function dbFacts(app: string): Promise<SetupFacts["db"]> {
   return { ok: true, pendingMigrations: Math.max(0, folders - applied) }
 }
 
-async function heartbeat(service: "worker" | "mcp"): Promise<Date | null> {
+async function heartbeat(service: "mcp"): Promise<Date | null> {
   const row = await db.serviceHeartbeat.findUnique({ where: { service } }).catch(() => null)
   return row?.lastSeenAt ?? null
 }
@@ -108,32 +108,20 @@ async function hasProfile(userId: number | null): Promise<boolean> {
 export async function setupReady(userId: number | null): Promise<boolean> {
   const database = await dbFacts(appDir())
   if (!database.ok) return false
-  const [workerSeen, user, profile] = await Promise.all([
-    heartbeat("worker"),
-    userFacts(userId),
-    hasProfile(userId),
-  ])
-  return isReady({
-    db: database,
-    worker: { lastSeenAt: workerSeen },
-    user,
-    profile,
-    now: new Date(),
-  })
+  const [user, profile] = await Promise.all([userFacts(userId), hasProfile(userId)])
+  return isReady({ db: database, user, profile })
 }
 
 export async function collectFacts(userId: number | null): Promise<SetupFacts> {
-  const now = new Date()
   const buildPath = extensionBuildPath()
   const [database, claude, command] = await Promise.all([
     dbFacts(appDir()),
-    claudeFacts(now.getTime()),
+    claudeFacts(Date.now()),
     mcpUserCommand(repoRoot()),
   ])
   const base = {
     claude,
     chrome: Boolean(findChrome()),
-    now,
     extension: {
       built: existsSync(path.join(buildPath, "manifest.json")),
       path: buildPath,
@@ -145,7 +133,6 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
     return {
       ...base,
       db: database,
-      worker: { lastSeenAt: null },
       user: NO_USER,
       profile: false,
       details: { firstName: false, email: false, phone: false },
@@ -154,8 +141,7 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
       sheet: { connected: false, lastSyncedAt: null, lastError: null },
     }
   }
-  const [workerSeen, mcpSeen, user, profile] = await Promise.all([
-    heartbeat("worker"),
+  const [mcpSeen, user, profile] = await Promise.all([
     heartbeat("mcp"),
     userFacts(userId),
     hasProfile(userId),
@@ -175,7 +161,6 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
   return {
     ...base,
     db: database,
-    worker: { lastSeenAt: workerSeen },
     user,
     profile,
     details: {

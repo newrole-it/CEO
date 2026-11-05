@@ -13,7 +13,7 @@ after(async () => {
 
 test("callers share one clock per host, as separate processes do", async () => {
   const now = Date.now()
-  // Three reservations at the same moment, as from the worker, the web app and the MCP server.
+  // Three reservations at the same moment, as from separate processes.
   const waits = await Promise.all([0, 1, 2].map(() => reserveHostSlot(host, 5_000, now)))
   assert.deepEqual(
     [...waits].sort((a, b) => a - b),

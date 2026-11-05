@@ -4,11 +4,8 @@
  * setup.<id>.title, setup.<id>.why and setup.<id>.<note>.
  */
 
-export const WORKER_ALIVE_MS = 90_000
-
 export type StepId =
   | "db"
-  | "worker"
   | "claude"
   | "account"
   | "profile"
@@ -40,7 +37,6 @@ export type SetupStep = {
 
 export type SetupFacts = {
   db: { ok: boolean; pendingMigrations: number }
-  worker: { lastSeenAt: Date | null }
   claude: {
     provider: "openai" | "claude-cli" | "none"
     installed: boolean
@@ -54,35 +50,22 @@ export type SetupFacts = {
   extension: { built: boolean; path: string; tokens: number; lastUsedAt: Date | null }
   mcp: { lastSeenAt: Date | null; command: string | null }
   sheet: { connected: boolean; lastSyncedAt: Date | null; lastError: string | null }
-  now: Date
-}
-
-export function workerAlive(lastSeenAt: Date | null, now: Date): boolean {
-  return Boolean(lastSeenAt && now.getTime() - lastSeenAt.getTime() < WORKER_ALIVE_MS)
 }
 
 /** Enough to use the app: / stops sending people to /setup. Everything else is a bonus. */
 export function isReady(facts: {
   db: SetupFacts["db"]
-  worker: SetupFacts["worker"]
   user: SetupFacts["user"]
   profile: boolean
-  now: Date
 }): boolean {
-  return (
-    facts.db.ok &&
-    facts.db.pendingMigrations === 0 &&
-    workerAlive(facts.worker.lastSeenAt, facts.now) &&
-    facts.user.signedIn &&
-    facts.profile
-  )
+  return facts.db.ok && facts.db.pendingMigrations === 0 && facts.user.signedIn && facts.profile
 }
 
 function dbStep(db: SetupFacts["db"]): SetupStep {
   const base = { id: "db", group: "run", importance: "required" } as const
   if (!db.ok) return { ...base, state: "error", note: "down", command: "docker compose up -d db" }
-  // Not `npm run db:deploy`: it only migrates, and the running app and worker keep the old
-  // database client. A stop and `npm run go` migrates, regenerates the client and starts both.
+  // Not `npm run db:deploy`: it only migrates, and the running app keeps the old database client.
+  // A stop and `npm run go` migrates, regenerates the client and starts the app again.
   if (db.pendingMigrations > 0) {
     return {
       ...base,
@@ -93,12 +76,6 @@ function dbStep(db: SetupFacts["db"]): SetupStep {
     }
   }
   return { ...base, state: "done", note: "ok" }
-}
-
-function workerStep(facts: SetupFacts): SetupStep {
-  const base = { id: "worker", group: "run", importance: "required" } as const
-  if (workerAlive(facts.worker.lastSeenAt, facts.now)) return { ...base, state: "done", note: "ok" }
-  return { ...base, state: "todo", note: "stopped", command: "npm run worker" }
 }
 
 function claudeStep({ claude }: SetupFacts): SetupStep {
@@ -194,7 +171,6 @@ function sheetStep({ sheet }: SetupFacts): SetupStep {
 export function buildSteps(facts: SetupFacts): SetupStep[] {
   return [
     dbStep(facts.db),
-    workerStep(facts),
     claudeStep(facts),
     accountStep(facts),
     profileStep(facts),

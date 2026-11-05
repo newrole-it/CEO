@@ -4,7 +4,7 @@ import { fetchUserAgent } from "src/server/fetch/user-agent"
 
 /**
  * newrole.it's outside requests: @newrole/offers/http with this app's User-Agent and a pace shared
- * through Postgres by the web app, the worker and the MCP server (host-pace.ts). Tests pace in memory.
+ * through Postgres by the web app and the MCP server (host-pace.ts). Tests pace in memory.
  */
 
 export type { HttpClient, HttpResponse } from "@newrole/offers/http"

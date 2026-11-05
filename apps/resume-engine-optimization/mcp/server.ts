@@ -6,7 +6,7 @@ import { createServer } from "./create-server"
 
 /**
  * newrole.it MCP server over stdio. Claude Code starts it with `npx tsx mcp/server.ts`;
- * it talks to the same Postgres as the web app and worker.
+ * it talks to the same Postgres as the web app.
  */
 async function main() {
   const server = createServer()
