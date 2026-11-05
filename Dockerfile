@@ -8,7 +8,6 @@ COPY package.json package-lock.json .npmrc ./
 # npm workspaces: the packages and apps must be there for npm ci to link them
 COPY packages ./packages
 COPY apps/newrole/package.json ./apps/newrole/
-COPY apps/cv/package.json ./apps/cv/
 RUN npm ci
 
 COPY . .

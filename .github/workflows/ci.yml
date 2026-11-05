@@ -46,4 +46,3 @@ jobs:
       - run: npm run test:extension
       - run: npm run test:flow
       - run: npm run build
-      - run: npm run cv:build
