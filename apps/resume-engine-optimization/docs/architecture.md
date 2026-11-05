@@ -27,9 +27,10 @@ newrole.it/                         npm workspaces; the root holds .env, go.mjs 
     │       ├── ui/          @newrole/ui          the design system: CSS, components, locale
     │       └── app-kit/     @newrole/app-kit     route-handler origin guard, interface language
     ├── reo-extension/       @newrole/extension   the Chrome extension (WXT, own lockfile, not a workspace)
-    └── jobs-lab/            @newrole/jobs-lab    the offer engine's test bench, its database, docs/
+    └── jobs-lab/            @newrole/jobs-lab    the offer engine's test bench, docs/
         └── packages/
-            └── job-index/   @newrole/job-index   the engine that keeps an index of offers
+            ├── job-index/   @newrole/job-index   the engine that keeps an index of offers, its scorer
+            └── db/          @newrole/jobs-lab-db the lab's Prisma schema, migrations and client
 ```
 
 Each app carries its own tooling: a `tsconfig.base.json` for itself and its packages, `scripts/root-env.js` (the root `.env` for its `next.config.js`), `scripts/workspace-packages.js` (the `@newrole/*` packages it declares, for `transpilePackages`) and `scripts/test-db.mjs` (its test database).

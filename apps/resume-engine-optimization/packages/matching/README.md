@@ -3,7 +3,7 @@
 Matching layer for Jobscanner (Poland / Europe-Warsaw). Pure TypeScript + Zod: rules only, no model. The only I/O is reading NBP's exchange-rate table (`fx.ts`).
 What it does: **normalize a posting (title, seniority, company, places, work mode, salary) → dedupe postings**.
 
-The scorer, the matching pipeline, query expansion and match explanations (with their prompts, fixtures and tests) are used only by the offer index and live in [@newrole/job-index](../../../jobs-lab/packages/job-index/README.md) (`src/matching/`), which builds on this package.
+The scorer, the matching pipeline, query expansion and match explanations (with their prompts, fixtures and tests) are used only by the offer index and live in the offer index, `@newrole/job-index` (apps/jobs-lab, `src/matching/`), which builds on this package.
 
 > No existing Jobscanner code or specs were found under `/workspace/jobscanner` when this pack was written (only an empty `scripts/`),
 > so the types in `types.ts` are proposals; the MVP should adopt them or map to its own names.

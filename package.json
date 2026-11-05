@@ -26,7 +26,7 @@
     "test": "npm run test:workspaces && npm run test:extension && npm run test:flow",
     "test:workspaces": "npm run test --workspaces --if-present",
     "test:flow": "npm run test:flow --workspaces --if-present",
-    "test:db": "node apps/resume-engine-optimization/scripts/test-db.mjs prepare",
+    "test:db": "npm run test:db --workspaces --if-present",
     "db:deploy": "npm run db:deploy -w @newrole/app",
     "db:seed": "npm run db:seed -w @newrole/app",
     "db:migrate": "npm run db:migrate -w @newrole/app",

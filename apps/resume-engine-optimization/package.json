@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
+    "test:db": "node scripts/test-db.mjs prepare",
     "test:flow": "node scripts/test-db.mjs run tsx --test --test-concurrency=1 \"test/*.test.ts\""
   },
   "prisma": {

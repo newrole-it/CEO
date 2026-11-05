@@ -161,7 +161,7 @@ export interface NormalizedPosting {
   sources: Source[];
 }
 
-/** The user's matching preferences. fixtures/profile.json is EXAMPLE data. */
+/** The user's matching preferences. */
 export const MatchProfileSchema = z.object({
   label: z.string().optional(),
   targetTitles: z.array(z.string()).min(1),

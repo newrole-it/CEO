@@ -11,7 +11,7 @@ Not set up yet. The packages are `private` and their `exports` point at TypeScri
 3. A scope on npm. Whether `@newrole` is free there has not been checked.
 4. Versions and releases, for example with changesets, in dependency order: cv-core, llm, matching, app-kit, offers, ui, then ats, profile, cv-engine, profile-ui, cv-editor, and job-index last.
 
-`@newrole/job-index` needs a Prisma client generated from newrole.it's schema (`apps/resume-engine-optimization/db/schema.prisma`); published, it would ship that schema or move it to a package of its own. The licence stays AGPL-3.0-only unless you choose otherwise for a package.
+`@newrole/job-index` lives in apps/jobs-lab and needs the Prisma client of jobs lab's own schema (`@newrole/jobs-lab-db`); it would be published from there, if at all. The licence stays AGPL-3.0-only unless you choose otherwise for a package.
 
 ## A first release of newrole.it alone
 
