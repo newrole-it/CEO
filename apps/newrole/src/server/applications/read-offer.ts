@@ -10,20 +10,21 @@ import {
   type ModelFacts,
   type PageInput,
 } from "src/server/autofill/job-extract"
-import { aiOptOut, stripPersonalData } from "src/server/crawler/hygiene"
-import { ingestOfferUrl, type IngestUrlResult } from "src/server/discovery/ingest-offer"
+import { aiOptOut, stripPersonalData } from "@newrole/offers/hygiene"
+import { ingestOfferUrl, type IngestUrlResult } from "src/server/offers/ingest"
 import { policyFor } from "@newrole/offers/polite"
 import { decodeEntities, htmlToText } from "@newrole/offers/text"
-import { pageText } from "src/server/jobs/offer-text"
+import { pageText } from "src/server/offers/text"
 import { formatSalary, urlKey } from "./logic"
 import { findApplicationByUrl, findJobById, findJobByUrl, type IndexedJob } from "./service"
 import type { ApplicationView, OfferFacts, OfferOutcome, OfferUrlCheck } from "./types"
 
 /**
- * "Dodaj aplikację" by link: what we can say about a posting from its URL. The index first, then
- * the ingest path (ATS API or JSON-LD, which also adds the offer to the index), then the text of
- * the page it read. Hosts under a link-only policy are never fetched: only what their URL spells
- * out comes back, marked for checking. Page HTML is not stored.
+ * "Dodaj aplikację" and "Dodaj ofertę" by link: what we can say about a posting from its URL. The
+ * offers already known first, then the ingest path (ATS API or JSON-LD, which also stores the
+ * offer, src/server/offers/ingest.ts), then the text of the page it read. Hosts under a link-only
+ * policy are never fetched: only what their URL spells out comes back, marked for checking. Page
+ * HTML is not stored.
  */
 
 export type OfferReading = {
@@ -33,6 +34,10 @@ export type OfferReading = {
   facts: OfferFacts | null
   /** Why it was not read, in English, for MCP. */
   note?: string
+  /** The posting's whole text as it was read just now, personal data removed (not from the index) */
+  text?: string
+  /** The site opts out of AI use */
+  withheld?: boolean
 }
 
 export type ReadOfferDeps = {
@@ -99,14 +104,16 @@ async function readPage(
   deps: ReadOfferDeps
 ): Promise<OfferReading> {
   const input = pageInput(page.url, page.html)
-  const model = aiOptOut(page.html, new URL(page.url).hostname)
-    ? null
-    : await (deps.model ?? extractJobByModel)(input)
+  const optOut = aiOptOut(page.html, new URL(page.url).hostname)
+  const model = optOut ? null : await (deps.model ?? extractJobByModel)(input)
   const rules = extractJobByRules(input)
   const job = finishJob(input, model ? mergeFacts(model, rules) : rules)
-  if (!job) return { url, outcome: "unreadable", facts: null }
+  const text = optOut ? "" : stripPersonalData(pageText(page.html))
+  if (!job) return { url, outcome: "unreadable", facts: null, text, withheld: optOut }
   return {
     url,
+    text,
+    withheld: optOut,
     outcome: model?.company && model.title ? "read" : "partial",
     facts: {
       jobId: null,
@@ -143,12 +150,19 @@ export async function readOffer(rawUrl: string, deps: ReadOfferDeps = {}): Promi
     const job = await (deps.findByUrl ?? findJobByUrl)(candidate)
     if (job) return { url, outcome: "read", facts: factsOf(job) }
   }
-  const ingest =
-    deps.ingest ?? ((posting) => ingestOfferUrl({ url: posting, channel: "web", forTracker: true }))
+  const ingest = deps.ingest ?? ((posting) => ingestOfferUrl(posting))
   const result = await ingest(url)
   if (result.jobId) {
     const job = await (deps.findById ?? findJobById)(result.jobId)
-    if (job) return { url, outcome: "read", facts: factsOf(job) }
+    if (job) {
+      return {
+        url,
+        outcome: "read",
+        facts: factsOf(job),
+        text: result.text,
+        withheld: result.withheld,
+      }
+    }
   }
   if (result.page && signInPage(url, result.page.url)) {
     return { ...readLink(url, result), outcome: "unreadable", note: "The link asks to sign in." }

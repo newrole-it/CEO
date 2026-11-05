@@ -1,5 +1,5 @@
 import { resolver } from "@blitzjs/rpc"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { listApiTokens } from "src/server/auth/api-tokens"
 import { extensionBuildPath } from "src/server/repo"
 

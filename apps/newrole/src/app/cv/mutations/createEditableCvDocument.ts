@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { createEditableFromUpload } from "src/server/cv/structure"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 /** "Utwórz edytowalną wersję": reads an uploaded PDF into a new editable CV next to it. */

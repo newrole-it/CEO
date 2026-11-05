@@ -3,97 +3,23 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
-import {
-  ArrowRight,
-  BadgeCheck,
-  Check,
-  Code,
-  Factory,
-  FileUp,
-  House,
-  Link2,
-  Lock,
-  SquareTerminal,
-} from "lucide-react"
+import { FileUp, Lock, SquareTerminal } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { numberFormat } from "src/app/i18n/copy"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Dropzone } from "@newrole/ui/interactive"
-import { Badge, CompanyInitial } from "@newrole/ui/primitives"
 import { LinkedInMark } from "src/app/components/site/Brand"
-import { OfferCard } from "src/app/jobs/components/OfferCard"
-import type { CardOffer } from "src/app/jobs/types"
 import { setPendingFile } from "src/app/start/pending"
 
-export type LandingStats = { offers: number; companies: number | null; careerPages: number | null }
-
-const DAY = 86_400_000
-
-function demoOffer(locale: "pl" | "en"): CardOffer {
-  const pl = locale === "pl"
-  return {
-    id: "demo",
-    title: "Senior Kotlin Developer",
-    company: "Allegro",
-    viaIntermediary: false,
-    url: "",
-    excerpt: "",
-    description: "",
-    requirements: [],
-    inPoland: true,
-    city: "Warszawa",
-    countryCode: "PL",
-    workMode: "remote",
-    payListed: true,
-    payConverted: true,
-    payMin: 25000,
-    payMax: 30000,
-    payLabel: null,
-    payNote: null,
-    payCurrency: "PLN",
-    payFromOther: false,
-    paySourceUrl: null,
-    sourceKind: "company-site",
-    provider: null,
-    firstSeenAt: new Date(Date.now() - DAY).toISOString(),
-    lastSeenAt: new Date().toISOString(),
-    lastVerifiedAt: null,
-    publishedAt: null,
-    score: 87,
-    reasons: [
-      {
-        kind: "ok",
-        origin: "profile",
-        text: pl ? "Kotlin i Spring jak w Twoim stacku" : "Kotlin and Spring, like your stack",
-      },
-      {
-        kind: "ok",
-        origin: "profile",
-        text: pl ? "Widełki powyżej Twojego minimum" : "Salary above your minimum",
-      },
-      {
-        kind: "ok",
-        origin: "feedback",
-        text: pl ? "Podobna do polubionej oferty w Revolut" : "Like an offer you liked at Revolut",
-      },
-    ],
-  }
-}
-
+/** The home page before there is a profile: a CV or LinkedIn in, then offers by their link. */
 export function Landing({
-  linkedIn,
-  stats,
   finish,
 }: {
-  linkedIn: boolean
-  stats: LandingStats
   /** Signed in without a profile: the hero CTA becomes "Finish your profile". */
   finish: boolean
 }) {
-  const { t, locale } = useCopy()
+  const { t } = useCopy()
   const router = useRouter()
   const hero = useRef<HTMLElement>(null)
-  const nf = numberFormat(locale)
 
   useEffect(() => {
     const node = hero.current
@@ -118,10 +44,6 @@ export function Landing({
     router.push("/start?step=reading")
   }
 
-  // The profile comes through Claude in Chrome, the ZIP export, or a PDF. LinkedIn sign-in is optional.
-  const liHref = "/start?step=linkedin"
-  const pl = locale === "pl"
-
   return (
     <>
       <section className="hero" ref={hero} aria-labelledby="hero-title">
@@ -142,8 +64,9 @@ export function Landing({
                     <Button variant="primary" size="lg" icon={<FileUp />} onClick={open}>
                       {finish ? t("hero.finish") : t("hero.upload")}
                     </Button>
+                    {/* Claude in Chrome, the ZIP export or a PDF; LinkedIn sign-in is optional */}
                     <ButtonLink
-                      href={liHref}
+                      href="/start?step=linkedin"
                       variant="outline"
                       size="lg"
                       icon={<LinkedInMark size={20} />}
@@ -155,12 +78,6 @@ export function Landing({
                     <Link className="link" href="/start?step=source#paste">
                       {t("hero.paste")}
                     </Link>
-                    <span className="subtle" aria-hidden>
-                      ·
-                    </span>
-                    <Link className="link link--quiet" href="/jobs?tab=all">
-                      {t("hero.browse")}
-                    </Link>
                   </p>
                   <p className="hero-privacy">
                     <Lock aria-hidden /> {t("hero.privacy")}
@@ -169,32 +86,6 @@ export function Landing({
               )}
             </Dropzone>
           </div>
-
-          {stats.offers > 0 ? (
-            <p className="hero-stats">
-              <span>
-                <strong>{nf.format(stats.offers)}+</strong> {t("hero.stats.offers")}
-              </span>
-              {stats.companies ? (
-                <>
-                  <span className="sep" aria-hidden>
-                    ·
-                  </span>
-                  <span>
-                    <strong>{nf.format(stats.companies)}+</strong> {t("hero.stats.companies")}
-                  </span>
-                </>
-              ) : null}
-              <span className="sep" aria-hidden>
-                ·
-              </span>
-              <span>{t("hero.stats.pages")}</span>
-              <span className="sep" aria-hidden>
-                ·
-              </span>
-              <span>{t("hero.stats.daily")}</span>
-            </p>
-          ) : null}
         </div>
       </section>
 
@@ -216,109 +107,6 @@ export function Landing({
               </li>
             ))}
           </ol>
-        </div>
-      </section>
-
-      <section className="section" aria-labelledby="taste-title">
-        <div className="container split">
-          <div className="split__text">
-            <h2 id="taste-title" className="t-h1">
-              {t("land.taste.t")}
-            </h2>
-            <p>{t("land.taste.b")}</p>
-          </div>
-          <div className="demo" aria-hidden>
-            <OfferCard offer={demoOffer(locale)} verdict="LIKE" demo>
-              <div className="like-panel">
-                <div className="like-panel__head">
-                  <div>
-                    <h3>{t("like.title")}</h3>
-                    <p>{t("like.sub")}</p>
-                  </div>
-                </div>
-                <div className="chips">
-                  <span className="chip chip--on">
-                    <Check /> Kotlin
-                  </span>
-                  <span className="chip chip--on">
-                    <Check /> {pl ? "100% zdalnie" : "100% remote"}
-                  </span>
-                  <span className="chip chip--on">
-                    <Check /> Fintech
-                  </span>
-                  <span className="chip">
-                    <Code /> Spring
-                  </span>
-                  <span className="chip">
-                    <House /> Allegro
-                  </span>
-                  <span className="chip">
-                    <Factory /> E-commerce
-                  </span>
-                </div>
-              </div>
-            </OfferCard>
-          </div>
-        </div>
-      </section>
-
-      <section className="section" aria-labelledby="watch-title">
-        <div className="container split">
-          <div className="split__text">
-            <h2 id="watch-title" className="t-h1">
-              {t("land.watch.t")}
-            </h2>
-            <p>{t("land.watch.b")}</p>
-            <div>
-              <ButtonLink href="/companies" variant="outline" iconRight={<ArrowRight />}>
-                {t("nav.companies")}
-              </ButtonLink>
-            </div>
-          </div>
-          <div className="demo demo-watch" aria-hidden>
-            {[
-              {
-                name: "Allegro",
-                domain: "allegro.pl/praca",
-                badge: <Badge icon={<Link2 />}>SuccessFactors</Badge>,
-                jobs: 42,
-                fresh: 3,
-              },
-              {
-                name: "Synerise",
-                domain: "synerise.com/careers",
-                badge: (
-                  <Badge tone="success" icon={<BadgeCheck />}>
-                    {t("co.read.site")}
-                  </Badge>
-                ),
-                jobs: 7,
-                fresh: 0,
-              },
-              {
-                name: "Booksy",
-                domain: "booksy.com/careers",
-                badge: <Badge icon={<Link2 />}>Greenhouse</Badge>,
-                jobs: 12,
-                fresh: 1,
-              },
-            ].map((row) => (
-              <div key={row.name} className="watch-row">
-                <CompanyInitial name={row.name} />
-                <div className="watch-row__name">
-                  <strong>{row.name}</strong>
-                  <span>{row.domain}</span>
-                </div>
-                <div className="watch-row__meta">
-                  {row.badge}
-                  <span className="num">{t("co.jobs.many", { n: row.jobs })}</span>
-                  {row.fresh ? (
-                    <span className="badge badge--new">{t("co.newJobs", { n: row.fresh })}</span>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

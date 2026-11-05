@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { mailInbox } from "src/server/gmail/service"
 
 /** What Gmail changed lately and what waits for the person, above the tracker. */

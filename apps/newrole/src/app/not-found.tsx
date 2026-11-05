@@ -5,7 +5,6 @@ import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { offerIndexEnabled } from "src/server/offer-index"
 
 export async function generateMetadata() {
   return { title: translator(await getLocale())("notFound.title") }
@@ -28,11 +27,9 @@ export default async function NotFound() {
           <ButtonLink href="/" variant="primary">
             {t("notFound.home")}
           </ButtonLink>
-          {offerIndexEnabled() ? (
-            <ButtonLink href="/jobs?tab=all" variant="outline">
-              {t("notFound.offers")}
-            </ButtonLink>
-          ) : null}
+          <ButtonLink href="/offers" variant="outline">
+            {t("notFound.offers")}
+          </ButtonLink>
         </div>
       </div>
     </SiteFrame>

@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { tailorCvForJob } from "src/server/cv/tailor"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 /** "Dostosuj CV": a new CV written for the offer, or a new version of the one it already has. */

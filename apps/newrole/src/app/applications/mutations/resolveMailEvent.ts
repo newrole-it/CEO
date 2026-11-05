@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { mailInbox, resolveMailEvent } from "src/server/gmail/service"
 import { rethrowApplication } from "../schema"
 

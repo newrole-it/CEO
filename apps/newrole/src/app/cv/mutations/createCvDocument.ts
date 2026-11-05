@@ -2,7 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { createCv } from "src/server/cv/service"
 import { CvContent } from "@newrole/cv-core/schema"
-import { userOrGuest } from "src/app/feedback/guard"
+import { userOrGuest } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 /** A new editable CV: blank template, from the profile, or from imported content. */

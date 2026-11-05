@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { gmailStatus, mailLog } from "src/server/gmail/service"
 
 /** Settings → Gmail: a mailbox left connected by an earlier version, and the messages used so far. */

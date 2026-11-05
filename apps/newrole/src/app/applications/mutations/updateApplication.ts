@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { updateApplication } from "src/server/applications/service"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowApplication, UpdateApplicationInput } from "../schema"
 
 /** Status, stage label, next step, contact, notes and the other fields; each change lands on the timeline. */

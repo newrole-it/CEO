@@ -5,26 +5,21 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { useMutation } from "@blitzjs/rpc"
 import {
-  Building2,
+  BriefcaseBusiness,
   ChevronDown,
   ClipboardList,
   Coins,
   FileSearch,
   FileText,
   MessageSquareText,
-  Heart,
   ListChecks,
   LogOut,
   Menu,
   Moon,
-  RefreshCw,
-  Rows3,
   Settings,
   SquareTerminal,
   Sun,
   UserRound,
-  Bookmark,
-  Gauge,
   LogIn,
   X,
 } from "lucide-react"
@@ -35,10 +30,6 @@ import { Modal } from "@newrole/ui/interactive"
 import { LOCALE_COOKIE } from "@newrole/app-kit/languages"
 import { LogoLockup } from "./Brand"
 import type { ShellUser } from "./links"
-
-function count(n: number): string {
-  return n > 99 ? "99+" : String(n)
-}
 
 export function useThemeToggle() {
   const [dark, setDark] = useState(false)
@@ -79,25 +70,27 @@ export function useLocaleToggle() {
   }
 }
 
+/** The screens of a person with a profile or an account, in the order of the work. */
+export const APP_TABS = [
+  { href: "/cv", key: "nav.cv", icon: FileText },
+  { href: "/offers", key: "nav.offers", icon: BriefcaseBusiness },
+  { href: "/applications", key: "nav.applications", icon: ClipboardList },
+  { href: "/answers", key: "nav.answers", icon: MessageSquareText },
+  { href: "/profile", key: "nav.profile", icon: UserRound },
+] as const
+
 export function SiteHeader({
   user,
-  liked,
-  newAtWatched,
   app,
   setup,
   usage,
-  offerIndex,
 }: {
   user: ShellUser
-  liked: number
-  newAtWatched: number
   app: boolean
   /** A local install: the /setup checklist exists */
   setup: boolean
   /** The /usage tab exists for this account (usageTabVisible) */
   usage: boolean
-  /** False with OFFER_INDEX=off: the screens built on offers do not exist */
-  offerIndex: boolean
 }) {
   const { t } = useCopy()
   const pathname = usePathname()
@@ -154,8 +147,6 @@ export function SiteHeader({
     (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`))
       ? ("page" as const)
       : undefined
-  const forYouCurrent =
-    pathname === "/jobs" || (pathname.startsWith("/jobs/") && !pathname.startsWith("/jobs/saved"))
 
   const themeButton = (
     <Button
@@ -184,65 +175,19 @@ export function SiteHeader({
     <>
       <header className="site-header">
         <div className="container site-header__inner">
-          <Link
-            className="brand"
-            href={app ? (offerIndex ? "/jobs" : "/applications") : "/"}
-            aria-label={t("brandHome")}
-          >
+          <Link className="brand" href={app ? "/cv" : "/"} aria-label={t("brandHome")}>
             <LogoLockup />
           </Link>
-          {!offerIndex ? (
+          {app ? (
             <nav className="nav" aria-label={t("nav.main")}>
-              <Link href="/applications" aria-current={cur("/applications")}>
-                {t("nav.applications")}
-              </Link>
-              {usage ? (
-                <Link href="/usage" aria-current={cur("/usage")}>
-                  {t("nav.usage")}
+              {APP_TABS.map((tab) => (
+                <Link key={tab.href} href={tab.href} aria-current={cur(tab.href)}>
+                  {t(tab.key)}
                 </Link>
-              ) : null}
-            </nav>
-          ) : app ? (
-            <nav className="nav" aria-label={t("nav.main")}>
-              <Link href="/jobs" aria-current={forYouCurrent ? "page" : undefined}>
-                {t("nav.forYou")}
-              </Link>
-              <Link href="/jobs/saved" aria-current={cur("/jobs/saved")}>
-                {t("nav.saved")}
-                {liked > 0 ? <span className="badge badge--count">{count(liked)}</span> : null}
-              </Link>
-              <Link href="/applications" aria-current={cur("/applications")}>
-                {t("nav.applications")}
-              </Link>
-              <Link href="/companies" aria-current={cur("/companies")}>
-                {t("nav.companies")}
-                {newAtWatched > 0 ? (
-                  <span className="badge badge--count">{count(newAtWatched)}</span>
-                ) : null}
-              </Link>
-              <Link href="/sources" aria-current={cur("/sources")}>
-                {t("nav.sources")}
-              </Link>
-              <Link href="/sync" aria-current={cur("/sync")}>
-                {t("nav.sync")}
-              </Link>
-              {usage ? (
-                <Link href="/usage" aria-current={cur("/usage")}>
-                  {t("nav.usage")}
-                </Link>
-              ) : null}
+              ))}
             </nav>
           ) : (
             <nav className="nav" aria-label={t("nav.main")}>
-              <Link href="/jobs?tab=all" aria-current={cur("/jobs")}>
-                {t("nav.offers")}
-              </Link>
-              <Link href="/companies" aria-current={cur("/companies")}>
-                {t("nav.companies")}
-              </Link>
-              <Link href="/sources" aria-current={cur("/sources")}>
-                {t("nav.sources")}
-              </Link>
               <Link href="/connect" aria-current={cur("/connect")}>
                 {t("nav.claude")}
               </Link>
@@ -293,18 +238,16 @@ export function SiteHeader({
                     </Button>
                     {menu ? (
                       <div className="menu" role="menu" ref={menuRef}>
-                        <Link className="menu__item" role="menuitem" href="/profile">
-                          <UserRound aria-hidden /> {t("nav.profile")}
-                        </Link>
-                        <Link className="menu__item" role="menuitem" href="/applications">
-                          <ClipboardList aria-hidden /> {t("nav.applications")}
-                        </Link>
-                        <Link className="menu__item" role="menuitem" href="/cv">
-                          <FileText aria-hidden /> {t("nav.cv")}
-                        </Link>
-                        <Link className="menu__item" role="menuitem" href="/answers">
-                          <MessageSquareText aria-hidden /> {t("nav.answers")}
-                        </Link>
+                        {APP_TABS.map((tab) => (
+                          <Link
+                            key={tab.href}
+                            className="menu__item"
+                            role="menuitem"
+                            href={tab.href}
+                          >
+                            <tab.icon aria-hidden /> {t(tab.key)}
+                          </Link>
+                        ))}
                         {setup ? (
                           <Link className="menu__item" role="menuitem" href="/setup">
                             <ListChecks aria-hidden /> {t("nav.setup")}
@@ -315,7 +258,7 @@ export function SiteHeader({
                             <Coins aria-hidden /> {t("nav.usage")}
                           </Link>
                         ) : null}
-                        <Link className="menu__item" role="menuitem" href="/login?returnTo=/jobs">
+                        <Link className="menu__item" role="menuitem" href="/login?returnTo=/cv">
                           <LogIn aria-hidden /> {t("nav.signin")}
                         </Link>
                       </div>
@@ -347,23 +290,11 @@ export function SiteHeader({
                         <Link className="menu__item" role="menuitem" href="/profile">
                           <UserRound aria-hidden /> {t("nav.profile")}
                         </Link>
-                        <Link className="menu__item" role="menuitem" href="/cv">
-                          <FileText aria-hidden /> {t("nav.cv")}
-                        </Link>
-                        <Link className="menu__item" role="menuitem" href="/answers">
-                          <MessageSquareText aria-hidden /> {t("nav.answers")}
-                        </Link>
                         <Link className="menu__item" role="menuitem" href="/profile/audit">
                           <FileSearch aria-hidden /> {t("nav.audit")}
                         </Link>
-                        <Link className="menu__item" role="menuitem" href="/searches">
-                          <Bookmark aria-hidden /> {t("nav.searches")}
-                        </Link>
                         <Link className="menu__item" role="menuitem" href="/settings">
                           <Settings aria-hidden /> {t("nav.settings")}
-                        </Link>
-                        <Link className="menu__item" role="menuitem" href="/sync">
-                          <RefreshCw aria-hidden /> {t("nav.sync")}
                         </Link>
                         {setup ? (
                           <Link className="menu__item" role="menuitem" href="/setup">
@@ -373,11 +304,6 @@ export function SiteHeader({
                         {usage ? (
                           <Link className="menu__item" role="menuitem" href="/usage">
                             <Coins aria-hidden /> {t("nav.usage")}
-                          </Link>
-                        ) : null}
-                        {user?.role === "ADMIN" ? (
-                          <Link className="menu__item" role="menuitem" href="/coverage">
-                            <Gauge aria-hidden /> {t("nav.coverage")}
                           </Link>
                         ) : null}
                         <button
@@ -460,12 +386,6 @@ export function SiteHeader({
             icon={<X />}
           />
         </div>
-        <Link className="nav-drawer__link" href="/jobs?tab=all">
-          <Rows3 aria-hidden /> {t("nav.offers")}
-        </Link>
-        <Link className="nav-drawer__link" href="/companies">
-          <Building2 aria-hidden /> {t("nav.companies")}
-        </Link>
         <Link className="nav-drawer__link" href="/connect">
           <SquareTerminal aria-hidden /> {t("nav.claude")}
         </Link>
@@ -476,9 +396,6 @@ export function SiteHeader({
         ) : null}
         <Link className="nav-drawer__link" href="/login">
           <LogIn aria-hidden /> {t("nav.signin")}
-        </Link>
-        <Link className="nav-drawer__link" href="/jobs/saved">
-          <Heart aria-hidden /> {t("nav.saved")}
         </Link>
         <div className="nav-drawer__foot">
           <Button

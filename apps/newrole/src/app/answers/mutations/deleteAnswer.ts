@@ -1,5 +1,5 @@
 import { resolver } from "@blitzjs/rpc"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { deleteAnswer } from "src/server/answers/service"
 import { IdInput, rethrowAnswer } from "../schema"
 

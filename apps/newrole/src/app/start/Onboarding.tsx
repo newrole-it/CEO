@@ -16,7 +16,7 @@ import {
   SquareTerminal,
 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
-import { numberFormat, type CopyKey } from "src/app/i18n/copy"
+import type { CopyKey } from "src/app/i18n/copy"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Dropzone, isPdf, isZip, useToast } from "@newrole/ui/interactive"
 import { Banner } from "@newrole/ui/primitives"
@@ -79,7 +79,6 @@ export function Onboarding({
   initialStep,
   linkedIn,
   browserImport,
-  stats,
   firstName,
   photo,
   after,
@@ -87,13 +86,12 @@ export function Onboarding({
   initialStep: Step
   linkedIn: boolean
   browserImport: boolean
-  stats: { offers: number; companies: number | null; careerPages: number | null }
   firstName: string | null
   photo: string | null
   /** Where a saved profile goes without a returnTo: /setup mid-checklist, else the feed */
   after: string
 }) {
-  const { t, locale } = useCopy()
+  const { t } = useCopy()
   const router = useRouter()
   const toast = useToast()
   const [step, setStep] = useState<Step>(initialStep)
@@ -263,7 +261,6 @@ export function Onboarding({
   }
 
   const onFile = (file: File) => read({ kind: "file", file })
-  const nf = numberFormat(locale)
 
   /* ----------------------------------------------------------- source tiles */
   const tiles = (
@@ -499,17 +496,6 @@ export function Onboarding({
               </div>
             ) : null}
           </div>
-          {stats.offers > 0 ? (
-            <aside className="card card--soft card--pad t-sm muted" style={{ alignSelf: "start" }}>
-              {stats.companies && stats.careerPages
-                ? t("onb.read.index", {
-                    offers: nf.format(stats.offers),
-                    companies: nf.format(stats.companies),
-                    pages: nf.format(stats.careerPages),
-                  })
-                : t("onb.read.indexShort", { offers: nf.format(stats.offers) })}
-            </aside>
-          ) : null}
         </div>
       </div>
     )

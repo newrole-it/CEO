@@ -26,7 +26,7 @@ function stop(kind: NodeJS.Signals) {
 process.on("SIGINT", () => stop("SIGINT"))
 process.on("SIGTERM", () => stop("SIGTERM"))
 
-console.log("newrole.it worker listening for searches and index crawls")
+console.log("newrole.it worker listening for Google Sheet syncs")
 workerLoop(signal)
   .then(() => {
     console.log("newrole.it worker stopped")

@@ -2,7 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { listApplications } from "src/server/applications/service"
 import { CsvImportError, importCsv } from "src/server/applications/sheet"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 
 /** "Importuj CSV": adds the file's applications, then returns the whole list for the table. */
 export default resolver.pipe(

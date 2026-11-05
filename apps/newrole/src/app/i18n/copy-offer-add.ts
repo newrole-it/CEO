@@ -1,23 +1,23 @@
 /**
- * Strings for "Dodaj ofertę" on /jobs (src/app/jobs/components/AddOffer.tsx): an offer the index
- * does not have, added from its link (src/server/jobs/add-offer.ts). Keys start with "oa.".
+ * Strings for "Dodaj ofertę" on /offers (src/app/offers/AddOffer.tsx): an offer added from its link,
+ * read whole (src/server/offers/service.ts). Keys start with "oa.".
  */
 export const offerAddPl = {
   "oa.cta": "Dodaj ofertę",
-  "oa.title": "Dodaj ofertę spoza newrole.it",
+  "oa.title": "Dodaj ofertę z linku",
   "oa.lead":
-    "Wklej link do oferty, której tu nie ma. Odczytamy ją ze strony i dodamy. Dalej działa jak każda inna: dostosujesz pod nią CV i list motywacyjny, zapiszesz ją albo oznaczysz, że aplikujesz.",
+    "Wklej link do ogłoszenia. Pobierzemy całą treść, a potem dopasujesz do niej CV i list motywacyjny.",
   "oa.url": "Link do oferty",
   "oa.urlHint":
     "Najlepiej ze strony firmy albo jej systemu rekrutacji. Linków z LinkedIn nie czytamy.",
   "oa.check": "Odczytaj ofertę",
   "oa.reading": "Czytam ofertę. To może potrwać kilkanaście sekund…",
-  "oa.read": "Oferta odczytana ze strony. Sprawdź dane i dodaj ją.",
+  "oa.read": "Odczytaliśmy ofertę ze strony. Sprawdź dane i treść, potem ją dodaj.",
   "oa.partial": "Odczytaliśmy tylko część danych. Sprawdź je i uzupełnij resztę.",
   "oa.linkOnly":
-    "Tej strony nie czytamy automatycznie, więc wpisz firmę i stanowisko. Treść oferty wkleisz przy dostosowaniu CV.",
+    "Tej strony nie czytamy automatycznie. Wpisz firmę i stanowisko i wklej treść ogłoszenia.",
   "oa.unreadable":
-    "Nie udało się odczytać tej strony. Wpisz firmę i stanowisko, a treść oferty wkleisz przy dostosowaniu CV.",
+    "Nie udało się odczytać tej strony. Wpisz firmę i stanowisko i wklej treść ogłoszenia.",
   "oa.company": "Firma",
   "oa.role": "Stanowisko",
   "oa.location": "Lokalizacja (opcjonalnie)",
@@ -50,19 +50,19 @@ export const offerAddPl = {
 
 export const offerAddEn: Record<keyof typeof offerAddPl, string> = {
   "oa.cta": "Add offer",
-  "oa.title": "Add an offer from elsewhere",
+  "oa.title": "Add an offer by its link",
   "oa.lead":
-    "Paste the link to an offer that isn't here. We read it from the page and add it. From then on it works like any other: tailor your CV and cover letter to it, save it, or mark it as applied.",
+    "Paste the link to a job posting. We read the whole text, then you tailor your CV and cover letter to it.",
   "oa.url": "Offer link",
   "oa.urlHint": "Best from the company's site or its ATS. LinkedIn links are not read.",
   "oa.check": "Read the offer",
   "oa.reading": "Reading the offer. This can take a dozen seconds or so…",
-  "oa.read": "Offer read from the page. Check the details and add it.",
+  "oa.read": "We read the offer from the page. Check the details and the text, then add it.",
   "oa.partial": "We could read only part of it. Check it and fill in the rest.",
   "oa.linkOnly":
-    "This site is not read automatically, so enter the company and role. You can paste the offer's text when you tailor your CV.",
+    "This site is not read automatically. Enter the company and role and paste the posting's text.",
   "oa.unreadable":
-    "The page could not be read. Enter the company and role, and paste the offer's text when you tailor your CV.",
+    "The page could not be read. Enter the company and role and paste the posting's text.",
   "oa.company": "Company",
   "oa.role": "Role",
   "oa.location": "Location (optional)",

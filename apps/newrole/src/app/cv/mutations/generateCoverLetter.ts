@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { generateLetterForJob } from "src/server/cv/tailor"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 /** The cover letter for an offer: a new document, or a new version of the one it already has. */

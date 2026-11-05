@@ -1,5 +1,5 @@
 import { resolver } from "@blitzjs/rpc"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { ApplicantInfoSchema } from "@newrole/profile/applicant"
 import { saveApplicant } from "src/server/profile/applicant"
 

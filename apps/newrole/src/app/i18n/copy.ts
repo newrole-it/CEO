@@ -5,8 +5,8 @@ import { cvEn, cvPl, tailorEn, tailorPl } from "@newrole/cv-editor/copy"
 import { extensionEn, extensionPl } from "./copy-extension"
 import { gmailEn, gmailPl } from "./copy-gmail"
 import { offerAddEn, offerAddPl } from "./copy-offer-add"
+import { offersEn, offersPl } from "./copy-offers"
 import { setupEn, setupPl } from "./copy-setup"
-import { syncEn, syncPl } from "./copy-sync"
 import { usageEn, usagePl } from "./copy-usage"
 import { profileEn, profilePl } from "@newrole/profile-ui/copy-profile"
 import { uiEn, uiPl } from "@newrole/ui/copy"
@@ -52,40 +52,30 @@ const basePl = {
   "footer.changelog": "Historia zmian",
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
-  "onb.skip": "Pomiń, przeglądaj oferty",
+  "onb.skip": "Pomiń na razie",
 
   // landing
-  "hero.title1": "Oferty z całego świata.",
-  "hero.title2": "Wyniki z Twojego kraju.",
+  "hero.title1": "Twoje CV pod każdą ofertę.",
+  "hero.title2": "Wklej link i dopasuj.",
   "hero.sub":
-    "Czytamy strony kariery pracodawców na całym świecie. Szukasz w swoim kraju i widzisz jego oferty oraz pracę zdalną, którą możesz stamtąd wykonywać. Wrzuć CV albo połącz LinkedIn, a ułożymy je według Twojego profilu.",
+    "Zrób profil z CV albo z LinkedIn. Potem wklejaj linki do ofert: newrole.it pobiera całe ogłoszenie, dopasowuje do niego Twoje CV i pisze list motywacyjny. Pracodawców, daty i liczby zostawia takie, jakie masz w CV.",
   "hero.drop": "Upuść tutaj swoje CV (PDF)",
   "hero.upload": "Wrzuć CV (PDF)",
   "hero.paste": "Wklej tekst CV",
-  "hero.browse": "Przeglądaj bez profilu →",
   "hero.privacy":
     "PDF czytamy w pamięci i nie zapisujemy pliku. Na koncie zostają sekcje odczytane z CV i profil, który zatwierdzisz.",
-  "hero.stats.offers": "ofert",
-  "hero.stats.companies": "firm",
-  "hero.stats.pages": "prosto ze stron kariery",
-  "hero.stats.daily": "odświeżane codziennie",
   "hero.finish": "Dokończ profil",
   "hero.finishSub": "Brakuje tylko Twojego profilu. Wrzuć CV — resztę zrobimy za Ciebie.",
   "how.title": "Jak to działa",
   "how.1.t": "Profil z CV",
-  "how.1.b": "Rola, stack i widełki w kilkanaście sekund.",
-  "how.2.t": "Oferty z Twojego kraju",
-  "how.2.b": "Prosto ze stron firm, plus praca zdalna, którą możesz stamtąd wykonywać.",
-  "how.3.t": "Uczy się, co lubisz",
-  "how.3.b": "Polub ofertę i powiedz, co w niej dobre.",
-  "land.taste.t": "Powiedz, co Ci się podoba — znajdziemy więcej",
-  "land.taste.b":
-    "Po każdym polubieniu jednym kliknięciem zaznaczasz, co w ofercie jest dobre: stack, praca zdalna, branża. Na tej podstawie szukamy podobnych i pokazujemy, który sygnał zadziałał.",
-  "land.watch.t": "Nie przegapisz oferty",
-  "land.watch.b": "Obserwuj firmy, a pokażemy każdą nową ofertę z ich strony kariery.",
+  "how.1.b": "Rola, doświadczenie i umiejętności w kilkanaście sekund, z PDF albo z LinkedIn.",
+  "how.2.t": "Wklej link do oferty",
+  "how.2.b": "Pobieramy całe ogłoszenie i masz je w jednym miejscu, razem z dokumentami.",
+  "how.3.t": "CV i list pod tę ofertę",
+  "how.3.b": "Poprawiasz je na stronach A4, porównujesz wersje i pobierasz PDF.",
   "land.oss.t": "Open source. Działa u Ciebie.",
   "land.oss.b":
-    "Pełna funkcjonalność lokalnie. Podłącz Claude Code, a będzie szukać za Ciebie na Twojej licencji.",
+    "Wszystko działa lokalnie. Podłącz Claude Code, a CV i listy napisze model z Twojej subskrypcji, bez kluczy API.",
   "land.oss.cta": "Połącz z Claude Code",
 
   // onboarding
@@ -99,7 +89,7 @@ const basePl = {
   "onb.read.title": "Czytam Twój profil",
   "onb.read.s1": "Wczytuję plik",
   "onb.read.s2": "Czytam doświadczenie i umiejętności",
-  "onb.read.s3": "Szukam pasujących ofert",
+  "onb.read.s3": "Układam profil",
   "onb.read.usual": "Zwykle trwa to 5–20 sekund.",
   "onb.read.counting": "Model czyta Twoje CV… {s} s",
   "onb.read.slow": "Trwa dłużej niż zwykle.",
@@ -406,6 +396,7 @@ const basePl = {
   "od.checked": "Ostatnio sprawdzona {date}",
   "od.report": "Zgłoś problem z ofertą",
   "od.back": "← Wróć do ofert",
+  "pr.toCv": "Twoje CV →",
   "od.notFound": "Ta oferta nie jest już dostępna.",
 
   // saved
@@ -627,7 +618,7 @@ const basePl = {
   "notFound.title": "Nie ma takiej strony",
   "notFound.body": "Adres mógł się zmienić albo strona została usunięta.",
   "notFound.home": "Strona główna",
-  "notFound.offers": "Przeglądaj oferty",
+  "notFound.offers": "Twoje oferty",
   "footer.nav": "Stopka",
   "cov.th.employer": "Pracodawca",
   "cov.th.platform": "Platforma",
@@ -660,11 +651,11 @@ const pl = {
   ...answersPl,
   ...extensionPl,
   ...setupPl,
-  ...syncPl,
   ...gmailPl,
   ...tailorPl,
   ...usagePl,
   ...offerAddPl,
+  ...offersPl,
 }
 
 export type CopyKey = keyof typeof pl
@@ -679,11 +670,11 @@ const en: Dict = {
   ...answersEn,
   ...extensionEn,
   ...setupEn,
-  ...syncEn,
   ...gmailEn,
   ...tailorEn,
   ...usageEn,
   ...offerAddEn,
+  ...offersEn,
   skip: "Skip to content",
   brandHome: "newrole.it, home",
   "nav.forYou": "For you",
@@ -716,39 +707,29 @@ const en: Dict = {
   "footer.changelog": "Changelog",
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
-  "onb.skip": "Skip, browse offers",
+  "onb.skip": "Skip for now",
 
-  "hero.title1": "Global offers.",
-  "hero.title2": "Local search.",
+  "hero.title1": "Your CV for every offer.",
+  "hero.title2": "Paste a link and tailor.",
   "hero.sub":
-    "We read employers' career pages worldwide. Search in your country and you see its offers plus remote roles you can do from there. Upload your CV or connect LinkedIn and we rank them against your profile.",
+    "Build your profile from a CV or LinkedIn. Then paste links to job offers: newrole.it reads the whole posting, tailors your CV to it and writes a cover letter. Employers, dates and numbers stay as your CV has them.",
   "hero.drop": "Drop your CV (PDF) here",
   "hero.upload": "Upload CV (PDF)",
   "hero.paste": "Paste CV text",
-  "hero.browse": "Browse without a profile →",
   "hero.privacy":
     "We read the PDF in memory and never save the file. Your account keeps the sections read from the CV and the profile you confirm.",
-  "hero.stats.offers": "offers",
-  "hero.stats.companies": "companies",
-  "hero.stats.pages": "straight from career pages",
-  "hero.stats.daily": "refreshed daily",
   "hero.finish": "Finish your profile",
   "hero.finishSub": "All that's missing is your profile. Upload a CV — we'll do the rest.",
   "how.title": "How it works",
   "how.1.t": "Profile from your CV",
-  "how.1.b": "Role, stack and salary in seconds.",
-  "how.2.t": "Offers from your country",
-  "how.2.b": "Straight from company sites, plus remote roles you can do from there.",
-  "how.3.t": "Learns what you like",
-  "how.3.b": "Like an offer and say what's good about it.",
-  "land.taste.t": "Tell us what you like — we'll find more",
-  "land.taste.b":
-    "After each like, one click marks what's good about the offer: stack, remote, industry. We use it to find similar roles and always show which signal applied.",
-  "land.watch.t": "Never miss an offer",
-  "land.watch.b": "Watch companies and we'll show every new offer from their career page.",
+  "how.1.b": "Role, experience and skills in seconds, from a PDF or LinkedIn.",
+  "how.2.t": "Paste a link to an offer",
+  "how.2.b": "We read the whole posting and keep it in one place with your documents.",
+  "how.3.t": "A CV and letter for that offer",
+  "how.3.b": "Edit them on A4 pages, compare versions and download a PDF.",
   "land.oss.t": "Open source. Runs on your machine.",
   "land.oss.b":
-    "Everything works locally. Connect Claude Code and it searches for you on your own licence.",
+    "Everything works locally. Connect Claude Code and a model on your own subscription writes your CVs and letters, no API keys.",
   "land.oss.cta": "Connect Claude Code",
 
   "onb.source.title": "Where shall we start?",
@@ -761,7 +742,7 @@ const en: Dict = {
   "onb.read.title": "Reading your profile",
   "onb.read.s1": "Uploading the file",
   "onb.read.s2": "Reading experience and skills",
-  "onb.read.s3": "Finding matching offers",
+  "onb.read.s3": "Laying out your profile",
   "onb.read.usual": "This usually takes 5–20 seconds.",
   "onb.read.counting": "The model is reading your CV… {s}s",
   "onb.read.slow": "Taking longer than usual.",
@@ -1064,6 +1045,7 @@ const en: Dict = {
   "od.checked": "Last checked {date}",
   "od.report": "Report a problem",
   "od.back": "← Back to offers",
+  "pr.toCv": "Your CV →",
   "od.notFound": "This offer is no longer available.",
 
   "saved.title": "Saved",
@@ -1280,7 +1262,7 @@ const en: Dict = {
   "notFound.title": "This page doesn't exist",
   "notFound.body": "The address may have changed, or the page was removed.",
   "notFound.home": "Home page",
-  "notFound.offers": "Browse offers",
+  "notFound.offers": "Your offers",
   "footer.nav": "Footer",
   "cov.th.employer": "Employer",
   "cov.th.platform": "Platform",

@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { duplicateCv } from "src/server/cv/service"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 export default resolver.pipe(

@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
-import { userOrGuest } from "src/app/feedback/guard"
+import { userOrGuest } from "src/app/users/guard"
 
 /**
  * Reading a CV needs a session (it calls the model), so a first-time visitor gets the guest

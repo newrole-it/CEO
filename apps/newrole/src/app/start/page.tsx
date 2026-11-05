@@ -3,7 +3,6 @@ import { linkedInBrowserAvailable } from "@newrole/profile/linkedin-browser"
 import { isLocalInstall } from "src/server/local-install"
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { indexStats, roundDown } from "src/app/components/landing/stats"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
@@ -34,10 +33,7 @@ export default async function StartPage({
     searchParams,
     invoke(getCurrentUser, null),
   ])
-  const [stats, back] = await Promise.all([
-    indexStats().catch(() => ({ offers: 0, companies: null, careerPages: null })),
-    setupBack(user?.id ?? null),
-  ])
+  const back = await setupBack(user?.id ?? null)
   const firstName = user?.name?.trim().split(/\s+/)[0] ?? null
   return (
     <SiteFrame user={user} locale={locale} variant="focus">
@@ -47,12 +43,7 @@ export default async function StartPage({
         browserImport={linkedInBrowserAvailable(isLocalInstall())}
         firstName={user && user.role !== "GUEST" ? firstName : null}
         photo={user?.imageUrl ?? null}
-        after={back ?? "/jobs?welcome=1"}
-        stats={{
-          offers: roundDown(stats.offers),
-          companies: stats.companies ? roundDown(stats.companies) : null,
-          careerPages: stats.careerPages ? roundDown(stats.careerPages) : null,
-        }}
+        after={back ?? "/cv?welcome=1"}
       />
     </SiteFrame>
   )

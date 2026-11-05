@@ -16,7 +16,6 @@ function fresh(overrides: Partial<SetupFacts> = {}): SetupFacts {
   return {
     db: { ok: true, pendingMigrations: 0 },
     worker: { lastSeenAt: new Date(now.getTime() - 5_000) },
-    index: { offers: 0, companies: 0 },
     claude: { provider: "claude-cli", installed: true, loggedIn: true },
     chrome: true,
     user: { signedIn: false, guest: false, email: null },
@@ -44,7 +43,6 @@ describe("buildSteps", () => {
       "db",
       "worker",
       "claude",
-      "index",
       "account",
       "profile",
       "details",
@@ -67,13 +65,6 @@ describe("buildSteps", () => {
     const old = fresh({ worker: { lastSeenAt: new Date(now.getTime() - 120_000) } })
     expect(step(old, "worker")).toMatchObject({ state: "todo", command: "npm run worker" })
     expect(step(fresh({ worker: { lastSeenAt: null } }), "worker").state).toBe("todo")
-  })
-
-  it("waits for the index while the worker runs, and asks for the worker when it does not", () => {
-    expect(step(fresh(), "index")).toMatchObject({ state: "wait", note: "filling" })
-    expect(step(fresh({ worker: { lastSeenAt: null } }), "index").note).toBe("needsWorker")
-    const filled = fresh({ index: { offers: 16000, companies: 250 } })
-    expect(step(filled, "index")).toMatchObject({ state: "done", vars: { offers: 16000 } })
   })
 
   it("separates a missing Claude from a signed-out one, and accepts an API key instead", () => {
@@ -156,7 +147,7 @@ describe("nextStep", () => {
     expect(nextStep(buildSteps(facts))?.id).toBe("db")
   })
 
-  it("does not point at a step that only needs time", () => {
+  it("points at nothing once every step is done", () => {
     const facts = fresh({
       user: { signedIn: true, guest: false, email: "a@b.pl" },
       profile: true,
@@ -171,7 +162,7 @@ describe("nextStep", () => {
       sheet: { connected: true, lastSyncedAt: now, lastError: null },
     }
     expect(nextStep(buildSteps(all))).toBeNull()
-    expect(progress(buildSteps(all))).toEqual({ done: 10, total: 11 })
+    expect(progress(buildSteps(all))).toEqual({ done: 10, total: 10 })
   })
 })
 
@@ -185,7 +176,7 @@ describe("setupDone", () => {
     mcp: { lastSeenAt: now, command: null },
   })
 
-  it("is done with only optional steps and the filling index left", () => {
+  it("is done with only optional steps left", () => {
     expect(setupDone(buildSteps(finished))).toBe(true)
   })
 

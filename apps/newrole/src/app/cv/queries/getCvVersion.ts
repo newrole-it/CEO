@@ -2,7 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import { z } from "zod"
 import { getVersion } from "src/server/cv/versions"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 
 /** One version with its content, to compare it with the document. */
 export default resolver.pipe(

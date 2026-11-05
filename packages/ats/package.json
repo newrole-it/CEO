@@ -1,0 +1,25 @@
+{
+  "name": "@newrole/ats",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Reading job offers from ATS boards and career sites: Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Teamtailor, Recruitee, Personio, Traffit, Pinpoint, Workday, SuccessFactors and more, career-site sitemaps and job feeds, board detection on a careers page, and one offer from its link. Keeps no data: the daily page cap and the HTTP client come from the app.",
+  "sideEffects": false,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@newrole/matching": "0.1.0",
+    "@newrole/offers": "0.1.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.6.3",
+    "vitest": "0.25.3"
+  }
+}

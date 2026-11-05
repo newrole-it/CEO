@@ -14,8 +14,6 @@
     "prepare": "husky install",
     "dev": "npm run dev -w @newrole/app",
     "worker": "npm run worker -w @newrole/app",
-    "harvest": "npm run harvest -w @newrole/app",
-    "catalog": "npm run catalog -w @newrole/app",
     "mcp": "npm run --silent mcp -w @newrole/app",
     "dev:all": "concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run worker\"",
     "build": "npm run build -w @newrole/app",

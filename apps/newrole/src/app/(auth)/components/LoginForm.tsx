@@ -21,7 +21,7 @@ import { safeReturnTo } from "src/shared/return-to"
  */
 export const LoginForm = ({
   local = false,
-  after = "/jobs",
+  after = "/cv",
 }: {
   local?: boolean
   after?: string

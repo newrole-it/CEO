@@ -10,7 +10,6 @@ export type StepId =
   | "db"
   | "worker"
   | "claude"
-  | "index"
   | "account"
   | "profile"
   | "details"
@@ -42,7 +41,6 @@ export type SetupStep = {
 export type SetupFacts = {
   db: { ok: boolean; pendingMigrations: number }
   worker: { lastSeenAt: Date | null }
-  index: { offers: number; companies: number }
   claude: {
     provider: "openai" | "claude-cli" | "none"
     installed: boolean
@@ -118,15 +116,6 @@ function claudeStep({ claude }: SetupFacts): SetupStep {
     return { ...base, state: "todo", note: "login", command: "claude auth login" }
   }
   return { ...base, state: "done", note: "ok" }
-}
-
-function indexStep(facts: SetupFacts): SetupStep {
-  const base = { id: "index", group: "run", importance: "recommended" } as const
-  const { offers, companies } = facts.index
-  if (offers > 0) return { ...base, state: "done", note: "ok", vars: { offers, companies } }
-  if (workerAlive(facts.worker.lastSeenAt, facts.now))
-    return { ...base, state: "wait", note: "filling" }
-  return { ...base, state: "todo", note: "needsWorker" }
 }
 
 function accountStep({ user }: SetupFacts): SetupStep {
@@ -207,7 +196,6 @@ export function buildSteps(facts: SetupFacts): SetupStep[] {
     dbStep(facts.db),
     workerStep(facts),
     claudeStep(facts),
-    indexStep(facts),
     accountStep(facts),
     profileStep(facts),
     detailsStep(facts),

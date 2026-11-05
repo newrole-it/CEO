@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { createApplication } from "src/server/applications/service"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { CreateApplicationInput, rethrowApplication } from "../schema"
 
 /** "Dodaj aplikację": by offer URL (filled from the index) or company + role. Dedupes by offer and URL. */

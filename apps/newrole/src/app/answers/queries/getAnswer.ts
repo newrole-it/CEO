@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { answerOffers, answerVariants, getAnswer } from "src/server/answers/service"
 import { IdInput } from "../schema"
 

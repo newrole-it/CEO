@@ -2,7 +2,7 @@ import "./only-test-db"
 import { after, test } from "node:test"
 import assert from "node:assert/strict"
 import db from "db"
-import { reserveHostSlot } from "src/server/crawler/host-pace"
+import { reserveHostSlot } from "src/server/fetch/host-pace"
 
 const host = `pace-${Date.now()}.example`
 

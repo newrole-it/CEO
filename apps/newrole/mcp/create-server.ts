@@ -24,13 +24,15 @@ export const SHARED_SERVER_TOOLS = [
   "cv_get",
   "cv_list",
   "cv_update",
-  "discovery_brief",
+  "offer_add",
+  "offer_get",
+  "offers_list",
   "profile_get",
   "profile_import",
   "sheet_status",
   "sheet_sync",
 ]
-export const SHARED_SERVER_PROMPTS = ["apply", "hunt", "onboard", "pipeline"]
+export const SHARED_SERVER_PROMPTS = ["apply", "onboard", "pipeline"]
 
 function sharedOnly(server: McpServer): McpServer {
   const tools = new Set(SHARED_SERVER_TOOLS)

@@ -12,10 +12,11 @@ export const setupPl = {
   "setup.progressLabel": "Postęp konfiguracji",
   "setup.ready.title": "Podstawy działają. Możesz szukać ofert.",
   "setup.ready.body": "Pozostałe kroki są opcjonalne. Wrócisz do nich z menu „Konfiguracja”.",
-  "setup.ready.cta": "Przejdź do ofert",
+  "setup.ready.cta": "Przejdź do CV",
   "setup.done.title": "Wszystko połączone",
-  "setup.done.body": "Wszystkie kroki konfiguracji są gotowe. Możesz zacząć szukać ofert.",
-  "setup.done.cta": "Przejdź do ofert",
+  "setup.done.body":
+    "Wszystkie kroki konfiguracji są gotowe. Możesz dodawać oferty i dopasowywać do nich CV.",
+  "setup.done.cta": "Przejdź do CV",
   "setup.done.stay": "Zostań tutaj",
   "setup.skip": "Pomiń na razie, pokaż oferty",
   "setup.offline": "Nie mogę odczytać statusu. Sprawdź, czy aplikacja działa w terminalu.",
@@ -45,7 +46,7 @@ export const setupPl = {
     "Baza wymaga aktualizacji (migracje do wykonania: {n}). Zatrzymaj aplikację i worker (Ctrl+C), a potem:",
 
   "setup.worker.title": "Worker",
-  "setup.worker.why": "Pobiera oferty ze stron firm w tle i aktualizuje arkusz.",
+  "setup.worker.why": "Aktualizuje w tle Twój arkusz Google z aplikacjami.",
   "setup.worker.ok": "Działa w tle.",
   "setup.worker.stopped":
     "Nie działa, więc oferty się nie aktualizują. Uruchom go w osobnym terminalu:",
@@ -58,13 +59,6 @@ export const setupPl = {
   "setup.claude.missing":
     "Nie jest zainstalowany. Po instalacji zaloguj się poleceniem claude auth login.",
   "setup.claude.login": "Zainstalowany, ale niezalogowany.",
-
-  "setup.index.title": "Oferty w indeksie",
-  "setup.index.why": "Worker czyta publiczne strony kariery powoli, żeby ich nie obciążać.",
-  "setup.index.ok": "{offers} ofert z {companies} firm.",
-  "setup.index.filling":
-    "Pierwsze oferty pojawią się za kilka minut. Nie musisz czekać, przejdź dalej.",
-  "setup.index.needsWorker": "Czeka na uruchomienie workera.",
 
   "setup.account.title": "Konto",
   "setup.account.why": "Twoje dane zostają w lokalnej bazie. Nic nie trafia do nas.",
@@ -137,10 +131,10 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.progressLabel": "Setup progress",
   "setup.ready.title": "The basics work. You can look for jobs.",
   "setup.ready.body": "The other steps are optional. Come back to them from the “Setup” menu.",
-  "setup.ready.cta": "Go to offers",
+  "setup.ready.cta": "Go to your CV",
   "setup.done.title": "Everything is connected",
-  "setup.done.body": "Every setup step is done. You can start looking for jobs.",
-  "setup.done.cta": "Go to offers",
+  "setup.done.body": "Every setup step is done. Add offers and tailor your CV to them.",
+  "setup.done.cta": "Go to your CV",
   "setup.done.stay": "Stay here",
   "setup.skip": "Skip for now, show offers",
   "setup.offline": "Can't read the status. Check that the app is running in your terminal.",
@@ -170,7 +164,7 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
     "The database needs an update (migrations to run: {n}). Stop the app and the worker (Ctrl+C), then:",
 
   "setup.worker.title": "Worker",
-  "setup.worker.why": "Reads offers from company sites in the background and updates your sheet.",
+  "setup.worker.why": "Keeps your Google Sheet of applications up to date in the background.",
   "setup.worker.ok": "Running in the background.",
   "setup.worker.stopped":
     "Not running, so offers aren't updating. Start it in a separate terminal:",
@@ -182,12 +176,6 @@ export const setupEn: Record<keyof typeof setupPl, string> = {
   "setup.claude.api": "You're using an API key from .env.",
   "setup.claude.missing": "Not installed. After installing, sign in with claude auth login.",
   "setup.claude.login": "Installed, but not signed in.",
-
-  "setup.index.title": "Offers in the index",
-  "setup.index.why": "The worker reads public career pages slowly, so it doesn't strain them.",
-  "setup.index.ok": "{offers} offers from {companies} companies.",
-  "setup.index.filling": "The first offers appear in a few minutes. No need to wait, carry on.",
-  "setup.index.needsWorker": "Waiting for the worker to start.",
 
   "setup.account.title": "Account",
   "setup.account.why": "Your data stays in the local database. Nothing reaches us.",

@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { deleteCv, listCvs } from "src/server/cv/service"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 /** Deletes a CV; a deleted default promotes the newest. Returns the list so the UI shows the new default. */

@@ -55,8 +55,8 @@ export async function eraseAccount(userId: number) {
         payload: { path: ["userId"], equals: userId },
       },
     })
-    // Applications, CVs, answers, API tokens, the sheet and Gmail links and the mail log cascade
-    // with the user row below.
+    // Applications, CVs, the offers kept with their text, answers, API tokens, the sheet and Gmail
+    // links and the mail log cascade with the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
     await tx.offerFeedback.deleteMany({ where: { userId } })
     await tx.watchedCompany.deleteMany({ where: { userId } })

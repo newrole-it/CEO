@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { clampLimit, offerLine } from "./format"
-import { sinceDate, targetWords, titleWords } from "./jobs"
+import { clampLimit } from "./format"
 import { profileData } from "./profile"
 import { emptyProfileDraft } from "@newrole/profile/schema"
 import { pickUser } from "./user"
@@ -64,51 +63,10 @@ describe("profile import data", () => {
   })
 })
 
-describe("title words", () => {
-  it("drops seniority and company names", () => {
-    expect(titleWords("Senior Backend Engineer")).toEqual(["backend", "engineer"])
-    const words = targetWords({
-      currentTitle: null,
-      headline: "Senior Backend Engineer at Allegro, Warszawa",
-      pastTitles: ["Head of Engineering"],
-    })
-    expect(words).toEqual(["backend", "engineer", "engineering"])
-  })
-})
-
 describe("formatting", () => {
-  it("prints a compact offer line", () => {
-    const line = offerLine(
-      {
-        id: "j1",
-        title: "Senior Kotlin Developer",
-        company: "Allegro",
-        url: "https://jobs.example/1",
-        location: "Warszawa",
-        workMode: "remote",
-        salary: "25 000–30 000 zł",
-        score: 88,
-        reasons: ["Kotlin jest w Twoim profilu"],
-      },
-      0
-    )
-    expect(line).toContain("1. [88] Senior Kotlin Developer · Allegro")
-    expect(line).toContain("zdalnie")
-    expect(line).toContain("id j1")
-    expect(line).toContain("+ Kotlin")
-  })
-
   it("clamps limits", () => {
     expect(clampLimit(undefined, 10, 50)).toBe(10)
     expect(clampLimit(500, 10, 50)).toBe(50)
     expect(clampLimit(0.5, 10, 50)).toBe(1)
-  })
-
-  it("reads since windows", () => {
-    const day = 86_400_000
-    expect(Date.now() - (sinceDate("3d", false)?.getTime() ?? 0)).toBeLessThan(3 * day + 1000)
-    expect(sinceDate(undefined, false)).toBeUndefined()
-    expect(sinceDate(undefined, true)).toBeInstanceOf(Date)
-    expect(sinceDate("2026-10-01", false)?.toISOString().slice(0, 10)).toBe("2026-10-01")
   })
 })

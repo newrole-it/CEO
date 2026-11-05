@@ -5,7 +5,6 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { setupBack } from "src/app/setup/back"
-import { getPreferenceSummary } from "src/server/preferences/model"
 import { ProfileEditor } from "./ProfileEditor"
 import getProfile from "./queries/getProfile"
 
@@ -17,17 +16,8 @@ export async function generateMetadata() {
 export default async function ProfilePage() {
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
   const t = translator(locale)
-  const [profile, summary] = user
-    ? await Promise.all([
-        // no profile comes back as { draft: null }; a database error goes to error.tsx
-        invoke(getProfile, null),
-        // the taste summary is extra: without it the page still shows the profile
-        getPreferenceSummary(user.id, locale).catch((error: unknown) => {
-          console.error("taste summary failed", error instanceof Error ? error.message : error)
-          return null
-        }),
-      ])
-    : [null, null]
+  // no profile comes back as { draft: null }; a database error goes to error.tsx
+  const profile = user ? await invoke(getProfile, null) : null
   const signedIn = Boolean(user && user.role !== "GUEST")
   return (
     <SiteFrame
@@ -52,11 +42,7 @@ export default async function ProfilePage() {
           />
         </div>
       ) : null}
-      <ProfileEditor
-        initial={profile?.draft ?? null}
-        guest={Boolean(user && !signedIn)}
-        summary={summary}
-      />
+      <ProfileEditor initial={profile?.draft ?? null} guest={Boolean(user && !signedIn)} />
     </SiteFrame>
   )
 }

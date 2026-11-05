@@ -2,7 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { AuthorizationError } from "blitz"
 import { z } from "zod"
 import db from "db"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { createApiToken } from "src/server/auth/api-tokens"
 
 /** A token to paste by hand. Returned once; only the hash stays. Guests cannot have tokens. */

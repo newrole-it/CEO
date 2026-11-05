@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { saveSheetLink, sheetStatus, syncSheet } from "src/server/applications/sheet"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowApplication, SheetSettingsInput } from "../schema"
 
 /** Saves the webhook and switches; `test: true` sends the table right away ("Zapisz i wyślij test"). */

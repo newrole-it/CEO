@@ -3,7 +3,7 @@ import { AuthorizationError } from "blitz"
 import { z } from "zod"
 import db from "db"
 import { DEFAULT_CONFIG } from "@newrole/matching/config"
-import { ensureFxRates, nbpTable, plnPerUnit } from "src/server/fx/nbp"
+import { ensureFxRates, nbpTable, plnPerUnit } from "@newrole/matching/fx"
 import { llmProvider, type LlmProvider } from "src/server/llm/client"
 import {
   groupUsd,

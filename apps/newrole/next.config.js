@@ -35,6 +35,16 @@ const nextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }]
   },
+  // An offer used to live under /jobs, next to the feed of indexed offers. Links in older CVs,
+  // bookmarks and Claude's earlier replies still point there.
+  async redirects() {
+    return [
+      { source: "/jobs/saved", destination: "/offers", permanent: false },
+      { source: "/jobs/:id/cv", destination: "/offers/:id/cv", permanent: false },
+      { source: "/jobs/:id", destination: "/offers/:id", permanent: false },
+      { source: "/jobs", destination: "/offers", permanent: false },
+    ]
+  },
 }
 
 module.exports = withBlitz(nextConfig)

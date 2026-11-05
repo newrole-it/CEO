@@ -1,6 +1,5 @@
 import db from "db"
 import type { LlmCallRecord } from "@newrole/llm/usage"
-import { harvestMode } from "src/server/harvest/mode"
 import { isLocalInstall } from "src/server/local-install"
 import { estimateModelUsd } from "./prices"
 
@@ -25,8 +24,6 @@ export function usageTabVisible(
 
 /** Never throws: a lost usage row must not fail the task that ran. */
 export async function recordLlmCall(call: LlmCallRecord): Promise<void> {
-  // A cloud harvest has no database.
-  if (harvestMode()) return
   try {
     await db.llmCall.create({
       data: {

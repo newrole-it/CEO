@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { setCvAuditDismissed } from "src/server/cv/audit-store"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
 /** "Pomiń" on an audit note, and bringing skipped notes back. */

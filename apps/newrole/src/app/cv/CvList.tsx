@@ -6,6 +6,7 @@ import Link from "next/link"
 import { invoke } from "@blitzjs/rpc"
 import { getAntiCSRFToken } from "@blitzjs/auth"
 import {
+  BriefcaseBusiness,
   ChevronDown,
   Copy,
   Download,
@@ -24,9 +25,9 @@ import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Dropzone, isPdf, Modal, ModalHead, useToast } from "@newrole/ui/interactive"
 import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
-import { relativeTime } from "src/app/jobs/format"
+import { relativeTime } from "@newrole/ui/time"
+import { statusLabel } from "src/shared/applications"
 import { importCvHtml } from "@newrole/cv-core/import-html"
-import type { OfferStage } from "src/server/preferences/saved"
 import { downloadPdf } from "@newrole/cv-editor/download"
 import { cvPdfUrl, cvPrintUrl } from "./urls"
 import createCvDocument from "./mutations/createCvDocument"
@@ -73,12 +74,8 @@ function byOffer(
   }))
 }
 
-const STAGE_LABEL = {
-  liked: "saved.liked",
-  ready: "saved.ready",
-  applied: "saved.applied",
-  passed: "saved.passed",
-} as const
+/** What the offers of the tailored documents are at: their application and whether they closed. */
+export type OfferState = { applicationId: string | null; status: string | null; closed: boolean }
 
 /** The dropdown behaviour used across the app: outside click and Esc close it, arrows move. */
 function useMenu() {
@@ -110,17 +107,23 @@ function useMenu() {
   return { open, setOpen, ref }
 }
 
-/** `after`: /setup mid-checklist. An uploaded PDF needs no editing, so the step ends there. */
+/**
+ * My CV in two tabs: the general CVs everything starts from, and the CVs and letters written for
+ * one offer, grouped by offer. `after`: /setup mid-checklist; an uploaded PDF needs no editing,
+ * so the step ends there.
+ */
 export function CvList({
   signedIn,
   initial,
-  stages = {},
+  tab = "general",
+  offers = {},
   after = null,
 }: {
   signedIn: boolean
   initial: CvRow[]
-  /** By offer id: its Zapisane tab, for the documents written for it */
-  stages?: Record<string, OfferStage>
+  tab?: "general" | "offers"
+  /** By offer id, for the documents written for it */
+  offers?: Record<string, OfferState>
   after?: string | null
 }) {
   const { t, locale } = useCopy()
@@ -268,125 +271,133 @@ export function CvList({
     <Dropzone onFile={(file) => void uploadPdf(file)} className="cvl" overClassName="is-over">
       {(openPdfPicker) => (
         <div className="stack">
-          <div className="cvl-actions">
-            <div className="rel">
-              <Button
-                variant="primary"
-                icon={<FilePlus2 />}
-                iconRight={<ChevronDown />}
-                loading={busy}
-                aria-haspopup="menu"
-                aria-expanded={newMenu.open}
-                onClick={() => newMenu.setOpen((open) => !open)}
-              >
-                {t("cv.new")}
-              </Button>
-              {newMenu.open ? (
-                <div className="menu cvl-menu-left" role="menu" ref={newMenu.ref}>
-                  <button
-                    type="button"
-                    className="menu__item"
-                    role="menuitem"
-                    onClick={() => void create("profile")}
-                  >
-                    <UserRound aria-hidden />
-                    {t("cv.new.profile")}
-                  </button>
-                  <button
-                    type="button"
-                    className="menu__item"
-                    role="menuitem"
-                    onClick={() => void create("blank")}
-                  >
-                    <FileText aria-hidden />
-                    {t("cv.new.blank")}
-                  </button>
-                  <button
-                    type="button"
-                    className="menu__item"
-                    role="menuitem"
-                    onClick={() => {
-                      newMenu.setOpen(false)
-                      htmlInput.current?.click()
-                    }}
-                  >
-                    <FileCode2 aria-hidden />
-                    {t("cv.new.html")}
-                  </button>
-                  <button
-                    type="button"
-                    className="menu__item"
-                    role="menuitem"
-                    onClick={() => {
-                      newMenu.setOpen(false)
-                      openPdfPicker()
-                    }}
-                  >
-                    <FileUp aria-hidden />
-                    {t("cv.new.pdf")}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            <input
-              ref={htmlInput}
-              type="file"
-              className="dz-input"
-              accept=".html,.htm,text/html"
-              tabIndex={-1}
-              aria-hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                event.target.value = ""
-                if (file) void importHtml(file)
-              }}
-            />
-          </div>
-
-          {rows.length === 0 ? (
-            <EmptyState icon={<FileText />} title={t("cv.empty.title")} body={t("cv.empty.body")}>
-              <Button
-                variant="primary"
-                icon={<UserRound />}
-                onClick={() => void create("profile")}
-                loading={busy}
-              >
-                {t("cv.new.profile")}
-              </Button>
-              <Button variant="outline" icon={<FileUp />} onClick={() => openPdfPicker()}>
-                {t("cv.new.pdf")}
-              </Button>
-              <Button
-                variant="outline"
-                icon={<FileCode2 />}
-                onClick={() => htmlInput.current?.click()}
-              >
-                {t("cv.new.html")}
-              </Button>
-            </EmptyState>
-          ) : (
-            <ul className="cvl-grid" role="list">
-              {rows
-                .filter((row) => !row.target)
-                .map((row) => (
-                  <CvCard
-                    key={row.id}
-                    row={row}
-                    onDownload={() => void download(row)}
-                    onDuplicate={() => void duplicate(row)}
-                    onDefault={() => void makeDefault(row)}
-                    onDelete={() => setConfirm(row)}
-                  />
-                ))}
-            </ul>
-          )}
-          {rows.length > 0 ? <p className="t-caption muted">{t("cv.drop")}</p> : null}
-          {rows.some((row) => row.target) ? (
+          {tab === "general" ? (
             <>
-              <h2 className="cvt-list-title">{t("tl.list.title")}</h2>
+              <div className="cvl-actions">
+                <div className="rel">
+                  <Button
+                    variant="primary"
+                    icon={<FilePlus2 />}
+                    iconRight={<ChevronDown />}
+                    loading={busy}
+                    aria-haspopup="menu"
+                    aria-expanded={newMenu.open}
+                    onClick={() => newMenu.setOpen((open) => !open)}
+                  >
+                    {t("cv.new")}
+                  </Button>
+                  {newMenu.open ? (
+                    <div className="menu cvl-menu-left" role="menu" ref={newMenu.ref}>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        role="menuitem"
+                        onClick={() => void create("profile")}
+                      >
+                        <UserRound aria-hidden />
+                        {t("cv.new.profile")}
+                      </button>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        role="menuitem"
+                        onClick={() => void create("blank")}
+                      >
+                        <FileText aria-hidden />
+                        {t("cv.new.blank")}
+                      </button>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        role="menuitem"
+                        onClick={() => {
+                          newMenu.setOpen(false)
+                          htmlInput.current?.click()
+                        }}
+                      >
+                        <FileCode2 aria-hidden />
+                        {t("cv.new.html")}
+                      </button>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        role="menuitem"
+                        onClick={() => {
+                          newMenu.setOpen(false)
+                          openPdfPicker()
+                        }}
+                      >
+                        <FileUp aria-hidden />
+                        {t("cv.new.pdf")}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <input
+                  ref={htmlInput}
+                  type="file"
+                  className="dz-input"
+                  accept=".html,.htm,text/html"
+                  tabIndex={-1}
+                  aria-hidden
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ""
+                    if (file) void importHtml(file)
+                  }}
+                />
+              </div>
+
+              <p className="t-sm muted">{t("cvt.general.sub")}</p>
+              {!rows.some((row) => !row.target) ? (
+                <EmptyState
+                  icon={<FileText />}
+                  title={t("cv.empty.title")}
+                  body={t("cv.empty.body")}
+                >
+                  <Button
+                    variant="primary"
+                    icon={<UserRound />}
+                    onClick={() => void create("profile")}
+                    loading={busy}
+                  >
+                    {t("cv.new.profile")}
+                  </Button>
+                  <Button variant="outline" icon={<FileUp />} onClick={() => openPdfPicker()}>
+                    {t("cv.new.pdf")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    icon={<FileCode2 />}
+                    onClick={() => htmlInput.current?.click()}
+                  >
+                    {t("cv.new.html")}
+                  </Button>
+                </EmptyState>
+              ) : (
+                <ul className="cvl-grid" role="list">
+                  {rows
+                    .filter((row) => !row.target)
+                    .map((row) => (
+                      <CvCard
+                        key={row.id}
+                        row={row}
+                        onDownload={() => void download(row)}
+                        onDuplicate={() => void duplicate(row)}
+                        onDefault={() => void makeDefault(row)}
+                        onDelete={() => setConfirm(row)}
+                      />
+                    ))}
+                </ul>
+              )}
+              {rows.length > 0 ? <p className="t-caption muted">{t("cv.drop")}</p> : null}
+            </>
+          ) : rows.some((row) => row.target) ? (
+            <>
+              <p className="t-sm muted">{t("cvt.offers.sub")}</p>
               {byOffer(rows).map((group) => {
                 const jobId = group.target.jobId
-                const stage = jobId ? stages[jobId] : undefined
+                const offer = jobId ? offers[jobId] : undefined
                 return (
                   <section
                     key={group.key}
@@ -395,35 +406,25 @@ export function CvList({
                   >
                     <div className="cvo-group__head">
                       {jobId ? (
-                        <Link className="cvo-group__title" href={`/jobs/${jobId}`}>
+                        <Link className="cvo-group__title" href={`/offers/${jobId}`}>
                           {group.target.title}
                         </Link>
                       ) : (
                         <span className="cvo-group__title">{group.target.title}</span>
                       )}
                       <span className="muted">{group.target.company}</span>
-                      {stage?.segment ? (
-                        <Badge
-                          tone={
-                            stage.segment === "applied"
-                              ? "success"
-                              : stage.segment === "passed"
-                              ? "plain"
-                              : "primary"
-                          }
-                        >
-                          {t(STAGE_LABEL[stage.segment])}
-                        </Badge>
+                      {offer?.status ? (
+                        <Badge tone="primary">{statusLabel(offer.status, locale)}</Badge>
                       ) : null}
-                      {stage?.closed || !jobId ? (
-                        <Badge tone="warning">{t("saved.closed")}</Badge>
+                      {offer?.closed || !jobId ? (
+                        <Badge tone="warning">{t("of.closed")}</Badge>
                       ) : null}
-                      {stage?.applicationId ? (
+                      {offer?.applicationId ? (
                         <Link
                           className="link cvo-group__app"
-                          href={`/applications?id=${stage.applicationId}`}
+                          href={`/applications?id=${offer.applicationId}`}
                         >
-                          {t("saved.openApplication")}
+                          {t("ow.app.open")}
                         </Link>
                       ) : null}
                     </div>
@@ -444,7 +445,17 @@ export function CvList({
                 )
               })}
             </>
-          ) : null}
+          ) : (
+            <EmptyState
+              icon={<BriefcaseBusiness />}
+              title={t("cvt.offers.empty.title")}
+              body={t("cvt.offers.empty.body")}
+            >
+              <ButtonLink href="/offers" variant="primary" icon={<BriefcaseBusiness />}>
+                {t("cvt.offers.add")}
+              </ButtonLink>
+            </EmptyState>
+          )}
 
           <Modal
             open={Boolean(confirm)}

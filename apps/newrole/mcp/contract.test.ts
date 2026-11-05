@@ -21,29 +21,20 @@ const TOOLS = [
   "applications_export",
   "applications_list",
   "applications_stats",
-  "companies_similar_context",
-  "companies_unwatch",
-  "companies_watch",
-  "companies_watched",
   "cv_export_pdf",
   "cv_get",
   "cv_list",
   "cv_update",
-  "discovery_brief",
   "gmail_status",
-  "index_refresh",
-  "job_feedback",
-  "job_get",
-  "jobs_for_me",
-  "jobs_search",
-  "jobs_similar",
-  "offer_ingest",
+  "offer_add",
+  "offer_get",
+  "offers_list",
   "profile_get",
   "profile_import",
   "sheet_status",
   "sheet_sync",
 ]
-const PROMPTS = ["apply", "hunt", "onboard", "pipeline", "review"]
+const PROMPTS = ["apply", "onboard", "pipeline"]
 
 /** A shared server holds each person's own records and nothing about offers or anyone's disk. */
 const SHARED_TOOLS = [
@@ -59,13 +50,15 @@ const SHARED_TOOLS = [
   "cv_get",
   "cv_list",
   "cv_update",
-  "discovery_brief",
+  "offer_add",
+  "offer_get",
+  "offers_list",
   "profile_get",
   "profile_import",
   "sheet_status",
   "sheet_sync",
 ]
-const SHARED_PROMPTS = ["apply", "hunt", "onboard", "pipeline"]
+const SHARED_PROMPTS = ["apply", "onboard", "pipeline"]
 
 async function connect() {
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair()

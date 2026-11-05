@@ -292,7 +292,7 @@ export function ApplicationsScreen({
           title={t("app.empty.title")}
           body={signedIn ? t("app.empty.body") : `${t("app.empty.body")} ${t("app.signIn")}`}
         >
-          <ButtonLink href="/jobs" variant="primary">
+          <ButtonLink href="/offers" variant="primary">
             {t("app.empty.offers")}
           </ButtonLink>
           <ButtonLink href="/settings#st-extension" variant="outline">

@@ -4,7 +4,6 @@ import { copy, type Locale } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import { invoke } from "src/app/blitz-server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { searchProvider } from "src/server/discovery/web-search"
 import { llmProvider } from "src/server/llm/client"
 import { operator } from "src/server/operator"
 import { noModelLine, serviceHost, servicePrivacy } from "./service"
@@ -20,7 +19,7 @@ const en = {
   store: [
     "The account: email, name, and, if you use it, the LinkedIn sign-in id and picture URL.",
     "The profile built from a CV or LinkedIn PDF, the parsed sections, and any profile audits made before the audit moved to the CV.",
-    "Saved searches, the offers you mark interested or rejected, and the activity-log action (the search phrase is removed when you delete the account).",
+    "The offers you add by their link: company, role, place, pay and link, with at most 300 characters of the posting's text, shared by everyone who adds the same offer; and your own copy of each posting's text, as it was read or as you pasted it, with your note on it. Your copy is deleted when you remove the offer or the account.",
     "A PDF uploaded to build the profile is read in memory: the file is never written to disk or stored. What comes from its text is described here: the profile and parsed sections above, and the model replies below.",
     "What you save yourself: CV documents and cover letters under My CV (the content and its earlier versions, the photo, the uploaded or generated PDF, and the latest audit), applications with their stages, notes and form answers, the answer bank, form details (phone, links, notice period), extension tokens (only as a hash), and the Google Sheet web-app address.",
     "If you use a Gmail message through the extension: its sender, subject and date, one sentence behind the reading, and the application and status you chose. Message bodies are not stored. These entries are removed after 90 days. A mailbox connected in an earlier version keeps its address and encrypted access token until you disconnect it in Settings.",
@@ -28,15 +27,12 @@ const en = {
   ],
   whoTitle: "Who else receives data",
   hostTitle: "Hosting and database",
-  host: "The server that runs newrole.it and its PostgreSQL database. That is where the account, profile, searches, decisions, and audits are stored. This draft does not name a separate hosting company, because the database runs on the machine you deploy.",
+  host: "The server that runs newrole.it and its PostgreSQL database. That is where the account, profile, CVs, offers, applications and audits are stored. This draft does not name a separate hosting company, because the database runs on the machine you deploy.",
   emailTitle: "Email",
   email:
-    "Resend (api.resend.com) when the deployment uses it, otherwise the SMTP server configured for this deployment. They receive your email address and a one-time sign-in link. They do not receive your CV or searches. With the local console setting, the link is printed in the server log instead of being sent to an email company.",
+    "Resend (api.resend.com) when the deployment uses it, otherwise the SMTP server configured for this deployment. They receive your email address and a one-time sign-in link. They do not receive your CV or your offers. With the local console setting, the link is printed in the server log instead of being sent to an email company.",
   llmTitle: "Language model",
-  llm: "By default, the local Claude Code (claude -p) on your own Claude subscription, so the text goes to Anthropic under that subscription's terms. Without Claude Code nothing is sent and rules do the work. A deployment without Claude Code can set an API key for an OpenAI-compatible provider instead. The CV text is sent to extract a profile. The text of the CV you audit and counted phrases from matched offers are sent for the audit. The search phrase is sent to expand the query. A short summary of the role (titles, seniority, places, salary floor) and the public job text are sent for a match explanation. Classifying a job's industry, or whether the role is in tech when the title is unclear, sends the public job text only. Tailoring a CV to an offer or writing a cover letter sends the CV text, your profile, your notes for the model, and the public job text; when the offer's site opts out of AI use, only its company, title and place. Drafting answers to application questions, or filling a form, sends the name on your account and up to about 9,000 characters taken from your profile, your CV and the imported CV or LinkedIn sections, together with the questions, similar answers from your answer bank, and the offer's company, title, address and text. Turning an uploaded CV PDF into an editable CV sends the text of that PDF. When the rules cannot read the company, role, place and pay of a page the extension sent, or of an offer page you add to an application or with Add offer under Offers, the page address, title and up to 4,000 characters of its text are sent to read them; an added offer page whose site opts out of AI use is not sent. Suggesting companies similar to the ones you like works only with Claude Code: it sends the companies of the offers you marked \"I like it\" or \"Applied\" (name, domain and industry) and what you said you liked about them, and Claude checks each suggestion with a web search. Replies derived from the CV are stored under your user id and deleted with the profile or the account. Each model run also leaves an entry with counts only (task, model, tokens, time and the cost Claude Code reports), with no text and no user id. The AI usage tab shows them.",
-  searchTitle: "Search APIs",
-  search:
-    "Brave Search, then Serper if Brave is unset or the call fails. When neither key is set and the deployment uses Claude Code (as the model, or chosen for search), the query goes to Claude Code's web search on your Claude subscription instead, at most 40 times a day unless the deployment sets another limit. They receive web queries built from the role you typed, such as a site: query plus that phrase. They do not receive your CV. The query is stored with the search and deleted with it. Pages returned by the search API are not stored.",
+  llm: "By default, the local Claude Code (claude -p) on your own Claude subscription, so the text goes to Anthropic under that subscription's terms. Without Claude Code nothing is sent and rules do the work. A deployment without Claude Code can set an API key for an OpenAI-compatible provider instead. The CV text is sent to extract a profile. The text of the CV you audit and counted phrases from matched offers are sent for the audit. Tailoring a CV to an offer or writing a cover letter sends the CV text, your profile, your notes for the model, and the public job text; when the offer's site opts out of AI use, only its company, title and place. Drafting answers to application questions, or filling a form, sends the name on your account and up to about 9,000 characters taken from your profile, your CV and the imported CV or LinkedIn sections, together with the questions, similar answers from your answer bank, and the offer's company, title, address and text. Turning an uploaded CV PDF into an editable CV sends the text of that PDF. When the rules cannot read the company, role, place and pay of a page the extension sent, or of an offer page you add to an application or with Add offer, the page address, title and up to 4,000 characters of its text are sent to read them; an added offer page whose site opts out of AI use is not sent. Replies derived from the CV are stored under your user id and deleted with the profile or the account. Each model run also leaves an entry with counts only (task, model, tokens, time and the cost Claude Code reports), with no text and no user id. The AI usage tab shows them.",
   linkedinTitle: "LinkedIn sign-in",
   linkedin:
     "Optional. LinkedIn's OpenID Connect flow returns your name, email, and picture. newrole.it does not send your CV to LinkedIn.",
@@ -56,7 +52,7 @@ const pl = {
   store: [
     "Konto: e-mail, imię oraz, jeśli z tego korzystasz, identyfikator logowania LinkedIn i adres zdjęcia.",
     "Profil zbudowany z CV albo PDF-a z LinkedIn, rozłożone na części sekcje i audyty profilu sprzed przeniesienia audytu do CV.",
-    "Zapisane wyszukiwania, oferty oznaczone jako interesujące albo odrzucone oraz nazwa czynności w dzienniku (fraza wyszukiwania znika po usunięciu konta).",
+    "Oferty, które dodajesz z linku: firma, stanowisko, miejsce, wynagrodzenie i link, z najwyżej 300 znakami tekstu ogłoszenia, wspólne dla wszystkich, którzy dodali tę samą ofertę; oraz Twoja kopia treści każdego ogłoszenia, tak jak ją pobraliśmy albo wkleiłeś, z Twoją notatką. Kopia znika, gdy usuniesz ofertę albo konto.",
     "PDF wgrany do odczytu profilu czytamy w pamięci: plik nigdy nie trafia na dysk i nie jest przechowywany. Z jego tekstu zostają profil i sekcje opisane wyżej oraz odpowiedzi modelu opisane niżej.",
     "To, co zapisujesz sam: dokumenty i listy motywacyjne w Moje CV (treść z poprzednimi wersjami, zdjęcie, wgrany lub wygenerowany PDF i ostatni audyt), aplikacje z etapami, notatkami i odpowiedziami z formularzy, bazę odpowiedzi, dane do formularzy (telefon, linki, okres wypowiedzenia), tokeny rozszerzenia (tylko jako skrót) i adres aplikacji Apps Script Twojego arkusza.",
     "Jeśli użyjesz maila z Gmaila przez rozszerzenie: jego nadawcę, temat i datę, zdanie z uzasadnieniem odczytu oraz wybraną aplikację i status. Treści maili nie są zapisywane. Te wpisy znikają po 90 dniach. Skrzynka połączona we wcześniejszej wersji zachowuje adres i zaszyfrowany token dostępu, dopóki nie odłączysz jej w Ustawieniach.",
@@ -64,15 +60,12 @@ const pl = {
   ],
   whoTitle: "Kto jeszcze dostaje dane",
   hostTitle: "Hosting i baza",
-  host: "Serwer, na którym działa newrole.it, i jego baza PostgreSQL. Tam leżą konto, profil, wyszukiwania, decyzje i audyty. Ten szkic nie wymienia osobnej firmy hostingowej, bo baza działa na maszynie, na której wdrażasz aplikację.",
+  host: "Serwer, na którym działa newrole.it, i jego baza PostgreSQL. Tam leżą konto, profil, CV, oferty, aplikacje i audyty. Ten szkic nie wymienia osobnej firmy hostingowej, bo baza działa na maszynie, na której wdrażasz aplikację.",
   emailTitle: "Poczta",
   email:
-    "Resend (api.resend.com), gdy wdrożenie go używa, a w przeciwnym razie serwer SMTP ustawiony dla tego wdrożenia. Dostają adres e-mail i jednorazowy link do logowania. Nie dostają CV ani wyszukiwań. Przy lokalnym ustawieniu konsoli link trafia do logu serwera, a nie do firmy pocztowej.",
+    "Resend (api.resend.com), gdy wdrożenie go używa, a w przeciwnym razie serwer SMTP ustawiony dla tego wdrożenia. Dostają adres e-mail i jednorazowy link do logowania. Nie dostają CV ani Twoich ofert. Przy lokalnym ustawieniu konsoli link trafia do logu serwera, a nie do firmy pocztowej.",
   llmTitle: "Model językowy",
-  llm: "Domyślnie lokalny Claude Code (claude -p) na Twojej subskrypcji Claude, więc tekst trafia do Anthropic na warunkach tej subskrypcji. Bez Claude Code nic nie jest wysyłane, a pracę wykonują reguły. Wdrożenie bez Claude Code może zamiast tego ustawić klucz API dostawcy zgodnego z OpenAI. Tekst CV idzie do odczytu profilu. Tekst audytowanego CV i policzone frazy z dopasowanych ofert idą do audytu. Fraza wyszukiwania idzie do rozszerzenia zapytania. Krótkie podsumowanie roli (tytuły, poziom, miejsca, próg wynagrodzenia) i publiczny tekst oferty idą do wyjaśnienia dopasowania. Rozpoznanie branży oferty oraz, gdy tytuł jest niejednoznaczny, tego, czy rola jest w tech, wysyła tylko publiczny tekst ogłoszenia. Dopasowanie CV do oferty i pisanie listu motywacyjnego wysyła tekst CV, profil, Twoje wskazówki dla modelu i publiczny tekst oferty, a gdy strona oferty zastrzega się przed AI, tylko firmę, stanowisko i miejsce. Przy szkicowaniu odpowiedzi na pytania rekrutacyjne i wypełnianiu formularza model dostaje imię i nazwisko z Twojego konta oraz do około 9000 znaków z profilu, CV i zaimportowanych sekcji CV albo LinkedIn, a do tego pytania, podobne odpowiedzi z bazy odpowiedzi oraz firmę, stanowisko, adres i tekst oferty. Gdy zamieniasz wgrany PDF z CV na edytowalne CV, model dostaje tekst tego PDF-a. Gdy reguły nie odczytają firmy, stanowiska, miejsca i wynagrodzenia ze strony przysłanej przez rozszerzenie albo ze strony oferty dodawanej do aplikacji lub przyciskiem Dodaj ofertę w Ofertach, model dostaje adres strony, jej tytuł i do 4000 znaków tekstu. Strony oferty, która zastrzega się przed AI, przy dodawaniu nie wysyłamy. Propozycje firm podobnych do tych, które lubisz, działają tylko z Claude Code. Claude dostaje firmy z ofert oznaczonych jako „Podoba mi się” albo „Aplikowano” (nazwę, domenę i branżę) oraz to, co Ci się w nich podobało, a każdą propozycję sprawdza w wyszukiwarce. Odpowiedzi wyliczone z CV są zapisane przy Twoim koncie i usuwane razem z profilem albo kontem. Każde uruchomienie modelu zostawia też wpis z samymi liczbami (zadanie, model, tokeny, czas i koszt podany przez Claude Code), bez żadnego tekstu i bez identyfikatora konta. Pokazuje je zakładka Zużycie AI.",
-  searchTitle: "Wyszukiwarki",
-  search:
-    "Brave Search, a gdy Brave nie jest ustawiony albo wywołanie się nie uda, Serper. Gdy nie ma żadnego z tych kluczy, a wdrożenie korzysta z Claude Code (jako modelu albo wybranego do wyszukiwania), zapytanie trafia do wyszukiwarki Claude Code na Twojej subskrypcji Claude, najwyżej 40 razy dziennie, chyba że wdrożenie ustawi inny limit. Dostają zapytania WWW zbudowane z wpisanej roli, na przykład zapytanie site: i tę frazę. Nie dostają CV. Zapytanie jest zapisane przy wyszukiwaniu i usuwane razem z nim. Stron zwróconych przez API wyszukiwania nie zapisujemy.",
+  llm: "Domyślnie lokalny Claude Code (claude -p) na Twojej subskrypcji Claude, więc tekst trafia do Anthropic na warunkach tej subskrypcji. Bez Claude Code nic nie jest wysyłane, a pracę wykonują reguły. Wdrożenie bez Claude Code może zamiast tego ustawić klucz API dostawcy zgodnego z OpenAI. Tekst CV idzie do odczytu profilu. Tekst audytowanego CV i policzone frazy z dopasowanych ofert idą do audytu. Dopasowanie CV do oferty i pisanie listu motywacyjnego wysyła tekst CV, profil, Twoje wskazówki dla modelu i publiczny tekst oferty, a gdy strona oferty zastrzega się przed AI, tylko firmę, stanowisko i miejsce. Przy szkicowaniu odpowiedzi na pytania rekrutacyjne i wypełnianiu formularza model dostaje imię i nazwisko z Twojego konta oraz do około 9000 znaków z profilu, CV i zaimportowanych sekcji CV albo LinkedIn, a do tego pytania, podobne odpowiedzi z bazy odpowiedzi oraz firmę, stanowisko, adres i tekst oferty. Gdy zamieniasz wgrany PDF z CV na edytowalne CV, model dostaje tekst tego PDF-a. Gdy reguły nie odczytają firmy, stanowiska, miejsca i wynagrodzenia ze strony przysłanej przez rozszerzenie albo ze strony oferty dodawanej do aplikacji lub przyciskiem Dodaj ofertę, model dostaje adres strony, jej tytuł i do 4000 znaków tekstu. Strony oferty, która zastrzega się przed AI, przy dodawaniu nie wysyłamy. Odpowiedzi wyliczone z CV są zapisane przy Twoim koncie i usuwane razem z profilem albo kontem. Każde uruchomienie modelu zostawia też wpis z samymi liczbami (zadanie, model, tokeny, czas i koszt podany przez Claude Code), bez żadnego tekstu i bez identyfikatora konta. Pokazuje je zakładka Zużycie AI.",
   linkedinTitle: "Logowanie LinkedIn",
   linkedin:
     "Opcjonalne. OpenID Connect LinkedIn zwraca imię, e-mail i zdjęcie. newrole.it nie wysyła CV do LinkedIn.",
@@ -97,7 +90,6 @@ export default async function PrivacyPage() {
   // Set on a service run for others: say what is true of this deployment, not of a local install.
   const who = operator()
   const noModel = who && llmProvider() === "none"
-  const noSearch = who && !searchProvider().configured
   return (
     <SiteFrame user={user} locale={locale} width="narrow">
       <article className="prose">
@@ -128,12 +120,6 @@ export default async function PrivacyPage() {
         <p>{page.email}</p>
         <h3>{page.llmTitle}</h3>
         <p>{noModel ? noModelLine(locale) : page.llm}</p>
-        {noSearch ? null : (
-          <>
-            <h3>{page.searchTitle}</h3>
-            <p>{page.search}</p>
-          </>
-        )}
         <h3>{page.linkedinTitle}</h3>
         <p>{page.linkedin}</p>
         <h3>{page.gmailTitle}</h3>

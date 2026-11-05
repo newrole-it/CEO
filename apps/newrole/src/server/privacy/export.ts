@@ -56,6 +56,12 @@ export async function exportAccount(userId: number) {
         orderBy: { updatedAt: "desc" },
         include: { versions: { orderBy: { number: "asc" } } },
       },
+      offers: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
+        },
+      },
       answers: { orderBy: { updatedAt: "desc" } },
       apiTokens: { orderBy: { createdAt: "desc" } },
       sheetLink: true,
@@ -146,6 +152,12 @@ export async function exportAccount(userId: number) {
     cvDocuments: user.cvDocuments.map(({ pdf, userId: _userId, ...row }) => ({
       ...row,
       pdfBytes: pdf ? pdf.length : 0,
+    })),
+    offers: user.offers.map(({ userId: _userId, job, ...row }) => ({
+      ...row,
+      title: job.title,
+      company: job.company.name,
+      url: job.originalUrl,
     })),
     answers: user.answers.map(({ userId: _userId, ...row }) => row),
     apiTokens: user.apiTokens.map((token) => ({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { conditionalHttp, NotModifiedError } from "src/server/index/conditional"
+import { conditionalHttp, NotModifiedError } from "@newrole/ats/conditional"
 import { pinnedLookup, safeFetch } from "./safe-fetch"
 
 describe("safeFetch policy on redirects", () => {

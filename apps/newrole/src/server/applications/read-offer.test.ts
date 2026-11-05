@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ingestOfferUrl } from "src/server/discovery/ingest-offer"
+import { ingestOfferUrl } from "src/server/offers/ingest"
 import { readOffer, type ReadOfferDeps } from "./read-offer"
 import type { IndexedJob } from "./service"
 
@@ -28,7 +28,7 @@ const noNetwork = {
 const offline: ReadOfferDeps = {
   findByUrl: async () => null,
   findById: async () => null,
-  ingest: (url) => ingestOfferUrl({ url, channel: "web", forTracker: true }, { http: noNetwork }),
+  ingest: (url) => ingestOfferUrl(url, { http: noNetwork }),
   model: async () => {
     throw new Error("model must not be used")
   },

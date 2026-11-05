@@ -22,7 +22,7 @@ export default async function LoginPage({
   return (
     <SiteFrame user={user} locale={locale}>
       <Suspense fallback={<p className="hint">Loading sign-in…</p>}>
-        <LoginForm local={isLocalInstall()} after={back ?? "/jobs"} />
+        <LoginForm local={isLocalInstall()} after={back ?? "/cv"} />
       </Suspense>
     </SiteFrame>
   )

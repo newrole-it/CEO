@@ -1,6 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { deleteApplication } from "src/server/applications/service"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { IdInput, rethrowApplication } from "../schema"
 
 export default resolver.pipe(resolver.zod(IdInput), resolver.authorize(), async ({ id }, ctx) => {

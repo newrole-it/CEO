@@ -2,7 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import { z } from "zod"
 import { saveVersion } from "src/server/cv/versions"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 
 /** "Zapisz wersję": keeps what is stored now under a name. */
 export default resolver.pipe(

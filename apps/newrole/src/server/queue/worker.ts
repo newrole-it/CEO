@@ -1,33 +1,20 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
-import { indexNextDue } from "src/server/index/run"
-import { indexNextCatalog } from "src/server/catalog/run"
-import { ensureFxRates } from "src/server/fx/nbp"
-import { maybeSyncOfferSearch } from "src/server/discovery/offer-sync"
-import { offerIndexEnabled } from "src/server/offer-index"
-import { maybeExpandSimilar, maybeHuntHiddenOffers } from "src/server/discovery/hidden-offers"
-import { executeSearch } from "src/server/search/pipeline"
-import {
-  enqueueHarvestImport,
-  enqueueSearch,
-  GMAIL_SYNC,
-  HARVEST_CHECK_MS,
-  HARVEST_IMPORT,
-  INDEX_WATCHED,
-  SHEET_SYNC,
-} from "src/server/queue/enqueue"
-import { harvestEnabled, importHarvest } from "src/server/harvest/import"
+import { APP_TASKS, GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 import { enqueueStaleSheetSyncs, syncSheet } from "src/server/applications/sheet"
 import { maybeSyncCompanyAliases } from "src/server/companies/aliases"
 import { beat } from "src/server/setup/heartbeat"
-import { indexNextWatched, indexWatchedPage } from "src/server/watchlist/index-watched"
+
+/**
+ * newrole.it's worker: the Google Sheet mirror of the applications and the company names the
+ * extension matches offers by. It claims only APP_TASKS, so an offer index's worker
+ * (@newrole/job-index) can run on the same database without either taking the other's tasks.
+ */
 
 const WORKER_ID = `worker-${process.pid}`
 const STALE_MS = 20 * 60 * 1000
 const HEARTBEAT_MS = 30_000
 const SERVICE_BEAT_MS = 30_000
-
-export { enqueueSearch }
 
 let activeTaskId: string | null = null
 
@@ -40,58 +27,24 @@ function payloadField(payload: Prisma.JsonValue, key: string): unknown {
   return (payload as Record<string, unknown>)[key]
 }
 
-function payloadString(payload: Prisma.JsonValue, key: string): string | null {
-  const value = payloadField(payload, key)
-  return typeof value === "string" ? value : null
-}
-
 function payloadNumber(payload: Prisma.JsonValue, key: string): number | null {
   const value = payloadField(payload, key)
   return typeof value === "number" ? value : null
 }
 
-function readSearchRunId(payload: Prisma.JsonValue): string | null {
-  return payloadString(payload, "searchRunId")
-}
-
-async function markRun(
-  searchRunId: string | null,
-  status: "RETRYING" | "FAILED" | "QUEUED",
-  message: string
-) {
-  if (!searchRunId) return
-  await db.searchRun.updateMany({
-    where: { id: searchRunId, status: { in: ["QUEUED", "RUNNING", "RETRYING", "FAILED"] } },
-    data: {
-      status,
-      phase: status === "FAILED" ? "failed" : status === "QUEUED" ? "queued" : "retrying",
-      message,
-      finishedAt: status === "FAILED" ? new Date() : null,
-      errorSummary: status === "FAILED" ? message.slice(0, 400) : null,
-    },
-  })
-}
-
 export async function recoverStaleTasks() {
   const cutoff = new Date(Date.now() - STALE_MS)
   const stale = await db.backgroundTask.findMany({
-    where: { status: "RUNNING", lockedAt: { lt: cutoff } },
+    where: { status: "RUNNING", type: { in: [...APP_TASKS] }, lockedAt: { lt: cutoff } },
   })
   for (const task of stale) {
-    const searchRunId = readSearchRunId(task.payload)
-    if (task.attempts >= task.maxAttempts) {
-      await db.backgroundTask.update({
-        where: { id: task.id },
-        data: { status: "DEAD", lastError: "Timed out", finishedAt: new Date() },
-      })
-      await markRun(searchRunId, "FAILED", "The worker timed out")
-    } else {
-      await db.backgroundTask.update({
-        where: { id: task.id },
-        data: { status: "PENDING", lockedAt: null, lockedBy: null, runAt: new Date() },
-      })
-      await markRun(searchRunId, "RETRYING", "Recovered after the worker stopped updating")
-    }
+    await db.backgroundTask.update({
+      where: { id: task.id },
+      data:
+        task.attempts >= task.maxAttempts
+          ? { status: "DEAD", lastError: "Timed out", finishedAt: new Date() }
+          : { status: "PENDING", lockedAt: null, lockedBy: null, runAt: new Date() },
+    })
   }
 }
 
@@ -103,12 +56,11 @@ export async function requeueInFlight(taskId: string | null) {
     where: { id: task.id },
     data: { status: "PENDING", lockedAt: null, lockedBy: null, runAt: new Date() },
   })
-  await markRun(readSearchRunId(task.payload), "QUEUED", "Requeued after the worker stopped")
 }
 
 export async function claimTask() {
   const candidate = await db.backgroundTask.findFirst({
-    where: { status: "PENDING", runAt: { lte: new Date() } },
+    where: { status: "PENDING", type: { in: [...APP_TASKS] }, runAt: { lte: new Date() } },
     orderBy: { runAt: "asc" },
   })
   if (!candidate) return null
@@ -129,16 +81,13 @@ async function recordFailure(
   taskId: string,
   attempts: number,
   maxAttempts: number,
-  message: string,
-  payload: Prisma.JsonValue
+  message: string
 ) {
-  const searchRunId = readSearchRunId(payload)
   if (attempts >= maxAttempts) {
     await db.backgroundTask.update({
       where: { id: taskId },
       data: { status: "DEAD", lastError: message.slice(0, 400), finishedAt: new Date() },
     })
-    await markRun(searchRunId, "FAILED", message)
     return
   }
   const delay = Math.min(60_000, 2000 * 2 ** attempts)
@@ -152,7 +101,6 @@ async function recordFailure(
       runAt: new Date(Date.now() + delay),
     },
   })
-  await markRun(searchRunId, "RETRYING", "Retry scheduled")
 }
 
 export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> {
@@ -179,21 +127,11 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
       await requeueInFlight(task.id)
       return true
     }
-    if (task.type === "RUN_SEARCH") {
-      const searchRunId = readSearchRunId(task.payload)
-      if (!searchRunId) throw new Error("Task is missing searchRunId")
-      await executeSearch(searchRunId)
-    } else if (task.type === INDEX_WATCHED) {
-      const careerPageId = payloadString(task.payload, "careerPageId")
-      if (!careerPageId) throw new Error("Task is missing careerPageId")
-      await indexWatchedPage(careerPageId)
-    } else if (task.type === SHEET_SYNC) {
+    if (task.type === SHEET_SYNC) {
       const userId = payloadNumber(task.payload, "userId")
       if (!userId) throw new Error("Task is missing userId")
       const result = await syncSheet(userId)
       if (result.status === "failed") throw new Error(result.message)
-    } else if (task.type === HARVEST_IMPORT) {
-      await importHarvest()
     } else if (task.type === GMAIL_SYNC) {
       // The mailbox is no longer searched: a message is used only when the person picks it in the
       // extension. A task queued before that change finishes without doing anything.
@@ -212,8 +150,7 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
         task.id,
         failed?.attempts ?? task.attempts,
         failed?.maxAttempts ?? task.maxAttempts,
-        message,
-        task.payload
+        message
       )
     } catch (writeError) {
       console.error("Could not record task failure", writeError)
@@ -228,8 +165,7 @@ export async function workOnce(signal?: { stopped: boolean }): Promise<boolean> 
 export async function workerLoop(signal?: { stopped: boolean }) {
   let backoff = 1000
   let lastRecover = 0
-  let lastHarvestCheck = 0
-  // On its own timer: a long crawl must not look like a stopped worker on /setup.
+  // On its own timer: a long task must not look like a stopped worker on /setup.
   void beat("worker")
   setInterval(() => void beat("worker"), SERVICE_BEAT_MS).unref()
   while (!signal?.stopped) {
@@ -240,30 +176,11 @@ export async function workerLoop(signal?: { stopped: boolean }) {
         await enqueueStaleSheetSyncs()
         lastRecover = Date.now()
       }
-      if (
-        offerIndexEnabled() &&
-        harvestEnabled() &&
-        Date.now() - lastHarvestCheck > HARVEST_CHECK_MS
-      ) {
-        await enqueueHarvestImport()
-        lastHarvestCheck = Date.now()
-      }
-      // NBP rates for salary comparison; a no-op until the 12-hour refresh is due.
-      if (offerIndexEnabled()) await ensureFxRates()
+      // The company names the extension tells offers apart by; a no-op until a refresh is due.
+      await maybeSyncCompanyAliases()
       const did = await workOnce(signal)
       backoff = 1000
-      const indexing = offerIndexEnabled()
-      if (!did && !signal?.stopped) {
-        // Watched companies first, then the seed catalog, then the checked outside catalog.
-        const indexed =
-          indexing &&
-          ((await indexNextWatched()) || (await indexNextDue()) || (await indexNextCatalog()))
-        if (!indexed) await sleep(5000)
-      }
-      if (indexing && !signal?.stopped) await maybeSyncOfferSearch()
-      if (indexing && !signal?.stopped) await maybeHuntHiddenOffers()
-      if (indexing && !signal?.stopped) await maybeExpandSimilar()
-      if (indexing && !signal?.stopped) await maybeSyncCompanyAliases()
+      if (!did && !signal?.stopped) await sleep(5000)
     } catch (error) {
       console.error("Worker loop error", error)
       await sleep(backoff)

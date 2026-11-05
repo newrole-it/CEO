@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
 import { sheetStatus, syncSheet } from "src/server/applications/sheet"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 
 /** "Synchronizuj teraz": sends the whole table to the sheet without waiting for the worker. */
 export default resolver.pipe(resolver.zod(z.object({})), resolver.authorize(), async (_, ctx) => {

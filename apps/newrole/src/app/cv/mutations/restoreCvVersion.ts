@@ -2,7 +2,7 @@ import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import { z } from "zod"
 import { restoreVersion } from "src/server/cv/versions"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 
 /** Puts a version's content back; the current state stays in the history. */
 export default resolver.pipe(

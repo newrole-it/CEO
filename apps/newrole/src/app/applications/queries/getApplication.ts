@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import { NotFoundError } from "blitz"
 import { getApplication } from "src/server/applications/service"
-import { requireMember } from "src/app/feedback/guard"
+import { requireMember } from "src/app/users/guard"
 import { IdInput } from "../schema"
 
 /** The drawer: application with its timeline, answers given and the CV used. */

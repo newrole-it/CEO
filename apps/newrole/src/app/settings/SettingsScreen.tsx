@@ -12,7 +12,6 @@ import { Modal, ModalHead, useToast } from "@newrole/ui/interactive"
 import { Segmented } from "@newrole/ui/primitives"
 import { LinkedInMark } from "src/app/components/site/Brand"
 import { useLocaleToggle, useThemeToggle } from "src/app/components/site/SiteHeader"
-import { SHORTCUTS_KEY } from "src/app/jobs/components/Shortcuts"
 import { linkedInStartHref } from "src/app/start/pending"
 import { ExtensionSettings } from "./ExtensionSettings"
 import { GmailSettings } from "./GmailSettings"
@@ -44,14 +43,12 @@ export function SettingsScreen({
   const [typed, setTyped] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [themeValue, setThemeValue] = useState<"light" | "dark" | "system">("system")
-  const [shortcuts, setShortcuts] = useState<"on" | "off">("on")
   const pending = profileState.isPending || accountState.isPending
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("js-theme")
       setThemeValue(saved === "dark" || saved === "light" ? saved : "system")
-      setShortcuts(localStorage.getItem(SHORTCUTS_KEY) === "off" ? "off" : "on")
     } catch {}
   }, [])
 
@@ -130,23 +127,6 @@ export function SettingsScreen({
             onChange={(next) => {
               setThemeValue(next)
               theme.setTheme(next)
-            }}
-          />
-        </div>
-        <div className="settings-row">
-          <h2>{t("st.shortcuts")}</h2>
-          <Segmented<"on" | "off">
-            label={t("st.shortcuts")}
-            value={shortcuts}
-            options={[
-              { value: "on", label: t("st.shortcuts.on") },
-              { value: "off", label: t("st.shortcuts.off") },
-            ]}
-            onChange={(next) => {
-              setShortcuts(next)
-              try {
-                localStorage.setItem(SHORTCUTS_KEY, next)
-              } catch {}
             }}
           />
         </div>

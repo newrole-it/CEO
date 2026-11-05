@@ -151,7 +151,7 @@ export function StatsScreen({
           <ButtonLink href="/applications" variant="primary">
             {t("stx.empty.tracker")}
           </ButtonLink>
-          <ButtonLink href="/jobs" variant="outline">
+          <ButtonLink href="/offers" variant="outline">
             {t("app.empty.offers")}
           </ButtonLink>
         </EmptyState>

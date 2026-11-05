@@ -115,7 +115,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
   )
   const next = nextStep(steps)
   const count = progress(steps)
-  // Every step, optional ones too; the index may still be filling.
+  // Every step, optional ones too.
   const complete = steps.every((step) => step.state === "done" || step.state === "wait")
   const [seen, setSeen] = useState(celebrated)
 
@@ -130,7 +130,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
 
   function skip() {
     document.cookie = `${SETUP_SKIP_COOKIE}=1; path=/; max-age=31536000; samesite=lax`
-    router.push("/jobs?tab=all")
+    router.push("/cv")
   }
 
   return (
@@ -171,7 +171,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
               <strong>{t("setup.ready.title")}</strong> {t("setup.ready.body")}
             </p>
             <div style={{ marginTop: 8 }}>
-              <ButtonLink href="/jobs" variant="primary" size="sm">
+              <ButtonLink href="/cv" variant="primary" size="sm">
                 {t("setup.ready.cta")}
               </ButtonLink>
             </div>
@@ -221,7 +221,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
           <Button variant="ghost" onClick={closeCelebration}>
             {t("setup.done.stay")}
           </Button>
-          <ButtonLink href="/jobs" variant="primary" onClick={closeCelebration}>
+          <ButtonLink href="/cv" variant="primary" onClick={closeCelebration}>
             {t("setup.done.cta")}
           </ButtonLink>
         </div>

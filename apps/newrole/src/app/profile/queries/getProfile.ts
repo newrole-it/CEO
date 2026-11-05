@@ -1,7 +1,7 @@
 import { resolver } from "@blitzjs/rpc"
 import db from "db"
-import { liveMatchingConfig } from "src/server/matching/live"
-import { profileMonthlyPln } from "src/server/profile/salary"
+import { liveMatchingConfig } from "@newrole/matching/live-config"
+import { profileMonthlyPln } from "@newrole/profile/salary"
 import { asStringList, emptyProfileDraft, type ProfileDraft } from "@newrole/profile/schema"
 
 export default resolver.pipe(resolver.authorize(), async (_input: unknown, ctx) => {

@@ -16,8 +16,9 @@ import {
   indexedOfferText,
   offerSourceSelect,
   readOfferText,
+  savedOfferText,
   toOfferSource,
-} from "src/server/jobs/offer-text"
+} from "src/server/offers/text"
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import type { HttpClient } from "src/server/security/safe-fetch"
@@ -46,10 +47,14 @@ export type TailorJob = {
 
 export type { TailorContext, TailorResult }
 
-/** Reads the index only, unless `live` asks for the whole offer from its source. */
+/**
+ * The person's own copy of the offer when they keep one; else the index only, unless `live` asks
+ * for the whole offer from its source.
+ */
 export async function loadTailorJob(
   jobId: string,
-  live?: { http?: HttpClient }
+  live?: { http?: HttpClient },
+  userId?: number | null
 ): Promise<TailorJob | null> {
   const job = await db.job.findUnique({
     where: { id: jobId },
@@ -57,7 +62,8 @@ export async function loadTailorJob(
   })
   if (!job) return null
   const source = toOfferSource(job)
-  const read = live ? await readOfferText(source, live.http) : indexedOfferText(source)
+  const saved = userId ? await savedOfferText(userId, jobId) : null
+  const read = saved ?? (live ? await readOfferText(source, live.http) : indexedOfferText(source))
   return {
     id: job.id,
     company: source.company,
@@ -283,7 +289,7 @@ export async function tailorCvForJob(input: {
 }): Promise<TailorResult> {
   const { userId, jobId, note } = input
   const llm = writingClient(input.llm)
-  const job = await loadTailorJob(jobId, { http: input.http })
+  const job = await loadTailorJob(jobId, { http: input.http }, userId)
   if (!job) throw new CvError("job-not-found", "This offer is not in the index.")
   const existing = await findExisting(userId, jobId, "CV")
   const base = await baseForTailoring(userId, existing, input.baseCvId)
@@ -338,7 +344,7 @@ export async function generateLetterForJob(input: {
 }): Promise<TailorResult> {
   const { userId, jobId, note } = input
   const llm = writingClient(input.llm)
-  const job = await loadTailorJob(jobId, { http: input.http })
+  const job = await loadTailorJob(jobId, { http: input.http }, userId)
   if (!job) throw new CvError("job-not-found", "This offer is not in the index.")
   const [existing, tailoredCv] = await Promise.all([
     findExisting(userId, jobId, "LETTER"),

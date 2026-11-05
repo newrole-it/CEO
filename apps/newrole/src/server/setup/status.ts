@@ -32,7 +32,6 @@ export type SetupStatus = {
 }
 
 const CLAUDE_CACHE_MS = 20_000
-const INDEX_CACHE_MS = 30_000
 
 async function dbFacts(app: string): Promise<SetupFacts["db"]> {
   try {
@@ -83,21 +82,6 @@ export async function claudeFacts(now: number): Promise<SetupFacts["claude"]> {
     loggedIn: binary ? await claudeLoggedIn(binary) : null,
   }
   claudeCache = { at: now, value }
-  return value
-}
-
-let indexCache: { at: number; value: SetupFacts["index"] } | null = null
-
-async function indexFacts(now: number): Promise<SetupFacts["index"]> {
-  if (indexCache && indexCache.value.offers > 0 && now - indexCache.at < INDEX_CACHE_MS) {
-    return indexCache.value
-  }
-  const [offers, companies] = await Promise.all([
-    db.job.count({ where: { status: "ACTIVE" } }),
-    db.company.count({ where: { jobs: { some: { status: "ACTIVE" } } } }),
-  ]).catch(() => [0, 0])
-  const value = { offers, companies }
-  indexCache = { at: now, value }
   return value
 }
 
@@ -162,7 +146,6 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
       ...base,
       db: database,
       worker: { lastSeenAt: null },
-      index: { offers: 0, companies: 0 },
       user: NO_USER,
       profile: false,
       details: { firstName: false, email: false, phone: false },
@@ -171,10 +154,9 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
       sheet: { connected: false, lastSyncedAt: null, lastError: null },
     }
   }
-  const [workerSeen, mcpSeen, index, user, profile] = await Promise.all([
+  const [workerSeen, mcpSeen, user, profile] = await Promise.all([
     heartbeat("worker"),
     heartbeat("mcp"),
-    indexFacts(now.getTime()),
     userFacts(userId),
     hasProfile(userId),
   ])
@@ -194,7 +176,6 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
     ...base,
     db: database,
     worker: { lastSeenAt: workerSeen },
-    index,
     user,
     profile,
     details: {

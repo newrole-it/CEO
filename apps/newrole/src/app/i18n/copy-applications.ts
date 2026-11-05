@@ -59,7 +59,7 @@ export const applicationsPl = {
   "app.empty.title": "Nie śledzisz jeszcze żadnej aplikacji.",
   "app.empty.body":
     "Oznacz ofertę jako „Aplikowano” albo zainstaluj rozszerzenie Chrome, a aplikacje zapiszą się same.",
-  "app.empty.offers": "Przejdź do ofert",
+  "app.empty.offers": "Twoje oferty",
   "app.empty.extension": "Rozszerzenie Chrome",
   "app.empty.filter": "Brak aplikacji w tym widoku.",
   "app.empty.search": "Nic nie pasuje do „{q}”.",
@@ -377,7 +377,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.empty.title": "You're not tracking any applications yet.",
   "app.empty.body":
     "Mark an offer as “Applied” or install the Chrome extension, and applications will save themselves.",
-  "app.empty.offers": "Go to offers",
+  "app.empty.offers": "Your offers",
   "app.empty.extension": "Chrome extension",
   "app.empty.filter": "No applications in this view.",
   "app.empty.search": "Nothing matches “{q}”.",
