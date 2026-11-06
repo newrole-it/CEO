@@ -10,7 +10,7 @@ import { useToast } from "@newrole/ui/interactive"
 import { useCopy } from "src/app/i18n/Locale"
 import createEditableCvDocument from "../mutations/createEditableCvDocument"
 
-/** An uploaded PDF, shown as stored, with the way to an editable version next to it. */
+/** An uploaded PDF, shown as stored, with the way to make the same CV editable. */
 export function UploadedCv({
   id,
   title,
@@ -32,7 +32,9 @@ export function UploadedCv({
       const result = await invoke(createEditableCvDocument, { id })
       if (!result) throw new Error("no result")
       if (result.reader === "text") toast.show({ message: t("cv.up.textOnly"), duration: 10_000 })
-      router.push(`/cv/${result.id}${forAudit ? "?audit=1" : ""}`)
+      // the same CV, now editable: this address renders the editor once refreshed
+      router.replace(`/cv/${result.id}${forAudit ? "?audit=1" : ""}`)
+      router.refresh()
     } catch {
       toast.show({ message: t("cv.up.err"), tone: "danger" })
       setBusy(false)

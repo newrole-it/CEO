@@ -3,9 +3,14 @@
 import { createContext, useContext } from "react"
 import type { CvAudit } from "@newrole/cv-core/audit"
 import type { CvLocale } from "@newrole/cv-core/blank"
-import type { CvContent } from "@newrole/cv-core/schema"
+import type { CvContent, CvSection } from "@newrole/cv-core/schema"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
-import type { CvVersionView, TailorResult } from "@newrole/cv-core/views"
+import type {
+  CvVersionView,
+  ImproveMode,
+  ImprovedSection,
+  TailorResult,
+} from "@newrole/cv-core/views"
 import type { LetterSource } from "./AddLetter"
 
 /**
@@ -38,11 +43,17 @@ export type CvEditorBackend = {
       id: string,
       versionId: string
     ) => Promise<{ content: CvContent; language: CvLocale; updatedAt: Date }>
+    /** GET returns the PDF a version keeps (CvVersionView.hasPdf); without it none is offered */
+    pdfUrl?: (id: string, versionId: string) => string
     /**
      * A CV for an offer saved as the newest version of its general CV (TailorContext.general);
      * `number` is null when that CV already had this content. Without it there is no button.
      */
-    toGeneral?: (id: string) => Promise<{ cvId: string; number: number | null }>
+    toGeneral?: (
+      id: string,
+      /** A general CV's id, or "new", when the one it came from is gone (TailorContext.choices) */
+      into?: string
+    ) => Promise<{ cvId: string; title: string; number: number | null; created: boolean }>
   }
   /** Writing for an offer; `jobId` is TailorContext.job.id. */
   tailor: {
@@ -56,6 +67,26 @@ export type CvEditorBackend = {
       locale?: CvLocale
     }) => Promise<TailorResult>
     letter: (input: { jobId: string; language?: CvLocale; note?: string }) => Promise<TailorResult>
+  }
+  /**
+   * "Popraw z AI" on one section of a CV; without it the editor offers none. `preview` stores
+   * nothing; `apply` puts the section in place and keeps the state before in the history.
+   */
+  improve?: {
+    preview: (input: {
+      id: string
+      sectionId: string
+      mode: ImproveMode
+      note?: string
+      /** The language of the notes for the person */
+      locale?: CvLocale
+      /** 2 and up for another take */
+      attempt?: number
+    }) => Promise<ImprovedSection | null | undefined>
+    apply: (input: {
+      id: string
+      section: CvSection
+    }) => Promise<{ content: CvContent; language: CvLocale; updatedAt: Date }>
   }
   /** The general letter of a general CV (PairBar); without it the bar cannot add one. */
   letters?: {

@@ -35,7 +35,7 @@ export const cvPl = {
   "cv.act.more": "Więcej działań: {title}",
   "cv.delete.title": "Usunąć to CV?",
   "cv.delete.body":
-    "„{title}” zniknie na stałe. Aplikacje, które go używały, zostaną, ale bez powiązania z tym CV.",
+    "„{title}” zniknie na stałe razem z historią wersji i zapisanymi PDF-ami. Aplikacje, które go używały, zostaną, ale bez powiązania z tym CV.",
   "cv.delete.confirm": "Usuń CV",
   "cv.toast.duplicated": "Utworzono kopię.",
   "cv.toast.default": "Ustawiono jako domyślne.",
@@ -146,6 +146,9 @@ export const cvPl = {
   "cv.help.blocks.t": "Przyciski przy wpisach",
   "cv.help.blocks.b":
     "Najedź na wpis, punkt albo sekcję: obok pojawią się małe przyciski. Przesuniesz nimi w górę i w dół, dodasz coś pod spodem albo usuniesz, a przy doświadczeniu dodasz punkt, opis lub linię technologii.",
+  "cv.help.ai.t": "Popraw z AI",
+  "cv.help.ai.b":
+    "Najedź na tytuł sekcji albo jej tekst i kliknij ikonę iskierek. Wybierz, co zrobić: popraw styl, skróć albo wzmocnij. Model przepisze tylko tę sekcję, bez nowych faktów, a zmiany zobaczysz w panelu z prawej, zanim je zastosujesz.",
   "cv.help.links.t": "Linki",
   "cv.help.links.b":
     "Najedź na nagłówek i kliknij ikonę łańcucha, żeby dodać linki pod danymi kontaktowymi. W opisie albo punkcie zaznacz słowa i naciśnij {link}.",
@@ -190,15 +193,18 @@ export const cvPl = {
 
   // uploaded PDF
   "cv.up.lead":
-    "Ten PDF jest przechowywany dokładnie tak, jak go wgrano. Żeby go poprawiać, utwórz obok wersję edytowalną.",
-  "cv.up.make": "Utwórz edytowalną wersję",
+    "Ten PDF jest przechowywany dokładnie tak, jak go wgrano. Żeby go poprawiać i dopasowywać do ofert, utwórz wersję do edycji. To dalej jedno CV: od tej chwili jego PDF powstaje z wersji do edycji, a ten plik zostaje w historii jako oryginał.",
+  "cv.up.make": "Utwórz wersję do edycji",
+  "cv.up.row": "Wgrany PDF · {when}",
+  "cv.up.original": "oryginał: {name}",
+  "cv.up.originalOf": "Pobierz oryginalny PDF: {name}",
   "cv.up.making": "Czytam PDF…",
   "cv.up.frame": "Podgląd PDF: {title}",
   "cv.up.textOnly":
     "Model był niedostępny, więc cały tekst trafił do jednej sekcji. Podziel go na miejscu.",
   "cv.up.err": "Nie udało się odczytać tekstu z tego PDF.",
   "cv.up.leadAudit":
-    "Audyt zaznacza uwagi bezpośrednio na tekście, więc potrzebuje wersji edytowalnej. Ten PDF zostanie bez zmian.",
+    "Audyt zaznacza uwagi bezpośrednio na tekście, więc potrzebuje wersji do edycji. Ten PDF zostanie w historii CV jako oryginał.",
 
   // audit on the sheet
   "cv.au.button": "Audyt",
@@ -291,7 +297,7 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.act.more": "More actions: {title}",
   "cv.delete.title": "Delete this CV?",
   "cv.delete.body":
-    "“{title}” will be gone for good. Applications that used it stay, without the link to this CV.",
+    "“{title}” will be gone for good, with its version history and saved PDFs. Applications that used it stay, without the link to this CV.",
   "cv.delete.confirm": "Delete CV",
   "cv.toast.duplicated": "Copy created.",
   "cv.toast.default": "Set as default.",
@@ -396,6 +402,9 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.help.blocks.t": "Buttons next to entries",
   "cv.help.blocks.b":
     "Point at an entry, a bullet or a section: small buttons appear next to it. Use them to move it up or down, add something below or delete it, and on experience to add a bullet, a description or a technology line.",
+  "cv.help.ai.t": "Improve with AI",
+  "cv.help.ai.b":
+    "Point at a section's title or its text and click the sparkles icon. Choose what to do: polish, shorten or strengthen. The model rewrites only that section, with no new facts, and you see the changes in the panel on the right before you apply them.",
   "cv.help.links.t": "Links",
   "cv.help.links.b":
     "Point at the header and click the chain icon to add links under your contact details. In a description or bullet, select words and press {link}.",
@@ -438,15 +447,18 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.sec.education": "Education",
 
   "cv.up.lead":
-    "This PDF is stored exactly as uploaded. To change it, create an editable version next to it.",
+    "This PDF is stored exactly as uploaded. To change it and tailor it to offers, create an editable version. It stays one CV: from then on its PDF is made from the editable version, and this file stays in the history as the original.",
   "cv.up.make": "Create an editable version",
+  "cv.up.row": "Uploaded PDF · {when}",
+  "cv.up.original": "original: {name}",
+  "cv.up.originalOf": "Download the original PDF: {name}",
   "cv.up.making": "Reading the PDF…",
   "cv.up.frame": "PDF preview: {title}",
   "cv.up.textOnly":
     "The model wasn't available, so all the text went into one section. Split it up on the page.",
   "cv.up.err": "Couldn't read any text from this PDF.",
   "cv.up.leadAudit":
-    "The audit marks its notes right on the text, so it needs an editable version. This PDF stays as it is.",
+    "The audit marks its notes right on the text, so it needs an editable version. This PDF stays in the CV's history as the original.",
 
   "cv.au.button": "Audit",
   "cv.au.title": "CV audit",

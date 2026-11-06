@@ -140,7 +140,7 @@ export function registerCvTools(server: McpServer) {
     {
       title: "Pokaż CV",
       description:
-        "Read one CV: its structured content as JSON (with section and item ids for cv_update) and as plain text. Without an id it reads the default CV. An uploaded PDF has no content until the person creates an editable copy at /cv.",
+        "Read one CV: its structured content as JSON (with section and item ids for cv_update) and as plain text. Without an id it reads the default CV. An uploaded PDF has no content until the person makes it editable at /cv (the same CV; the file stays as its original).",
       inputSchema: {
         id: z.string().max(64).optional().describe("CV id from cv_list; omit for the default CV"),
       },
@@ -304,7 +304,8 @@ export function registerCvTools(server: McpServer) {
       const found = await resolveCv(user.id, id)
       if ("error" in found) return found.error
       const { cv } = found
-      const pdf = await cvPdf(user.id, cv.id)
+      // a file written for the person to send: the CV's history keeps it
+      const pdf = await cvPdf(user.id, cv.id, { leaves: true })
       if (!pdf) {
         if (cv.kind === "EDITABLE" && !findChrome()) {
           return failure(

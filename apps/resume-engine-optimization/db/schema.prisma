@@ -690,8 +690,9 @@ model ApplicationEvent {
   @@index([applicationId, at])
 }
 
-/// A CV the person keeps here: an editable document (content) or an uploaded PDF. A cover letter
-/// is the same document with one "letter" section, so it shares the editor, PDF and versions.
+/// A CV the person keeps here: an editable document (content) or an uploaded PDF. An uploaded PDF
+/// becomes editable in place, its file kept as version 0. A cover letter is the same document with
+/// one "letter" section, so it shares the editor, PDF and versions.
 model CvDocument {
   id               String       @id @default(cuid())
   userId           Int
@@ -718,8 +719,9 @@ model CvDocument {
   /// Company and role at that moment: the offer can leave the index. Set on every tailored document.
   targetCompany    String?
   targetTitle      String?
-  /// What this one started from: a tailored CV's general CV, an editable copy's uploaded PDF, a
-  /// general letter's general CV (the pair My CV shows; src/server/cv/service.ts)
+  /// What this one started from: a tailored CV's general CV, a general letter's general CV (the
+  /// pair My CV shows; src/server/cv/service.ts). Before an upload became editable in place, an
+  /// editable copy's uploaded PDF, which src/server/cv/structure.ts merges into one CV.
   baseCvId         String?
   baseCv           CvDocument?  @relation("CvBase", fields: [baseCvId], references: [id], onDelete: SetNull)
   tailored         CvDocument[] @relation("CvBase")
@@ -763,13 +765,15 @@ model UserOffer {
 }
 
 /// A saved state of a CV or letter. Restoring adds a new version, so history is never rewritten.
+/// A version can keep a PDF: the file the CV was uploaded as (number 0, origin upload) or one made
+/// from it that left the app, downloaded or sent (src/server/cv/versions.ts).
 model CvVersion {
   id           String     @id @default(cuid())
   documentId   String
   document     CvDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  /// 1, 2, 3… within the document
+  /// 1, 2, 3… within the document; 0 is the uploaded PDF it was read from
   number       Int
-  /// auto | manual | base | generated | restored | offer
+  /// auto | manual | base | generated | restored | offer | upload | pdf
   origin       String
   /// The name the person gave it; origin offer: the offer's company and role
   label        String?
@@ -780,6 +784,10 @@ model CvVersion {
   content      Json
   /// sha256 of the content, to tell whether anything changed without loading it
   contentHash  String
+  /// The PDF of this version as it left the app, or as it was uploaded
+  pdf          Bytes?
+  /// Set exactly when pdf is, so a list can tell without loading the file
+  pdfName      String?
   createdAt    DateTime   @default(now())
 
   @@unique([documentId, number])

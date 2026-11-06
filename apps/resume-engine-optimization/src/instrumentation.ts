@@ -1,7 +1,8 @@
 /**
  * Runs once when the Next server boots. blitz-server.ts checks the secrets too, but only when the
  * first request loads it; here a public server with sample secrets stops before it serves anyone.
- * Then the server starts newrole.it's background work, so the app needs no second process.
+ * Then the server starts newrole.it's background work, so the app needs no second process, and
+ * folds old pairs of an uploaded PDF and its editable copy into one CV (src/server/cv/structure.ts).
  */
 export async function register() {
   // Inside the condition, as the Next docs on instrumentation ask: the code is Node-only.
@@ -15,5 +16,12 @@ export async function register() {
     }
     const { startInServer } = await import("src/server/queue/worker")
     startInServer()
+    // an uploaded PDF and its editable copy, from before they were one CV, become one
+    const { mergeUploadedCopies } = await import("src/server/cv/structure")
+    void mergeUploadedCopies().then(
+      (merged) => merged && console.log(`Merged ${merged} uploaded CV(s) with their editable copy`),
+      (error: unknown) =>
+        console.error("Merging uploaded CVs failed", error instanceof Error ? error.message : error)
+    )
   }
 }

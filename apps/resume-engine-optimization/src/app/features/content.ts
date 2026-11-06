@@ -139,11 +139,15 @@ const cvEditorPl: FeatureSection = {
         },
         {
           label: "Wersje",
-          body: "Historia zapisuje się sama, najwyżej raz na 10 minut, a „Zapisz wersję” zapisuje ją od razu pod nazwą. Każdą wersję możesz podejrzeć, porównać z obecnym tekstem i przywrócić; poprzedni stan zostaje w historii.",
+          body: "Historia zapisuje się sama, najwyżej raz na 10 minut, a „Zapisz wersję” zapisuje ją od razu pod nazwą. Każdą wersję możesz podejrzeć, porównać z obecnym tekstem i przywrócić; poprzedni stan zostaje w historii. Każdy PDF, który wychodzi z aplikacji (pobrany, dołączony do formularza przez rozszerzenie albo zapisany przez Claude), zostaje przy wersji, z której powstał, z przyciskiem „PDF”. CV z wgranego pliku ma na końcu historii „Oryginał”, czyli ten plik.",
         },
         {
           label: "Zapisz jako ogólne",
-          body: "W CV pod ofertę: cała jego treść, z Twoimi poprawkami, staje się nową wersją ogólnego CV, z którego powstało, więc CV pod kolejne oferty zaczynają się już od niej. Poprzednia treść ogólnego CV zostaje w jego wersjach.",
+          body: "W CV pod ofertę: cała jego treść, z Twoimi poprawkami, staje się nową wersją ogólnego CV, z którego powstało, więc CV pod kolejne oferty zaczynają się już od niej. Poprzednia treść ogólnego CV zostaje w jego wersjach. Gdy tamto CV usunięto, wybierasz, do którego CV ogólnego zapisać, albo tworzysz z tego nowe CV ogólne; od tej chwili CV pod ofertę jest z nim powiązane.",
+        },
+        {
+          label: "Popraw z AI",
+          body: "Najedź na tytuł sekcji albo jej tekst i kliknij ikonę iskierek; to samo jest w zakładce „Popraw z AI” panelu z prawej. Wybierasz sekcję i zadanie: popraw styl (gramatyka i jasne zdania, ta sama długość), skróć (o mniej więcej jedną trzecią) albo wzmocnij (czasowniki działania, wyniki na początku), a do tego wskazówki własnymi słowami. Model przepisuje tylko tę sekcję, na tych samych zasadach co dopasowanie: firmy, stanowiska i daty zostają, pole z liczbą spoza Twoich danych zostaje po staremu, a nazwy, których nie ma w CV ani profilu, są wypisane do sprawdzenia. Zmiany widzisz jako porównanie, zanim klikniesz „Zastosuj”; poprzedni stan zostaje w wersjach, a „Cofnij” działa od razu. Potrzebuje modelu.",
         },
         {
           label: "Podgląd wydruku i Pobierz PDF",
@@ -449,7 +453,7 @@ const cvListPl: FeatureSection = {
         },
         {
           label: "Wgraj PDF",
-          body: "Zapisuje PDF dokładnie taki, jaki jest; możesz go upuścić na listę. „Utwórz edytowalną wersję” zamienia go na CV do edycji: z modelem w sekcje, bez modelu w jedną sekcję z całym tekstem.",
+          body: "Zapisuje PDF dokładnie taki, jaki jest; możesz go upuścić na listę. „Utwórz wersję do edycji” (w wierszu CV albo na stronie PDF) robi z tego samego CV wersję do edycji: z modelem w sekcje, bez modelu w jedną sekcję z całym tekstem. To dalej jedno CV: jego PDF powstaje odtąd z wersji do edycji, a wgrany plik zostaje w historii jako oryginał, do pobrania z wiersza CV („oryginał: nazwa.pdf”).",
         },
         {
           label: "Importuj HTML",
@@ -462,7 +466,7 @@ const cvListPl: FeatureSection = {
       items: [
         {
           label: "Edytuj, PDF",
-          body: "Otwiera edytor albo od razu pobiera PDF. Pod nazwą widać język i ostatnią zmianę. Plakietkę „Domyślne” ma karta domyślnego CV, a „PDF” wiersz wgranego pliku.",
+          body: "Otwiera edytor albo od razu pobiera PDF, który zostaje w historii CV. Pod nazwą widać język i ostatnią zmianę. Plakietkę „Domyślne” ma karta domyślnego CV, a „PDF” wiersz wgranego pliku, którego jeszcze nie zamieniono na wersję do edycji.",
         },
         {
           label: "Ustaw jako domyślne",
@@ -470,7 +474,7 @@ const cvListPl: FeatureSection = {
         },
         {
           label: "Duplikuj, Usuń",
-          body: "Kopia dostaje dopisek „(kopia)”, a kopia CV ogólnego dostaje też kopię jego listu. Usunięcie pyta o potwierdzenie, a przy CV z listem także o to, czy usunąć list; aplikacje zostają, tylko bez linku do tego CV.",
+          body: "Kopia dostaje dopisek „(kopia)”, a kopia CV ogólnego dostaje też kopię jego listu; historii i zapisanych PDF-ów kopia nie przejmuje. Usunięcie pyta o potwierdzenie, a przy CV z listem także o to, czy usunąć list. Znika razem z historią i zapisanymi PDF-ami; aplikacje zostają, tylko bez linku do tego CV.",
         },
       ],
     },
@@ -785,11 +789,15 @@ const cvEditorEn: FeatureSection = {
         },
         {
           label: "Versions",
-          body: "History saves itself at most once every 10 minutes, and “Save version” saves one right away under a name. Preview any version, compare it with the current text and restore it; the previous state stays in the history.",
+          body: "History saves itself at most once every 10 minutes, and “Save version” saves one right away under a name. Preview any version, compare it with the current text and restore it; the previous state stays in the history. Every PDF that leaves the app (downloaded, attached to a form by the extension or saved by Claude) stays with the version it was made from, with a “PDF” button. A CV made from an uploaded file has the “Original”, that file, at the end of its history.",
         },
         {
           label: "Save as general",
-          body: "In a CV for an offer: all of it, with your edits, becomes a new version of the general CV it came from, so the CVs for your next offers start from it. What the general CV had before stays in its versions.",
+          body: "In a CV for an offer: all of it, with your edits, becomes a new version of the general CV it came from, so the CVs for your next offers start from it. What the general CV had before stays in its versions. When that CV was deleted, you pick which general CV to save into, or make this one a new general CV; from then on the CV for an offer is linked to it.",
+        },
+        {
+          label: "Improve with AI",
+          body: "Point at a section's title or its text and click the sparkles icon; the same is in the “Improve with AI” tab of the panel on the right. You pick the section and the task: polish (grammar and clear sentences, same length), shorten (by about a third) or strengthen (action verbs, results first), plus notes in your own words. The model rewrites only that section, under the same rules as tailoring: companies, roles and dates stay, a field with a number your data doesn't have keeps its old text, and names your CV and profile don't have are listed to check. You see the changes as a comparison before you click “Apply”; the previous state stays in the versions, and “Undo” works at once. It needs a model.",
         },
         {
           label: "Print preview and Download PDF",
@@ -1095,7 +1103,7 @@ const cvListEn: FeatureSection = {
         },
         {
           label: "Upload PDF",
-          body: "Keeps the PDF exactly as it is; you can also drop it on the list. “Create an editable version” turns it into a CV to edit: into sections with a model, into one section with all the text without one.",
+          body: "Keeps the PDF exactly as it is; you can also drop it on the list. “Create an editable version” (in the CV's row or on the PDF's page) makes the same CV editable: into sections with a model, into one section with all the text without one. It stays one CV: its PDF is made from the editable version from then on, and the uploaded file stays in the history as the original, to download from the CV's row (“original: name.pdf”).",
         },
         {
           label: "Import HTML",
@@ -1108,7 +1116,7 @@ const cvListEn: FeatureSection = {
       items: [
         {
           label: "Edit, PDF",
-          body: "Opens the editor, or downloads the PDF right away. Under the name you see the language and the last change. The default CV's card has a “Default” badge, an uploaded file's row a “PDF” one.",
+          body: "Opens the editor, or downloads the PDF right away, which stays in the CV's history. Under the name you see the language and the last change. The default CV's card has a “Default” badge, and the row of an uploaded file not yet made editable a “PDF” one.",
         },
         {
           label: "Set as default",
@@ -1116,7 +1124,7 @@ const cvListEn: FeatureSection = {
         },
         {
           label: "Duplicate, Delete",
-          body: "A copy gets “(kopia)” in its title, and a copy of a general CV gets a copy of its letter too. Deleting asks first, and for a CV with a letter also whether to delete the letter; applications stay, just without the link to that CV.",
+          body: "A copy gets “(kopia)” in its title, and a copy of a general CV gets a copy of its letter too; the copy does not take the history or the saved PDFs. Deleting asks first, and for a CV with a letter also whether to delete the letter. It goes with its history and saved PDFs; applications stay, just without the link to that CV.",
         },
       ],
     },

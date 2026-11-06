@@ -5,11 +5,11 @@ export const dynamic = "force-dynamic"
 
 export const OPTIONS = preflight
 
-/** The default CV as PDF, or the one in ?id=. */
+/** The default CV as PDF, or the one in ?id=. It goes into a form, so the CV's history keeps it. */
 export const GET = withToken(async (request, { userId }) => {
   const id = new URL(request.url).searchParams.get("id")?.trim() || (await defaultCv(userId))?.id
   if (!id) return errorResponse(request, "No CV yet.", 404)
-  const pdf = await cvPdf(userId, id)
+  const pdf = await cvPdf(userId, id, { leaves: true })
   if (!pdf) return errorResponse(request, "This CV has no PDF.", 404)
   const ascii = pdf.name.replace(/[^\w .()-]/g, "_") || "CV.pdf"
   return new Response(new Uint8Array(pdf.bytes), {

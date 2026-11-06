@@ -43,6 +43,7 @@ export const PERSONAL_LLM_PURPOSES = [
   "form-fill",
   "cv-structure",
   "cv-tailor",
+  "cv-improve",
   "cover-letter",
   "mail-classify",
 ] as const

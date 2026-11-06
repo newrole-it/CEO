@@ -12,10 +12,12 @@ import {
   ListPlus,
   Plus,
   Rows3,
+  Sparkles,
   Square,
   Tag,
   Trash2,
 } from "lucide-react"
+import { isRewritable } from "@newrole/cv-core/tailor"
 import type { CvT } from "./copy"
 import {
   newCard,
@@ -72,6 +74,8 @@ export type EditorOps = {
   pickPhoto: () => void
   removePhoto: () => void
   openLinks: (anchor: HTMLElement) => void
+  /** "Popraw z AI" for this section; absent where the editor offers none */
+  improve?: (sectionId: string) => void
 }
 
 type Control = {
@@ -420,6 +424,15 @@ function TitleAtom({ ops, section }: { ops: EditorOps; section: CvSection }) {
       />
       <Controls
         items={[
+          ...(ops.improve && isRewritable(section)
+            ? [
+                {
+                  icon: <Sparkles />,
+                  label: t("tl.ai.control"),
+                  onClick: () => ops.improve?.(section.id),
+                },
+              ]
+            : []),
           {
             icon: <ArrowUp />,
             label: t("cv.ctl.up"),
@@ -1041,19 +1054,33 @@ export function AtomContent({ ops, atom }: { ops: EditorOps; atom: CvAtom }) {
   if (atom.kind === "text" && section.type === "text") {
     const key = atomKey(section.id, "text")
     return (
-      <Editable
-        as="div"
-        rich
-        multiline
-        className="cv-text"
-        field={key}
-        value={section.body}
-        label={t("cv.ph.text")}
-        placeholder={t("cv.ph.text")}
-        onChange={(value) =>
-          edit((current) => updateSection(current, section.id, { body: value }), key)
-        }
-      />
+      <>
+        <Editable
+          as="div"
+          rich
+          multiline
+          className="cv-text"
+          field={key}
+          value={section.body}
+          label={t("cv.ph.text")}
+          placeholder={t("cv.ph.text")}
+          onChange={(value) =>
+            edit((current) => updateSection(current, section.id, { body: value }), key)
+          }
+        />
+        {ops.improve ? (
+          // where the person is writing, not only on the heading above
+          <Controls
+            items={[
+              {
+                icon: <Sparkles />,
+                label: t("tl.ai.control"),
+                onClick: () => ops.improve?.(section.id),
+              },
+            ]}
+          />
+        ) : null}
+      </>
     )
   }
   if (atom.kind === "skills" && section.type === "skills")

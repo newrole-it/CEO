@@ -2,7 +2,9 @@
 
 import { invoke } from "@blitzjs/rpc"
 import type { CvEditorBackend } from "@newrole/cv-editor/backend"
+import applyCvSection from "./mutations/applyCvSection"
 import createGeneralLetter from "./mutations/createGeneralLetter"
+import improveCvSection from "./mutations/improveCvSection"
 import generateCoverLetter from "./mutations/generateCoverLetter"
 import restoreCvVersion from "./mutations/restoreCvVersion"
 import runCvAudit from "./mutations/runCvAudit"
@@ -14,7 +16,7 @@ import updateCvDocument from "./mutations/updateCvDocument"
 import getCvVersion from "./queries/getCvVersion"
 import getCvVersions from "./queries/getCvVersions"
 import getOfferTextStatus from "./queries/getOfferTextStatus"
-import { cvPdfUrl, cvPrintUrl } from "./urls"
+import { cvPdfUrl, cvPrintUrl, cvVersionPdfUrl } from "./urls"
 
 /** @newrole/cv-editor over this app's Blitz mutations: one object for every page. */
 export const newroleCvBackend: CvEditorBackend = {
@@ -26,11 +28,20 @@ export const newroleCvBackend: CvEditorBackend = {
     get: (id, versionId) => invoke(getCvVersion, { id, versionId }),
     save: (id, label) => invoke(saveCvVersion, { id, label }),
     restore: (id, versionId) => invoke(restoreCvVersion, { id, versionId }),
-    toGeneral: (id) => invoke(saveCvToGeneral, { id }),
+    toGeneral: (id, into) => invoke(saveCvToGeneral, { id, into }),
+    pdfUrl: cvVersionPdfUrl,
   },
   tailor: {
     cv: (input) => invoke(tailorCvForJob, input),
     letter: (input) => invoke(generateCoverLetter, input),
+  },
+  improve: {
+    preview: (input) => invoke(improveCvSection, input),
+    apply: async (input) => {
+      const applied = await invoke(applyCvSection, input)
+      if (!applied) throw new Error("no result")
+      return applied
+    },
   },
   letters: {
     create: async (input) => {

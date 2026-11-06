@@ -318,7 +318,7 @@ describe("letters in progress", () => {
     expect(await formLetterPdf(1, loose)).toBe(pdf)
     expect(contentPdf).toHaveBeenCalledWith(done.content, "LETTER", "pl")
     expect(await formLetterPdf(1, kept)).toBe(pdf)
-    expect(cvPdf).toHaveBeenCalledWith(1, "doc1")
+    expect(cvPdf).toHaveBeenCalledWith(1, "doc1", { leaves: true })
     expect(await formLetterPdf(2, kept)).toBeNull()
   })
 })

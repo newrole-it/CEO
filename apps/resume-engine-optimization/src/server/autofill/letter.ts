@@ -313,8 +313,9 @@ export async function formLetterPdf(
   const task = tasks.get(id)
   if (!task || task.userId !== userId || task.state.status !== "done") return null
   const { letter, content, language } = task.state
+  // it goes into a form, so the letter's history keeps it
   return letter.documentId
-    ? cvPdf(userId, letter.documentId)
+    ? cvPdf(userId, letter.documentId, { leaves: true })
     : contentPdf(content, "LETTER", language)
 }
 

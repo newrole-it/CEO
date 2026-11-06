@@ -11,11 +11,13 @@ import {
   MousePointerClick,
   Move,
   PanelTop,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { Modal, ModalHead } from "@newrole/ui/interactive"
 import { Kbd } from "@newrole/ui/primitives"
 import type { CvCopyKey } from "./copy"
+import { useCvBackend } from "./backend"
 import { useCvCopy } from "./locale"
 
 /** Set once "How to edit" was closed, so it opens by itself only on the first visit. */
@@ -55,12 +57,21 @@ function useModifier(): string {
   return mod
 }
 
-type Tip = { id: string; icon: ReactNode; cv: boolean; letter: boolean; tailored?: boolean }
+type Tip = {
+  id: string
+  icon: ReactNode
+  cv: boolean
+  letter: boolean
+  tailored?: boolean
+  /** Only where the app offers "Popraw z AI" (CvEditorBackend.improve) */
+  ai?: boolean
+}
 
 const TIPS: Tip[] = [
   { id: "type", icon: <MousePointerClick />, cv: true, letter: true },
   { id: "photo", icon: <ImagePlus />, cv: true, letter: false },
   { id: "blocks", icon: <Move />, cv: true, letter: false },
+  { id: "ai", icon: <Sparkles />, cv: true, letter: false, ai: true },
   { id: "links", icon: <Link2 />, cv: true, letter: false },
   { id: "outline", icon: <ListTree />, cv: true, letter: false },
   { id: "keys", icon: <Keyboard />, cv: true, letter: true },
@@ -96,6 +107,7 @@ export function EditorHelp({
   guide?: string
 }) {
   const { t } = useCvCopy()
+  const backend = useCvBackend()
   const mod = useModifier()
   const keys = {
     paste: `${mod}V`,
@@ -105,7 +117,12 @@ export function EditorHelp({
     undo: `${mod}Z`,
     redo: `${mod}⇧Z`,
   }
-  const tips = TIPS.filter((tip) => (isLetter ? tip.letter : tip.cv) && (!tip.tailored || tailored))
+  const tips = TIPS.filter(
+    (tip) =>
+      (isLetter ? tip.letter : tip.cv) &&
+      (!tip.tailored || tailored) &&
+      (!tip.ai || Boolean(backend.improve))
+  )
   return (
     <Modal
       open={open}

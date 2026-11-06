@@ -74,6 +74,9 @@ beforeEach(() => {
     jobId: null,
     targetCompany: null,
     targetTitle: null,
+    baseCvId: null,
+    // the relation a read selects: the version 0 an uploaded PDF keeps (none here)
+    versions: [],
     tailorNotes: null,
   }
 })

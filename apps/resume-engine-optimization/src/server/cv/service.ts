@@ -12,7 +12,7 @@ import { parseStoredDocument } from "@newrole/profile/linkedin"
 import { asStringList } from "@newrole/profile/schema"
 import { documentPdfName } from "@newrole/cv-engine/http"
 import { renderCvHtml, renderPdfFromHtml } from "@newrole/cv-engine/render"
-import { appendVersion, toStoredJson, versionBeforeEdit } from "./versions"
+import { appendVersion, keepPdfVersion, toStoredJson, versionBeforeEdit } from "./versions"
 
 /**
  * CV documents: the person's editable CVs and uploaded PDFs (docs/product/plan-aplikacje.md §5.2),
@@ -44,6 +44,8 @@ export type CvView = {
   target: { jobId: string | null; company: string; title: string } | null
   /** A general letter: the general CV it goes with; null for anything else, or when that CV is gone */
   forCvId: string | null
+  /** The PDF an editable CV was uploaded as, kept as its version 0; null when it was not uploaded */
+  original: { versionId: string; name: string } | null
 }
 
 export type CvDetail = CvView & { content: CvContent | null; tailorNotes: unknown }
@@ -84,6 +86,7 @@ const VIEW_FIELDS = {
   targetCompany: true,
   targetTitle: true,
   baseCvId: true,
+  versions: { where: { origin: "upload" }, select: { id: true, pdfName: true }, take: 1 },
 } as const
 const DETAIL_FIELDS = { ...VIEW_FIELDS, content: true, tailorNotes: true } as const
 
@@ -105,6 +108,7 @@ type ViewRow = {
   targetCompany: string | null
   targetTitle: string | null
   baseCvId: string | null
+  versions: { id: string; pdfName: string | null }[]
   content?: unknown
   tailorNotes?: unknown
 }
@@ -124,6 +128,9 @@ function toView(row: ViewRow, hasContent: boolean): CvView {
       ? { jobId: row.jobId, company: row.targetCompany, title: row.targetTitle ?? "" }
       : null,
     forCvId: row.docType === "LETTER" && !row.targetCompany ? row.baseCvId : null,
+    original: row.versions[0]
+      ? { versionId: row.versions[0].id, name: row.versions[0].pdfName ?? "CV.pdf" }
+      : null,
   }
 }
 
@@ -303,7 +310,7 @@ export async function updateCv(
     if (row.kind === "UPLOADED") {
       throw new CvError(
         "uploaded-readonly",
-        "An uploaded PDF cannot be edited. Create an editable copy first."
+        "An uploaded PDF cannot be edited. Make it editable first."
       )
     }
     const content = validContent(patch.content)
@@ -479,54 +486,28 @@ async function generalCvFor(
   if (!row) throw new CvError("not-found", "CV not found.")
   if (row.docType !== "CV" || row.targetCompany)
     throw new CvError("not-general", "A general letter goes with a general CV.")
-  // an uploaded PDF has no content: its editable copy, else the profile, gives the letter its header
+  // a PDF not yet made editable has no content: the profile gives the letter its header
   const own = await getCv(userId, row.id)
-  const copy = own?.content
-    ? null
-    : await db.cvDocument.findFirst({
-        where: { userId, baseCvId: row.id, kind: "EDITABLE", ...GENERAL_CV },
-        orderBy: { updatedAt: "desc" },
-        select: { content: true, language: true },
-      })
-  const fromCopy = own?.content ? null : parseCvContent(copy?.content)
   return {
     id: row.id,
     title: row.title,
-    // the copy's language was read from its text; an upload took the interface's
-    language: cvLocale(fromCopy ? copy?.language : row.language),
-    content: own?.content ?? fromCopy,
+    language: cvLocale(row.language),
+    content: own?.content ?? null,
   }
 }
 
-/**
- * The general letter of a CV: its own, else the one of the PDF it was made from, else the one of
- * its editable copy. Tailoring from an uploaded PDF works from its copy, so either pairs.
- */
+/** The general letter of a general CV, with its content; null when it has none. */
 export async function generalLetterOf(
   userId: number,
   cvId: string
 ): Promise<(CvDetail & { content: CvContent }) | null> {
-  const cv = await db.cvDocument.findFirst({
-    where: { id: cvId, userId, ...GENERAL_CV },
-    select: { id: true, baseCvId: true },
-  })
-  if (!cv) return null
-  const copies = await db.cvDocument.findMany({
-    where: { userId, baseCvId: cv.id, ...GENERAL_CV },
-    select: { id: true },
-  })
-  const order = [cv.id, ...(cv.baseCvId ? [cv.baseCvId] : []), ...copies.map((row) => row.id)]
-  const letters = await db.cvDocument.findMany({
-    where: { userId, kind: "EDITABLE", baseCvId: { in: order }, ...GENERAL_LETTER },
+  const row = await db.cvDocument.findFirst({
+    where: { userId, kind: "EDITABLE", baseCvId: cvId, ...GENERAL_LETTER },
     orderBy: { updatedAt: "desc" },
     select: DETAIL_FIELDS,
   })
-  for (const id of order) {
-    const row = letters.find((letter) => letter.baseCvId === id)
-    const detail = row ? toDetail(row) : null
-    if (detail?.content) return { ...detail, content: detail.content }
-  }
-  return null
+  const detail = row ? toDetail(row) : null
+  return detail?.content ? { ...detail, content: detail.content } : null
 }
 
 /**
@@ -605,10 +586,13 @@ export async function pairContext(userId: number, doc: CvDetail): Promise<PairCo
 /**
  * The PDF of a CV: the uploaded file, the cached render when it is still current, or a fresh
  * render (cached for next time). Null when the CV does not exist or Chrome is unavailable.
+ * `leaves`: the PDF goes out of the app (a download, a form, an export), so it is kept in the
+ * history (versions.ts keepPdfVersion); a preview does not pass it.
  */
 export async function cvPdf(
   userId: number,
-  id: string
+  id: string,
+  opts: { leaves?: boolean } = {}
 ): Promise<{ bytes: Buffer; name: string } | null> {
   const row = await db.cvDocument.findFirst({ where: { id, userId } })
   if (!row) return null
@@ -619,19 +603,29 @@ export async function cvPdf(
   }
   const content = row.content == null ? null : parseCvContent(row.content)
   if (!content) return null
+  const language = cvLocale(row.language)
   const docType = row.docType === "LETTER" ? "LETTER" : "CV"
-  const name = documentPdfName(content, docType, cvLocale(row.language))
+  const name = documentPdfName(content, docType, language)
+  let bytes: Buffer
   if (row.pdf && row.pdfUpdatedAt && row.pdfUpdatedAt >= row.updatedAt) {
-    return { bytes: Buffer.from(row.pdf), name }
+    bytes = Buffer.from(row.pdf)
+  } else {
+    const rendered = await contentPdf(content, docType, language)
+    if (!rendered) return null
+    bytes = rendered.bytes
+    // only if nothing changed while Chrome ran; keep updatedAt so the cache counts as current
+    await db.cvDocument.updateMany({
+      where: { id: row.id, userId, updatedAt: row.updatedAt },
+      data: { pdf: bytes, pdfName: name, pdfUpdatedAt: new Date(), updatedAt: row.updatedAt },
+    })
   }
-  const rendered = await contentPdf(content, docType, cvLocale(row.language))
-  if (!rendered) return null
-  const { bytes } = rendered
-  // only if nothing changed while Chrome ran; keep updatedAt so the cache counts as current
-  await db.cvDocument.updateMany({
-    where: { id: row.id, userId, updatedAt: row.updatedAt },
-    data: { pdf: bytes, pdfName: name, pdfUpdatedAt: new Date(), updatedAt: row.updatedAt },
-  })
+  if (opts.leaves) {
+    // the file goes out as it is even when its history entry fails
+    await keepPdfVersion({ documentId: row.id, content, language, pdf: { bytes, name } }).catch(
+      (error: unknown) =>
+        console.error("CV PDF version failed", error instanceof Error ? error.message : error)
+    )
+  }
   return { bytes, name }
 }
 
@@ -650,15 +644,20 @@ export function cvText(content: CvContent): string {
   return cvPlainText(content)
 }
 
-/** The stored PDF bytes for structuring an uploaded CV. */
+/** The stored PDF bytes for structuring an uploaded CV, with the file's name. */
 export async function storedPdf(
   userId: number,
   id: string
-): Promise<{ bytes: Buffer; title: string; language: CvLanguage } | null> {
+): Promise<{ bytes: Buffer; title: string; name: string; language: CvLanguage } | null> {
   const row = await db.cvDocument.findFirst({
     where: { id, userId },
-    select: { pdf: true, title: true, language: true },
+    select: { pdf: true, pdfName: true, title: true, language: true },
   })
   if (!row?.pdf) return null
-  return { bytes: Buffer.from(row.pdf), title: row.title, language: cvLocale(row.language) }
+  return {
+    bytes: Buffer.from(row.pdf),
+    title: row.title,
+    name: row.pdfName?.trim() || `${row.title}.pdf`,
+    language: cvLocale(row.language),
+  }
 }

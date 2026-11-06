@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { syntheticCv } from "./fixtures"
 import type { CvContent, CvExperienceSection, CvSection } from "./schema"
 import {
+  applySectionRewrite,
   applyTailoring,
   cvForModel,
   mentionsTerm,
@@ -9,7 +10,7 @@ import {
   unverifiedNumbers,
   unverifiedTerms,
 } from "./tailor"
-import { cvPlainText } from "./text"
+import { cvPlainText, sectionPlainText } from "./text"
 
 const base = (): CvContent => syntheticCv(3)
 const evidence = (content: CvContent) => cvPlainText(content)
@@ -485,5 +486,84 @@ describe("unverifiedTerms", () => {
 describe("unverifiedNumbers", () => {
   it("lists numbers the evidence does not have", () => {
     expect(unverifiedNumbers(["Zespół 12 osób, od 2019, 47% więcej."], "2019 12")).toEqual(["47"])
+  })
+})
+
+describe("applySectionRewrite", () => {
+  it("rewrites one section in its place and leaves the rest as it was", () => {
+    const cv = base()
+    const result = applySectionRewrite(
+      cv,
+      { id: "profile", body: "Prowadzę zespoły i <b>buduję</b> platformy.", hide: true },
+      { evidence: evidence(cv) }
+    )
+    expect(result?.section).toMatchObject({ id: "profile", type: "text" })
+    expect(result?.section.hidden).toBeFalsy()
+    expect(result?.section.type === "text" && result.section.body).toBe(
+      "Prowadzę zespoły i <strong>buduję</strong> platformy."
+    )
+    expect(result?.reverted).toBe(0)
+  })
+
+  it("keeps a field's old text when the model adds a number nothing backs", () => {
+    const cv = base()
+    const before = cv.sections.find((section) => section.id === "profile")
+    const result = applySectionRewrite(
+      cv,
+      { id: "profile", body: "Zwiększyłem przychody o 87%." },
+      { evidence: evidence(cv) }
+    )
+    expect(result?.reverted).toBe(1)
+    expect(result?.section).toEqual(before)
+  })
+
+  it("keeps every role with its company and dates", () => {
+    const cv = base()
+    const experience = cv.sections.find(
+      (section): section is CvExperienceSection => section.type === "experience"
+    )!
+    const [first] = experience.items
+    const result = applySectionRewrite(
+      cv,
+      {
+        id: "experience",
+        items: [{ id: first.id, role: "CEO", dates: "1999", bullets: ["Prowadziłem zespół."] }],
+      },
+      { evidence: evidence(cv) }
+    )
+    const items = result?.section.type === "experience" ? result.section.items : []
+    expect(items).toHaveLength(experience.items.length)
+    expect(items[0]).toMatchObject({
+      company: first.company,
+      role: first.role,
+      dates: first.dates,
+      bullets: ["Prowadziłem zespół."],
+    })
+  })
+
+  it("lists names the person's data does not have", () => {
+    const cv = base()
+    const result = applySectionRewrite(
+      cv,
+      { id: "profile", body: "Wdrażam Terraform w zespołach." },
+      { evidence: evidence(cv) }
+    )
+    expect(result?.unverified).toContain("Terraform")
+  })
+
+  it("refuses education, a letter's section and an unknown id", () => {
+    const cv = base()
+    expect(applySectionRewrite(cv, { id: "education" }, { evidence: "" })).toBeNull()
+    expect(applySectionRewrite(cv, { id: "nope", body: "x" }, { evidence: "" })).toBeNull()
+  })
+})
+
+describe("sectionPlainText", () => {
+  it("is one section's text without the header", () => {
+    const cv = base()
+    const text = sectionPlainText(cv, "skills")
+    expect(text).toContain("Architektura: projektowanie systemów, API, ADR")
+    expect(text).not.toContain(cv.header.name)
+    expect(sectionPlainText(cv, "nope")).toBe("")
   })
 })

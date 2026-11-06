@@ -23,6 +23,7 @@ import {
   Star,
   Trash2,
   UserRound,
+  Wand2,
 } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Dropzone, isPdf, Modal, ModalHead, useMenu, useToast } from "@newrole/ui/interactive"
@@ -33,8 +34,9 @@ import { statusLabel, statusTone } from "src/shared/applications"
 import { importCvHtml } from "@newrole/cv-core/import-html"
 import { downloadPdf } from "@newrole/cv-editor/download"
 import { AddLetter } from "@newrole/cv-editor/AddLetter"
-import { cvPdfUrl, cvPrintUrl } from "./urls"
+import { cvPdfUrl, cvPrintUrl, cvVersionPdfUrl } from "./urls"
 import createCvDocument from "./mutations/createCvDocument"
+import createEditableCvDocument from "./mutations/createEditableCvDocument"
 import createGeneralLetter from "./mutations/createGeneralLetter"
 import deleteCvDocument from "./mutations/deleteCvDocument"
 import duplicateCvDocument from "./mutations/duplicateCvDocument"
@@ -56,6 +58,8 @@ export type CvRow = {
   target: { jobId: string | null; company: string; title: string } | null
   /** A general letter: the general CV it goes with */
   forCvId: string | null
+  /** The PDF an editable CV was uploaded as, kept as its version 0 */
+  original: { versionId: string; name: string } | null
 }
 
 /** A general CV and its letter, as "General" shows them. */
@@ -71,13 +75,13 @@ function byCv(rows: CvRow[]): { pairs: Pair[]; loose: CvRow[] } {
   const ids = new Set(cvs.map((cv) => cv.id))
   const newest = (a: CvRow, b: CvRow) =>
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  return {
-    pairs: cvs.map((cv) => ({
-      cv,
-      letter: letters.filter((letter) => letter.forCvId === cv.id).sort(newest)[0] ?? null,
-    })),
-    loose: letters.filter((letter) => !letter.forCvId || !ids.has(letter.forCvId)),
-  }
+  const pairs = cvs.map((cv) => ({
+    cv,
+    letter: letters.filter((letter) => letter.forCvId === cv.id).sort(newest)[0] ?? null,
+  }))
+  const paired = new Set(pairs.flatMap((pair) => (pair.letter ? [pair.letter.id] : [])))
+  // a letter without its CV, or a second one for a CV, still shows: nothing is out of reach
+  return { pairs, loose: letters.filter((letter) => !paired.has(letter.id)) }
 }
 
 type OfferGroup = {
@@ -152,6 +156,8 @@ export function CvList({
   /** Deleting a general CV deletes its letter too, unless the person unticks it */
   const [withLetter, setWithLetter] = useState(true)
   const [query, setQuery] = useState("")
+  /** The uploaded PDF being made editable */
+  const [making, setMaking] = useState<string | null>(null)
   const newMenu = useMenu()
   const htmlInput = useRef<HTMLInputElement>(null)
 
@@ -289,6 +295,20 @@ export function CvList({
     })
   }
 
+  /** "Utwórz wersję do edycji": the same CV becomes editable; the editor opens on it. */
+  async function makeEditable(row: CvRow) {
+    setMaking(row.id)
+    try {
+      const result = await invoke(createEditableCvDocument, { id: row.id })
+      if (!result) throw new Error("no result")
+      if (result.reader === "text") toast.show({ message: t("cv.up.textOnly"), duration: 10_000 })
+      router.push(`/cv/${result.id}`)
+    } catch {
+      toast.show({ message: t("cv.up.err"), tone: "danger" })
+      setMaking(null)
+    }
+  }
+
   async function addLetter(cv: CvRow, input: { from: "write" | "text" | "blank"; text?: string }) {
     return invoke(createGeneralLetter, { cvId: cv.id, ...input })
   }
@@ -419,6 +439,8 @@ export function CvList({
               ) : null}
               <GeneralTab
                 {...byCv(rows)}
+                making={making}
+                onMakeEditable={(row) => void makeEditable(row)}
                 onAddLetter={addLetter}
                 onOpen={(id) => router.push(`/cv/${id}`)}
                 onDownload={(row) => void download(row)}
@@ -521,12 +543,17 @@ type RowActions = {
 function GeneralTab({
   pairs,
   loose,
+  making,
+  onMakeEditable,
   onAddLetter,
   onOpen,
   ...actions
 }: {
   pairs: Pair[]
   loose: CvRow[]
+  /** The uploaded PDF being made editable */
+  making: string | null
+  onMakeEditable: (row: CvRow) => void
   onAddLetter: (
     cv: CvRow,
     input: { from: "write" | "text" | "blank"; text?: string }
@@ -560,7 +587,13 @@ function GeneralTab({
             ) : null}
           </header>
           <ul className="cvl-list cvl-list--inner" role="list">
-            <DocRow row={cv} label={t("tl.bar.cv")} {...rowActions(cv)} />
+            <DocRow
+              row={cv}
+              label={t("tl.bar.cv")}
+              making={making === cv.id}
+              onMakeEditable={() => onMakeEditable(cv)}
+              {...rowActions(cv)}
+            />
             {letter ? (
               <DocRow row={letter} label={t("tl.bar.letter")} {...rowActions(letter)} />
             ) : (
@@ -736,6 +769,8 @@ function OffersTab({
 function DocRow({
   row,
   label,
+  making = false,
+  onMakeEditable,
   onDownload,
   onDuplicate,
   onDefault,
@@ -744,6 +779,9 @@ function DocRow({
   row: CvRow
   /** Shown instead of the title, where the offer above already names it */
   label?: string
+  /** An uploaded PDF: "Utwórz wersję do edycji" in place of Edit, and whether it is running */
+  making?: boolean
+  onMakeEditable?: () => void
   onDownload: () => void
   onDuplicate: () => void
   onDefault: () => void
@@ -772,14 +810,46 @@ function DocRow({
           {uploaded ? <Badge tone="plain">{t("cv.kind.pdf")}</Badge> : null}
         </span>
         <span className="cvl-row__meta">
-          {t(row.language === "en" ? "cv.lang.en" : "cv.lang.pl")} ·{" "}
-          {t("cv.updated", { when: relativeTime(row.updatedAt, t) ?? "" })}
+          {uploaded ? (
+            // the language an upload is stored with is the interface's, not the CV's
+            t("cv.up.row", { when: relativeTime(row.updatedAt, t) ?? "" })
+          ) : (
+            <>
+              {t(row.language === "en" ? "cv.lang.en" : "cv.lang.pl")} ·{" "}
+              {t("cv.updated", { when: relativeTime(row.updatedAt, t) ?? "" })}
+            </>
+          )}
+          {row.original ? (
+            <>
+              {" · "}
+              <a
+                className="link link--quiet"
+                href={cvVersionPdfUrl(row.id, row.original.versionId)}
+                aria-label={t("cv.up.originalOf", { name: row.original.name })}
+                download
+              >
+                {t("cv.up.original", { name: row.original.name })}
+              </a>
+            </>
+          ) : null}
         </span>
       </div>
       <div className="cvl-row__actions">
-        <ButtonLink href={`/cv/${row.id}`} size="sm" variant="outline" icon={<Pencil />}>
-          {t(uploaded ? "cv.act.open" : "cv.act.edit")}
-        </ButtonLink>
+        {uploaded && onMakeEditable ? (
+          <Button
+            size="sm"
+            variant="outline"
+            icon={<Wand2 />}
+            loading={making}
+            onClick={onMakeEditable}
+          >
+            {t(making ? "cv.up.making" : "cv.up.make")}
+          </Button>
+        ) : (
+          <ButtonLink href={`/cv/${row.id}`} size="sm" variant="outline" icon={<Pencil />}>
+            {t(uploaded ? "cv.act.open" : "cv.act.edit")}
+          </ButtonLink>
+        )}
         <Button
           size="sm"
           variant="ghost"

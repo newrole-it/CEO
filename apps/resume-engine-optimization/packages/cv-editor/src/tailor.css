@@ -55,6 +55,51 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* "Popraw z AI" in the side panel (ImproveTab.tsx) */
+.cvt-ai__modes {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.cvt-ai__modes legend {
+  margin-bottom: 4px;
+  padding: 0;
+  font-weight: 600;
+}
+.cvt-ai__result {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.cvt-ai__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cvt-ai__sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.cvt-ai__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.cvt-ai .cvt-notice p {
+  margin: 0 0 6px;
+}
+.cvt-ai__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* "Dodaj list": the three ways to start a general letter (AddLetter.tsx) */
 .cvt-addletter {
   position: relative;

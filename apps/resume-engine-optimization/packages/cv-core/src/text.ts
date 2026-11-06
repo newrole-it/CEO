@@ -62,3 +62,11 @@ export function cvPlainText(content: CvContent): string {
   }
   return lines.join("\n").trim()
 }
+
+/** One section as plain text, without the header: what a reader sees of it. */
+export function sectionPlainText(content: CvContent, sectionId: string): string {
+  const section = content.sections.find((entry) => entry.id === sectionId)
+  if (!section) return ""
+  const header = { ...content.header, name: "", headline: "", location: "", email: "", phone: "" }
+  return cvPlainText({ ...content, header: { ...header, links: [] }, sections: [section] }).trim()
+}

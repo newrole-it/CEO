@@ -468,3 +468,57 @@ export function applyTailoring(
     },
   }
 }
+
+/* ---------------------------------------------------------------- one section */
+
+/** Sections the model may rewrite on their own ("Popraw z AI"): not a letter, not education. */
+export function isRewritable(section: CvSection): boolean {
+  return (
+    section.type === "text" ||
+    section.type === "skills" ||
+    section.type === "cards" ||
+    section.type === "experience"
+  )
+}
+
+export const SectionRewriteReply = z.object({
+  section: ReplySection,
+  changes: z.array(z.string().max(600)).max(10).catch([]),
+})
+export type SectionRewriteReply = z.infer<typeof SectionRewriteReply>
+
+export type SectionRewrite = {
+  section: CvSection
+  /** Names in the new text that the person's data does not have */
+  unverified: string[]
+  /** Fields that kept their old text because the model added a number */
+  reverted: number
+}
+
+/**
+ * One section rewritten by the model, under the rules of tailoring: it stays where it is and
+ * stays shown, every role keeps its company and dates, a field that gains a number nothing backs
+ * keeps its old text, and no link is added. Null when the section is not there, may not be
+ * rewritten, or the result is not a valid CV.
+ */
+export function applySectionRewrite(
+  base: CvContent,
+  proposal: SectionRewriteReply["section"],
+  opts: { evidence: string }
+): SectionRewrite | null {
+  const section = base.sections.find((entry) => entry.id === proposal.id)
+  if (!section || !isRewritable(section)) return null
+  const writer = createWriter(base, opts.evidence)
+  const merged = mergeSection(section, { ...proposal, hide: undefined }, writer, false)
+  const content = parseCvContent({
+    ...base,
+    sections: base.sections.map((entry) => (entry.id === section.id ? merged : entry)),
+  })
+  const result = content?.sections.find((entry) => entry.id === section.id)
+  if (!result) return null
+  return {
+    section: result,
+    unverified: unverifiedTerms(writer.written, opts.evidence).slice(0, 12),
+    reverted: writer.reverted(),
+  }
+}

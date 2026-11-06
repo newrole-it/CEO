@@ -11,7 +11,12 @@ import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
  *
  * Autosave runs every few seconds, so it does not make versions. While someone edits, the state
  * before an edit is kept at most once per AUTO_VERSION_MS, which also covers the first edit of a
- * new session. Automatic versions are capped; the ones the person named or a model wrote are not.
+ * new session. Automatic versions are capped; the ones the person named or a model wrote are not,
+ * and neither is one that keeps a PDF.
+ *
+ * PDFs: a CV uploaded as a PDF keeps that file as version 0 ("upload"). Every PDF made from a
+ * document that leaves the app (downloaded, attached to a form by the extension, exported by
+ * Claude) stays with the version it was made from, so the history shows what was sent.
  */
 
 export const AUTO_VERSION_MS = 10 * 60_000
@@ -31,6 +36,7 @@ const VIEW_FIELDS = {
   sourceNumber: true,
   language: true,
   contentHash: true,
+  pdfName: true,
   createdAt: true,
 } as const
 
@@ -42,6 +48,7 @@ type VersionRow = {
   sourceNumber: number | null
   language: string
   contentHash: string
+  pdfName: string | null
   createdAt: Date
 }
 
@@ -55,6 +62,7 @@ function toView(row: VersionRow, currentHash: string | null): CvVersionView {
     language: cvLocale(row.language),
     createdAt: row.createdAt,
     isCurrent: row.contentHash === currentHash,
+    hasPdf: row.pdfName !== null,
   }
 }
 
@@ -79,9 +87,11 @@ export async function appendVersion(
     origin: CvVersionOrigin
     label?: string | null
     sourceNumber?: number | null
+    /** The PDF this version left the app as */
+    pdf?: { bytes: Uint8Array; name: string } | null
   }
 ) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_NAMESPACE}::int, hashtext(${input.documentId}))`
+  await lockDocument(tx, input.documentId)
   const last = await tx.cvVersion.aggregate({
     where: { documentId: input.documentId },
     _max: { number: true },
@@ -96,6 +106,8 @@ export async function appendVersion(
       language: input.language,
       content: toStoredJson(input.content),
       contentHash: contentHash(input.content),
+      pdf: input.pdf ? Buffer.from(input.pdf.bytes) : null,
+      pdfName: input.pdf?.name ?? null,
     },
     select: VIEW_FIELDS,
   })
@@ -103,9 +115,92 @@ export async function appendVersion(
   return row
 }
 
+/** One writer of a document's versions at a time: numbers and the newest version stay consistent. */
+async function lockDocument(tx: Writer, documentId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_NAMESPACE}::int, hashtext(${documentId}))`
+}
+
+/**
+ * Version 0: the PDF a CV was uploaded as, with the content read from it. It is never pruned or
+ * rewritten, so the original file stays as long as the CV does.
+ */
+export async function appendOriginal(
+  tx: Writer,
+  input: { documentId: string; content: CvContent; language: string; pdf: Uint8Array; name: string }
+) {
+  await lockDocument(tx, input.documentId)
+  return tx.cvVersion.create({
+    data: {
+      documentId: input.documentId,
+      number: 0,
+      origin: "upload",
+      language: input.language,
+      content: toStoredJson(input.content),
+      contentHash: contentHash(input.content),
+      pdf: Buffer.from(input.pdf),
+      pdfName: input.name,
+    },
+    select: VIEW_FIELDS,
+  })
+}
+
+/**
+ * A PDF that left the app stays in the history: on the newest version when that is the same
+ * content and keeps no PDF yet, else as a new version. Making the same PDF again adds nothing.
+ * The uploaded original never takes another file: a PDF made from its content is a version of
+ * its own.
+ */
+export async function keepPdfVersion(input: {
+  documentId: string
+  content: CvContent
+  language: string
+  pdf: { bytes: Uint8Array; name: string }
+}): Promise<void> {
+  const hash = contentHash(input.content)
+  await db.$transaction(async (tx) => {
+    await lockDocument(tx, input.documentId)
+    const latest = await tx.cvVersion.findFirst({
+      where: { documentId: input.documentId },
+      orderBy: { number: "desc" },
+      select: { id: true, origin: true, contentHash: true, pdfName: true },
+    })
+    if (latest && latest.contentHash === hash && latest.origin !== "upload") {
+      if (latest.pdfName !== null) return
+      await tx.cvVersion.update({
+        where: { id: latest.id },
+        data: { pdf: Buffer.from(input.pdf.bytes), pdfName: input.pdf.name },
+        select: { id: true },
+      })
+      return
+    }
+    await appendVersion(tx, {
+      documentId: input.documentId,
+      content: input.content,
+      language: input.language,
+      origin: "pdf",
+      pdf: input.pdf,
+    })
+  })
+}
+
+/** The PDF a version keeps; null when it keeps none or is not this person's. */
+export async function versionPdf(
+  userId: number,
+  id: string,
+  versionId: string
+): Promise<{ bytes: Buffer; name: string } | null> {
+  const row = await db.cvVersion.findFirst({
+    where: { id: versionId, documentId: id, document: { userId } },
+    select: { pdf: true, pdfName: true },
+  })
+  if (!row?.pdf || !row.pdfName) return null
+  return { bytes: Buffer.from(row.pdf), name: row.pdfName }
+}
+
 async function pruneAuto(tx: Writer, documentId: string) {
+  // a version that keeps a PDF stays: it is what left the app
   const extra = await tx.cvVersion.findMany({
-    where: { documentId, origin: "auto" },
+    where: { documentId, origin: "auto", pdfName: null },
     orderBy: { number: "desc" },
     skip: MAX_AUTO_VERSIONS,
     select: { id: true },

@@ -130,6 +130,8 @@ function Editor({
   // versions and tailoring share the place of the audit rail, so only one of them is open
   const [panel, setPanel] = useState<PanelTab | null>(null)
   const [tailorNotes, setTailorNotes] = useState(tailor?.notes ?? null)
+  /** The section "Popraw z AI" works on */
+  const [improveSection, setImproveSection] = useState<string | null>(null)
   function togglePanel(tab: PanelTab) {
     if (audit.open) audit.toggle()
     setPanel((current) => (current === tab ? null : tab))
@@ -229,6 +231,14 @@ function Editor({
       const rect = anchor.getBoundingClientRect()
       setLinksOpen({ top: rect.bottom + 8, left: Math.max(8, rect.right - 360) })
     },
+    improve:
+      backend.improve && !isLetter
+        ? (sectionId) => {
+            setImproveSection(sectionId)
+            if (audit.open) audit.toggle()
+            setPanel("improve")
+          }
+        : undefined,
   }
 
   const onPhoto = useCallback(
@@ -513,10 +523,11 @@ function Editor({
         >
           {t("tl.v.button")}
         </Button>
-        {tailor?.general && !isLetter ? (
+        {tailor && !isLetter ? (
           <SaveToGeneral
             id={id}
             general={tailor.general}
+            choices={tailor.choices}
             language={doc.language}
             flush={doc.flush}
           />
@@ -638,6 +649,8 @@ function Editor({
             tailor={tailor}
             notes={tailorNotes}
             onNotes={setTailorNotes}
+            improveSection={improveSection}
+            onImproveSection={setImproveSection}
           />
         ) : null}
       </div>

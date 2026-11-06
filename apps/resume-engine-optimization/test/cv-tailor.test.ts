@@ -29,11 +29,15 @@ import {
 import {
   AUTO_VERSION_MS,
   getVersion,
+  keepPdfVersion,
   listVersions,
   MAX_AUTO_VERSIONS,
   restoreVersion,
   saveVersion,
+  versionPdf,
 } from "../src/server/cv/versions"
+import { createEditableFromUpload, mergeUploadedCopies } from "../src/server/cv/structure"
+import { applyCvSection, improveCvSection } from "../src/server/cv/improve"
 import type { LlmClient } from "@newrole/llm/common"
 import { eraseAccount } from "../src/server/privacy/erase"
 import { exportAccount } from "../src/server/privacy/export"
@@ -232,37 +236,228 @@ test("no CV and no profile is its own error; an unknown offer too", async () => 
   )
 })
 
-test("an uploaded PDF as the base uses its editable copy instead of reading the file again", async () => {
-  const user = await makeUser()
-  const job = await makeJob()
-  const upload = await db.cvDocument.create({
+/** A one-page PDF with each line on its own baseline (as in @newrole/profile's pdf.test.ts). */
+function pdfWithLines(lines: string[]): Buffer {
+  const stream = lines
+    .map((line, index) => `BT /F1 12 Tf 72 ${720 - index * 20} Td (${line}) Tj ET`)
+    .join("\n")
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ]
+  let pdf = "%PDF-1.4\n"
+  const offsets: number[] = []
+  objects.forEach((body, index) => {
+    offsets.push(pdf.length)
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`
+  })
+  const xref = pdf.length
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  pdf += offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return Buffer.from(pdf, "latin1")
+}
+
+const cvPdfFile = pdfWithLines([
+  "Anna Example",
+  "Head of Engineering",
+  "I lead engineering teams and design platforms from the first plan to production.",
+  "Experience",
+  "Example Company, Head of Engineering, 2019 - 2024",
+  "Built and led a team of twelve developers.",
+])
+
+async function uploaded(userId: number, title = "Moje CV") {
+  return db.cvDocument.create({
     data: {
-      userId: user.id,
-      title: "Moje CV",
+      userId,
+      title,
       kind: "UPLOADED",
       isDefault: true,
-      pdf: Buffer.from("%PDF-1.4 not really"),
-      pdfName: "cv.pdf",
+      pdf: cvPdfFile,
+      pdfName: `${title}.pdf`,
       pdfUpdatedAt: new Date(),
     },
   })
-  const content = syntheticCv(1)
-  content.header.headline = "Nagłówek z kopii edytowalnej"
-  const copy = await createCv({ userId: user.id, from: "content", content, baseCvId: upload.id })
+}
 
+test("making an uploaded PDF editable keeps one CV, with the file as its original", async () => {
+  const user = await makeUser()
+  const upload = await uploaded(user.id)
+  const { cv } = await createEditableFromUpload(user.id, upload.id, null)
+
+  assert.equal(cv.id, upload.id, "the same CV")
+  assert.equal(cv.kind, "EDITABLE")
+  assert.equal(cv.language, "en", "the language of its text")
+  assert.ok(cv.content)
+  assert.equal(cv.original?.name, "Moje CV.pdf")
+  assert.deepEqual(
+    (await listCvs(user.id)).map((row) => row.id),
+    [upload.id],
+    "no second CV"
+  )
+
+  const versions = await listVersions(user.id, upload.id)
+  assert.deepEqual(
+    versions.map((version) => [version.number, version.origin, version.hasPdf]),
+    [[0, "upload", true]]
+  )
+  const original = await versionPdf(user.id, upload.id, versions[0].id)
+  assert.deepEqual(original?.bytes, cvPdfFile, "the uploaded file, byte for byte")
+  assert.equal(await versionPdf((await makeUser()).id, upload.id, versions[0].id), null)
+
+  // a second click changes nothing
+  await createEditableFromUpload(user.id, upload.id, null)
+  assert.equal((await listVersions(user.id, upload.id)).length, 1)
+
+  // tailoring works from its content and never reads the file again
+  const job = await makeJob()
   const llm = fakeLlm(tailorReply())
   await tailorCvForJob({ userId: user.id, jobId: job.id, llm })
-  assert.match(llm.calls[0].user, /Nagłówek z kopii edytowalnej/)
-  assert.equal(
-    (await listCvs(user.id)).filter((row) => !row.target).length,
-    2,
-    "no second editable copy"
-  )
+  assert.match(llm.calls[0].user, /Head of Engineering/)
   const tailored = await db.cvDocument.findFirst({
     where: { userId: user.id, jobId: job.id },
     select: { baseCvId: true },
   })
-  assert.equal(tailored?.baseCvId, copy.id)
+  assert.equal(tailored?.baseCvId, upload.id)
+})
+
+test("tailoring from a PDF not yet editable makes that same CV editable", async () => {
+  const user = await makeUser()
+  const upload = await uploaded(user.id)
+  const job = await makeJob()
+  // reading the PDF goes through the configured model; here it reads by rules
+  const provider = process.env.LLM_PROVIDER
+  process.env.LLM_PROVIDER = "none"
+  try {
+    await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  } finally {
+    if (provider === undefined) delete process.env.LLM_PROVIDER
+    else process.env.LLM_PROVIDER = provider
+  }
+  const cvs = (await listCvs(user.id)).filter((row) => !row.target)
+  assert.deepEqual(
+    cvs.map((row) => [row.id, row.kind]),
+    [[upload.id, "EDITABLE"]],
+    "the same CV, made editable"
+  )
+  assert.equal(cvs[0].original?.name, "Moje CV.pdf")
+  const tailored = await db.cvDocument.findFirst({
+    where: { userId: user.id, jobId: job.id },
+    select: { baseCvId: true },
+  })
+  assert.equal(tailored?.baseCvId, upload.id)
+})
+test("an old PDF and its editable copy merge into one CV, nothing lost", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  const upload = await uploaded(user.id, "CV_EN")
+  const content = syntheticCv(1)
+  content.header.headline = "Z kopii edytowalnej"
+  // the shape before one CV was one document: a second CV whose base is the PDF
+  const copy = await createCv({
+    userId: user.id,
+    from: "content",
+    content,
+    title: "CV_EN (editable)",
+    baseCvId: upload.id,
+  })
+  await updateCv(user.id, copy.id, {
+    content: { ...content, header: { ...content.header, headline: "Poprawione" } },
+  })
+  const letter = await createGeneralLetter({ userId: user.id, cvId: upload.id, from: "blank" })
+  const { application } = await createApplication({
+    userId: user.id,
+    company: "Acme",
+    title: "Staff Engineer",
+    source: "nowarola",
+    channel: "web",
+    cvDocumentId: upload.id,
+  })
+  // a CV for an offer tailored from the PDF itself, before tailoring went through the copy
+  const forOffer = await createCv({
+    userId: user.id,
+    from: "content",
+    content,
+    baseCvId: upload.id,
+  })
+  await db.cvDocument.update({
+    where: { id: forOffer.id },
+    data: { jobId: job.id, targetCompany: "Acme", targetTitle: "Staff Engineer" },
+  })
+
+  assert.equal(await mergeUploadedCopies(user.id), 1)
+  assert.equal(await mergeUploadedCopies(user.id), 0, "once")
+
+  assert.equal(await getCv(user.id, upload.id), null, "the PDF's own row is gone")
+  const merged = await getCv(user.id, copy.id)
+  assert.equal(merged?.title, "CV_EN", "the PDF's title")
+  assert.equal(merged?.isDefault, true, "the PDF's place as the default")
+  assert.equal(merged?.content?.header.headline, "Poprawione", "the edits stay")
+  assert.equal(merged?.original?.name, "CV_EN.pdf")
+  const versions = await listVersions(user.id, copy.id)
+  const original = versions.find((version) => version.number === 0)
+  assert.equal(original?.origin, "upload")
+  assert.deepEqual((await versionPdf(user.id, copy.id, original!.id))?.bytes, cvPdfFile)
+  assert.equal(
+    (await getVersion(user.id, copy.id, original!.id))?.content.header.headline,
+    "Z kopii edytowalnej",
+    "version 0 is what was read from the PDF"
+  )
+
+  assert.equal((await getCv(user.id, letter.id))?.forCvId, copy.id, "the letter follows")
+  const moved = await db.application.findUnique({
+    where: { id: application.id },
+    select: { cvDocumentId: true },
+  })
+  assert.equal(moved?.cvDocumentId, copy.id, "the application follows")
+  const tailored = await db.cvDocument.findUnique({
+    where: { id: forOffer.id },
+    select: { baseCvId: true },
+  })
+  assert.equal(tailored?.baseCvId, copy.id, "a CV for an offer follows")
+  assert.deepEqual(
+    (await listCvs(user.id)).filter((row) => !row.target).map((row) => row.id),
+    [copy.id]
+  )
+})
+
+test("making an old PDF editable merges it with its copy instead of reading it again", async () => {
+  const user = await makeUser()
+  const upload = await uploaded(user.id)
+  const copy = await createCv({
+    userId: user.id,
+    from: "content",
+    content: syntheticCv(1),
+    baseCvId: upload.id,
+  })
+  // no model and no PDF reading: the copy is already what was read
+  const { cv } = await createEditableFromUpload(user.id, upload.id, fakeLlm(null))
+  assert.equal(cv.id, copy.id)
+  assert.equal(cv.original?.name, "Moje CV.pdf")
+  assert.equal(await getCv(user.id, upload.id), null)
+
+  // tailoring from the default does the same: one CV, the copy, is its base
+  const other = await uploaded(user.id, "Drugie")
+  const otherCopy = await createCv({
+    userId: user.id,
+    from: "content",
+    content: syntheticCv(1),
+    baseCvId: other.id,
+  })
+  await db.cvDocument.updateMany({ where: { userId: user.id }, data: { isDefault: false } })
+  await db.cvDocument.update({ where: { id: other.id }, data: { isDefault: true } })
+  const job = await makeJob()
+  await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  const tailored = await db.cvDocument.findFirst({
+    where: { userId: user.id, jobId: job.id },
+    select: { baseCvId: true },
+  })
+  assert.equal(tailored?.baseCvId, otherCopy.id)
+  assert.equal((await defaultCv(user.id))?.id, otherCopy.id, "the default moved with it")
 })
 
 test("an offer that opted out of AI never reaches the model; the person's own note does", async () => {
@@ -580,44 +775,67 @@ test("a letter for an offer is made from the general letter of the CV it was tai
   assert.equal(stored?.target?.jobId, job.id)
 })
 
-test("an uploaded PDF pairs with the letter of its editable copy, and its copy stays a CV", async () => {
+test("an uploaded PDF keeps its letter when it becomes editable", async () => {
   const user = await makeUser()
-  const job = await makeJob()
-  const upload = await db.cvDocument.create({
-    data: {
-      userId: user.id,
-      title: "Moje CV",
-      kind: "UPLOADED",
-      isDefault: true,
-      pdf: Buffer.from("%PDF-1.4 not really"),
-      pdfName: "cv.pdf",
-      pdfUpdatedAt: new Date(),
-    },
-  })
-  const copy = await createCv({
-    userId: user.id,
-    from: "content",
-    content: syntheticCv(1),
-    baseCvId: upload.id,
-  })
-  // a letter for the PDF itself takes its header from the copy
+  const upload = await uploaded(user.id)
+  // a letter for a PDF not yet editable takes its header from the profile, here none: blank
   const { id } = await createGeneralLetter({ userId: user.id, cvId: upload.id, from: "blank" })
-  assert.equal(
-    (await getCv(user.id, id))?.content?.header.name,
-    syntheticCv(1).header.name,
-    "header from the editable copy"
-  )
-  assert.equal((await generalLetterOf(user.id, copy.id))?.id, id, "the copy finds the PDF's letter")
-
-  // tailoring from the PDF still starts from its copy, never from the letter beside it
-  const llm = fakeLlm(tailorReply())
-  await tailorCvForJob({ userId: user.id, jobId: job.id, llm })
-  const tailored = await db.cvDocument.findFirst({
-    where: { userId: user.id, jobId: job.id, docType: "CV" },
-    select: { baseCvId: true },
-  })
-  assert.equal(tailored?.baseCvId, copy.id)
+  await createEditableFromUpload(user.id, upload.id, null)
+  assert.equal((await generalLetterOf(user.id, upload.id))?.id, id)
+  const job = await makeJob()
+  await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
   assert.equal((await generalLetterForJob(user.id, job.id))?.id, id)
+})
+
+test("a PDF that leaves stays in the history, once per content, and is never pruned", async () => {
+  const user = await makeUser()
+  const { id, content } = await general(user.id)
+  const pdf = (text: string) => ({ bytes: Buffer.from(`%PDF ${text}`), name: "Anna_CV.pdf" })
+
+  await keepPdfVersion({ documentId: id, content, language: "pl", pdf: pdf("a") })
+  let versions = await listVersions(user.id, id)
+  assert.deepEqual(
+    versions.map((version) => [version.origin, version.hasPdf, version.isCurrent]),
+    [["pdf", true, true]]
+  )
+  // the same content again: nothing new
+  await keepPdfVersion({ documentId: id, content, language: "pl", pdf: pdf("a") })
+  assert.equal((await listVersions(user.id, id)).length, 1)
+
+  // a version of the same content without a file takes it, and then is not pruned
+  const edited = { ...content, header: { ...content.header, headline: "Nowa" } }
+  await updateCv(user.id, id, { content: edited })
+  await saveVersion(user.id, id)
+  await keepPdfVersion({ documentId: id, content: edited, language: "pl", pdf: pdf("b") })
+  versions = await listVersions(user.id, id)
+  assert.equal(versions.length, 2)
+  assert.deepEqual(
+    versions.map((version) => [version.origin, version.hasPdf]),
+    [
+      ["manual", true],
+      ["pdf", true],
+    ]
+  )
+  assert.equal((await versionPdf(user.id, id, versions[0].id))?.bytes.toString(), "%PDF b")
+
+  // an uploaded original never takes another file: a PDF made from it is a version of its own
+  const upload = await uploaded(user.id)
+  const { cv } = await createEditableFromUpload(user.id, upload.id, null)
+  await keepPdfVersion({
+    documentId: upload.id,
+    content: cv.content!,
+    language: "en",
+    pdf: pdf("c"),
+  })
+  const fromUpload = await listVersions(user.id, upload.id)
+  assert.deepEqual(
+    fromUpload.map((version) => [version.number, version.origin]),
+    [
+      [1, "pdf"],
+      [0, "upload"],
+    ]
+  )
+  assert.deepEqual((await versionPdf(user.id, upload.id, fromUpload[1].id))?.bytes, cvPdfFile)
 })
 
 test("deleting a general CV takes its letter only when asked; a copy copies the pair", async () => {
@@ -811,6 +1029,32 @@ test("automatic versions are capped; the named ones stay", async () => {
   assert.equal(versions.filter((version) => version.label === "Nazwana").length, 1)
 })
 
+test("an automatic version that keeps a PDF is not counted against the cap", async () => {
+  const user = await makeUser()
+  const { id, content } = await general(user.id)
+  const at = (i: number) => ({ ...content, header: { ...content.header, headline: `Wersja ${i}` } })
+  await updateCv(user.id, id, { content: at(0) })
+  // the first edit kept the state before it as an automatic version; it goes out as a PDF
+  const [kept] = await listVersions(user.id, id)
+  assert.equal(kept.origin, "auto")
+  await updateCv(user.id, id, { content })
+  await keepPdfVersion({
+    documentId: id,
+    content: (await getVersion(user.id, id, kept.id))!.content,
+    language: "pl",
+    pdf: { bytes: Buffer.from("%PDF"), name: "CV.pdf" },
+  })
+  for (let i = 1; i <= MAX_AUTO_VERSIONS + 1; i += 1) {
+    await db.cvDocument.update({ where: { id }, data: { versionCheckedAt: new Date(0) } })
+    await updateCv(user.id, id, { content: at(i) })
+  }
+  const versions = await listVersions(user.id, id)
+  assert.ok(
+    versions.some((version) => version.hasPdf),
+    "the version that went out stays"
+  )
+})
+
 test("history belongs to its owner", async () => {
   const owner = await makeUser()
   const stranger = await makeUser()
@@ -883,9 +1127,10 @@ test("saving a CV for an offer as general makes it the newest version of the CV 
 
   const context = await tailorContext(user.id, tailored!)
   assert.deepEqual(context?.general, { id: base.id, title: "Główne", language: "pl" })
+  assert.deepEqual(context?.choices, [], "nothing to pick while its general CV is there")
 
   const saved = await saveToGeneralCv(user.id, cv.id)
-  assert.deepEqual(saved, { cvId: base.id, number: 2 })
+  assert.deepEqual(saved, { cvId: base.id, title: "Główne", number: 2, created: false })
   const stored = await getCv(user.id, base.id)
   assert.deepEqual(stored?.content, tailored?.content)
   assert.equal(stored?.content?.header.headline, "Poprawka na stałe")
@@ -905,7 +1150,12 @@ test("saving a CV for an offer as general makes it the newest version of the CV 
   assert.deepEqual((await getVersion(user.id, base.id, versions[1].id))?.content, base.content)
 
   // the same content again adds nothing
-  assert.deepEqual(await saveToGeneralCv(user.id, cv.id), { cvId: base.id, number: null })
+  assert.deepEqual(await saveToGeneralCv(user.id, cv.id), {
+    cvId: base.id,
+    title: "Główne",
+    number: null,
+    created: false,
+  })
   assert.equal((await listVersions(user.id, base.id)).length, 2)
 
   // a name the person gives replaces the offer's
@@ -917,6 +1167,119 @@ test("saving a CV for an offer as general makes it the newest version of the CV 
   assert.equal(await saveToGeneralCv(user.id, base.id), null)
   assert.equal(await saveToGeneralCv((await makeUser()).id, cv.id), null)
   await deleteCv(user.id, base.id)
-  assert.equal(await saveToGeneralCv(user.id, cv.id), null)
+  assert.equal(await saveToGeneralCv(user.id, cv.id), null, "gone, and nothing picked")
   assert.equal((await tailorContext(user.id, tailored!))?.general, null)
+})
+
+test("a CV for an offer whose general CV is gone saves into a picked one, or a new one", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  const gone = await general(user.id)
+  const cv = await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  await deleteCv(user.id, gone.id)
+  const other = await createCv({
+    userId: user.id,
+    from: "content",
+    content: syntheticCv(1),
+    title: "Inne",
+  })
+  const upload = await uploaded(user.id, "Tylko PDF")
+
+  const context = await tailorContext(user.id, (await getCv(user.id, cv.id))!)
+  assert.equal(context?.general, null)
+  assert.deepEqual(
+    context?.choices.map((choice) => choice.title),
+    ["Inne"],
+    "editable general CVs only: a PDF not yet editable cannot hold versions"
+  )
+  assert.equal(await saveToGeneralCv(user.id, cv.id, upload.id), null)
+
+  const saved = await saveToGeneralCv(user.id, cv.id, other.id)
+  assert.deepEqual(saved, { cvId: other.id, title: "Inne", number: 2, created: false })
+  // from now on it is linked: the next save needs no pick
+  const linked = await tailorContext(user.id, (await getCv(user.id, cv.id))!)
+  assert.equal(linked?.general?.id, other.id)
+
+  // another CV for an offer, its general CV gone too, becomes a general CV of its own
+  const job2 = await makeJob()
+  const second = await tailorCvForJob({
+    userId: user.id,
+    jobId: job2.id,
+    baseCvId: other.id,
+    llm: fakeLlm(tailorReply()),
+  })
+  await deleteCv(user.id, other.id)
+  const made = await saveToGeneralCv(user.id, second.id, "new")
+  assert.equal(made?.created, true)
+  assert.equal(made?.number, null)
+  const fresh = await getCv(user.id, made!.cvId)
+  assert.equal(fresh?.target, null)
+  assert.equal(fresh?.title, "Staff Engineer", "named after the role it was written for")
+  assert.deepEqual(fresh?.content, (await getCv(user.id, second.id))?.content)
+  assert.equal(
+    (await tailorContext(user.id, (await getCv(user.id, second.id))!))?.general?.id,
+    fresh?.id
+  )
+})
+
+test("Popraw z AI shows a rewritten section first and stores it only when applied", async () => {
+  const user = await makeUser()
+  const { id, content } = await general(user.id)
+  const llm = fakeLlm({
+    section: { id: "profile", body: "Prowadzę zespoły inżynierskie i buduję platformy." },
+    changes: ["Uprościłem zdania."],
+  })
+  const improved = await improveCvSection({
+    userId: user.id,
+    id,
+    sectionId: "profile",
+    mode: "polish",
+    llm,
+  })
+  assert.equal(llm.calls[0].purpose, "cv-improve")
+  assert.deepEqual(improved.changes, ["Uprościłem zdania."])
+  assert.deepEqual(await getCv(user.id, id).then((cv) => cv?.content), content, "nothing stored")
+  assert.equal((await listVersions(user.id, id)).length, 0)
+
+  const applied = await applyCvSection(user.id, id, improved.section)
+  const stored = await getCv(user.id, id)
+  const profile = stored?.content?.sections.find((section) => section.id === "profile")
+  assert.equal(
+    profile?.type === "text" && profile.body,
+    "Prowadzę zespoły inżynierskie i buduję platformy."
+  )
+  assert.deepEqual(
+    stored?.content?.sections.map((section) => section.id),
+    content.sections.map((section) => section.id),
+    "every section in its place"
+  )
+  assert.equal(applied.updatedAt.getTime(), stored?.updatedAt.getTime())
+  const versions = await listVersions(user.id, id)
+  assert.deepEqual(
+    versions.map((version) => version.origin),
+    ["generated", "auto"]
+  )
+  assert.deepEqual(
+    (await getVersion(user.id, id, versions[1].id))?.content,
+    content,
+    "the state before"
+  )
+
+  // a section of another type, an unknown one, someone else's CV, no model
+  await assert.rejects(
+    applyCvSection(user.id, id, { ...improved.section, id: "skills" }),
+    (error: unknown) => error instanceof CvError && error.code === "invalid-content"
+  )
+  await assert.rejects(
+    applyCvSection((await makeUser()).id, id, improved.section),
+    (error: unknown) => error instanceof CvError && error.code === "not-found"
+  )
+  await assert.rejects(
+    improveCvSection({ userId: user.id, id, sectionId: "education", mode: "polish", llm }),
+    (error: unknown) => error instanceof CvError && error.code === "no-content"
+  )
+  await assert.rejects(
+    improveCvSection({ userId: user.id, id, sectionId: "profile", mode: "polish", llm: null }),
+    (error: unknown) => error instanceof CvError && error.code === "llm-unavailable"
+  )
 })

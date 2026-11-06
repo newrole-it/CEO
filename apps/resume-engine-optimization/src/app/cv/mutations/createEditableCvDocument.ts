@@ -4,7 +4,7 @@ import { createEditableFromUpload } from "src/server/cv/structure"
 import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
-/** "Utwórz edytowalną wersję": reads an uploaded PDF into a new editable CV next to it. */
+/** "Utwórz wersję do edycji": reads an uploaded PDF into content on the same CV; the file stays as its original. */
 export default resolver.pipe(
   resolver.zod(z.object({ id: z.string().min(1).max(64) })),
   async ({ id }, ctx) => {

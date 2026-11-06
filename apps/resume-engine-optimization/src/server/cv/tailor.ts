@@ -120,6 +120,7 @@ export async function tailorContext(userId: number, doc: CvDetail): Promise<Tail
     jobId ? db.job.findUnique({ where: { id: jobId }, select: { originalUrl: true } }) : null,
     doc.docType === "CV" ? generalCvOf(userId, doc.id) : null,
   ])
+  const choices = doc.docType === "CV" && !general ? await generalChoices(userId) : []
   return {
     job: {
       id: jobId,
@@ -133,6 +134,7 @@ export async function tailorContext(userId: number, doc: CvDetail): Promise<Tail
     general: general
       ? { id: general.id, title: general.title, language: cvLocale(general.language) }
       : null,
+    choices: choices.map((choice) => ({ ...choice, language: cvLocale(choice.language) })),
   }
 }
 
@@ -150,25 +152,63 @@ function generalCvOf(userId: number, tailoredId: string) {
   })
 }
 
+/** The editable general CVs a CV for an offer can be saved into, the default first. */
+function generalChoices(userId: number) {
+  return db.cvDocument.findMany({
+    where: { userId, kind: "EDITABLE", docType: "CV", targetCompany: null },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+    select: { id: true, title: true, language: true },
+  })
+}
+
 /**
  * "Zapisz jako ogólne CV": the content of a CV for an offer, edits included, becomes the newest
  * version of the general CV it was tailored from. That CV's state before is kept in its history,
- * so it can be restored. `number` is null when the general CV already had this content; the
- * result is null when `id` is not a CV for an offer or its general CV is gone.
+ * so it can be restored. When that CV is gone, `into` names another editable general CV, or "new"
+ * makes one from this content; either way the CV for the offer is linked to it from then on.
+ * `number` is null when the general CV already had this content or was just made; the result is
+ * null when `id` is not a CV for an offer, or there is no general CV to save into.
  */
 export async function saveToGeneralCv(
   userId: number,
-  id: string
-): Promise<{ cvId: string; number: number | null } | null> {
+  id: string,
+  into?: string
+): Promise<{ cvId: string; title: string; number: number | null; created: boolean } | null> {
   const tailored = await db.cvDocument.findFirst({
     where: { id, userId, kind: "EDITABLE", docType: "CV", targetCompany: { not: null } },
     select: { content: true, language: true, targetCompany: true, targetTitle: true },
   })
   const content = parseCvContent(tailored?.content)
-  const general = tailored && content ? await generalCvOf(userId, id) : null
-  if (!tailored || !content || !general) return null
+  if (!tailored || !content) return null
   const language = cvLocale(tailored.language)
-  return db.$transaction(async (tx) => {
+  const linked = await generalCvOf(userId, id)
+  if (!linked && into === "new") {
+    const created = await createCv({
+      userId,
+      from: "content",
+      content,
+      language,
+      title: tailored.targetTitle ?? undefined,
+    })
+    await db.cvDocument.update({
+      where: { id },
+      data: { baseCvId: created.id },
+      select: { id: true },
+    })
+    return { cvId: created.id, title: created.title, number: null, created: true }
+  }
+  const general =
+    linked ?? (into ? (await generalChoices(userId)).find((choice) => choice.id === into) : null)
+  if (!general) return null
+  // from now on this CV for an offer comes from the one it was saved into
+  if (!linked) {
+    await db.cvDocument.update({
+      where: { id },
+      data: { baseCvId: general.id },
+      select: { id: true },
+    })
+  }
+  const saved = await db.$transaction(async (tx) => {
     // read again inside, so a save that landed since is the state kept in the history
     const current = await tx.cvDocument.findUnique({
       where: { id: general.id },
@@ -177,7 +217,7 @@ export async function saveToGeneralCv(
     if (!current) throw new CvError("not-found", "CV not found.")
     const stored = parseCvContent(current.content)
     if (stored && current.language === language && contentHash(stored) === contentHash(content)) {
-      return { cvId: general.id, number: null }
+      return { number: null }
     }
     await keepCurrentState(tx, current)
     await tx.cvDocument.update({
@@ -200,8 +240,9 @@ export async function saveToGeneralCv(
       origin: "offer",
       label: [tailored.targetCompany, tailored.targetTitle].filter(Boolean).join(" · "),
     })
-    return { cvId: general.id, number: row.number }
+    return { number: row.number }
   })
+  return { cvId: general.id, title: general.title, number: saved.number, created: false }
 }
 
 /** The CV to start from: the chosen one, else the default, else one made from the profile. */
@@ -211,14 +252,7 @@ async function resolveBase(userId: number, baseCvId?: string): Promise<CvDetail>
     throw new CvError("not-found", "CV not found.")
   if (chosen?.content) return chosen
   if (chosen) {
-    // an uploaded PDF: the editable copy made from it before, so no offer reads the file again
-    const copy = await db.cvDocument.findFirst({
-      where: { userId, baseCvId: chosen.id, kind: "EDITABLE", docType: "CV", targetCompany: null },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true },
-    })
-    const existing = copy ? await getCv(userId, copy.id) : null
-    if (existing?.content) return existing
+    // an uploaded PDF becomes editable in place, once, so no other offer reads the file again
     const { cv } = await createEditableFromUpload(userId, chosen.id)
     return cv
   }
@@ -590,7 +624,7 @@ export async function writeGeneralLetterForCv(input: {
       chosen ? "not-general" : "not-found",
       "A general letter goes with a general CV."
     )
-  // an uploaded PDF writes from its editable copy, as tailoring does
+  // an uploaded PDF is made editable first, as tailoring does
   const cv = chosen.content ? chosen : await resolveBase(userId, chosen.id)
   if (!cv.content) throw new CvError("no-content", "This CV has no editable content.")
   const [context, pastLetters] = await Promise.all([

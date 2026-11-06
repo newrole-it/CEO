@@ -1,21 +1,31 @@
 "use client"
 
 import { useEffect, useId, useMemo, useState } from "react"
-import { ArrowLeft, ExternalLink, GitCompareArrows, RotateCcw, Sparkles, X } from "lucide-react"
+import {
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  GitCompareArrows,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
 import { Badge, Field, Skeleton } from "@newrole/ui/primitives"
 import { relativeTime } from "@newrole/ui/time"
-import { compactDiff, diffCv, hasChanges, type DiffPart } from "@newrole/cv-core/diff"
+import { compactDiff, diffCv, hasChanges } from "@newrole/cv-core/diff"
 import type { CvContent } from "@newrole/cv-core/schema"
 import { readOnlyExcerpt, type KeywordNote, type TailorNotes } from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorContext } from "@newrole/cv-core/views"
 import { useCvBackend } from "./backend"
+import { DiffRows } from "./DiffRows"
+import { ImproveTab } from "./ImproveTab"
 import { useCvCopy } from "./locale"
 import { tailorErrorKey } from "./tailor-errors"
 import type { CvLanguage } from "./useCvDocument"
 
-export type PanelTab = "versions" | "review"
+export type PanelTab = "versions" | "review" | "improve"
 
 /** The part of useCvDocument the panel works with. */
 type PanelDoc = {
@@ -26,7 +36,10 @@ type PanelDoc = {
   undo: () => void
 }
 
-/** The right-hand panel of the editor: version history, and what the model did to a tailored document. */
+/**
+ * The right-hand panel of the editor: version history, what the model did to a tailored document,
+ * and "Popraw z AI" for one section of a CV.
+ */
 export function DocumentPanel({
   id,
   doc,
@@ -37,6 +50,8 @@ export function DocumentPanel({
   tailor,
   notes,
   onNotes,
+  improveSection,
+  onImproveSection,
 }: {
   id: string
   doc: PanelDoc
@@ -47,8 +62,13 @@ export function DocumentPanel({
   tailor: TailorContext | null
   notes: TailorNotes | null
   onNotes: (notes: TailorNotes) => void
+  /** The section "Popraw z AI" works on */
+  improveSection: string | null
+  onImproveSection: (id: string) => void
 }) {
   const { t } = useCvCopy()
+  const backend = useCvBackend()
+  const improving = Boolean(backend.improve) && !isLetter
   return (
     <aside className="cvt-panel" aria-label={t("tl.panel.label")}>
       <div className="cvt-panel__head">
@@ -73,6 +93,17 @@ export function DocumentPanel({
               {t("tl.panel.review")}
             </button>
           ) : null}
+          {improving ? (
+            <button
+              type="button"
+              className="tab"
+              role="tab"
+              aria-selected={tab === "improve"}
+              onClick={() => onTab("improve")}
+            >
+              {t("tl.ai.tab")}
+            </button>
+          ) : null}
         </div>
         <Button
           size="sm"
@@ -85,7 +116,9 @@ export function DocumentPanel({
         />
       </div>
       <div className="cvt-panel__body">
-        {tab === "review" && tailor ? (
+        {tab === "improve" && improving ? (
+          <ImproveTab id={id} doc={doc} sectionId={improveSection} onSection={onImproveSection} />
+        ) : tab === "review" && tailor ? (
           <ReviewTab
             doc={doc}
             isLetter={isLetter}
@@ -230,7 +263,11 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
             return (
               <li key={version.id} className={`cvt-version${current ? " is-current" : ""}`}>
                 <div className="cvt-version__top">
-                  <span>{t("tl.v.number", { n: version.number })}</span>
+                  <span>
+                    {version.origin === "upload"
+                      ? t("tl.v.original")
+                      : t("tl.v.number", { n: version.number })}
+                  </span>
                   {current ? <Badge tone="primary">{t("tl.v.current")}</Badge> : null}
                 </div>
                 <span className="cvt-version__label">
@@ -243,6 +280,21 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
                 </span>
                 <span className="t-caption muted">{relativeTime(version.createdAt, t)}</span>
                 <div className="cvt-version__actions">
+                  {version.hasPdf && backend.versions.pdfUrl ? (
+                    <ButtonLink
+                      href={backend.versions.pdfUrl(id, version.id)}
+                      size="sm"
+                      variant="ghost"
+                      icon={<Download />}
+                      aria-label={
+                        version.origin === "upload"
+                          ? t("tl.v.pdfOriginal")
+                          : t("tl.v.pdfOf", { n: version.number })
+                      }
+                    >
+                      {t("tl.v.pdf")}
+                    </ButtonLink>
+                  ) : null}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -280,16 +332,6 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
   )
 }
 
-function Parts({ parts, Mark }: { parts: DiffPart[]; Mark: "ins" | "del" }) {
-  return (
-    <>
-      {parts.map((part, index) =>
-        part.changed ? <Mark key={index}>{part.text}</Mark> : <span key={index}>{part.text}</span>
-      )}
-    </>
-  )
-}
-
 function CompareView({
   compare,
   current,
@@ -315,52 +357,7 @@ function CompareView({
       {!hasChanges(rows) ? (
         <p className="t-sm muted">{t("tl.diff.none")}</p>
       ) : (
-        <div className="cvt-diff">
-          {shown.map((row, index) => {
-            if (row.kind === "gap") {
-              return (
-                <p key={index} className="cvt-diff__gap">
-                  {t("tl.diff.gap", { n: row.count })}
-                </p>
-              )
-            }
-            if (row.kind === "same") {
-              return (
-                <p key={index} className="cvt-diff__same">
-                  {row.text}
-                </p>
-              )
-            }
-            if (row.kind === "del") {
-              return (
-                <p key={index} className="cvt-diff__del">
-                  <span className="sr-only">{t("tl.diff.removed")} </span>
-                  <del>{row.text}</del>
-                </p>
-              )
-            }
-            if (row.kind === "add") {
-              return (
-                <p key={index} className="cvt-diff__add">
-                  <span className="sr-only">{t("tl.diff.added")} </span>
-                  <ins>{row.text}</ins>
-                </p>
-              )
-            }
-            return (
-              <div key={index} className="cvt-diff">
-                <p className="cvt-diff__del">
-                  <span className="sr-only">{t("tl.diff.removed")} </span>
-                  <Parts parts={row.before} Mark="del" />
-                </p>
-                <p className="cvt-diff__add">
-                  <span className="sr-only">{t("tl.diff.added")} </span>
-                  <Parts parts={row.after} Mark="ins" />
-                </p>
-              </div>
-            )
-          })}
-        </div>
+        <DiffRows rows={shown} />
       )}
     </>
   )

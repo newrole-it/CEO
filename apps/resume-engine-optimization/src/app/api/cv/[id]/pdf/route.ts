@@ -3,8 +3,9 @@ import { getBlitzContext } from "src/app/blitz-server"
 import { cvPdf, getCv } from "src/server/cv/service"
 
 /**
- * The CV as a PDF for the signed-in person. ?inline=1 shows it in the browser. 503 means the
- * PDF could not be rendered (no local Chrome); the editor then opens the print view.
+ * The CV as a PDF for the signed-in person. A download is kept in the CV's history; ?inline=1
+ * shows it in the browser and keeps nothing. 503 means the PDF could not be rendered (no local
+ * Chrome); the editor then opens the print view.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await getBlitzContext()
@@ -13,8 +14,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params
   const cv = await getCv(userId, id)
   if (!cv) return Response.json({ error: "CV not found." }, { status: 404 })
-  const pdf = await cvPdf(userId, id)
-  if (!pdf) return Response.json({ error: "chrome-unavailable" }, { status: 503 })
   const inline = new URL(request.url).searchParams.get("inline") === "1"
+  const pdf = await cvPdf(userId, id, { leaves: !inline })
+  if (!pdf) return Response.json({ error: "chrome-unavailable" }, { status: 503 })
   return pdfResponse(pdf.bytes, pdf.name, inline)
 }
