@@ -427,6 +427,8 @@ export function startContent() {
     const many = letter.pastLetters
     const how = !letter.created
       ? "ten, który masz już dla tej oferty"
+      : letter.general
+      ? "nowy, pod tę ofertę, z Twojego listu ogólnego"
       : many > 1
       ? `nowy, pod tę ofertę, na wzór ${many} ostatnich listów`
       : many === 1

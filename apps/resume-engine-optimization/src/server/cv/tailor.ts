@@ -5,6 +5,8 @@ import {
   tailorCv,
   tailoredCvLanguage,
   writeCoverLetter,
+  writeGeneralLetter,
+  type GeneralLetter,
   type PastLetter,
   type TailorOffer,
 } from "@newrole/cv-engine/tailor"
@@ -30,13 +32,23 @@ import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { recentLetters } from "./letters"
-import { createCv, CvError, defaultCv, getCv, type CvDetail, type CvLanguage } from "./service"
+import {
+  createCv,
+  createGeneralLetter,
+  CvError,
+  defaultCv,
+  generalLetterOf,
+  getCv,
+  type CvDetail,
+  type CvLanguage,
+} from "./service"
 import { createEditableFromUpload } from "./structure"
-import { appendVersion, keepCurrentState, toStoredJson } from "./versions"
+import { appendVersion, contentHash, keepCurrentState, toStoredJson } from "./versions"
 
 /**
  * A CV and a cover letter written for one offer in the index: @newrole/cv-engine writes them,
- * this module picks the base CV, reads the offer and keeps every generation as a version.
+ * this module picks the base CV, reads the offer and keeps every generation as a version. The
+ * letter for an offer is made from the general letter of the CV it was tailored from.
  */
 
 export type TailorJob = {
@@ -103,9 +115,10 @@ export async function documentsForJob(
 export async function tailorContext(userId: number, doc: CvDetail): Promise<TailorContext | null> {
   if (!doc.target) return null
   const { jobId } = doc.target
-  const [documents, job] = await Promise.all([
+  const [documents, job, general] = await Promise.all([
     jobId ? documentsForJob(userId, jobId) : null,
     jobId ? db.job.findUnique({ where: { id: jobId }, select: { originalUrl: true } }) : null,
+    doc.docType === "CV" ? generalCvOf(userId, doc.id) : null,
   ])
   return {
     job: {
@@ -117,7 +130,78 @@ export async function tailorContext(userId: number, doc: CvDetail): Promise<Tail
     cvId: documents?.cvId ?? (doc.docType === "CV" ? doc.id : null),
     letterId: documents?.letterId ?? (doc.docType === "LETTER" ? doc.id : null),
     notes: parseTailorNotes(doc.tailorNotes),
+    general: general
+      ? { id: general.id, title: general.title, language: cvLocale(general.language) }
+      : null,
   }
+}
+
+/** The editable general CV a CV for an offer was tailored from, if it is still there. */
+function generalCvOf(userId: number, tailoredId: string) {
+  return db.cvDocument.findFirst({
+    where: {
+      userId,
+      kind: "EDITABLE",
+      docType: "CV",
+      targetCompany: null,
+      tailored: { some: { id: tailoredId } },
+    },
+    select: { id: true, title: true, language: true },
+  })
+}
+
+/**
+ * "Zapisz jako ogólne CV": the content of a CV for an offer, edits included, becomes the newest
+ * version of the general CV it was tailored from. That CV's state before is kept in its history,
+ * so it can be restored. `number` is null when the general CV already had this content; the
+ * result is null when `id` is not a CV for an offer or its general CV is gone.
+ */
+export async function saveToGeneralCv(
+  userId: number,
+  id: string
+): Promise<{ cvId: string; number: number | null } | null> {
+  const tailored = await db.cvDocument.findFirst({
+    where: { id, userId, kind: "EDITABLE", docType: "CV", targetCompany: { not: null } },
+    select: { content: true, language: true, targetCompany: true, targetTitle: true },
+  })
+  const content = parseCvContent(tailored?.content)
+  const general = tailored && content ? await generalCvOf(userId, id) : null
+  if (!tailored || !content || !general) return null
+  const language = cvLocale(tailored.language)
+  return db.$transaction(async (tx) => {
+    // read again inside, so a save that landed since is the state kept in the history
+    const current = await tx.cvDocument.findUnique({
+      where: { id: general.id },
+      select: { id: true, content: true, language: true },
+    })
+    if (!current) throw new CvError("not-found", "CV not found.")
+    const stored = parseCvContent(current.content)
+    if (stored && current.language === language && contentHash(stored) === contentHash(content)) {
+      return { cvId: general.id, number: null }
+    }
+    await keepCurrentState(tx, current)
+    await tx.cvDocument.update({
+      where: { id: general.id },
+      data: {
+        content: toStoredJson(content),
+        language,
+        versionCheckedAt: new Date(),
+        // the stored PDF no longer matches; cvPdf renders a new one on demand
+        pdf: null,
+        pdfName: null,
+        pdfUpdatedAt: null,
+      },
+      select: { id: true },
+    })
+    const row = await appendVersion(tx, {
+      documentId: general.id,
+      content,
+      language,
+      origin: "offer",
+      label: [tailored.targetCompany, tailored.targetTitle].filter(Boolean).join(" · "),
+    })
+    return { cvId: general.id, number: row.number }
+  })
 }
 
 /** The CV to start from: the chosen one, else the default, else one made from the profile. */
@@ -129,7 +213,7 @@ async function resolveBase(userId: number, baseCvId?: string): Promise<CvDetail>
   if (chosen) {
     // an uploaded PDF: the editable copy made from it before, so no offer reads the file again
     const copy = await db.cvDocument.findFirst({
-      where: { userId, baseCvId: chosen.id, kind: "EDITABLE", targetCompany: null },
+      where: { userId, baseCvId: chosen.id, kind: "EDITABLE", docType: "CV", targetCompany: null },
       orderBy: { updatedAt: "desc" },
       select: { id: true },
     })
@@ -171,6 +255,24 @@ export async function letterForJob(
   return existing && content
     ? { id: existing.id, content, language: cvLocale(existing.language) }
     : null
+}
+
+/** The general letter the letters for an offer are made from, with its document's id. */
+export type GeneralLetterDoc = GeneralLetter & { id: string }
+
+/**
+ * The general letter to make this offer's letter from: the one of the general CV its tailored CV
+ * started from, else the default CV's. `jobId` null: the default CV's, for a page outside the index.
+ */
+export async function generalLetterForJob(
+  userId: number,
+  jobId: string | null
+): Promise<GeneralLetterDoc | null> {
+  const tailored = jobId ? await findExisting(userId, jobId, "CV") : null
+  // a CV tailored before its base was recorded falls back to the default, as a page outside does
+  const cvId = tailored?.baseCvId ?? (await defaultCv(userId))?.id
+  const letter = cvId ? await generalLetterOf(userId, cvId) : null
+  return letter ? { id: letter.id, content: letter.content, language: letter.language } : null
 }
 
 /** Tailoring again starts from the general CV it started from, not from the last result. */
@@ -372,6 +474,8 @@ export async function generateLetterForJob(input: {
   note?: string
   /** The person's last letters; read here when not given */
   pastLetters?: PastLetter[]
+  /** The general letter to make it from; read here when not given, null for none */
+  general?: GeneralLetterDoc | null
   /** The most characters the paragraphs may take, for a form field with a limit */
   maxChars?: number
   /** The open page's text (the Chrome extension), used when the offer's source cannot be read */
@@ -397,10 +501,12 @@ export async function generateLetterForJob(input: {
     cv: tailoredCv,
     offer: job.language,
   })
+  const general =
+    input.general !== undefined ? input.general : await generalLetterForJob(userId, jobId)
   const [attempt, context, pastLetters] = await Promise.all([
     attemptNumber(existing?.id),
     candidateContext(userId),
-    input.pastLetters ?? recentLetters(userId, { exceptJobId: jobId }),
+    input.pastLetters ?? recentLetters(userId, { exceptJobId: jobId, exceptId: general?.id }),
   ])
 
   const generated = await writeCoverLetter({
@@ -411,6 +517,7 @@ export async function generateLetterForJob(input: {
     context,
     note,
     pastLetters,
+    general,
     maxChars: input.maxChars,
     attempt,
     userId,
@@ -436,6 +543,8 @@ export async function writeLetterForPage(input: {
   userId: number
   offer: TailorOffer
   pastLetters: PastLetter[]
+  /** The default CV's general letter (generalLetterForJob with no offer) */
+  general?: GeneralLetterDoc | null
   maxChars?: number
   llm?: LlmClient | null
 }): Promise<{ content: CvContent; language: CvLanguage }> {
@@ -451,9 +560,57 @@ export async function writeLetterForPage(input: {
     language,
     context,
     pastLetters: input.pastLetters,
+    general: input.general,
     maxChars: input.maxChars,
     userId,
   })
   if (!generated) throw new CvError("llm-failed", "The model did not return a usable letter.")
   return { content: generated.content, language }
+}
+
+/**
+ * "Napisz z tego CV": the general letter of a general CV, written by the model from the CV, the
+ * person's context and their last letters. A CV that has its letter gets that one back unwritten.
+ */
+export async function writeGeneralLetterForCv(input: {
+  userId: number
+  cvId: string
+  llm?: LlmClient | null
+}): Promise<{ id: string; created: boolean }> {
+  const { userId, cvId } = input
+  const existing = await db.cvDocument.findFirst({
+    where: { userId, baseCvId: cvId, docType: "LETTER", targetCompany: null },
+    select: { id: true },
+  })
+  if (existing) return { id: existing.id, created: false }
+  const llm = writingClient(input.llm)
+  const chosen = await getCv(userId, cvId)
+  if (!chosen || chosen.docType !== "CV" || chosen.target)
+    throw new CvError(
+      chosen ? "not-general" : "not-found",
+      "A general letter goes with a general CV."
+    )
+  // an uploaded PDF writes from its editable copy, as tailoring does
+  const cv = chosen.content ? chosen : await resolveBase(userId, chosen.id)
+  if (!cv.content) throw new CvError("no-content", "This CV has no editable content.")
+  const [context, pastLetters] = await Promise.all([
+    candidateContext(userId),
+    recentLetters(userId),
+  ])
+  const generated = await writeGeneralLetter({
+    llm,
+    cv: cv.content,
+    language: cv.language,
+    context,
+    pastLetters,
+    userId,
+  })
+  if (!generated) throw new CvError("llm-failed", "The model did not return a usable letter.")
+  return createGeneralLetter({
+    userId,
+    cvId,
+    from: "content",
+    content: generated.content,
+    notes: generated.notes,
+  })
 }

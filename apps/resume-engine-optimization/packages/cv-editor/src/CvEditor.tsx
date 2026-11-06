@@ -27,7 +27,7 @@ import { normalizeHref } from "@newrole/cv-core/sanitize"
 import type { CvContent, CvSection } from "@newrole/cv-core/schema"
 import { CV_CSS, MM, PAGE_MM } from "@newrole/cv-core/styles"
 import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
-import type { TailorContext } from "@newrole/cv-core/views"
+import type { PairContext, TailorContext } from "@newrole/cv-core/views"
 import { AtomContent, type EditorOps } from "./atoms"
 import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./backend"
 import { downloadPdf } from "./download"
@@ -39,6 +39,8 @@ import { LinksPopover } from "./LinksPopover"
 import { useCvCopy } from "./locale"
 import { Outline } from "./Outline"
 import { photoToDataUrl } from "./photo"
+import { PairBar } from "./PairBar"
+import { SaveToGeneral } from "./SaveToGeneral"
 import { TailorBar } from "./TailorBar"
 import { sheetsHeight, sheetTop, usePagination } from "./usePagination"
 import { useCvAudit } from "./useCvAudit"
@@ -77,6 +79,8 @@ type EditorProps = {
   isLetter?: boolean
   /** Set when this document was written for an offer */
   tailor?: TailorContext | null
+  /** Set for a general CV and its general letter */
+  pair?: PairContext | null
 }
 
 /**
@@ -99,6 +103,7 @@ function Editor({
   startAudit,
   isLetter = false,
   tailor = null,
+  pair = null,
 }: EditorProps) {
   const { t } = useCvCopy()
   const backend = useCvBackend()
@@ -508,6 +513,14 @@ function Editor({
         >
           {t("tl.v.button")}
         </Button>
+        {tailor?.general && !isLetter ? (
+          <SaveToGeneral
+            id={id}
+            general={tailor.general}
+            language={doc.language}
+            flush={doc.flush}
+          />
+        ) : null}
         <Button
           size="sm"
           variant={help.open ? "soft" : "ghost"}
@@ -547,6 +560,8 @@ function Editor({
           flush={doc.flush}
           onReview={() => togglePanel("review")}
         />
+      ) : pair ? (
+        <PairBar id={id} pair={pair} flush={doc.flush} />
       ) : null}
       {audit.open ? <AuditBar state={audit} /> : null}
 

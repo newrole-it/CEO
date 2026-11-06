@@ -9,7 +9,13 @@ import {
 import { cvPdfFileName } from "./filename"
 import { SYNTHETIC_LETTER_DATE, syntheticCv, syntheticLetter } from "./fixtures"
 import { cvFlow, documentLabel, footerText } from "./flow"
-import { buildLetter, letterDate, letterFileSuffix } from "./letter"
+import {
+  buildLetter,
+  letterDate,
+  letterFileSuffix,
+  letterFromText,
+  splitLetterText,
+} from "./letter"
 import { applyCvPatch } from "./patch"
 import { letterSection, parseCvContent, type CvContent, type CvLetterSection } from "./schema"
 import { cvPlainText } from "./text"
@@ -55,6 +61,113 @@ describe("buildLetter", () => {
     expect(section.greeting).toBe("Dear Hiring Team,")
     expect(section.subject).toBe("Re: Staff Engineer")
     expect(section.title).toBe("Cover letter")
+  })
+})
+
+describe("a general letter", () => {
+  it("has no addressee or subject, and the CV's greeting and signature", () => {
+    const section = sectionOf(
+      buildLetter({ cv: syntheticCv(1), language: "pl", paragraphs: [], now: NOW })
+    )
+    expect(section.recipient).toBe("")
+    expect(section.subject).toBe("")
+    expect(section.greeting).toBe("Szanowni Państwo,")
+    expect(section.paragraphs).toEqual([])
+    expect(section.signature).toBe(syntheticCv(1).header.name)
+  })
+
+  it("passes on the person's own greeting and sign-off to a letter for an offer", () => {
+    const section = sectionOf(
+      buildLetter({
+        cv: syntheticCv(1),
+        language: "pl",
+        company: "Acme",
+        jobTitle: "Staff Engineer",
+        paragraphs: ["Akapit."],
+        frame: { greeting: "Dzień dobry,", closing: "Pozdrawiam serdecznie,", signature: " " },
+        now: NOW,
+      })
+    )
+    expect(section.greeting).toBe("Dzień dobry,")
+    expect(section.closing).toBe("Pozdrawiam serdecznie,")
+    // a blank part of the frame falls back to what is known
+    expect(section.signature).toBe(syntheticCv(1).header.name)
+    expect(section.recipient).toBe("Acme, zespół rekrutacji")
+  })
+})
+
+describe("a pasted letter", () => {
+  const pasted = [
+    "Warszawa, 3 listopada 2026",
+    "",
+    "Dotyczy: rekrutacji na stanowisko Product Managera",
+    "",
+    "Szanowni Państwo,",
+    "",
+    "od ośmiu lat buduję produkty",
+    "dla zespołów sprzedaży.",
+    "",
+    "Ostatnio prowadziłem zespół pięciu osób.",
+    "",
+    "Z poważaniem,",
+    "Jan Kowalski",
+  ].join("\n")
+
+  it("finds the greeting, the paragraphs and the sign-off", () => {
+    expect(splitLetterText(pasted)).toEqual({
+      recipient: "",
+      subject: "Dotyczy: rekrutacji na stanowisko Product Managera",
+      greeting: "Szanowni Państwo,",
+      paragraphs: [
+        "od ośmiu lat buduję produkty dla zespołów sprzedaży.",
+        "Ostatnio prowadziłem zespół pięciu osób.",
+      ],
+      closing: "Z poważaniem,",
+      signature: "Jan Kowalski",
+    })
+  })
+
+  it("takes a paragraph per line from text without blank lines", () => {
+    const parts = splitLetterText(
+      "Dear Hiring Team,\r\nI build products.\r\nI led a team.\r\nKind regards,\r\nJane Doe"
+    )
+    expect(parts.greeting).toBe("Dear Hiring Team,")
+    expect(parts.paragraphs).toEqual(["I build products.", "I led a team."])
+    expect(parts.closing).toBe("Kind regards,")
+    expect(parts.signature).toBe("Jane Doe")
+  })
+
+  it("keeps text without a greeting or sign-off as paragraphs", () => {
+    const parts = splitLetterText("Buduję produkty.\n\nProwadziłem zespół.")
+    expect(parts.greeting).toBe("")
+    expect(parts.closing).toBe("")
+    expect(parts.paragraphs).toEqual(["Buduję produkty.", "Prowadziłem zespół."])
+  })
+
+  it("joins what is past twenty paragraphs into the last one", () => {
+    const text = Array.from({ length: 23 }, (_, index) => `Akapit ${index + 1}.`).join("\n\n")
+    const parts = splitLetterText(text)
+    expect(parts.paragraphs).toHaveLength(20)
+    expect(parts.paragraphs[19]).toBe("Akapit 20.\n\nAkapit 21.\n\nAkapit 22.\n\nAkapit 23.")
+  })
+
+  it("becomes a valid letter with today's date and the person's own words around it", () => {
+    const content = letterFromText({ cv: syntheticCv(1), language: "pl", text: pasted, now: NOW })
+    expect(parseCvContent(content)).toEqual(content)
+    const section = sectionOf(content)
+    expect(section.date).toContain("30 października 2026")
+    expect(section.greeting).toBe("Szanowni Państwo,")
+    expect(section.signature).toBe("Jan Kowalski")
+    expect(section.paragraphs).toHaveLength(2)
+    expect(content.header.photo).toBeNull()
+  })
+
+  it("escapes what was pasted", () => {
+    const section = sectionOf(
+      letterFromText({ cv: syntheticCv(1), language: "en", text: "<b>Bold</b> & more", now: NOW })
+    )
+    expect(section.paragraphs).toEqual(["&lt;b&gt;Bold&lt;/b&gt; &amp; more"])
+    expect(section.greeting).toBe("Dear Hiring Team,")
   })
 })
 

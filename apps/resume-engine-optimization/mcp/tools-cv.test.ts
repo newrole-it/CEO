@@ -136,6 +136,17 @@ describe("cv_list / cv_get", () => {
     expect(result.content[0].text).toContain("id cv1")
   })
 
+  it("names the general letter of a CV, and lists no letter on its own", async () => {
+    service.listCvs.mockResolvedValue([
+      view,
+      { ...view, id: "gl1", title: "List", docType: "LETTER", isDefault: false, forCvId: "cv1" },
+    ])
+    const result = await call("cv_list")
+    expect(service.listCvs).toHaveBeenCalledWith(2, { letters: true })
+    expect(result.content[0].text).toContain("id cv1 · list gl1")
+    expect(result.content[0].text).not.toContain("id gl1")
+  })
+
   it("explains an empty list", async () => {
     service.listCvs.mockResolvedValue([])
     expect((await call("cv_list")).content[0].text).toContain("/cv")

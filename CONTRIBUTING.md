@@ -34,6 +34,7 @@ npm run dev                # newrole.it alone on 127.0.0.1:43123
 npm run test:db            # create the test database if needed and migrate it (again after new migrations)
 npm test                   # every workspace's tests, the extension's, and the node:test flow tests
 npm run check:boundaries   # every workspace imports only what it declares
+npm run check:i18n         # no interface text written straight into a .tsx file
 npm run lint               # eslint
 npm run typecheck          # types, workspace by workspace
 npm run build              # newrole.it's production build
@@ -62,7 +63,7 @@ The tests use a database next to the one in `.env`, with `_test` added to its na
 2. `npx prisma generate --schema apps/resume-engine-optimization/db/schema.prisma`, then `npm run generate --workspaces --if-present`
 3. `npm run test:db`
 4. `npm run lint`
-5. `npm run check:boundaries`
+5. `npm run check:boundaries` and `npm run check:i18n`
 6. `npm run typecheck`
 7. `npm run test:workspaces`, `npm run test:extension` and `npm run test:flow`
 8. `npm run build --workspaces --if-present`
@@ -98,6 +99,8 @@ Every key needs both languages. Polish is the source: each English dictionary is
 - Placeholders use `{name}`; fill them with `fmt()`.
 - Polish uses the informal, capitalised "Ty".
 - Keys are dotted and grouped by screen, as in [ux-spec.md §10](apps/resume-engine-optimization/docs/product/ux-spec.md).
+- No text a person reads is written in a component. `npm run check:i18n` ([`scripts/check-i18n.mjs`](scripts/check-i18n.mjs)) fails on JSX text, strings in JSX, text attributes such as `aria-label` and `placeholder`, and static page titles. Text that is the same in every language takes an `i18n-ignore` comment with the reason.
+- [AGENTS.md](AGENTS.md) has the whole rule for writing text that other languages can follow: whole sentences with placeholders, no `locale === "pl"` ternaries, `Intl` for dates and numbers, codes rather than sentences from the server. AI coding agents read it, and so should you.
 
 ## Changelog
 

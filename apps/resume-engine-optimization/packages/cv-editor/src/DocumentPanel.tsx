@@ -234,10 +234,12 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
                   {current ? <Badge tone="primary">{t("tl.v.current")}</Badge> : null}
                 </div>
                 <span className="cvt-version__label">
-                  {version.label ??
-                    (version.origin === "restored"
-                      ? t("tl.v.origin.restored", { n: version.sourceNumber ?? "?" })
-                      : t(`tl.v.origin.${version.origin}`))}
+                  {version.origin === "offer" && version.label
+                    ? t("tl.v.origin.offerFor", { offer: version.label })
+                    : version.label ??
+                      (version.origin === "restored"
+                        ? t("tl.v.origin.restored", { n: version.sourceNumber ?? "?" })
+                        : t(`tl.v.origin.${version.origin}`))}
                 </span>
                 <span className="t-caption muted">{relativeTime(version.createdAt, t)}</span>
                 <div className="cvt-version__actions">

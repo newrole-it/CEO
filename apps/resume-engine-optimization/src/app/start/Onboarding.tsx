@@ -450,7 +450,9 @@ export function Onboarding({
                           </span>
                         </span>
                         {state === "active" && n === 2 && elapsed > 0 ? (
-                          <span className="stage__detail">{elapsed} s</span>
+                          <span className="stage__detail">
+                            {t("onb.read.elapsed", { s: elapsed })}
+                          </span>
                         ) : (
                           <span />
                         )}

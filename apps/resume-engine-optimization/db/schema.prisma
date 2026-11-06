@@ -718,7 +718,8 @@ model CvDocument {
   /// Company and role at that moment: the offer can leave the index. Set on every tailored document.
   targetCompany    String?
   targetTitle      String?
-  /// What this one started from: a tailored CV's general CV, an editable copy's uploaded PDF
+  /// What this one started from: a tailored CV's general CV, an editable copy's uploaded PDF, a
+  /// general letter's general CV (the pair My CV shows; src/server/cv/service.ts)
   baseCvId         String?
   baseCv           CvDocument?  @relation("CvBase", fields: [baseCvId], references: [id], onDelete: SetNull)
   tailored         CvDocument[] @relation("CvBase")
@@ -768,9 +769,9 @@ model CvVersion {
   document     CvDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
   /// 1, 2, 3… within the document
   number       Int
-  /// auto | manual | base | generated | restored
+  /// auto | manual | base | generated | restored | offer
   origin       String
-  /// The name the person gave it
+  /// The name the person gave it; origin offer: the offer's company and role
   label        String?
   /// origin restored: the number of the version it came from
   sourceNumber Int?

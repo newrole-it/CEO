@@ -21,6 +21,7 @@
     "studio": "npm run studio -w @newrole/app",
     "lint": "eslint .",
     "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "typecheck:workspaces": "npm run typecheck --workspaces --if-present",
     "test": "npm run test:workspaces && npm run test:extension && npm run test:flow",

@@ -18,6 +18,8 @@ export const tailorPl = {
   "tl.start.languageHint": "Ustawiony na język oferty.",
   "tl.start.letter": "Napisz też list motywacyjny",
   "tl.start.letterHint": "Oparty na dostosowanym CV, w tym samym układzie i z historią wersji.",
+  "tl.start.letterHintGeneral":
+    "Twój list do tego CV, przerobiony pod tę ofertę i oparty na dostosowanym CV.",
   "tl.start.note": "Wskazówki dla modelu (opcjonalnie)",
   "tl.start.notePh": "Np. podkreśl doświadczenie z płatnościami, pomiń projekty poboczne.",
   "tl.start.noteOffer": "Tu możesz też wkleić treść oferty.",
@@ -76,6 +78,8 @@ export const tailorPl = {
   "tl.v.origin.base": "Twoje CV przed dopasowaniem",
   "tl.v.origin.generated": "Wygenerowana przez model",
   "tl.v.origin.restored": "Przywrócona wersja {n}",
+  "tl.v.origin.offer": "Z CV pod ofertę",
+  "tl.v.origin.offerFor": "Z CV pod ofertę: {offer}",
   "tl.v.compare": "Porównaj",
   "tl.v.preview": "Podgląd",
   "tl.v.restore": "Przywróć",
@@ -127,6 +131,46 @@ export const tailorPl = {
   // Moje CV
   "tl.list.title": "Pod konkretne oferty",
   "tl.list.letter": "List motywacyjny",
+
+  // the general letter of a general CV
+  "tl.gl.add": "Dodaj list",
+  "tl.gl.adding": "Piszę list…",
+  "tl.gl.write": "Napisz z tego CV",
+  "tl.gl.writeHint": "Model, z CV, profilu i Twoich ostatnich listów",
+  "tl.gl.paste": "Wklej swój list",
+  "tl.gl.pasteHint": "Tekst, który już masz",
+  "tl.gl.blank": "Pusty list",
+  "tl.gl.blankHint": "Nagłówek z CV, treść wpisujesz w edytorze",
+  "tl.gl.pasteTitle": "Wklej swój list motywacyjny",
+  "tl.gl.pasteLabel": "Treść listu",
+  "tl.gl.pasteBody":
+    "Wklej cały list. Powitanie, akapity i podpis rozpoznam po układzie, nagłówek wezmę z CV, a datę ustawię na dziś. Resztę poprawisz w edytorze.",
+  "tl.gl.pasteGo": "Utwórz list",
+  "tl.gl.err.noModel":
+    "Model AI nie jest skonfigurowany, więc nie napiszę listu. Wklej swój list albo zacznij od pustego.",
+  "tl.gl.err.noContent": "To CV nie ma tekstu, z którego da się napisać list.",
+  "tl.gl.err.empty": "Wklej treść listu.",
+  "tl.gl.bar": "To CV i jego list",
+  "tl.gl.barNote": "Ogólne. Z tej pary powstają CV i list pod każdą ofertę.",
+  "tl.gl.check": "Sprawdź przed wysłaniem. Tego nie ma w Twoim CV ani profilu:",
+
+  // a CV for an offer saved into the general CV it came from
+  "tl.tg.button": "Zapisz jako ogólne",
+  "tl.tg.hint": "Zapisz to CV jako nową wersję ogólnego CV „{title}”",
+  "tl.tg.title": "Zapisać jako ogólne CV?",
+  "tl.tg.body":
+    "Treść tego CV, z Twoimi poprawkami, stanie się nową wersją CV „{title}”. Z niego powstają CV pod kolejne oferty.",
+  "tl.tg.whole": "Przejdzie cała treść, także zdania pisane tylko pod tę ofertę.",
+  "tl.tg.keep": "Obecna treść „{title}” zostaje w jego wersjach i możesz ją przywrócić.",
+  "tl.tg.lang.pl":
+    "„{title}” jest po angielsku, a to CV po polsku: po zapisaniu ogólne CV też będzie po polsku.",
+  "tl.tg.lang.en":
+    "„{title}” jest po polsku, a to CV po angielsku: po zapisaniu ogólne CV też będzie po angielsku.",
+  "tl.tg.go": "Zapisz w ogólnym CV",
+  "tl.tg.saved": "Zapisano jako wersję {n} CV „{title}”.",
+  "tl.tg.same": "CV „{title}” ma już tę treść.",
+  "tl.tg.unsaved": "Zmiany w tym CV nie są zapisane, więc ogólnego CV nie zmieniono.",
+  "tl.tg.open": "Otwórz",
 }
 
 export const tailorEn: Record<keyof typeof tailorPl, string> = {
@@ -144,6 +188,8 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.start.languageHint": "Set to the language of the offer.",
   "tl.start.letter": "Also write a cover letter",
   "tl.start.letterHint": "Based on the tailored CV, in the same layout and with version history.",
+  "tl.start.letterHintGeneral":
+    "Your letter for this CV, reworked for this offer and based on the tailored CV.",
   "tl.start.note": "Notes for the model (optional)",
   "tl.start.notePh": "E.g. stress the payments experience, leave out side projects.",
   "tl.start.noteOffer": "You can also paste the text of the offer here.",
@@ -201,6 +247,8 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.v.origin.base": "Your CV before tailoring",
   "tl.v.origin.generated": "Written by the model",
   "tl.v.origin.restored": "Restored version {n}",
+  "tl.v.origin.offer": "From a CV for an offer",
+  "tl.v.origin.offerFor": "From the CV for {offer}",
   "tl.v.compare": "Compare",
   "tl.v.preview": "Preview",
   "tl.v.restore": "Restore",
@@ -250,4 +298,42 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
 
   "tl.list.title": "For specific offers",
   "tl.list.letter": "Cover letter",
+
+  "tl.gl.add": "Add a letter",
+  "tl.gl.adding": "Writing the letter…",
+  "tl.gl.write": "Write from this CV",
+  "tl.gl.writeHint": "The model, from the CV, profile and your last letters",
+  "tl.gl.paste": "Paste your letter",
+  "tl.gl.pasteHint": "Text you already have",
+  "tl.gl.blank": "Blank letter",
+  "tl.gl.blankHint": "Header from the CV, you type the rest in the editor",
+  "tl.gl.pasteTitle": "Paste your cover letter",
+  "tl.gl.pasteLabel": "The letter's text",
+  "tl.gl.pasteBody":
+    "Paste the whole letter. The greeting, paragraphs and sign-off are found by their layout, the header comes from the CV and the date is set to today. Fix the rest in the editor.",
+  "tl.gl.pasteGo": "Create the letter",
+  "tl.gl.err.noModel":
+    "No AI model is configured, so the letter can't be written. Paste your letter or start from a blank one.",
+  "tl.gl.err.noContent": "This CV has no text to write a letter from.",
+  "tl.gl.err.empty": "Paste the letter's text.",
+  "tl.gl.bar": "This CV and its letter",
+  "tl.gl.barNote": "General. The CV and letter for each offer start from this pair.",
+  "tl.gl.check": "Check before you send it. Your CV and profile don't have these:",
+
+  "tl.tg.button": "Save as general",
+  "tl.tg.hint": "Save this CV as a new version of the general CV “{title}”",
+  "tl.tg.title": "Save as your general CV?",
+  "tl.tg.body":
+    "This CV, with your edits, becomes a new version of “{title}”. The CVs for your next offers start from it.",
+  "tl.tg.whole": "All of it goes over, including sentences written only for this offer.",
+  "tl.tg.keep": "What “{title}” has now stays in its versions, and you can restore it.",
+  "tl.tg.lang.pl":
+    "“{title}” is in English and this CV in Polish: after saving, the general CV will be in Polish too.",
+  "tl.tg.lang.en":
+    "“{title}” is in Polish and this CV in English: after saving, the general CV will be in English too.",
+  "tl.tg.go": "Save to the general CV",
+  "tl.tg.saved": "Saved as version {n} of “{title}”.",
+  "tl.tg.same": "“{title}” already has this content.",
+  "tl.tg.unsaved": "This CV's changes aren't saved, so the general CV wasn't changed.",
+  "tl.tg.open": "Open",
 }

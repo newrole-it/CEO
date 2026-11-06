@@ -46,6 +46,7 @@ jobs:
       - run: npm run test:db
       - run: npm run lint
       - run: npm run check:boundaries
+      - run: npm run check:i18n
       - run: npm run typecheck
       - run: npm run test:workspaces
       - run: npm run test:extension

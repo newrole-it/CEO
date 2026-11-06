@@ -8,6 +8,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Changed
 
+- My CV keeps a cover letter next to each general CV: General shows one card per CV, the default on top, with the CV and its letter as rows, the way For offers shows an offer. A CV without a letter has "Add a letter": the model writes one with no company or role, you paste your own (the greeting, paragraphs and sign-off are found by their layout), or it starts blank. A letter for an offer, on its page, when tailoring or in the extension's form, is now made from the general letter of the CV it was tailored from (else the default CV's), and keeps your greeting and sign-off when it is in the same language. In the editor, a general CV and its letter switch like an offer's. Duplicating a CV copies its letter; deleting one asks whether to delete the letter too. Claude Code's cv_list names each CV's letter.
 - My CV is easier to scan. For offers shows one card per offer, the one changed last on top, with the application's status in the tracker's colours or "Not applied", the CV and letter as compact rows, a "Write a letter" row when the letter is missing, and a search from four offers up. General lists its CVs as the same rows.
 - newrole.it is now the CV app: your profile, My CV, Offers, Applications, Answers. The offer feed, saved offers, companies, sources, sync and coverage are gone from it, with the worker's crawling: the engine that finds offers on its own moved to the @newrole/ats and @newrole/job-index packages, for a separate deployment, and apps/jobs-lab tests it (npm run jobs-lab, npm run jobs-lab:smoke).
 - Add offer reads the whole posting from its link (the employer's ATS or the page's structured data) and keeps it for you: each offer has its own page with its text, which you can edit, paste or read again, the CV and letter written for it, its application and a note. A page without structured data comes back with the text read from it, for you to check before it is added. Tailoring a CV or writing a letter reads that text first.
@@ -102,6 +103,7 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Fixed
 
+- The sign-in page's loading line and the changelog's tab title follow the interface language; before, they were in English for everyone.
 - The extension attaches the CV written for the offer when there is one; before, it always attached the default CV.
 - A CV uploaded as a PDF keeps its line breaks, so its sections are found and a CV made from the profile has them too. Before, the whole text arrived as one line and landed in a single section.
 - After /setup and after saving a profile, newrole.it sends you to add your first offer instead of an empty My CV.

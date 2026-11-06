@@ -55,6 +55,48 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* "Dodaj list": the three ways to start a general letter (AddLetter.tsx) */
+.cvt-addletter {
+  position: relative;
+}
+.cvt-addletter__menu {
+  min-width: 290px;
+}
+.cvt-addletter__menu--left {
+  right: auto;
+  left: 0;
+}
+.cvt-addletter__item {
+  align-items: flex-start;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 10px;
+  text-align: left;
+}
+.cvt-addletter__item svg {
+  flex: none;
+  margin-top: 2px;
+}
+.cvt-addletter__hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.cvt-addletter__text {
+  width: 100%;
+  min-height: 240px;
+  resize: vertical;
+}
+
+.cvt-pair-check {
+  display: grid;
+  gap: 8px;
+  margin: 12px var(--gutter) 0;
+}
+.cvt-pair-check p {
+  margin: 0;
+}
+
 .cvt-count {
   display: inline-grid;
   place-items: center;

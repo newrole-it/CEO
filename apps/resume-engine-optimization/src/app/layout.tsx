@@ -13,6 +13,7 @@ import "./styles/usage.css"
 import "./styles/offers.css"
 import type { Metadata } from "next"
 import { BlitzProvider } from "./blitz-client"
+import { translator, type Locale } from "./i18n/copy"
 import { LocaleProvider } from "./i18n/Locale"
 import { getLocale } from "./i18n/server"
 import { Geist_Mono, Onest } from "next/font/google"
@@ -30,17 +31,19 @@ const mono = Geist_Mono({
   display: "swap",
 })
 
+/** Open Graph details per language; the other languages are listed as alternates. */
+const OPEN_GRAPH: Record<Locale, { locale: string; image: string }> = {
+  pl: { locale: "pl_PL", image: "/og-image-pl.png" },
+  en: { locale: "en_US", image: "/og-image-en.png" },
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
-  const pl = locale === "pl"
-  const title = pl ? "newrole.it: Twoje CV pod każdą ofertę" : "newrole.it: your CV for every offer"
-  const description = pl
-    ? "Wklej link do oferty, a newrole.it pobierze całe ogłoszenie i dopasuje do niego Twoje CV i list motywacyjny. Tracker aplikacji, baza odpowiedzi i rozszerzenie Chrome. Open source, działa na Twoim komputerze."
-    : "Paste a link to an offer and newrole.it reads the whole posting and tailors your CV and cover letter to it. An application tracker, an answer bank and a Chrome extension. Open source, runs on your machine."
-  const ogAlt = pl
-    ? "newrole.it: Twoje CV pod każdą ofertę."
-    : "newrole.it: your CV for every offer."
-  const ogImage = pl ? "/og-image-pl.png" : "/og-image-en.png"
+  const t = translator(locale)
+  const title = t("meta.title")
+  const description = t("meta.description")
+  const ogAlt = t("meta.ogAlt")
+  const ogImage = OPEN_GRAPH[locale].image
   return {
     metadataBase: new URL(publicAppUrl()),
     applicationName: "newrole.it",
@@ -49,8 +52,10 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       siteName: "newrole.it",
-      locale: pl ? "pl_PL" : "en_US",
-      alternateLocale: pl ? ["en_US"] : ["pl_PL"],
+      locale: OPEN_GRAPH[locale].locale,
+      alternateLocale: Object.entries(OPEN_GRAPH)
+        .filter(([other]) => other !== locale)
+        .map(([, og]) => og.locale),
       // No url or canonical here: every page inherits them, so each would point at the home page.
       title,
       description,

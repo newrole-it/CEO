@@ -8,7 +8,12 @@ import { findJobByUrl } from "src/server/applications/service"
 import { assertOfferReadLimit } from "src/server/auth/magic-link"
 import { recentLetters } from "src/server/cv/letters"
 import { contentPdf, cvPdf, CvError } from "src/server/cv/service"
-import { generateLetterForJob, letterForJob, writeLetterForPage } from "src/server/cv/tailor"
+import {
+  generateLetterForJob,
+  generalLetterForJob,
+  letterForJob,
+  writeLetterForPage,
+} from "src/server/cv/tailor"
 import { addOfferByLink } from "src/server/offers/service"
 import {
   cleanTitle,
@@ -35,6 +40,8 @@ export type FormLetter = {
   created: boolean
   /** How many of the person's earlier letters it was written after */
   pastLetters: number
+  /** Made from the person's general letter (the one that goes with their CV) */
+  general: boolean
 }
 
 export type LetterStatus =
@@ -164,18 +171,28 @@ export async function writeFormLetter(input: LetterInput): Promise<WrittenLetter
   if (posting.jobId !== null) {
     const existing = await letterForJob(userId, posting.jobId)
     if (existing) {
-      const meta = { documentId: existing.id, created: false, pastLetters: 0 }
+      const meta = { documentId: existing.id, created: false, pastLetters: 0, general: false }
       return written(existing.content, existing.language, meta, maxChars)
     }
-    const pastLetters = await recentLetters(userId, { exceptJobId: posting.jobId })
+    const general = await generalLetterForJob(userId, posting.jobId)
+    const pastLetters = await recentLetters(userId, {
+      exceptJobId: posting.jobId,
+      exceptId: general?.id,
+    })
     const result = await generateLetterForJob({
       userId,
       jobId: posting.jobId,
       pastLetters,
+      general,
       maxChars: budget,
       pageText: page.text,
     })
-    const meta = { documentId: result.id, created: true, pastLetters: pastLetters.length }
+    const meta = {
+      documentId: result.id,
+      created: true,
+      pastLetters: pastLetters.length,
+      general: Boolean(general),
+    }
     return written(result.content, result.language, meta, maxChars)
   }
 
@@ -190,7 +207,8 @@ export async function writeFormLetter(input: LetterInput): Promise<WrittenLetter
   const text = posting.withheld
     ? ""
     : (posting.text.length > page.text.length ? posting.text : page.text).slice(0, OFFER_TEXT_LIMIT)
-  const pastLetters = await recentLetters(userId)
+  const general = await generalLetterForJob(userId, null)
+  const pastLetters = await recentLetters(userId, { exceptId: general?.id })
   const { content, language } = await writeLetterForPage({
     userId,
     offer: {
@@ -201,9 +219,15 @@ export async function writeFormLetter(input: LetterInput): Promise<WrittenLetter
       origin: posting.withheld ? "withheld" : text ? "full" : "none",
     },
     pastLetters,
+    general,
     maxChars: budget,
   })
-  const meta = { documentId: null, created: true, pastLetters: pastLetters.length }
+  const meta = {
+    documentId: null,
+    created: true,
+    pastLetters: pastLetters.length,
+    general: Boolean(general),
+  }
   return written(content, language, meta, maxChars)
 }
 

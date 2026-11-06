@@ -84,7 +84,7 @@ newrole.it depends on nothing in `apps/jobs-lab`: `npm run check:boundaries` fai
 
 ## newrole.it's screens
 
-- **Moje CV** (`/cv`): two tabs, _Ogólne_ (general CVs: new, from the profile, from a PDF or HTML) and _Pod oferty_ (the CVs and letters written for one offer, grouped by offer, with its application status).
+- **Moje CV** (`/cv`): two tabs, _Ogólne_ (general CVs: new, from the profile, from a PDF or HTML, each paired with its general cover letter, whose `baseCvId` is the CV) and _Pod oferty_ (the CVs and letters written for one offer, grouped by offer, with its application status). A letter for an offer is made from the general letter of the CV it was tailored from (`src/server/cv/tailor.ts`).
 - **Oferty** (`/offers`): add an offer by its link, then the list. A page that could not be read as a posting comes back as a draft with the text read from it, for the person to check. Each offer has its page (`/offers/[id]`): the whole text (edit, paste, read again), the CV and letter for it, its application and a note. Old `/jobs/...` links redirect here.
 - **Aplikacje**, **Odpowiedzi**, **Profil**, **/setup**, **/settings**, **/usage**, **/connect**: as before.
 - **The extension** adds the offer on the open tab from its popup (`POST /api/ext/offer`, the same `addOfferByLink`); a draft opens `/offers?add=<link>`, where the link is read at once.

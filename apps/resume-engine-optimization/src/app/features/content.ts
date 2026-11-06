@@ -142,8 +142,16 @@ const cvEditorPl: FeatureSection = {
           body: "Historia zapisuje się sama, najwyżej raz na 10 minut, a „Zapisz wersję” zapisuje ją od razu pod nazwą. Każdą wersję możesz podejrzeć, porównać z obecnym tekstem i przywrócić; poprzedni stan zostaje w historii.",
         },
         {
+          label: "Zapisz jako ogólne",
+          body: "W CV pod ofertę: cała jego treść, z Twoimi poprawkami, staje się nową wersją ogólnego CV, z którego powstało, więc CV pod kolejne oferty zaczynają się już od niej. Poprzednia treść ogólnego CV zostaje w jego wersjach.",
+        },
+        {
           label: "Podgląd wydruku i Pobierz PDF",
           body: "PDF powstaje z tego samego HTML co arkusz, w Google Chrome. Bez Chrome otwiera się okno drukowania, z którego zapiszesz PDF.",
+        },
+        {
+          label: "CV | List motywacyjny",
+          body: "Pod paskiem CV ogólnego i jego listu: przełącznik między nimi i „Dodaj list”, gdy CV listu nie ma. W liście, który napisał model, pasek wymienia to, czego nie ma w Twoim CV ani profilu. CV i list pod ofertę mają tu swój pasek z ofertą.",
         },
       ],
     },
@@ -173,7 +181,7 @@ const tailoringPl: FeatureSection = {
         },
         {
           label: "Napisz też list motywacyjny",
-          body: "List oparty na dostosowanym CV i napisany na wzór Twoich 3 ostatnich listów, w tym samym układzie i z historią wersji. Możesz go też dodać później z paska nad CV.",
+          body: "List z listu ogólnego wybranego CV (jeśli je ma), oparty na dostosowanym CV i napisany na wzór Twoich 3 ostatnich listów, w tym samym układzie i z historią wersji. Możesz go też dodać później z paska nad CV.",
         },
         {
           label: "Treść oferty dla modelu",
@@ -269,7 +277,7 @@ const extensionPl: FeatureSection = {
         },
         {
           label: "Wypełnij formularz na tej stronie",
-          body: "Działa na każdej stronie, także poza znanymi systemami rekrutacji. Wpisuje dane, CV i odpowiedzi; pytania otwarte mogą potrwać kilka sekund. Gdy formularz ma miejsce na list motywacyjny, aplikacja czyta całą ofertę i pisze list pod tę ofertę i firmę na wzór Twoich 3 ostatnich listów, a panel mówi, kiedy jest gotowy. Oferta, która ma już list w newrole.it, dostaje ten list. Pole na plik dostaje go jako PDF. Fioletowa ramka to wartość z profilu, CV albo bazy odpowiedzi, żółta to szkic AI do sprawdzenia. Formularz sprawdzasz i wysyłasz sam.",
+          body: "Działa na każdej stronie, także poza znanymi systemami rekrutacji. Wpisuje dane, CV i odpowiedzi; pytania otwarte mogą potrwać kilka sekund. Gdy formularz ma miejsce na list motywacyjny, aplikacja czyta całą ofertę i pisze list pod tę ofertę i firmę z Twojego listu ogólnego (jeśli go masz) i na wzór Twoich 3 ostatnich listów, a panel mówi, kiedy jest gotowy. Oferta, która ma już list w newrole.it, dostaje ten list. Pole na plik dostaje go jako PDF. Fioletowa ramka to wartość z profilu, CV albo bazy odpowiedzi, żółta to szkic AI do sprawdzenia. Formularz sprawdzasz i wysyłasz sam.",
         },
         {
           label: "Dodaj tę ofertę do newrole.it",
@@ -425,7 +433,7 @@ const profilePl: FeatureSection = {
 const cvListPl: FeatureSection = {
   id: "my-cv",
   title: "Moje CV",
-  lead: "Wszystkie Twoje CV i listy. „Ogólne” to CV, od których wszystko się zaczyna; „Pod oferty” to CV i listy napisane dla jednej oferty, pogrupowane według ofert, ze statusem aplikacji.",
+  lead: "Wszystkie Twoje CV i listy. „Ogólne” to pary: CV, od którego wszystko się zaczyna, i jego list motywacyjny. „Pod oferty” to CV i listy napisane dla jednej oferty, pogrupowane według ofert, ze statusem aplikacji.",
   where: { href: "/cv", label: "Otwórz Moje CV" },
   groups: [
     {
@@ -454,7 +462,7 @@ const cvListPl: FeatureSection = {
       items: [
         {
           label: "Edytuj, PDF",
-          body: "Otwiera edytor albo od razu pobiera PDF. Pod nazwą widać język i ostatnią zmianę; plakietki mają tylko CV domyślne i wgrany PDF.",
+          body: "Otwiera edytor albo od razu pobiera PDF. Pod nazwą widać język i ostatnią zmianę. Plakietkę „Domyślne” ma karta domyślnego CV, a „PDF” wiersz wgranego pliku.",
         },
         {
           label: "Ustaw jako domyślne",
@@ -462,7 +470,29 @@ const cvListPl: FeatureSection = {
         },
         {
           label: "Duplikuj, Usuń",
-          body: "Kopia dostaje dopisek „(kopia)”. Usunięcie pyta o potwierdzenie; aplikacje zostają, tylko bez linku do tego CV.",
+          body: "Kopia dostaje dopisek „(kopia)”, a kopia CV ogólnego dostaje też kopię jego listu. Usunięcie pyta o potwierdzenie, a przy CV z listem także o to, czy usunąć list; aplikacje zostają, tylko bez linku do tego CV.",
+        },
+      ],
+    },
+    {
+      title: "Zakładka „Ogólne”",
+      items: [
+        {
+          label: "Karta CV",
+          body: "Jedna karta na CV ogólne, domyślne na górze: nazwa CV (link do edytora) i plakietka „Domyślne”. W środku CV i jego list jako wiersze.",
+        },
+        {
+          id: "general-letter",
+          label: "Dodaj list",
+          body: "Gdy CV nie ma listu, karta pokazuje to wierszem z przyciskiem. „Napisz z tego CV”: model pisze list bez firmy i stanowiska, z CV, profilu i Twoich ostatnich listów. „Wklej swój list”: powitanie, akapity i podpis rozpoznane po układzie, nagłówek z CV, data dzisiejsza. „Pusty list”: nagłówek z CV, treść wpisujesz w edytorze. Pisanie potrzebuje modelu, wklejanie i pusty list nie.",
+        },
+        {
+          label: "List ogólny a listy pod oferty",
+          body: "List pod ofertę powstaje z listu ogólnego tego CV, od którego zaczęło się dopasowanie, a bez dopasowanego CV z listu CV domyślnego. Model zachowuje jego głos i to, co mówi o Tobie, a zmienia to, czego wymaga oferta. Powitanie, zakończenie i podpis zostają Twoje, gdy list ogólny jest w języku nowego listu. Tak samo pisze list rozszerzenie w formularzu.",
+        },
+        {
+          label: "Listy bez CV",
+          body: "List, którego CV usunięto, a który został, trafia na kartę na końcu. Listy pod oferty nie powstają z niego, ale model może go czytać jako jeden z Twoich ostatnich listów.",
         },
       ],
     },
@@ -758,8 +788,16 @@ const cvEditorEn: FeatureSection = {
           body: "History saves itself at most once every 10 minutes, and “Save version” saves one right away under a name. Preview any version, compare it with the current text and restore it; the previous state stays in the history.",
         },
         {
+          label: "Save as general",
+          body: "In a CV for an offer: all of it, with your edits, becomes a new version of the general CV it came from, so the CVs for your next offers start from it. What the general CV had before stays in its versions.",
+        },
+        {
           label: "Print preview and Download PDF",
           body: "The PDF is made from the same HTML as the sheet, in Google Chrome. Without Chrome, the print window opens and you save the PDF from there.",
+        },
+        {
+          label: "CV | Cover letter",
+          body: "Under the toolbar of a general CV and its letter: a switch between the two, and “Add a letter” when the CV has none. In a letter the model wrote, the bar lists what your CV and profile don't have. A CV and letter for an offer have their own bar here, with the offer.",
         },
       ],
     },
@@ -789,7 +827,7 @@ const tailoringEn: FeatureSection = {
         },
         {
           label: "Also write a cover letter",
-          body: "A letter based on the tailored CV and written after your last 3 letters, in the same layout and with version history. You can also add it later from the bar above the CV.",
+          body: "A letter made from the chosen CV's general letter (when it has one), based on the tailored CV and written after your last 3 letters, in the same layout and with version history. You can also add it later from the bar above the CV.",
         },
         {
           label: "The offer's text for the model",
@@ -885,7 +923,7 @@ const extensionEn: FeatureSection = {
         },
         {
           label: "Wypełnij formularz na tej stronie (Fill the form on this page)",
-          body: "Works on any page, outside the known recruitment systems too. It types in your details, CV and answers; open questions can take a few seconds. When the form has a place for a cover letter, the app reads the whole offer and writes a letter for this offer and company after your last 3 letters, and the panel says when it is ready. An offer that already has a letter in newrole.it gets that letter. A file field gets it as PDF. A purple frame is a value from your profile, CV or answer bank, a yellow one an AI draft to check. You check and submit the form yourself.",
+          body: "Works on any page, outside the known recruitment systems too. It types in your details, CV and answers; open questions can take a few seconds. When the form has a place for a cover letter, the app reads the whole offer and writes a letter for this offer and company from your general letter (when you have one) and after your last 3 letters, and the panel says when it is ready. An offer that already has a letter in newrole.it gets that letter. A file field gets it as PDF. A purple frame is a value from your profile, CV or answer bank, a yellow one an AI draft to check. You check and submit the form yourself.",
         },
         {
           label: "Dodaj tę ofertę do newrole.it (Add this offer)",
@@ -1041,7 +1079,7 @@ const profileEn: FeatureSection = {
 const cvListEn: FeatureSection = {
   id: "my-cv",
   title: "My CV",
-  lead: "All your CVs and letters. “General” are the CVs everything starts from; “For offers” are the CVs and letters written for one offer, grouped by offer, with the application's status.",
+  lead: "All your CVs and letters. “General” are pairs: a CV everything starts from, and its cover letter. “For offers” are the CVs and letters written for one offer, grouped by offer, with the application's status.",
   where: { href: "/cv", label: "Open My CV" },
   groups: [
     {
@@ -1070,7 +1108,7 @@ const cvListEn: FeatureSection = {
       items: [
         {
           label: "Edit, PDF",
-          body: "Opens the editor, or downloads the PDF right away. Under the name you see the language and the last change; only the default CV and an uploaded PDF get a badge.",
+          body: "Opens the editor, or downloads the PDF right away. Under the name you see the language and the last change. The default CV's card has a “Default” badge, an uploaded file's row a “PDF” one.",
         },
         {
           label: "Set as default",
@@ -1078,7 +1116,29 @@ const cvListEn: FeatureSection = {
         },
         {
           label: "Duplicate, Delete",
-          body: "A copy gets “(kopia)” in its title. Deleting asks first; applications stay, just without the link to that CV.",
+          body: "A copy gets “(kopia)” in its title, and a copy of a general CV gets a copy of its letter too. Deleting asks first, and for a CV with a letter also whether to delete the letter; applications stay, just without the link to that CV.",
+        },
+      ],
+    },
+    {
+      title: "The “General” tab",
+      items: [
+        {
+          label: "A CV's card",
+          body: "One card per general CV, the default on top: the CV's name (a link to the editor) and the “Default” badge. Inside, the CV and its letter as rows.",
+        },
+        {
+          id: "general-letter",
+          label: "Add a letter",
+          body: "When a CV has no letter, the card shows it as a row with a button. “Write from this CV”: the model writes a letter with no company or role, from the CV, profile and your last letters. “Paste your letter”: the greeting, paragraphs and sign-off are found by their layout, the header comes from the CV, the date is today's. “Blank letter”: the header from the CV, you type the rest in the editor. Writing needs a model; pasting and a blank letter don't.",
+        },
+        {
+          label: "The general letter and letters for offers",
+          body: "A letter for an offer is made from the general letter of the CV the tailoring started from, and without a tailored CV from the default CV's letter. The model keeps its voice and what it says about you, and changes what the offer calls for. Your greeting, closing and signature stay when the general letter is in the new letter's language. The extension writes a form's letter the same way.",
+        },
+        {
+          label: "Letters without a CV",
+          body: "A letter you kept when its CV was deleted goes on a card at the end. Letters for offers don't start from it, but the model may read it as one of your last letters.",
         },
       ],
     },

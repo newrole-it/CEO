@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
+import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import { setupBack } from "src/app/setup/back"
 import { isLocalInstall } from "src/server/local-install"
@@ -21,7 +22,7 @@ export default async function LoginPage({
   if (user && user.role !== "GUEST") redirect(safeReturnTo(returnTo) ?? back ?? "/")
   return (
     <SiteFrame user={user} locale={locale}>
-      <Suspense fallback={<p className="hint">Loading sign-in…</p>}>
+      <Suspense fallback={<p className="hint">{translator(locale)("login.loading")}</p>}>
         <LoginForm local={isLocalInstall()} after={back ?? "/cv"} />
       </Suspense>
     </SiteFrame>

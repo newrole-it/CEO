@@ -13,6 +13,7 @@ vi.mock("src/server/cv/service", async () => {
 })
 vi.mock("src/server/cv/tailor", () => ({
   generateLetterForJob: vi.fn(),
+  generalLetterForJob: vi.fn(),
   letterForJob: vi.fn(),
   writeLetterForPage: vi.fn(),
 }))
@@ -22,7 +23,12 @@ import { findJobByUrl } from "src/server/applications/service"
 import { assertOfferReadLimit } from "src/server/auth/magic-link"
 import { recentLetters } from "src/server/cv/letters"
 import { contentPdf, cvPdf, CvError } from "src/server/cv/service"
-import { generateLetterForJob, letterForJob, writeLetterForPage } from "src/server/cv/tailor"
+import {
+  generateLetterForJob,
+  generalLetterForJob,
+  letterForJob,
+  writeLetterForPage,
+} from "src/server/cv/tailor"
 import { addOfferByLink } from "src/server/offers/service"
 import {
   clearFormLetters,
@@ -72,6 +78,7 @@ beforeEach(() => {
   mocked(assertOfferReadLimit).mockReset().mockResolvedValue(undefined)
   mocked(recentLetters).mockReset().mockResolvedValue(past)
   mocked(letterForJob).mockReset().mockResolvedValue(null)
+  mocked(generalLetterForJob).mockReset().mockResolvedValue(null)
   mocked(generateLetterForJob).mockReset()
   mocked(writeLetterForPage).mockReset()
   mocked(addOfferByLink).mockReset().mockResolvedValue({ kind: "invalid" })
@@ -138,15 +145,37 @@ describe("writeFormLetter", () => {
       language: "pl",
     })
     const result = await writeFormLetter(input({ maxChars: 2000 }))
-    expect(recentLetters).toHaveBeenCalledWith(1, { exceptJobId: "job1" })
+    expect(recentLetters).toHaveBeenCalledWith(1, { exceptJobId: "job1", exceptId: undefined })
     expect(generateLetterForJob).toHaveBeenCalledWith({
       userId: 1,
       jobId: "job1",
       pastLetters: past,
+      general: null,
       maxChars: 1920,
       pageText: page.text,
     })
-    expect(result.letter).toMatchObject({ documentId: "doc2", created: true, pastLetters: 3 })
+    expect(result.letter).toMatchObject({
+      documentId: "doc2",
+      created: true,
+      pastLetters: 3,
+      general: false,
+    })
+  })
+
+  it("makes the letter from the general letter of the CV, which past letters then leave out", async () => {
+    mocked(findJobByUrl).mockResolvedValue({ id: "job1" })
+    const general = { id: "gen1", content: letter(["Mój list ogólny."]), language: "pl" as const }
+    mocked(generalLetterForJob).mockResolvedValue(general)
+    mocked(generateLetterForJob).mockResolvedValue({
+      id: "doc2",
+      content: letter(["Nowy list."]),
+      language: "pl",
+    })
+    const result = await writeFormLetter(input())
+    expect(generalLetterForJob).toHaveBeenCalledWith(1, "job1")
+    expect(recentLetters).toHaveBeenCalledWith(1, { exceptJobId: "job1", exceptId: "gen1" })
+    expect(generateLetterForJob).toHaveBeenCalledWith(expect.objectContaining({ general }))
+    expect(result.letter).toMatchObject({ created: true, general: true })
   })
 
   it("reads an offer the index does not know, as adding it by its link does", async () => {
@@ -183,9 +212,11 @@ describe("writeFormLetter", () => {
         origin: "full",
       },
       pastLetters: past,
+      general: null,
       maxChars: undefined,
     })
-    expect(recentLetters).toHaveBeenCalledWith(1)
+    expect(generalLetterForJob).toHaveBeenCalledWith(1, null)
+    expect(recentLetters).toHaveBeenCalledWith(1, { exceptId: undefined })
     expect(result.letter).toMatchObject({ documentId: null, created: true, pastLetters: 3 })
   })
 
@@ -229,7 +260,7 @@ describe("writeFormLetter", () => {
 
 describe("letters in progress", () => {
   const done: WrittenLetter = {
-    letter: { text: "List.", documentId: null, created: true, pastLetters: 2 },
+    letter: { text: "List.", documentId: null, created: true, pastLetters: 2, general: false },
     content: letter(["List."]),
     language: "pl",
   }

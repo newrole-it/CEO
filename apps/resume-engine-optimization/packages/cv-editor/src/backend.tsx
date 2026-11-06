@@ -6,6 +6,7 @@ import type { CvLocale } from "@newrole/cv-core/blank"
 import type { CvContent } from "@newrole/cv-core/schema"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorResult } from "@newrole/cv-core/views"
+import type { LetterSource } from "./AddLetter"
 
 /**
  * Everything the editor asks of the app around it. newrole.it answers through its Blitz
@@ -37,6 +38,11 @@ export type CvEditorBackend = {
       id: string,
       versionId: string
     ) => Promise<{ content: CvContent; language: CvLocale; updatedAt: Date }>
+    /**
+     * A CV for an offer saved as the newest version of its general CV (TailorContext.general);
+     * `number` is null when that CV already had this content. Without it there is no button.
+     */
+    toGeneral?: (id: string) => Promise<{ cvId: string; number: number | null }>
   }
   /** Writing for an offer; `jobId` is TailorContext.job.id. */
   tailor: {
@@ -50,6 +56,10 @@ export type CvEditorBackend = {
       locale?: CvLocale
     }) => Promise<TailorResult>
     letter: (input: { jobId: string; language?: CvLocale; note?: string }) => Promise<TailorResult>
+  }
+  /** The general letter of a general CV (PairBar); without it the bar cannot add one. */
+  letters?: {
+    create: (input: { cvId: string; from: LetterSource; text?: string }) => Promise<{ id: string }>
   }
   /** How much of the offer the model will read (TailorStart); without it the form says "none". */
   offerText?: (jobId: string) => Promise<{ origin: OfferTextOrigin; chars: number }>

@@ -18,6 +18,41 @@ import { useUiCopy } from "./locale"
 import { Button } from "./Button"
 import { cx } from "./cx"
 
+/* ------------------------------------------------------------- Menu */
+
+/**
+ * The dropdown behaviour used across the app: outside click and Esc close it, arrows move, the
+ * first item takes focus. Put `ref` on the menu; a click inside its parent does not close it.
+ */
+export function useMenu() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const node = ref.current
+    node?.querySelector<HTMLElement>("a, button")?.focus()
+    function onDown(event: MouseEvent) {
+      if (!node?.parentElement?.contains(event.target as Node)) setOpen(false)
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false)
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault()
+        const items = [...(node?.querySelectorAll<HTMLElement>("a, button") ?? [])]
+        const at = items.indexOf(document.activeElement as HTMLElement)
+        items[(at + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus()
+      }
+    }
+    document.addEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [open])
+  return { open, setOpen, ref }
+}
+
 /* ------------------------------------------------------------- ChipInput */
 
 export function ChipInput({

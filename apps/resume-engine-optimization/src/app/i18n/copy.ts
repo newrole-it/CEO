@@ -54,6 +54,14 @@ const basePl = {
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
   "onb.skip": "Pomiń na razie",
+  "meta.title": "newrole.it: Twoje CV pod każdą ofertę",
+  "meta.description":
+    "Wklej link do oferty, a newrole.it pobierze całe ogłoszenie i dopasuje do niego Twoje CV i list motywacyjny. Tracker aplikacji, baza odpowiedzi i rozszerzenie Chrome. Open source, działa na Twoim komputerze.",
+  "meta.ogAlt": "newrole.it: Twoje CV pod każdą ofertę.",
+  "changelog.title": "Historia zmian",
+  "changelog.lede":
+    "Wszystko, co zmieniło się w newrole.it, od najnowszych zmian. Nie ma jeszcze oznaczonych wydań, więc zmiany są ułożone według dat. Wpisy są po angielsku, tak jak reszta dokumentacji projektu.",
+  "changelog.source": "CHANGELOG.md w repozytorium",
 
   // landing
   "hero.title1": "Twoje CV pod każdą ofertę.",
@@ -93,6 +101,7 @@ const basePl = {
   "onb.read.s3": "Układam profil",
   "onb.read.usual": "Zwykle trwa to 5–20 sekund.",
   "onb.read.counting": "Model czyta Twoje CV… {s} s",
+  "onb.read.elapsed": "{s} s",
   "onb.read.slow": "Trwa dłużej niż zwykle.",
   "onb.read.wait": "Czekaj dalej",
   "onb.read.manual": "Wypełnię ręcznie",
@@ -565,6 +574,7 @@ const basePl = {
   "login.badCreds": "Nie rozpoznajemy tych danych.",
   "login.failed": "Nie udało się zalogować.",
   "login.verifying": "Loguję…",
+  "login.loading": "Wczytuję logowanie…",
   "login.confirm.title": "Zalogować jako {email}?",
   "login.confirm.cta": "Zaloguj się",
   "login.confirm.switch": "Jesteś teraz na innym koncie. Ten link przełączy Cię na konto powyżej.",
@@ -689,6 +699,14 @@ const en: Dict = {
   "footer.github": "GitHub",
   "footer.license": "AGPL-3.0",
   "onb.skip": "Skip for now",
+  "meta.title": "newrole.it: your CV for every offer",
+  "meta.description":
+    "Paste a link to an offer and newrole.it reads the whole posting and tailors your CV and cover letter to it. An application tracker, an answer bank and a Chrome extension. Open source, runs on your machine.",
+  "meta.ogAlt": "newrole.it: your CV for every offer.",
+  "changelog.title": "Changelog",
+  "changelog.lede":
+    "Everything that changed in newrole.it, newest first. There are no tagged releases yet, so changes are listed by date.",
+  "changelog.source": "CHANGELOG.md in the repository",
 
   "hero.title1": "Your CV for every offer.",
   "hero.title2": "Paste a link and tailor.",
@@ -726,6 +744,7 @@ const en: Dict = {
   "onb.read.s3": "Laying out your profile",
   "onb.read.usual": "This usually takes 5–20 seconds.",
   "onb.read.counting": "The model is reading your CV… {s}s",
+  "onb.read.elapsed": "{s} s",
   "onb.read.slow": "Taking longer than usual.",
   "onb.read.wait": "Keep waiting",
   "onb.read.manual": "I'll fill it in myself",
@@ -1189,6 +1208,7 @@ const en: Dict = {
   "login.badCreds": "Those credentials weren't recognised.",
   "login.failed": "Sign-in failed.",
   "login.verifying": "Signing in…",
+  "login.loading": "Loading sign-in…",
   "login.confirm.title": "Sign in as {email}?",
   "login.confirm.cta": "Sign in",
   "login.confirm.switch":

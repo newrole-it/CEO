@@ -2,9 +2,11 @@
 
 import { invoke } from "@blitzjs/rpc"
 import type { CvEditorBackend } from "@newrole/cv-editor/backend"
+import createGeneralLetter from "./mutations/createGeneralLetter"
 import generateCoverLetter from "./mutations/generateCoverLetter"
 import restoreCvVersion from "./mutations/restoreCvVersion"
 import runCvAudit from "./mutations/runCvAudit"
+import saveCvToGeneral from "./mutations/saveCvToGeneral"
 import saveCvVersion from "./mutations/saveCvVersion"
 import setCvAuditDismissed from "./mutations/setCvAuditDismissed"
 import tailorCvForJob from "./mutations/tailorCvForJob"
@@ -24,10 +26,18 @@ export const newroleCvBackend: CvEditorBackend = {
     get: (id, versionId) => invoke(getCvVersion, { id, versionId }),
     save: (id, label) => invoke(saveCvVersion, { id, label }),
     restore: (id, versionId) => invoke(restoreCvVersion, { id, versionId }),
+    toGeneral: (id) => invoke(saveCvToGeneral, { id }),
   },
   tailor: {
     cv: (input) => invoke(tailorCvForJob, input),
     letter: (input) => invoke(generateCoverLetter, input),
+  },
+  letters: {
+    create: async (input) => {
+      const letter = await invoke(createGeneralLetter, input)
+      if (!letter) throw new Error("no result")
+      return letter
+    },
   },
   offerText: (jobId) => invoke(getOfferTextStatus, { jobId }),
   audit: {

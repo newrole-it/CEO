@@ -25,7 +25,8 @@ import { currentUser } from "./user"
 const CONTENT_RULES =
   "Body text (text, summary, bullets, tech, skill text, card body) may use <strong>, <em>, <a href> and <br>; everything else is stripped. Header fields and titles are plain text. Never invent experience: change only what the CV and the person support."
 
-function viewData(cv: CvView) {
+/** `letterId`, in cv_list: the general letter that goes with a general CV */
+function viewData(cv: CvView, letterId?: string | null) {
   return {
     id: cv.id,
     title: cv.title,
@@ -34,15 +35,17 @@ function viewData(cv: CvView) {
     isDefault: cv.isDefault,
     hasContent: cv.hasContent,
     updatedAt: cv.updatedAt.toISOString(),
+    ...(letterId === undefined ? {} : { letterId }),
   }
 }
 
-function viewLine(cv: CvView): string {
+function viewLine(cv: CvView, letterId: string | null): string {
   const kind = cv.kind === "UPLOADED" ? "PDF" : "edytowalne"
   const target = cv.target ? `, pod ofertę: ${cv.target.company}` : ""
+  const letter = letterId ? ` · list ${letterId}` : ""
   return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${
     cv.language
-  }, ${kind}${target}, zmiana ${cv.updatedAt.toISOString().slice(0, 10)}) id ${cv.id}`
+  }, ${kind}${target}, zmiana ${cv.updatedAt.toISOString().slice(0, 10)}) id ${cv.id}${letter}`
 }
 
 /** Where cv_export_pdf writes: an absolute path, or ~/Downloads/<name>_CV.pdf. */
@@ -110,20 +113,25 @@ export function registerCvTools(server: McpServer) {
     {
       title: "Moje CV",
       description:
-        "List the person's CVs: editable documents and uploaded PDFs, with language and which one is the default (★). Use cv_get to read one.",
+        'List the person\'s CVs: editable documents and uploaded PDFs, with language and which one is the default (★). A general CV can have its general cover letter ("list <id>"), which the letters for offers start from. Use cv_get with either id to read it.',
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
     guard(async () => {
       const user = await currentUser()
-      const cvs = await listCvs(user.id)
+      const documents = await listCvs(user.id, { letters: true })
+      const cvs = documents.filter((cv) => cv.docType !== "LETTER")
+      const letterOf = (cv: CvView) =>
+        documents.find((letter) => letter.forCvId === cv.id)?.id ?? null
       if (!cvs.length) {
         return reply(
           `Brak CV. Utwórz je na ${appLink("/cv")} (z profilu, puste, import HTML albo PDF).`,
           { cvs: [] }
         )
       }
-      return reply(cvs.map(viewLine).join("\n"), { cvs: cvs.map(viewData) })
+      return reply(cvs.map((cv) => viewLine(cv, letterOf(cv))).join("\n"), {
+        cvs: cvs.map((cv) => viewData(cv, letterOf(cv))),
+      })
     })
   )
 

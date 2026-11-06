@@ -8,7 +8,7 @@ import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { listCvs } from "src/server/cv/service"
+import { generalLetterOf, listCvs } from "src/server/cv/service"
 import { documentsForJob, loadTailorJob } from "src/server/cv/tailor"
 import { NewroleTailorStart } from "./NewroleTailorStart"
 
@@ -34,6 +34,7 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
     db.candidateProfile.count({ where: { userId: user.id } }),
   ])
   const general = cvs.filter((cv) => !cv.target)
+  const letters = await Promise.all(general.map((cv) => generalLetterOf(user.id, cv.id)))
   return (
     <SiteFrame user={user} locale={locale} width="narrow">
       <header className="page-head">
@@ -48,7 +49,12 @@ export default async function TailorPage({ params }: { params: Promise<{ id: str
             language: job.language,
             withheld: job.withheld,
           }}
-          cvs={general.map((cv) => ({ id: cv.id, title: cv.title, isDefault: cv.isDefault }))}
+          cvs={general.map((cv, index) => ({
+            id: cv.id,
+            title: cv.title,
+            isDefault: cv.isDefault,
+            hasLetter: Boolean(letters[index]),
+          }))}
           hasLetter={Boolean(documents.letterId)}
         />
       ) : (

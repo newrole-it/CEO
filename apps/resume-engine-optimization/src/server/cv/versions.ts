@@ -225,10 +225,12 @@ export async function saveVersion(
     })
     const name = cleanLabel(label)
     if (latest?.contentHash === hash) {
+      // the person's name replaces what an automatic or an offer's version was called
+      const renamed = latest.origin === "auto" || latest.origin === "offer"
       const row = name
         ? await tx.cvVersion.update({
             where: { id: latest.id },
-            data: { label: name, origin: latest.origin === "auto" ? "manual" : latest.origin },
+            data: { label: name, origin: renamed ? "manual" : latest.origin },
             select: VIEW_FIELDS,
           })
         : latest

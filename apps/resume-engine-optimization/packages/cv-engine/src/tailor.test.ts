@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { syntheticCv } from "@newrole/cv-core/fixtures"
+import { buildLetter } from "@newrole/cv-core/letter"
 import { letterSection } from "@newrole/cv-core/schema"
 import { OFFER_TEXT_LIMIT } from "@newrole/cv-core/tailor"
 import type { LlmClient } from "@newrole/llm/common"
@@ -8,6 +9,7 @@ import {
   tailorCv,
   tailoredCvLanguage,
   writeCoverLetter,
+  writeGeneralLetter,
   type TailorOffer,
 } from "./tailor"
 
@@ -171,6 +173,92 @@ describe("writeCoverLetter", () => {
       context: "",
     })
     expect(result).toBeNull()
+  })
+})
+
+describe("a letter made from the general letter", () => {
+  const general = (language: "pl" | "en") => ({
+    content: buildLetter({
+      cv: syntheticCv(1),
+      language,
+      paragraphs: ["Od ośmiu lat skracam wdrożenia o 40%."],
+      frame: { greeting: "Dzień dobry,", closing: "Pozdrawiam,", signature: "Jan" },
+    }),
+    language,
+  })
+
+  it("gives the model the general letter and keeps its greeting and sign-off", async () => {
+    const llm = fakeLlm({ paragraphs: ["Skracam wdrożenia o 40%."] })
+    const result = await writeCoverLetter({
+      llm,
+      cv: syntheticCv(1),
+      offer,
+      language: "pl",
+      context: "",
+      general: general("pl"),
+    })
+    expect(llm.calls[0].user).toContain(
+      "<untrusted_general_letter>\nOd ośmiu lat skracam wdrożenia o 40%."
+    )
+    expect(llm.calls[0].system).toContain("this letter is that letter made for this offer")
+    const section = result ? letterSection(result.content) : null
+    expect(section).toMatchObject({
+      greeting: "Dzień dobry,",
+      closing: "Pozdrawiam,",
+      signature: "Jan",
+      subject: "Dotyczy: Staff Engineer",
+    })
+    // its facts are the candidate's
+    expect(result?.notes.unverified).not.toContain("40")
+  })
+
+  it("leaves the greeting to the letter's language when the general letter is in another", async () => {
+    const llm = fakeLlm({ paragraphs: ["I cut deployments by 40%."] })
+    const result = await writeCoverLetter({
+      llm,
+      cv: syntheticCv(1),
+      offer,
+      language: "en",
+      context: "",
+      general: general("pl"),
+    })
+    const section = result ? letterSection(result.content) : null
+    expect(section?.greeting).toBe("Dear Hiring Team,")
+    expect(section?.closing).toBe("Kind regards,")
+  })
+
+  it("says nothing of a general letter when there is none", async () => {
+    const llm = fakeLlm({ paragraphs: ["List."] })
+    await writeCoverLetter({ llm, cv: syntheticCv(1), offer, language: "pl", context: "" })
+    expect(llm.calls[0].user).not.toContain("general_letter")
+  })
+})
+
+describe("writeGeneralLetter", () => {
+  it("writes for no offer: no addressee, no subject, and no offer in the prompt", async () => {
+    const llm = fakeLlm({ paragraphs: ["Buduję platformy.", "Skróciłem wdrożenia o 73%."] })
+    const result = await writeGeneralLetter({
+      llm,
+      cv: syntheticCv(1),
+      language: "pl",
+      context: "",
+      pastLetters: [{ company: "Beta", title: "SRE", text: "W Becie prowadziłem zespół." }],
+    })
+    const section = result ? letterSection(result.content) : null
+    expect(section).toMatchObject({ recipient: "", subject: "", greeting: "Szanowni Państwo," })
+    expect(section?.paragraphs).toEqual(["Buduję platformy.", "Skróciłem wdrożenia o 73%."])
+    expect(llm.calls[0].system).toContain("It is written for no employer")
+    expect(llm.calls[0].user).not.toContain("untrusted_job")
+    expect(llm.calls[0].user).toContain("<untrusted_past_letter>\nWritten for: Beta")
+    expect(result?.notes.unverified).toContain("73")
+    expect(result?.notes.usedJobText).toBe(false)
+  })
+
+  it("returns null without a reply", async () => {
+    const llm = fakeLlm(null)
+    expect(
+      await writeGeneralLetter({ llm, cv: syntheticCv(1), language: "en", context: "" })
+    ).toBeNull()
   })
 })
 

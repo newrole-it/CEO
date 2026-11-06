@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { invoke } from "@blitzjs/rpc"
@@ -25,15 +25,17 @@ import {
   UserRound,
 } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
-import { Dropzone, isPdf, Modal, ModalHead, useToast } from "@newrole/ui/interactive"
+import { Dropzone, isPdf, Modal, ModalHead, useMenu, useToast } from "@newrole/ui/interactive"
 import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "@newrole/ui/time"
 import { statusLabel, statusTone } from "src/shared/applications"
 import { importCvHtml } from "@newrole/cv-core/import-html"
 import { downloadPdf } from "@newrole/cv-editor/download"
+import { AddLetter } from "@newrole/cv-editor/AddLetter"
 import { cvPdfUrl, cvPrintUrl } from "./urls"
 import createCvDocument from "./mutations/createCvDocument"
+import createGeneralLetter from "./mutations/createGeneralLetter"
 import deleteCvDocument from "./mutations/deleteCvDocument"
 import duplicateCvDocument from "./mutations/duplicateCvDocument"
 import setDefaultCvDocument from "./mutations/setDefaultCvDocument"
@@ -52,6 +54,30 @@ export type CvRow = {
   hasContent: boolean
   updatedAt: Date | string
   target: { jobId: string | null; company: string; title: string } | null
+  /** A general letter: the general CV it goes with */
+  forCvId: string | null
+}
+
+/** A general CV and its letter, as "General" shows them. */
+type Pair = { cv: CvRow; letter: CvRow | null }
+
+/**
+ * The general CVs in the list's order (the default first), each with its letter, and the general
+ * letters whose CV is gone.
+ */
+function byCv(rows: CvRow[]): { pairs: Pair[]; loose: CvRow[] } {
+  const cvs = rows.filter((row) => !row.target && row.docType === "CV")
+  const letters = rows.filter((row) => !row.target && row.docType === "LETTER")
+  const ids = new Set(cvs.map((cv) => cv.id))
+  const newest = (a: CvRow, b: CvRow) =>
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  return {
+    pairs: cvs.map((cv) => ({
+      cv,
+      letter: letters.filter((letter) => letter.forCvId === cv.id).sort(newest)[0] ?? null,
+    })),
+    loose: letters.filter((letter) => !letter.forCvId || !ids.has(letter.forCvId)),
+  }
 }
 
 type OfferGroup = {
@@ -98,40 +124,10 @@ const SEARCH_FROM = 4
 /** What the offers of the tailored documents are at: their application and whether they closed. */
 export type OfferState = { applicationId: string | null; status: string | null; closed: boolean }
 
-/** The dropdown behaviour used across the app: outside click and Esc close it, arrows move. */
-function useMenu() {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const node = ref.current
-    node?.querySelector<HTMLElement>("a, button")?.focus()
-    function onDown(event: MouseEvent) {
-      if (!node?.parentElement?.contains(event.target as Node)) setOpen(false)
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false)
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault()
-        const items = [...(node?.querySelectorAll<HTMLElement>("a, button") ?? [])]
-        const at = items.indexOf(document.activeElement as HTMLElement)
-        items[(at + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus()
-      }
-    }
-    document.addEventListener("mousedown", onDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [open])
-  return { open, setOpen, ref }
-}
-
 /**
- * My CV in two tabs: the general CVs everything starts from, and the CVs and letters written for
- * one offer, grouped by offer. `after`: /setup mid-checklist; an uploaded PDF needs no editing,
- * so the step ends there.
+ * My CV in two tabs: the general CVs everything starts from, each with its letter, and the CVs
+ * and letters written for one offer, grouped by offer. `after`: /setup mid-checklist; an uploaded
+ * PDF needs no editing, so the step ends there.
  */
 export function CvList({
   signedIn,
@@ -153,6 +149,8 @@ export function CvList({
   const [rows, setRows] = useState<CvRow[]>(initial)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<CvRow | null>(null)
+  /** Deleting a general CV deletes its letter too, unless the person unticks it */
+  const [withLetter, setWithLetter] = useState(true)
   const [query, setQuery] = useState("")
   const newMenu = useMenu()
   const htmlInput = useRef<HTMLInputElement>(null)
@@ -249,11 +247,23 @@ export function CvList({
   }
 
   async function duplicate(row: CvRow) {
+    const paired = Boolean(letterOf(row))
     await act(async () => {
-      const copy = await invoke(duplicateCvDocument, { id: row.id })
-      if (copy) setRows((current) => [...current, copy])
-      toast.show({ message: t("cv.toast.duplicated") })
+      const next = await invoke(duplicateCvDocument, { id: row.id })
+      if (next) setRows(next)
+      toast.show({ message: t(paired ? "cvt.toast.pairDuplicated" : "cv.toast.duplicated") })
     })
+  }
+
+  /** The general letter of a general CV; null for anything else */
+  function letterOf(row: CvRow): CvRow | null {
+    if (row.target || row.docType !== "CV") return null
+    return byCv(rows).pairs.find((pair) => pair.cv.id === row.id)?.letter ?? null
+  }
+
+  function askDelete(row: CvRow) {
+    setWithLetter(true)
+    setConfirm(row)
   }
 
   async function makeDefault(row: CvRow) {
@@ -266,11 +276,21 @@ export function CvList({
 
   async function remove(row: CvRow) {
     setConfirm(null)
+    const letter = row.docType === "LETTER"
+    const both = withLetter && Boolean(letterOf(row))
     await act(async () => {
-      const next = await invoke(deleteCvDocument, { id: row.id })
+      const next = await invoke(deleteCvDocument, { id: row.id, withLetter: both })
       if (next) setRows(next)
-      toast.show({ message: t("cv.toast.deleted") })
+      toast.show({
+        message: t(
+          letter ? "cvt.toast.letterDeleted" : both ? "cvt.toast.pairDeleted" : "cv.toast.deleted"
+        ),
+      })
     })
+  }
+
+  async function addLetter(cv: CvRow, input: { from: "write" | "text" | "blank"; text?: string }) {
+    return invoke(createGeneralLetter, { cvId: cv.id, ...input })
   }
 
   async function download(row: CvRow) {
@@ -371,7 +391,7 @@ export function CvList({
               </div>
 
               <p className="t-sm muted">{t("cvt.general.sub")}</p>
-              {!rows.some((row) => !row.target) ? (
+              {!rows.some((row) => !row.target && row.docType === "CV") ? (
                 <EmptyState
                   icon={<FileText />}
                   title={t("cv.empty.title")}
@@ -396,22 +416,16 @@ export function CvList({
                     {t("cv.new.html")}
                   </Button>
                 </EmptyState>
-              ) : (
-                <ul className="card cvl-list" role="list">
-                  {rows
-                    .filter((row) => !row.target)
-                    .map((row) => (
-                      <DocRow
-                        key={row.id}
-                        row={row}
-                        onDownload={() => void download(row)}
-                        onDuplicate={() => void duplicate(row)}
-                        onDefault={() => void makeDefault(row)}
-                        onDelete={() => setConfirm(row)}
-                      />
-                    ))}
-                </ul>
-              )}
+              ) : null}
+              <GeneralTab
+                {...byCv(rows)}
+                onAddLetter={addLetter}
+                onOpen={(id) => router.push(`/cv/${id}`)}
+                onDownload={(row) => void download(row)}
+                onDuplicate={(row) => void duplicate(row)}
+                onDefault={(row) => void makeDefault(row)}
+                onDelete={askDelete}
+              />
               {rows.length > 0 ? <p className="t-caption muted">{t("cv.drop")}</p> : null}
             </>
           ) : rows.some((row) => row.target) ? (
@@ -423,7 +437,7 @@ export function CvList({
               onDownload={(row) => void download(row)}
               onDuplicate={(row) => void duplicate(row)}
               onDefault={(row) => void makeDefault(row)}
-              onDelete={(row) => setConfirm(row)}
+              onDelete={askDelete}
             />
           ) : (
             <EmptyState
@@ -444,18 +458,45 @@ export function CvList({
           >
             <ModalHead
               id="cv-delete-title"
-              title={t("cv.delete.title")}
+              title={t(
+                confirm?.docType === "LETTER" ? "cvt.delete.letterTitle" : "cv.delete.title"
+              )}
               onClose={() => setConfirm(null)}
             />
-            <div className="modal__body">
-              <p>{confirm ? t("cv.delete.body", { title: confirm.title }) : null}</p>
+            <div className="modal__body stack-sm">
+              <p>
+                {confirm
+                  ? t(confirm.docType === "LETTER" ? "cvt.delete.letterBody" : "cv.delete.body", {
+                      title: confirm.title,
+                    })
+                  : null}
+              </p>
+              {confirm && letterOf(confirm) ? (
+                <label className="cvt-check">
+                  <input
+                    type="checkbox"
+                    checked={withLetter}
+                    onChange={(event) => setWithLetter(event.target.checked)}
+                  />
+                  <span>
+                    {t("cvt.delete.withLetter")}
+                    <small>{t("cvt.delete.withLetterHint")}</small>
+                  </span>
+                </label>
+              ) : null}
             </div>
             <div className="modal__foot">
               <Button variant="ghost" onClick={() => setConfirm(null)}>
                 {t("common.cancel")}
               </Button>
               <Button variant="danger" onClick={() => confirm && void remove(confirm)}>
-                {t("cv.delete.confirm")}
+                {t(
+                  confirm?.docType === "LETTER"
+                    ? "cvt.delete.letterConfirm"
+                    : confirm && letterOf(confirm) && withLetter
+                    ? "cvt.delete.pairConfirm"
+                    : "cv.delete.confirm"
+                )}
               </Button>
             </div>
           </Modal>
@@ -470,6 +511,92 @@ type RowActions = {
   onDuplicate: (row: CvRow) => void
   onDefault: (row: CvRow) => void
   onDelete: (row: CvRow) => void
+}
+
+/**
+ * "General": one card per general CV, the default first. The card names the CV; inside, the CV
+ * and its letter as rows, and a row to add the letter when there is none. Letters whose CV was
+ * deleted get a card of their own at the end.
+ */
+function GeneralTab({
+  pairs,
+  loose,
+  onAddLetter,
+  onOpen,
+  ...actions
+}: {
+  pairs: Pair[]
+  loose: CvRow[]
+  onAddLetter: (
+    cv: CvRow,
+    input: { from: "write" | "text" | "blank"; text?: string }
+  ) => Promise<{ id: string } | null | undefined>
+  onOpen: (id: string) => void
+} & RowActions) {
+  const { t } = useCopy()
+  if (!pairs.length && !loose.length) return null
+  const rowActions = (row: CvRow) => ({
+    onDownload: () => actions.onDownload(row),
+    onDuplicate: () => actions.onDuplicate(row),
+    onDefault: () => actions.onDefault(row),
+    onDelete: () => actions.onDelete(row),
+  })
+  return (
+    <div className="cvo-list">
+      {pairs.map(({ cv, letter }) => (
+        <section key={cv.id} className="card cvo-card" aria-label={cv.title}>
+          <header className="cvo-card__head">
+            <div className="cvo-card__offer">
+              <h3 className="cvo-card__title">
+                <Link href={`/cv/${cv.id}`}>{cv.title}</Link>
+              </h3>
+            </div>
+            {cv.isDefault ? (
+              <div className="cvo-card__state">
+                <Badge tone="primary" icon={<Star fill="currentColor" />}>
+                  {t("cv.default")}
+                </Badge>
+              </div>
+            ) : null}
+          </header>
+          <ul className="cvl-list cvl-list--inner" role="list">
+            <DocRow row={cv} label={t("tl.bar.cv")} {...rowActions(cv)} />
+            {letter ? (
+              <DocRow row={letter} label={t("tl.bar.letter")} {...rowActions(letter)} />
+            ) : (
+              <li className="cvl-row cvl-row--missing">
+                <span className="cvl-row__icon" aria-hidden>
+                  <Mail />
+                </span>
+                <div className="cvl-row__main">
+                  <span className="cvl-row__title">{t("tl.bar.letter")}</span>
+                  <span className="cvl-row__meta">{t("cvt.letter.noneGeneral")}</span>
+                </div>
+                <div className="cvl-row__actions">
+                  <AddLetter create={(input) => onAddLetter(cv, input)} onCreated={onOpen} />
+                </div>
+              </li>
+            )}
+          </ul>
+        </section>
+      ))}
+      {loose.length ? (
+        <section className="card cvo-card" aria-label={t("cvt.loose")}>
+          <header className="cvo-card__head">
+            <div className="cvo-card__offer">
+              <h3 className="cvo-card__title">{t("cvt.loose")}</h3>
+              <p className="t-sm muted">{t("cvt.loose.sub")}</p>
+            </div>
+          </header>
+          <ul className="cvl-list cvl-list--inner" role="list">
+            {loose.map((letter) => (
+              <DocRow key={letter.id} row={letter} {...rowActions(letter)} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  )
 }
 
 /**
@@ -603,7 +730,8 @@ function OffersTab({
 
 /**
  * One CV or letter as a row: what it is, its language and last change, then Edit, PDF and the
- * rest in a menu. Only what is not the usual shows as a badge: the default CV and an uploaded PDF.
+ * rest in a menu. Only what is not the usual shows as a badge: the default CV (on its card when
+ * it has one) and an uploaded PDF.
  */
 function DocRow({
   row,
@@ -636,13 +764,12 @@ function DocRow({
           <Link className="cvl-row__title" href={`/cv/${row.id}`}>
             {name}
           </Link>
-          {row.isDefault ? (
+          {row.isDefault && !label ? (
             <Badge tone="primary" icon={<Star fill="currentColor" />}>
               {t("cv.default")}
             </Badge>
           ) : null}
           {uploaded ? <Badge tone="plain">{t("cv.kind.pdf")}</Badge> : null}
-          {letter && !label ? <Badge tone="primary">{t("tl.list.letter")}</Badge> : null}
         </span>
         <span className="cvl-row__meta">
           {t(row.language === "en" ? "cv.lang.en" : "cv.lang.pl")} ·{" "}
@@ -690,7 +817,7 @@ function DocRow({
                   {t("cv.act.duplicate")}
                 </button>
               )}
-              {row.isDefault || row.target ? null : (
+              {row.isDefault || row.target || letter ? null : (
                 <button
                   type="button"
                   className="menu__item"
@@ -704,7 +831,7 @@ function DocRow({
                   {t("cv.act.setDefault")}
                 </button>
               )}
-              {letter && (row.isDefault || row.target) ? null : <div className="menu__sep" />}
+              {letter ? null : <div className="menu__sep" />}
               <button
                 type="button"
                 className="menu__item menu__item--danger"

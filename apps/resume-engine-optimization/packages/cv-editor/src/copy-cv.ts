@@ -8,7 +8,8 @@ export const cvPl = {
 
   // list
   "cv.title": "Moje CV",
-  "cv.sub": "CV w Twoim układzie. Edytujesz je jak dokument, a PDF pobierasz jednym kliknięciem.",
+  "cv.sub":
+    "CV i listy motywacyjne w Twoim układzie. Edytujesz je jak dokument, a PDF pobierasz jednym kliknięciem.",
   "cv.new": "Nowe CV",
   "cv.new.profile": "Z profilu",
   "cv.new.blank": "Puste",
@@ -159,7 +160,7 @@ export const cvPl = {
     "Język CV, Audyt z uwagami na tekście, Wersje do porównania i przywrócenia, Podgląd wydruku i Pobierz PDF.",
   "cv.help.tailor.t": "CV pod ofertę",
   "cv.help.tailor.b":
-    "Zakładka „Dopasowanie” mówi, co model zmienił, czego oferta wymaga, a w Twoich danych nie ma, i co sprawdzić przed wysłaniem.",
+    "Zakładka „Dopasowanie” mówi, co model zmienił, czego oferta wymaga, a w Twoich danych nie ma, i co sprawdzić przed wysłaniem. W CV „Zapisz jako ogólne” zapisuje je jako nową wersję ogólnego CV, z którego powstało.",
   "cv.help.all": "Wszystkie funkcje",
   "cv.help.ok": "Rozumiem",
 
@@ -263,7 +264,8 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "nav.cv": "My CV",
 
   "cv.title": "My CV",
-  "cv.sub": "CVs in your own layout. Edit them like a document and download a PDF in one click.",
+  "cv.sub":
+    "CVs and cover letters in your own layout. Edit them like a document and download a PDF in one click.",
   "cv.new": "New CV",
   "cv.new.profile": "From profile",
   "cv.new.blank": "Blank",
@@ -408,7 +410,7 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
     "CV language, Audit with notes on the text, Versions to compare and restore, Print preview and Download PDF.",
   "cv.help.tailor.t": "A CV for an offer",
   "cv.help.tailor.b":
-    "The “Tailoring” tab says what the model changed, what the offer asks for that your data doesn't have, and what to check before you send it.",
+    "The “Tailoring” tab says what the model changed, what the offer asks for that your data doesn't have, and what to check before you send it. In a CV, “Save as general” saves it as a new version of the general CV it came from.",
   "cv.help.all": "Every feature",
   "cv.help.ok": "Got it",
 

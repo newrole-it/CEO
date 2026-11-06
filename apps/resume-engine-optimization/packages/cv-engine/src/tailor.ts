@@ -1,7 +1,8 @@
 import type { z } from "zod"
 import type { CvLocale } from "@newrole/cv-core/blank"
-import { buildLetter, LetterReply } from "@newrole/cv-core/letter"
-import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
+import { buildLetter, LetterReply, type LetterFrame } from "@newrole/cv-core/letter"
+import { inlineToText } from "@newrole/cv-core/sanitize"
+import { letterSection, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 import {
   applyTailoring,
   cvForModel,
@@ -19,8 +20,8 @@ import { humanStyle } from "@newrole/llm/human-style"
 /**
  * A CV and a cover letter written for one job offer (@newrole/cv-core/tailor has the rules that
  * keep them true). Nothing here reads or writes storage: the caller passes the CV, the offer and
- * what it knows about the candidate, and keeps the result. Both functions return null when the
- * model gives nothing usable.
+ * what it knows about the candidate, and keeps the result. Each returns null when the model
+ * gives nothing usable.
  */
 
 export const WRITING_TIMEOUT_MS = 150_000
@@ -77,13 +78,22 @@ List sections in the order they should appear.`
 const TRANSLATE_RULE = `
 This CV changes language: translate everything you return into the target language, and return every section and item, with "title" on each section and "role", "dates" and "degree" where the items have them. For cards include "title". Keep names of companies, schools, products and technologies. Keep the digits of dates exactly.`
 
+/** How a letter reads and what the layout adds, for a letter to an offer and a general one alike. */
+const LETTER_STYLE = `Style: plain, specific and human. No flattery or stock phrases such as "z ogromnym entuzjazmem", "idealny kandydat", "dynamiczny zespół", "passionate", "excited to apply", "team player". Do not list what the CV already lists. In Polish write natural, professional Polish without needless anglicisms, address the employer as "Państwo", and use the grammatical gender the CV uses; when it does not show one, write sentences that avoid it. In English use plain British or international English.
+
+Do not write a greeting, sign-off, date, subject line, placeholders, markdown or surrounding quotes: the layout adds them. Paragraphs are plain text.`
+
+const PAST_LETTERS_RULE = `Past letters: when the candidate's own earlier letters are given, write in their voice: their tone, how they open and close, how long their paragraphs are and the phrasing they use about themselves. What they say there about their own experience counts as the candidate's facts. Everything about the company and role a past letter was written for stays there: never carry over another company's name, product, mission, or the reasons given for wanting to work there.`
+
 const LETTER_SYSTEM = `You write the body of a cover letter in the candidate's own voice (first person), for one job offer.
 
 Truth comes first:
-- Use only facts in the candidate's CV, context and past letters. Never invent employers, titles, dates, numbers, metrics, technologies, education or motivations they do not support.
+- Use only facts in the candidate's CV, context, general letter and past letters. Never invent employers, titles, dates, numbers, metrics, technologies, education or motivations they do not support.
 - About the company say only what the offer says. If the candidate lacks something the offer asks for, leave it out; do not claim it and do not apologise for it.
 
-Past letters: when the candidate's own earlier letters are given, write in their voice: their tone, how they open and close, how long their paragraphs are and the phrasing they use about themselves. What they say there about their own experience counts as the candidate's facts. Everything about the company and role a past letter was written for stays there: never carry over another company's name, product, mission, or the reasons given for wanting to work there. Do not copy a past letter: this one is about this offer.
+General letter: when the candidate's general cover letter is given, this letter is that letter made for this offer. Keep its voice, its order of ideas and what it says about the candidate; replace what is generic with what this offer asks for, and leave out what does not fit this role.
+
+${PAST_LETTERS_RULE} Do not copy a past letter: this one is about this offer.
 
 Content: 3 or 4 short paragraphs, 150 to 250 words in total, enough for one page.
 - First: the role, and the single strongest match with one concrete fact from the CV.
@@ -91,9 +101,22 @@ Content: 3 or 4 short paragraphs, 150 to 250 words in total, enough for one page
 - Last: one plain sentence on why this role, from what the offer says, and an invitation to talk.
 - A skill or tool you name that the offer asks for and the CV shows goes in the offer's own word for it.
 
-Style: plain, specific and human. No flattery or stock phrases such as "z ogromnym entuzjazmem", "idealny kandydat", "dynamiczny zespół", "passionate", "excited to apply", "team player". Do not list what the CV already lists. In Polish write natural, professional Polish without needless anglicisms, address the employer as "Państwo", and use the grammatical gender the CV uses; when it does not show one, write sentences that avoid it. In English use plain British or international English.
+${LETTER_STYLE}`
 
-Do not write a greeting, sign-off, date, subject line, placeholders, markdown or surrounding quotes: the layout adds them. Paragraphs are plain text.`
+const GENERAL_LETTER_SYSTEM = `You write the body of a general cover letter in the candidate's own voice (first person): the letter they keep as their own and that each letter for an offer starts from.
+
+Truth comes first:
+- Use only facts in the candidate's CV, context and past letters. Never invent employers, titles, dates, numbers, metrics, technologies, education or motivations they do not support.
+- It is written for no employer: name no company, offer or product of an employer, and say nothing that would be true of one employer only.
+
+${PAST_LETTERS_RULE} Do not copy a past letter.
+
+Content: 3 or 4 short paragraphs, 150 to 250 words in total, enough for one page.
+- First: the kind of role the candidate is after, as their CV's headline and recent roles show it, and their strongest match for it with one concrete fact from the CV.
+- Middle: one or two results from the CV that show how the candidate works.
+- Last: one plain sentence on the work they want to do next, only as far as the CV and context support it, and an invitation to talk.
+
+${LETTER_STYLE}`
 
 const LETTER_FORMAT = `Return JSON: {"paragraphs":["...","..."]}`
 
@@ -103,8 +126,12 @@ function tailorSystem(language: CvLocale, translate: boolean): string {
   return [rules, humanStyle([language]), TAILOR_FORMAT].join("\n\n")
 }
 
-function letterSystem(language: CvLocale): string {
-  return [LETTER_SYSTEM, humanStyle([language]), LETTER_FORMAT].join("\n\n")
+function letterSystem(language: CvLocale, general = false): string {
+  return [
+    general ? GENERAL_LETTER_SYSTEM : LETTER_SYSTEM,
+    humanStyle([language]),
+    LETTER_FORMAT,
+  ].join("\n\n")
 }
 
 /** The offer as the model sees it. */
@@ -125,6 +152,37 @@ export type PastLetter = { company: string | null; title: string | null; text: s
 
 /** Characters of one past letter the model reads. */
 export const PAST_LETTER_LIMIT = 3500
+
+/** The person's general cover letter, which a letter for an offer is made from. */
+export type GeneralLetter = { content: CvContent; language: CvLocale }
+
+/** A letter's paragraphs as plain text, blank lines between them. */
+function letterBody(content: CvContent): string {
+  const section = letterSection(content)
+  return (section?.paragraphs ?? [])
+    .map((paragraph) => inlineToText(paragraph).trim())
+    .filter(Boolean)
+    .join("\n\n")
+}
+
+function generalLetterPrompt(general: GeneralLetter | null | undefined): string[] {
+  const body = general ? letterBody(general.content) : ""
+  if (!body) return []
+  return [
+    "",
+    "The candidate's general cover letter, which this letter is made from:",
+    wrapUntrusted("general_letter", body.slice(0, PAST_LETTER_LIMIT)),
+  ]
+}
+
+/** The general letter's greeting and sign-off, when it is in the language being written. */
+function generalFrame(
+  general: GeneralLetter | null | undefined,
+  language: CvLocale
+): LetterFrame | null {
+  if (!general || general.language !== language) return null
+  return letterSection(general.content) ?? null
+}
 
 function pastLettersPrompt(letters: PastLetter[]): string[] {
   if (!letters.length) return []
@@ -286,12 +344,14 @@ export async function writeCoverLetter(input: {
   note?: string
   /** The candidate's last letters, newest first: their voice, and facts about them */
   pastLetters?: PastLetter[]
+  /** The candidate's general letter, which this one is made from; its greeting and sign-off stay */
+  general?: GeneralLetter | null
   /** The most characters the paragraphs may take together, blank lines between them included */
   maxChars?: number
   attempt?: number
   userId?: number
 }): Promise<Generated | null> {
-  const { llm, language, note, userId, context, maxChars } = input
+  const { llm, language, note, userId, context, maxChars, general } = input
   const job = input.offer
   const attempt = input.attempt ?? 1
   const pastLetters = input.pastLetters ?? []
@@ -310,6 +370,7 @@ export async function writeCoverLetter(input: {
       `<cv>\n${cvText}\n</cv>`,
       "",
       ...jobPrompt(job, note),
+      ...generalLetterPrompt(general),
       ...pastLettersPrompt(pastLetters),
       ...(maxChars
         ? [
@@ -333,6 +394,7 @@ export async function writeCoverLetter(input: {
       company: job.company,
       jobTitle: job.title,
       paragraphs: reply.data.paragraphs,
+      frame: generalFrame(general, language),
     })
   )
   if (!content) return null
@@ -344,6 +406,7 @@ export async function writeCoverLetter(input: {
     job.title,
     job.text,
     note ?? "",
+    general ? letterBody(general.content) : "",
     ...pastLetters.map((letter) => letter.text),
   ].join("\n")
   const notes: TailorNotes = {
@@ -356,6 +419,64 @@ export async function writeCoverLetter(input: {
     reverted: 0,
     usedJobText: Boolean(job.text || note?.trim()),
     offerText: offerTextNote(job, note),
+  }
+  return { content, notes }
+}
+
+/**
+ * The person's general cover letter, written for no offer: from their CV, their context and their
+ * last letters. It has no addressee or subject; the letters for offers start from it.
+ */
+export async function writeGeneralLetter(input: {
+  llm: LlmClient
+  /** The CV the letter goes with: its facts and header */
+  cv: CvContent
+  language: CvLocale
+  context: string
+  /** The candidate's last letters, newest first: their voice, and facts about them */
+  pastLetters?: PastLetter[]
+  attempt?: number
+  userId?: number
+}): Promise<Generated | null> {
+  const { llm, language, userId, context } = input
+  const pastLetters = input.pastLetters ?? []
+  const cvText = cvPlainText(input.cv)
+  const reply = await llm.completeJson({
+    purpose: "cover-letter",
+    system: letterSystem(language, true),
+    user: [
+      `Write in: ${language === "pl" ? "Polish" : "English"}`,
+      "",
+      "Candidate context (the candidate's own profile):",
+      `<candidate_context>\n${context || "(empty)"}\n</candidate_context>`,
+      "",
+      "The CV this letter goes with:",
+      `<cv>\n${cvText}\n</cv>`,
+      ...pastLettersPrompt(pastLetters),
+      ...attemptLine(input.attempt ?? 1),
+    ].join("\n"),
+    schema: LetterReply,
+    maxTokens: 1800,
+    timeoutMs: WRITING_TIMEOUT_MS,
+    userId,
+  })
+  if (!reply?.data) return null
+
+  const content = parseCvContent(
+    buildLetter({ cv: input.cv, language, paragraphs: reply.data.paragraphs })
+  )
+  if (!content) return null
+
+  const evidence = [cvText, context, ...pastLetters.map((letter) => letter.text)].join("\n")
+  const notes: TailorNotes = {
+    changes: [],
+    gaps: [],
+    unverified: [
+      ...unverifiedNumbers(reply.data.paragraphs, evidence),
+      ...unverifiedTerms(reply.data.paragraphs, evidence),
+    ].slice(0, 12),
+    reverted: 0,
+    usedJobText: false,
   }
   return { content, notes }
 }

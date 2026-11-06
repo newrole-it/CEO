@@ -262,7 +262,9 @@ function RecentTable({ calls, locale, t }: { calls: UsageCall[]; locale: Locale;
                   )}
                 </td>
                 <td className="num">
-                  {call.durationMs == null ? "—" : `${seconds.format(call.durationMs / 1000)} s`}
+                  {call.durationMs == null
+                    ? "—"
+                    : t("usage.seconds", { s: seconds.format(call.durationMs / 1000) })}
                 </td>
                 <td className="num">
                   {!call.usageKnown

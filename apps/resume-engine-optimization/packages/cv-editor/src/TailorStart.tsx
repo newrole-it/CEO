@@ -20,7 +20,8 @@ export type StartJob = {
   withheld: boolean
 }
 
-export type StartCv = { id: string; title: string; isDefault: boolean }
+/** `hasLetter`: the CV has its general letter, which the letter for the offer is made from */
+export type StartCv = { id: string; title: string; isDefault: boolean; hasLetter?: boolean }
 
 type Phase = "idle" | "cv" | "letter"
 
@@ -220,7 +221,13 @@ function Start({ job, cvs, hasLetter }: StartProps) {
               />
               <span>
                 {t("tl.start.letter")}
-                <small>{t("tl.start.letterHint")}</small>
+                <small>
+                  {t(
+                    cvs.find((cv) => cv.id === base)?.hasLetter
+                      ? "tl.start.letterHintGeneral"
+                      : "tl.start.letterHint"
+                  )}
+                </small>
               </span>
             </label>
           )}

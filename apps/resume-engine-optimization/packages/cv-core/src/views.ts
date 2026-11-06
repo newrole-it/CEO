@@ -7,7 +7,8 @@ import type { TailorNotes } from "./tailor"
  * A store returns these shapes (newrole.it's: Postgres, apps/resume-engine-optimization/src/server/cv).
  */
 
-export type CvVersionOrigin = "auto" | "manual" | "base" | "generated" | "restored"
+/** `offer`: a CV for an offer saved into the general CV it came from; the label names the offer */
+export type CvVersionOrigin = "auto" | "manual" | "base" | "generated" | "restored" | "offer"
 
 export type CvVersionView = {
   id: string
@@ -37,5 +38,18 @@ export type TailorContext = {
   job: { id: string | null; company: string; title: string; url: string | null }
   cvId: string | null
   letterId: string | null
+  notes: TailorNotes | null
+  /** The general CV this CV was tailored from; null for a letter, or when that CV is gone */
+  general: { id: string; title: string; language: CvLocale } | null
+}
+
+/**
+ * What the editor shows around a general CV or its general letter: the pair they make. The
+ * letters for offers start from the letter of the CV they were tailored from.
+ */
+export type PairContext = {
+  cvId: string
+  letterId: string | null
+  /** What to check in a letter the model wrote */
   notes: TailorNotes | null
 }

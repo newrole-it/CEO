@@ -3,15 +3,22 @@ import { parseApplicant } from "@newrole/profile/applicant"
 import { blankCv, cvLocale, type CvLocale } from "@newrole/cv-core/blank"
 import { cvFromProfile } from "@newrole/cv-core/from-profile"
 import { cvPdfFileName } from "@newrole/cv-core/filename"
+import { buildLetter, letterFromText, letterName } from "@newrole/cv-core/letter"
 import { cvContentError, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
+import { parseTailorNotes, type TailorNotes } from "@newrole/cv-core/tailor"
+import type { PairContext } from "@newrole/cv-core/views"
 import { cvPlainText } from "@newrole/cv-core/text"
 import { parseStoredDocument } from "@newrole/profile/linkedin"
 import { asStringList } from "@newrole/profile/schema"
 import { documentPdfName } from "@newrole/cv-engine/http"
 import { renderCvHtml, renderPdfFromHtml } from "@newrole/cv-engine/render"
-import { toStoredJson, versionBeforeEdit } from "./versions"
+import { appendVersion, toStoredJson, versionBeforeEdit } from "./versions"
 
-/** CV documents: the person's editable CVs and uploaded PDFs (docs/product/plan-aplikacje.md §5.2). */
+/**
+ * CV documents: the person's editable CVs and uploaded PDFs (docs/product/plan-aplikacje.md §5.2),
+ * and their cover letters. A general CV and its general letter are a pair: the letter's baseCvId
+ * is the CV, and the letters for offers start from it (tailor.ts).
+ */
 
 export { cvPdfFileName }
 
@@ -35,6 +42,8 @@ export type CvView = {
   updatedAt: Date
   /** The offer a tailored CV or letter was written for; null for a general CV */
   target: { jobId: string | null; company: string; title: string } | null
+  /** A general letter: the general CV it goes with; null for anything else, or when that CV is gone */
+  forCvId: string | null
 }
 
 export type CvDetail = CvView & { content: CvContent | null; tailorNotes: unknown }
@@ -50,6 +59,8 @@ export type CvErrorCode =
   | "no-base"
   | "llm-unavailable"
   | "llm-failed"
+  /** A general letter goes with a general CV, not with a letter or a CV for an offer */
+  | "not-general"
   /** Saved from a stale copy: the stored CV changed after the editor loaded it */
   | "conflict"
 
@@ -72,11 +83,14 @@ const VIEW_FIELDS = {
   jobId: true,
   targetCompany: true,
   targetTitle: true,
+  baseCvId: true,
 } as const
 const DETAIL_FIELDS = { ...VIEW_FIELDS, content: true, tailorNotes: true } as const
 
 /** A CV to apply with in general: not a letter, and not written for one offer. */
 const GENERAL_CV = { docType: "CV", targetCompany: null } as const
+/** A letter written for no offer; its baseCvId is the general CV it goes with. */
+const GENERAL_LETTER = { docType: "LETTER", targetCompany: null } as const
 
 type ViewRow = {
   id: string
@@ -90,6 +104,7 @@ type ViewRow = {
   jobId: string | null
   targetCompany: string | null
   targetTitle: string | null
+  baseCvId: string | null
   content?: unknown
   tailorNotes?: unknown
 }
@@ -108,6 +123,7 @@ function toView(row: ViewRow, hasContent: boolean): CvView {
     target: row.targetCompany
       ? { jobId: row.jobId, company: row.targetCompany, title: row.targetTitle ?? "" }
       : null,
+    forCvId: row.docType === "LETTER" && !row.targetCompany ? row.baseCvId : null,
   }
 }
 
@@ -358,26 +374,39 @@ export async function uploadCvPdf(input: {
   return toView(row, false)
 }
 
+/** A copy of a general CV comes with a copy of its letter, as a pair of their own. */
 export async function duplicateCv(userId: number, id: string): Promise<CvDetail> {
   const row = await db.cvDocument.findFirst({ where: { id, userId } })
   if (!row) throw new CvError("not-found", "CV not found.")
-  const uploaded = row.kind === "UPLOADED"
-  const suffix = cvLocale(row.language) === "en" ? " (copy)" : " (kopia)"
-  const created = await db.cvDocument.create({
-    data: {
+  const letter =
+    row.docType === "CV" && !row.targetCompany
+      ? await db.cvDocument.findFirst({
+          where: { userId, baseCvId: row.id, ...GENERAL_LETTER },
+          orderBy: { updatedAt: "desc" },
+        })
+      : null
+  const copyOf = (source: typeof row, baseCvId: string | null) => {
+    const uploaded = source.kind === "UPLOADED"
+    const suffix = cvLocale(source.language) === "en" ? " (copy)" : " (kopia)"
+    return {
       userId,
-      title: `${row.title.slice(0, MAX_TITLE - suffix.length)}${suffix}`,
-      language: row.language,
-      kind: row.kind,
-      docType: row.docType,
-      content: row.content ?? undefined,
+      title: `${source.title.slice(0, MAX_TITLE - suffix.length)}${suffix}`,
+      language: source.language,
+      kind: source.kind,
+      docType: source.docType,
+      content: source.content ?? undefined,
       // a rendered PDF is only a cache; the copy renders its own
-      pdf: uploaded ? row.pdf : null,
-      pdfName: uploaded ? row.pdfName : null,
+      pdf: uploaded ? source.pdf : null,
+      pdfName: uploaded ? source.pdfName : null,
       pdfUpdatedAt: uploaded ? new Date() : null,
       isDefault: false,
-    },
-    select: DETAIL_FIELDS,
+      baseCvId,
+    }
+  }
+  const created = await db.$transaction(async (tx) => {
+    const copy = await tx.cvDocument.create({ data: copyOf(row, null), select: DETAIL_FIELDS })
+    if (letter) await tx.cvDocument.create({ data: copyOf(letter, copy.id), select: { id: true } })
+    return copy
   })
   return toDetail(created)
 }
@@ -407,13 +436,26 @@ export async function setDefaultCv(userId: number, id: string): Promise<void> {
   await markDefault(userId, id)
 }
 
-export async function deleteCv(userId: number, id: string): Promise<void> {
+/**
+ * `withLetter` deletes a general CV's letter with it; without it the letter stays, with no CV to
+ * go with.
+ */
+export async function deleteCv(
+  userId: number,
+  id: string,
+  opts: { withLetter?: boolean } = {}
+): Promise<void> {
   const row = await db.cvDocument.findFirst({
     where: { id, userId },
     select: { id: true, isDefault: true },
   })
   if (!row) throw new CvError("not-found", "CV not found.")
-  await db.cvDocument.delete({ where: { id: row.id } })
+  await db.$transaction(async (tx) => {
+    if (opts.withLetter) {
+      await tx.cvDocument.deleteMany({ where: { userId, baseCvId: row.id, ...GENERAL_LETTER } })
+    }
+    await tx.cvDocument.delete({ where: { id: row.id } })
+  })
   if (!row.isDefault) return
   const next = await db.cvDocument.findFirst({
     where: { userId, ...GENERAL_CV },
@@ -421,6 +463,143 @@ export async function deleteCv(userId: number, id: string): Promise<void> {
     select: { id: true },
   })
   if (next) await markDefault(userId, next.id)
+}
+
+// ---------------------------------------------------------------- general letters
+
+/** The general CV a general letter is created for; throws for anything else. */
+async function generalCvFor(
+  userId: number,
+  cvId: string
+): Promise<{ id: string; title: string; language: CvLanguage; content: CvContent | null }> {
+  const row = await db.cvDocument.findFirst({
+    where: { id: cvId, userId },
+    select: { id: true, title: true, language: true, docType: true, targetCompany: true },
+  })
+  if (!row) throw new CvError("not-found", "CV not found.")
+  if (row.docType !== "CV" || row.targetCompany)
+    throw new CvError("not-general", "A general letter goes with a general CV.")
+  // an uploaded PDF has no content: its editable copy, else the profile, gives the letter its header
+  const own = await getCv(userId, row.id)
+  const copy = own?.content
+    ? null
+    : await db.cvDocument.findFirst({
+        where: { userId, baseCvId: row.id, kind: "EDITABLE", ...GENERAL_CV },
+        orderBy: { updatedAt: "desc" },
+        select: { content: true, language: true },
+      })
+  const fromCopy = own?.content ? null : parseCvContent(copy?.content)
+  return {
+    id: row.id,
+    title: row.title,
+    // the copy's language was read from its text; an upload took the interface's
+    language: cvLocale(fromCopy ? copy?.language : row.language),
+    content: own?.content ?? fromCopy,
+  }
+}
+
+/**
+ * The general letter of a CV: its own, else the one of the PDF it was made from, else the one of
+ * its editable copy. Tailoring from an uploaded PDF works from its copy, so either pairs.
+ */
+export async function generalLetterOf(
+  userId: number,
+  cvId: string
+): Promise<(CvDetail & { content: CvContent }) | null> {
+  const cv = await db.cvDocument.findFirst({
+    where: { id: cvId, userId, ...GENERAL_CV },
+    select: { id: true, baseCvId: true },
+  })
+  if (!cv) return null
+  const copies = await db.cvDocument.findMany({
+    where: { userId, baseCvId: cv.id, ...GENERAL_CV },
+    select: { id: true },
+  })
+  const order = [cv.id, ...(cv.baseCvId ? [cv.baseCvId] : []), ...copies.map((row) => row.id)]
+  const letters = await db.cvDocument.findMany({
+    where: { userId, kind: "EDITABLE", baseCvId: { in: order }, ...GENERAL_LETTER },
+    orderBy: { updatedAt: "desc" },
+    select: DETAIL_FIELDS,
+  })
+  for (const id of order) {
+    const row = letters.find((letter) => letter.baseCvId === id)
+    const detail = row ? toDetail(row) : null
+    if (detail?.content) return { ...detail, content: detail.content }
+  }
+  return null
+}
+
+/**
+ * A general letter for a general CV, in the CV's language and with its header: blank, from text
+ * the person pasted, or written by the model (tailor.ts). A CV that has its letter keeps it, and
+ * gets that one back.
+ */
+export async function createGeneralLetter(input: {
+  userId: number
+  cvId: string
+  from: "blank" | "text" | "content"
+  text?: string
+  /** from "content": the model's letter, and what to check in it */
+  content?: CvContent
+  notes?: TailorNotes
+}): Promise<{ id: string; created: boolean }> {
+  const { userId } = input
+  const cv = await generalCvFor(userId, input.cvId)
+  const existing = await db.cvDocument.findFirst({
+    where: { userId, baseCvId: cv.id, ...GENERAL_LETTER },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  })
+  if (existing) return { id: existing.id, created: false }
+  const language = cv.language
+  const header = cv.content ?? (await profileContent(userId, language))
+  let content: CvContent
+  if (input.from === "content") {
+    if (!input.content) throw new CvError("invalid-content", "Missing letter content.")
+    content = validContent(input.content)
+  } else if (input.from === "text") {
+    content = validContent(letterFromText({ cv: header, language, text: input.text ?? "" }))
+  } else {
+    content = validContent(buildLetter({ cv: header, language, paragraphs: [] }))
+  }
+  const row = await db.$transaction(async (tx) => {
+    const created = await tx.cvDocument.create({
+      data: {
+        userId,
+        title: cleanTitle(`${letterName(language)} · ${cv.title}`, letterName(language)),
+        language,
+        kind: "EDITABLE",
+        docType: "LETTER",
+        content: toStoredJson(content),
+        tailorNotes: input.notes ?? undefined,
+        isDefault: false,
+        baseCvId: cv.id,
+        versionCheckedAt: input.from === "content" ? new Date() : undefined,
+      },
+      select: { id: true },
+    })
+    // what the model wrote is a version, as for a letter to an offer
+    if (input.from === "content") {
+      await appendVersion(tx, { documentId: created.id, content, language, origin: "generated" })
+    }
+    return created
+  })
+  return { id: row.id, created: true }
+}
+
+/** The pair around a general CV or general letter, for the editor; null for anything else. */
+export async function pairContext(userId: number, doc: CvDetail): Promise<PairContext | null> {
+  if (doc.target) return null
+  if (doc.docType === "CV") {
+    const letter = await db.cvDocument.findFirst({
+      where: { userId, baseCvId: doc.id, ...GENERAL_LETTER },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    })
+    return { cvId: doc.id, letterId: letter?.id ?? null, notes: null }
+  }
+  if (!doc.forCvId) return null
+  return { cvId: doc.forCvId, letterId: doc.id, notes: parseTailorNotes(doc.tailorNotes) }
 }
 
 /**

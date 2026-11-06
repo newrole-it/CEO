@@ -56,15 +56,21 @@ export function pickRecentLetters(letters: DatedLetter[], limit = RECENT_LETTERS
 
 /**
  * The last three letters, newest first. `exceptJobId` leaves out the letter of the offer being
- * written for, so another take does not lean on the one it replaces.
+ * written for, so another take does not lean on the one it replaces; `exceptId` the general
+ * letter the new one is made from, which the model gets on its own.
  */
 export async function recentLetters(
   userId: number,
-  opts: { exceptJobId?: string | null } = {}
+  opts: { exceptJobId?: string | null; exceptId?: string | null } = {}
 ): Promise<PastLetter[]> {
   const [documents, answers] = await Promise.all([
     db.cvDocument.findMany({
-      where: { userId, docType: "LETTER", kind: "EDITABLE" },
+      where: {
+        userId,
+        docType: "LETTER",
+        kind: "EDITABLE",
+        ...(opts.exceptId ? { id: { not: opts.exceptId } } : {}),
+      },
       orderBy: { updatedAt: "desc" },
       take: 20,
       select: {

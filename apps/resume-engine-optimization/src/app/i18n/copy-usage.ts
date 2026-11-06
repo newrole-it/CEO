@@ -50,6 +50,7 @@ export const usagePl = {
   "usage.searches": "wyszukiwania: {n}",
   "usage.noPrice": "brak ceny",
   "usage.noReport": "bez raportu",
+  "usage.seconds": "{s} s",
   "usage.unknown":
     "Bez raportu zużycia: {n}. To uruchomienia, które przekroczyły czas albo się nie uruchomiły. Ich tokeny nie są znane i nie wchodzą do sum.",
   "usage.unpriced":
@@ -135,6 +136,7 @@ export const usageEn: Record<keyof typeof usagePl, string> = {
   "usage.searches": "searches: {n}",
   "usage.noPrice": "no price",
   "usage.noReport": "no report",
+  "usage.seconds": "{s} s",
   "usage.unknown":
     "Without a usage report: {n}. These runs timed out or did not start. Their tokens are unknown and left out of the totals.",
   "usage.unpriced":

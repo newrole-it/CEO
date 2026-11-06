@@ -5,19 +5,26 @@ import { PrismaClient } from "@prisma/client"
 import { createApplication } from "../src/server/applications/service"
 import {
   createCv,
+  createGeneralLetter,
   CvError,
   defaultCv,
   deleteCv,
+  duplicateCv,
+  generalLetterOf,
   getCv,
   listCvs,
+  pairContext,
   tailoredCv,
   updateCv,
 } from "../src/server/cv/service"
 import {
   documentsForJob,
+  generalLetterForJob,
   generateLetterForJob,
+  saveToGeneralCv,
   tailorContext,
   tailorCvForJob,
+  writeGeneralLetterForCv,
 } from "../src/server/cv/tailor"
 import {
   AUTO_VERSION_MS,
@@ -426,6 +433,218 @@ test("a letter flags numbers and names that nothing backs up", async () => {
   assert.deepEqual(letter.notes.unverified.sort(), ["73", "Terraform"].sort())
 })
 
+const pastedLetter = [
+  "Szanowni Państwo,",
+  "",
+  "od ośmiu lat buduję platformy dla dużych zespołów.",
+  "",
+  "Z wyrazami szacunku,",
+  "Anna",
+].join("\n")
+
+test("a general CV gets one general letter, with its header, and the pair shows in the editor", async () => {
+  const user = await makeUser()
+  const base = await general(user.id)
+
+  const blank = await createGeneralLetter({ userId: user.id, cvId: base.id, from: "blank" })
+  assert.equal(blank.created, true)
+  const again = await createGeneralLetter({
+    userId: user.id,
+    cvId: base.id,
+    from: "text",
+    text: "x",
+  })
+  assert.deepEqual(again, { id: blank.id, created: false }, "a CV keeps the letter it has")
+
+  const letter = await getCv(user.id, blank.id)
+  assert.equal(letter?.docType, "LETTER")
+  assert.equal(letter?.forCvId, base.id)
+  assert.equal(letter?.target, null)
+  assert.equal(letter?.isDefault, false)
+  assert.equal(letter?.content?.header.name, base.content.header.name)
+  assert.deepEqual(letterSection(letter!.content!)?.paragraphs, [])
+
+  // a letter never counts as a CV, nor as the default
+  assert.deepEqual(
+    (await listCvs(user.id)).map((row) => row.id),
+    [base.id]
+  )
+  assert.equal((await defaultCv(user.id))?.id, base.id)
+
+  const cvSide = await pairContext(user.id, (await getCv(user.id, base.id))!)
+  assert.deepEqual(cvSide, { cvId: base.id, letterId: blank.id, notes: null })
+  const letterSide = await pairContext(user.id, letter!)
+  assert.equal(letterSide?.cvId, base.id)
+  assert.equal(letterSide?.letterId, blank.id)
+})
+
+test("a pasted letter keeps the person's greeting and sign-off", async () => {
+  const user = await makeUser()
+  const base = await general(user.id)
+  const { id } = await createGeneralLetter({
+    userId: user.id,
+    cvId: base.id,
+    from: "text",
+    text: pastedLetter,
+  })
+  const section = letterSection((await getCv(user.id, id))!.content!)
+  assert.equal(section?.greeting, "Szanowni Państwo,")
+  assert.deepEqual(section?.paragraphs, ["od ośmiu lat buduję platformy dla dużych zespołów."])
+  assert.equal(section?.closing, "Z wyrazami szacunku,")
+  assert.equal(section?.signature, "Anna")
+  assert.equal(section?.recipient, "")
+})
+
+test("only a general CV gets a general letter", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  await general(user.id)
+  const cv = await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  await assert.rejects(
+    createGeneralLetter({ userId: user.id, cvId: cv.id, from: "blank" }),
+    (error: unknown) => error instanceof CvError && error.code === "not-general"
+  )
+  const other = await makeUser()
+  await assert.rejects(
+    createGeneralLetter({ userId: other.id, cvId: cv.id, from: "blank" }),
+    (error: unknown) => error instanceof CvError && error.code === "not-found"
+  )
+})
+
+test("the model writes a general letter for no offer, as a version, with what to check", async () => {
+  const user = await makeUser()
+  const base = await general(user.id)
+  const llm = fakeLlm({ paragraphs: ["Buduję platformy.", "Skróciłem wdrożenia o 73%."] })
+  const { id, created } = await writeGeneralLetterForCv({ userId: user.id, cvId: base.id, llm })
+  assert.equal(created, true)
+  assert.doesNotMatch(llm.calls[0].user, /untrusted_job/)
+  const letter = await getCv(user.id, id)
+  const section = letterSection(letter!.content!)
+  assert.equal(section?.recipient, "")
+  assert.equal(section?.subject, "")
+  assert.deepEqual(
+    (await listVersions(user.id, id)).map((version) => version.origin),
+    ["generated"]
+  )
+  assert.deepEqual((await pairContext(user.id, letter!))?.notes?.unverified, ["73"])
+
+  // a CV that has its letter gets it back without asking the model
+  const unused = fakeLlm(null)
+  assert.deepEqual(await writeGeneralLetterForCv({ userId: user.id, cvId: base.id, llm: unused }), {
+    id,
+    created: false,
+  })
+  assert.equal(unused.calls.length, 0)
+})
+
+test("a letter for an offer is made from the general letter of the CV it was tailored from", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  const main = await general(user.id)
+  const other = await createCv({ userId: user.id, from: "content", content: syntheticCv(1) })
+  const mainLetter = await createGeneralLetter({
+    userId: user.id,
+    cvId: main.id,
+    from: "text",
+    text: pastedLetter,
+  })
+  await createGeneralLetter({
+    userId: user.id,
+    cvId: other.id,
+    from: "text",
+    // past letters count from 200 characters (letters.ts)
+    text: `Dzień dobry,\n\nList do drugiego CV. ${"Prowadzę zespoły produktowe. ".repeat(
+      8
+    )}\n\nPozdrawiam,\nAnna`,
+  })
+
+  await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  assert.equal((await generalLetterForJob(user.id, job.id))?.id, mainLetter.id)
+
+  const llm = fakeLlm(letterReply)
+  const letter = await generateLetterForJob({ userId: user.id, jobId: job.id, llm })
+  const user0 = llm.calls[0].user
+  assert.match(user0, /<untrusted_general_letter>\nod ośmiu lat buduję platformy/)
+  // the general letter is not one of the past letters too; the other CV's letter is
+  assert.equal(user0.match(/od ośmiu lat buduję platformy/g)?.length, 1)
+  assert.match(user0, /<untrusted_past_letter>\nList do drugiego CV/)
+  const section = letterSection(letter.content)
+  assert.equal(section?.greeting, "Szanowni Państwo,")
+  assert.equal(section?.closing, "Z wyrazami szacunku,")
+  assert.equal(section?.signature, "Anna")
+  assert.match(section?.recipient ?? "", /^Acme/)
+
+  // the letter for the offer stays with the offer, not with the CV
+  const stored = await getCv(user.id, letter.id)
+  assert.equal(stored?.forCvId, null)
+  assert.equal(stored?.target?.jobId, job.id)
+})
+
+test("an uploaded PDF pairs with the letter of its editable copy, and its copy stays a CV", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  const upload = await db.cvDocument.create({
+    data: {
+      userId: user.id,
+      title: "Moje CV",
+      kind: "UPLOADED",
+      isDefault: true,
+      pdf: Buffer.from("%PDF-1.4 not really"),
+      pdfName: "cv.pdf",
+      pdfUpdatedAt: new Date(),
+    },
+  })
+  const copy = await createCv({
+    userId: user.id,
+    from: "content",
+    content: syntheticCv(1),
+    baseCvId: upload.id,
+  })
+  // a letter for the PDF itself takes its header from the copy
+  const { id } = await createGeneralLetter({ userId: user.id, cvId: upload.id, from: "blank" })
+  assert.equal(
+    (await getCv(user.id, id))?.content?.header.name,
+    syntheticCv(1).header.name,
+    "header from the editable copy"
+  )
+  assert.equal((await generalLetterOf(user.id, copy.id))?.id, id, "the copy finds the PDF's letter")
+
+  // tailoring from the PDF still starts from its copy, never from the letter beside it
+  const llm = fakeLlm(tailorReply())
+  await tailorCvForJob({ userId: user.id, jobId: job.id, llm })
+  const tailored = await db.cvDocument.findFirst({
+    where: { userId: user.id, jobId: job.id, docType: "CV" },
+    select: { baseCvId: true },
+  })
+  assert.equal(tailored?.baseCvId, copy.id)
+  assert.equal((await generalLetterForJob(user.id, job.id))?.id, id)
+})
+
+test("deleting a general CV takes its letter only when asked; a copy copies the pair", async () => {
+  const user = await makeUser()
+  const base = await general(user.id)
+  const { id: letterId } = await createGeneralLetter({
+    userId: user.id,
+    cvId: base.id,
+    from: "text",
+    text: pastedLetter,
+  })
+
+  const copy = await duplicateCv(user.id, base.id)
+  const copyLetter = await generalLetterOf(user.id, copy.id)
+  assert.ok(copyLetter && copyLetter.id !== letterId, "the copy has a letter of its own")
+  assert.equal(copyLetter.forCvId, copy.id)
+  assert.equal(letterSection(copyLetter.content)?.signature, "Anna")
+
+  await deleteCv(user.id, copy.id, { withLetter: true })
+  assert.equal(await getCv(user.id, copyLetter.id), null)
+
+  await deleteCv(user.id, base.id)
+  const kept = await getCv(user.id, letterId)
+  assert.ok(kept, "the letter stays without its CV")
+  assert.equal(kept.forCvId, null)
+})
+
 test("the default CV survives deleting a tailored document, and is never replaced by one", async () => {
   const user = await makeUser()
   const job = await makeJob()
@@ -651,4 +870,53 @@ test("removing the offer leaves the documents with the company and role they wer
   const context = await tailorContext(user.id, stored!)
   assert.equal(context?.job.id, null)
   assert.equal(context?.cvId, cv.id)
+})
+
+test("saving a CV for an offer as general makes it the newest version of the CV it came from", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  const base = await general(user.id)
+  const cv = await tailorCvForJob({ userId: user.id, jobId: job.id, llm: fakeLlm(tailorReply()) })
+  const edited = { ...cv.content, header: { ...cv.content.header, headline: "Poprawka na stałe" } }
+  await updateCv(user.id, cv.id, { content: edited, language: "en" })
+  const tailored = await getCv(user.id, cv.id)
+
+  const context = await tailorContext(user.id, tailored!)
+  assert.deepEqual(context?.general, { id: base.id, title: "Główne", language: "pl" })
+
+  const saved = await saveToGeneralCv(user.id, cv.id)
+  assert.deepEqual(saved, { cvId: base.id, number: 2 })
+  const stored = await getCv(user.id, base.id)
+  assert.deepEqual(stored?.content, tailored?.content)
+  assert.equal(stored?.content?.header.headline, "Poprawka na stałe")
+  assert.equal(stored?.language, "en")
+  assert.equal(stored?.target, null, "it stays a general CV")
+  assert.equal(stored?.title, "Główne")
+
+  const versions = await listVersions(user.id, base.id)
+  assert.deepEqual(
+    versions.map((version) => [version.number, version.origin, version.isCurrent]),
+    [
+      [2, "offer", true],
+      [1, "auto", false],
+    ]
+  )
+  assert.match(versions[0].label ?? "", /^Acme .+ · Staff Engineer$/)
+  assert.deepEqual((await getVersion(user.id, base.id, versions[1].id))?.content, base.content)
+
+  // the same content again adds nothing
+  assert.deepEqual(await saveToGeneralCv(user.id, cv.id), { cvId: base.id, number: null })
+  assert.equal((await listVersions(user.id, base.id)).length, 2)
+
+  // a name the person gives replaces the offer's
+  const named = await saveVersion(user.id, base.id, "Na stałe")
+  assert.equal(named?.version.origin, "manual")
+  assert.equal(named?.version.label, "Na stałe")
+
+  // only a CV for an offer, of this person, whose general CV is still there
+  assert.equal(await saveToGeneralCv(user.id, base.id), null)
+  assert.equal(await saveToGeneralCv((await makeUser()).id, cv.id), null)
+  await deleteCv(user.id, base.id)
+  assert.equal(await saveToGeneralCv(user.id, cv.id), null)
+  assert.equal((await tailorContext(user.id, tailored!))?.general, null)
 })

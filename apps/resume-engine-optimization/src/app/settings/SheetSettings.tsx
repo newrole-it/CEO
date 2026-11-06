@@ -258,6 +258,7 @@ export function SheetSettings({ after = null }: { after?: string | null }) {
               className="input"
               autoComplete="off"
               spellCheck={false}
+              // i18n-ignore: SHEET_NAME, the tab the server writes to when this field is empty
               placeholder="Aplikacje"
               value={tabName}
               onChange={(event) => setTabName(event.target.value)}

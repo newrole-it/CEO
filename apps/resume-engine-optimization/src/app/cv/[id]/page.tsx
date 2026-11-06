@@ -5,7 +5,7 @@ import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { setupBack } from "src/app/setup/back"
 import { latestCvAudit } from "src/server/cv/audit-store"
-import { getCv } from "src/server/cv/service"
+import { getCv, pairContext } from "src/server/cv/service"
 import { tailorContext } from "src/server/cv/tailor"
 import { NewroleCvEditor } from "./NewroleCvEditor"
 import { UploadedCv } from "./UploadedCv"
@@ -29,7 +29,7 @@ export default async function CvEditorPage({
   const [cv, audit] = await Promise.all([getCv(user.id, id), latestCvAudit(user.id, id)])
   if (!cv) notFound()
   const startAudit = query.audit === "1"
-  const tailor = await tailorContext(user.id, cv)
+  const [tailor, pair] = await Promise.all([tailorContext(user.id, cv), pairContext(user.id, cv)])
   return (
     <SiteFrame
       user={user}
@@ -46,6 +46,7 @@ export default async function CvEditorPage({
           startAudit={startAudit}
           isLetter={cv.docType === "LETTER"}
           tailor={tailor}
+          pair={pair}
         />
       ) : (
         <UploadedCv id={cv.id} title={cv.title} forAudit={startAudit} />
