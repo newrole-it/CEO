@@ -75,6 +75,8 @@ export function AddOffer({
         toast.show({
           message: result.textChars
             ? t("oa.addedText", { n: result.textChars })
+            : result.board
+            ? t("oa.addedBoard")
             : t("oa.addedNoText"),
         })
         router.push(`/offers/${result.jobId}`)

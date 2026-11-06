@@ -10,9 +10,12 @@ import {
   type ModelFacts,
   type PageInput,
 } from "src/server/autofill/job-extract"
+import { createHttpClient, takeDetailSlot } from "@newrole/ats/host"
+import { isAggregatorHost } from "@newrole/offers/hosts"
 import { aiOptOut, stripPersonalData } from "@newrole/offers/hygiene"
 import { ingestOfferUrl, type IngestUrlResult } from "src/server/offers/ingest"
 import { policyFor } from "@newrole/offers/polite"
+import { readPosting, type PostingResult } from "@newrole/offers/posting"
 import { decodeEntities, htmlToText } from "@newrole/offers/text"
 import { pageText } from "src/server/offers/text"
 import { formatSalary, urlKey } from "./logic"
@@ -22,9 +25,10 @@ import type { ApplicationView, OfferFacts, OfferOutcome, OfferUrlCheck } from ".
 /**
  * "Dodaj aplikację" and "Dodaj ofertę" by link: what we can say about a posting from its URL. The
  * offers already known first, then the ingest path (ATS API or JSON-LD, which also stores the
- * offer, src/server/offers/ingest.ts), then the text of the page it read. Hosts under a link-only
- * policy are never fetched: only what their URL spells out comes back, marked for checking. Page
- * HTML is not stored.
+ * offer, src/server/offers/ingest.ts), then the text of the page it read. A job board's or
+ * LinkedIn's offer is read once for the person, for its company, role and place. Other hosts under
+ * a link-only policy are never fetched: only what their URL spells out comes back, marked for
+ * checking. Page HTML is not stored.
  */
 
 export type OfferReading = {
@@ -45,6 +49,8 @@ export type ReadOfferDeps = {
   findById?: (id: string) => Promise<IndexedJob | null>
   ingest?: (url: string) => Promise<IngestUrlResult>
   model?: (page: PageInput) => Promise<ModelFacts | null>
+  /** A job board's or LinkedIn's page, read for the person */
+  board?: (url: string) => Promise<PostingResult>
 }
 
 function factsOf(job: IndexedJob): OfferFacts {
@@ -143,6 +149,67 @@ function readLink(url: string, result: IngestUrlResult): OfferReading {
   }
 }
 
+function onBoard(url: string): boolean {
+  try {
+    return isAggregatorHost(new URL(url).hostname)
+  } catch {
+    return false
+  }
+}
+
+/** A JobPosting without its employer: readPosting then gives the site's own name. */
+function boardsOwnName(company: string, pageUrl: string): boolean {
+  const fold = (text: string) =>
+    text
+      .normalize("NFKD")
+      .replace(/[^\p{L}\p{N}]/gu, "")
+      .toLowerCase()
+  const key = fold(company)
+  return key.length < 3 || fold(new URL(pageUrl).hostname).includes(key)
+}
+
+/** A person's read of one page, under the daily cap of detail pages. */
+async function readBoardPosting(url: string): Promise<PostingResult> {
+  if (!(await takeDetailSlot(new URL(url).hostname))) {
+    return { ok: false, reason: "The daily page cap for this site is used up.", linkOnly: false }
+  }
+  return readPosting(url, createHttpClient())
+}
+
+/**
+ * A job board's or LinkedIn's offer, read once for the person who gave its link (a person's read
+ * in @newrole/offers: robots.txt and the site owner's opt-out still apply): the company, role and
+ * place its JobPosting names. Its text is not passed on, so it is not kept: it is read again when
+ * they tailor (readOnlyWhenTailoring in src/server/offers/service.ts). Without a JobPosting, only
+ * what the link says.
+ */
+async function readBoard(
+  url: string,
+  result: IngestUrlResult,
+  deps: ReadOfferDeps
+): Promise<OfferReading> {
+  const link = readLink(url, result)
+  const read = await (deps.board ?? readBoardPosting)(url)
+  if (!read.ok) return { ...link, note: read.reason }
+  const { posting } = read
+  if (posting.source !== "jsonld" || signInPage(url, posting.url)) return link
+  const company = boardsOwnName(posting.company, posting.url)
+    ? link.facts?.company ?? null
+    : posting.company
+  const title = GENERIC_TITLE.test(posting.title) ? link.facts?.title ?? null : posting.title
+  return {
+    url,
+    outcome: company && title ? "read" : "partial",
+    facts: {
+      jobId: null,
+      company,
+      title,
+      location: posting.location ?? link.facts?.location ?? null,
+      salaryText: null,
+    },
+  }
+}
+
 export async function readOffer(rawUrl: string, deps: ReadOfferDeps = {}): Promise<OfferReading> {
   const raw = rawUrl.trim()
   const url = normalizePostingUrl(raw)
@@ -168,6 +235,7 @@ export async function readOffer(rawUrl: string, deps: ReadOfferDeps = {}): Promi
     return { ...readLink(url, result), outcome: "unreadable", note: "The link asks to sign in." }
   }
   if (result.page) return readPage(url, result.page, deps)
+  if (result.status === "link-only" && onBoard(url)) return readBoard(url, result, deps)
   return readLink(url, result)
 }
 

@@ -128,6 +128,8 @@ export type NewOfferCheck =
       title: string
       added: boolean
       textChars: number
+      /** A job board's or LinkedIn's offer: its text is read when they tailor, not kept */
+      board: boolean
     }
   /** Not stored yet: what the page or the link said, and the page's text, for the person to check. */
   | {
@@ -143,7 +145,7 @@ async function added(userId: number, jobId: string, isNew: boolean): Promise<New
   const [job, copy] = await Promise.all([
     db.job.findUnique({
       where: { id: jobId },
-      select: { title: true, company: { select: { name: true } } },
+      select: { title: true, originalUrl: true, company: { select: { name: true } } },
     }),
     db.userOffer.findUnique({ where: { userId_jobId: { userId, jobId } }, select: { text: true } }),
   ])
@@ -154,6 +156,7 @@ async function added(userId: number, jobId: string, isNew: boolean): Promise<New
     title: job?.title ?? "",
     added: isNew,
     textChars: copy?.text?.length ?? 0,
+    board: job ? readOnlyWhenTailoring(job.originalUrl) : false,
   }
 }
 
@@ -185,6 +188,22 @@ export async function addOfferByLink(
     )
     if (!reading.text && !reading.withheld) await ensureText(userId, jobId)
     return added(userId, jobId, true)
+  }
+  // a job board's JobPosting, read for the person: kept as its link, company and role
+  const facts = reading.facts
+  if (
+    reading.outcome === "read" &&
+    readOnlyWhenTailoring(reading.url) &&
+    facts?.company &&
+    facts.title
+  ) {
+    const saved = await confirmOffer(userId, {
+      url: reading.url,
+      company: facts.company,
+      title: facts.title,
+      location: facts.location ?? undefined,
+    })
+    if ("jobId" in saved) return added(userId, saved.jobId, saved.created)
   }
   return {
     kind: "draft",

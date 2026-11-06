@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest"
+import type { HttpClient, HttpResponse } from "@newrole/offers/http"
+import { readPosting } from "@newrole/offers/posting"
 import { ingestOfferUrl } from "src/server/offers/ingest"
 import { readOffer, type ReadOfferDeps } from "./read-offer"
 import type { IndexedJob } from "./service"
@@ -32,7 +34,40 @@ const offline: ReadOfferDeps = {
   model: async () => {
     throw new Error("model must not be used")
   },
+  board: async () => ({ ok: false, reason: "robots.txt disallows /", linkOnly: true }),
 }
+
+/** Answers with the pages given, and 404 for anything else. */
+function sitePages(pages: Record<string, string>): HttpClient {
+  const get = async (url: string): Promise<HttpResponse> =>
+    url in pages
+      ? { url, status: 200, body: pages[url]!, contentType: "text/html" }
+      : { url, status: 404, body: "", contentType: "text/html" }
+  return { get, post: async (url) => get(url) }
+}
+
+const BOARD_OFFER = "https://justjoin.it/job-offer/acme-qa-engineer-krakow-testing"
+
+const postingPage = (posting: Record<string, unknown>) =>
+  `<html><head><title>QA Engineer - Acme</title><meta property="og:site_name" content="Just Join IT">
+<script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    description: "<p>Testy w Playwright.</p>",
+    ...posting,
+  })}</script></head><body></body></html>`
+
+const boardSite = (posting: Record<string, unknown>): ReadOfferDeps => ({
+  ...offline,
+  board: (url) =>
+    readPosting(
+      url,
+      sitePages({
+        "https://justjoin.it/robots.txt": "User-agent: *\nDisallow: /api/",
+        [BOARD_OFFER]: postingPage(posting),
+      })
+    ),
+})
 
 const unparsed = (html: string): ReadOfferDeps => ({
   ...offline,
@@ -73,7 +108,36 @@ describe("readOffer", () => {
     expect(reading.facts?.jobId).toBe("job_1")
   })
 
-  it("never fetches LinkedIn or a job board, and marks what the link says for checking", async () => {
+  it("reads a job board's JobPosting for the person, and passes none of its text on", async () => {
+    const reading = await readOffer(
+      BOARD_OFFER,
+      boardSite({
+        title: "QA Engineer",
+        hiringOrganization: { "@type": "Organization", name: "Acme Sp. z o.o." },
+        jobLocation: { "@type": "Place", address: { addressLocality: "Kraków" } },
+      })
+    )
+    expect(reading).toEqual({
+      url: BOARD_OFFER,
+      outcome: "read",
+      facts: {
+        jobId: null,
+        company: "Acme Sp. z o.o.",
+        title: "QA Engineer",
+        location: "Kraków",
+        salaryText: null,
+      },
+    })
+  })
+
+  it("does not take a job board's own name for the employer", async () => {
+    const reading = await readOffer(BOARD_OFFER, boardSite({ title: "QA Engineer" }))
+    expect(reading.outcome).toBe("read")
+    expect(reading.facts?.company).toBe("Acme")
+    expect(reading.facts?.title).toBe("QA Engineer")
+  })
+
+  it("keeps what the link says when a job board's page cannot be read", async () => {
     const board = await readOffer(
       "https://justjoin.it/job-offer/jit-team-senior-java-developer-warszawa-java",
       offline

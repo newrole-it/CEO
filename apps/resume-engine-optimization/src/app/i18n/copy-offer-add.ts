@@ -9,13 +9,13 @@ export const offerAddPl = {
     "Wklej link do ogłoszenia. Pobierzemy całą treść, a potem dopasujesz do niej CV i list motywacyjny.",
   "oa.url": "Link do oferty",
   "oa.urlHint":
-    "Najlepiej ze strony firmy albo jej systemu rekrutacji. Z LinkedIn i portali z ofertami bierzemy tylko link, a firmę, stanowisko i treść uzupełnisz w formularzu.",
+    "Najlepiej ze strony firmy albo jej systemu rekrutacji. Z LinkedIn i portali z ofertami odczytamy firmę i stanowisko, a treść pobierzemy dopiero przy dostosowaniu CV.",
   "oa.check": "Odczytaj ofertę",
   "oa.reading": "Czytam ofertę. To może potrwać kilkanaście sekund…",
   "oa.read": "Odczytaliśmy ofertę ze strony. Sprawdź dane i treść, potem ją dodaj.",
   "oa.partial": "Odczytaliśmy tylko część danych. Sprawdź je i uzupełnij resztę.",
   "oa.linkOnly":
-    "Przy dodawaniu tej strony nie czytamy, więc wpisz firmę i stanowisko. Treść oferty wklej tutaj albo pobierzemy ją ze strony przy dostosowaniu CV, o ile strona na to pozwala.",
+    "Tej strony nie odczytaliśmy przy dodawaniu, więc sprawdź albo wpisz firmę i stanowisko. Treść oferty wklej tutaj albo pobierzemy ją ze strony przy dostosowaniu CV, o ile strona na to pozwala.",
   "oa.unreadable":
     "Nie udało się odczytać tej strony. Wpisz firmę i stanowisko i wklej treść ogłoszenia.",
   "oa.company": "Firma",
@@ -53,13 +53,13 @@ export const offerAddEn: Record<keyof typeof offerAddPl, string> = {
     "Paste the link to a job posting. We read the whole text, then you tailor your CV and cover letter to it.",
   "oa.url": "Offer link",
   "oa.urlHint":
-    "Best from the company's site or its ATS. From LinkedIn and job boards only the link is taken, and you fill in the company, role and text.",
+    "Best from the company's site or its ATS. From LinkedIn and job boards the company and role are read, and the text only when you tailor your CV.",
   "oa.check": "Read the offer",
   "oa.reading": "Reading the offer. This can take a dozen seconds or so…",
   "oa.read": "We read the offer from the page. Check the details and the text, then add it.",
   "oa.partial": "We could read only part of it. Check it and fill in the rest.",
   "oa.linkOnly":
-    "This site is not read when adding an offer, so enter the company and role. Paste the offer's text here, or it is read from its page when you tailor your CV, if the site allows it.",
+    "This page was not read when adding the offer, so check or enter the company and role. Paste the offer's text here, or it is read from its page when you tailor your CV, if the site allows it.",
   "oa.unreadable":
     "The page could not be read. Enter the company and role and paste the posting's text.",
   "oa.company": "Company",

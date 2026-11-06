@@ -75,6 +75,8 @@ export const offersPl = {
   "oa.textEmpty": "Nie udało się pobrać treści. Wklej ją tutaj, a model dopasuje do niej CV.",
   "oa.addedText": "Pobraliśmy całe ogłoszenie ({n} znaków).",
   "oa.addedNoText": "Treści nie udało się pobrać. Wkleisz ją na stronie oferty.",
+  "oa.addedBoard":
+    "Dodano ofertę z portalu. Jej treść przeczytamy przy dostosowaniu CV, ale jej nie zapisujemy.",
 
   "cvt.general": "Ogólne",
   "cvt.offers": "Pod oferty",
@@ -180,6 +182,8 @@ export const offersEn: Record<keyof typeof offersPl, string> = {
     "The text could not be read. Paste it here and the model will tailor your CV to it.",
   "oa.addedText": "We read the whole posting ({n} characters).",
   "oa.addedNoText": "The text could not be read. Paste it on the offer's page.",
+  "oa.addedBoard":
+    "Offer added from a job board. Its text is read when you tailor your CV but not stored.",
 
   "cvt.general": "General",
   "cvt.offers": "For offers",

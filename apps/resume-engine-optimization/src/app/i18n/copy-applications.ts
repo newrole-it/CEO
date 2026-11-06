@@ -137,7 +137,7 @@ export const applicationsPl = {
   "app.add.found": "Odczytano ofertę: {company} · {title}",
   "app.add.partial": "Odczytaliśmy tylko część danych. Sprawdź je i uzupełnij resztę.",
   "app.add.linkOnly":
-    "Tej strony nie pobieramy: LinkedIn, portale z ofertami i niektóre serwisy na to nie pozwalają. Link zapiszemy, a firmę i stanowisko sprawdź albo wpisz sam.",
+    "Tej strony nie odczytaliśmy: nie każdy serwis na to pozwala. Link zapiszemy, a firmę i stanowisko sprawdź albo wpisz sam.",
   "app.add.unreadable":
     "Nie udało się odczytać tej oferty. Link zapiszemy, a firmę i stanowisko sprawdź albo wpisz sam.",
   "app.add.existing": "Już śledzisz tę aplikację: {company} · {title}",
@@ -452,7 +452,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.add.found": "Offer read: {company} · {title}",
   "app.add.partial": "We could read only part of it. Check it and fill in the rest.",
   "app.add.linkOnly":
-    "We don't fetch this page: LinkedIn, job boards and some other sites don't allow it. We'll keep the link. Check the company and role or type them in.",
+    "We didn't read this page: not every site allows it. We'll keep the link. Check the company and role or type them in.",
   "app.add.unreadable":
     "We couldn't read this offer. We'll keep the link. Check the company and role or type them in.",
   "app.add.existing": "You already track this application: {company} · {title}",

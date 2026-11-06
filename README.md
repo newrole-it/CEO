@@ -114,7 +114,7 @@ That is the whole install. `npm run go` creates `.env` with fresh secrets, insta
 ## Privacy and trust
 
 - **Your data stays with you.** It lives in a Postgres database on your machine. Settings downloads your data as JSON, deletes your CV and profile, or deletes the account.
-- **Offers are read politely.** robots.txt and a per-source policy apply, with a pace and a daily cap per host. LinkedIn and job boards are never fetched when you add an offer. A site that opts out of AI use gives the model only its company, role and place. Emails and phone numbers are removed from the stored text.
+- **Offers are read politely.** robots.txt and a per-source policy apply, with a pace and a daily cap per host. LinkedIn and job boards are never crawled. When you add an offer from one, its page is read once for the company, role and place; its text is read again when you tailor your CV and is not stored. A site that opts out of AI use gives the model only its company, role and place. Emails and phone numbers are removed from the stored text.
 - **The extension never submits for you.** It fills and records; you click Submit. It never fills or sends passwords, hidden fields, card numbers, PESEL, EEO fields (gender, race, disability, age, date of birth, pronouns) or consents, and it sends only to your own newrole.it.
 - **LinkedIn stays untouched.** The extension scores only your own profile, never other people's, and clicks or changes nothing on LinkedIn.
 

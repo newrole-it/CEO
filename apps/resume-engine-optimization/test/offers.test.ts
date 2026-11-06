@@ -146,13 +146,49 @@ test("a draft the person checked is kept with the text they gave", async () => {
   assert.equal(offer?.textOrigin, "full")
 })
 
+test("a job board's offer is kept with the company and role its page names, not its text", async () => {
+  const user = await makeUser()
+  const url = `https://justjoin.it/job-offer/acme-${stamp}-senior-backend-developer-warszawa-go`
+  const check = await addOfferByLink(user.id, url, {
+    findByUrl: async () => null,
+    board: async (link) => ({
+      ok: true,
+      posting: {
+        url: link,
+        title: "Senior Backend Developer",
+        company: `Acme ${stamp}`,
+        location: "Warszawa",
+        text: POSTING,
+        source: "jsonld",
+        withheld: false,
+      },
+    }),
+  })
+  assert.equal(check.kind, "added")
+  if (check.kind !== "added") return
+  assert.equal(check.company, `Acme ${stamp}`)
+  assert.equal(check.title, "Senior Backend Developer")
+  assert.equal(check.board, true)
+  assert.equal(check.textChars, 0)
+  const job = await db.job.findUniqueOrThrow({ where: { id: check.jobId } })
+  assert.equal(job.descriptionText, "", "the index keeps no text of a job board's offer")
+  assert.equal(job.locationText, "Warszawa")
+  const offer = await getOffer(user.id, check.jobId)
+  assert.ok(offer, "the offer is in the person's list")
+  assert.equal(offer.text, null, "nor does the person's copy")
+})
+
 test("a LinkedIn link is kept as its link, with the text the person pastes", async () => {
   const user = await makeUser()
   const never = async () => {
     throw new Error("nothing may be read")
   }
   const url = `https://www.linkedin.com/jobs/view/senior-backend-engineer-at-acme-corp-3912345678/?ref=${stamp}`
-  const check = await addOfferByLink(user.id, url, { findByUrl: async () => null, model: never })
+  const check = await addOfferByLink(user.id, url, {
+    findByUrl: async () => null,
+    model: never,
+    board: async () => ({ ok: false, reason: "robots.txt disallows /", linkOnly: true }),
+  })
   assert.equal(check.kind, "draft")
   if (check.kind !== "draft") return
   assert.equal(check.outcome, "link-only")
