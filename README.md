@@ -2,6 +2,12 @@
   <img src="apps/resume-engine-optimization/docs/screenshots/banner.svg" alt="newrole.it: your CV, tailored to every job offer, on your machine" width="900">
 </p>
 
+<h3 align="center">CEO ~ CV Engine Optimisation</h3>
+
+<p align="center">
+  <i>SEO for your CV: the offer's keywords go only where your experience backs them.</i>
+</p>
+
 <p align="center">
   <b>Paste a link to a job offer. Get a CV and cover letter written for it, from your own facts.<br>
   Let the Chrome extension fill the form, and it records the application when you hit Submit.</b><br>
@@ -155,6 +161,8 @@ Things to ask:
 
 The tools' own replies are in Polish for now.
 
+The repository also carries skills, so anyone who clones it gets them in Claude Code with no install step. They live in `.claude/skills`, and `.agents/skills` links to them, next to the skills `npx skills` installs there for other agents (`skills-lock.json`). `newrole` explains the MCP tools. The CV and job-search skills come unchanged from [paramchoudhary/resumeskills](https://github.com/paramchoudhary/resumeskills) (MIT): `job-description-analyzer`, `resume-tailor`, `resume-ats-optimizer`, `resume-bullet-writer`, `resume-quantifier`, `cover-letter-generator`, `linkedin-profile-optimizer` and 15 more. `miodkuj` and `humanizer-zh` keep the writing natural in Polish and English. Each copied skill has a `SOURCE.md` naming the commit it came from.
+
 ## AI models
 
 newrole.it picks a model by itself; `LLM_PROVIDER` in `.env` overrides it.
@@ -168,6 +176,9 @@ newrole.it picks a model by itself; `LLM_PROVIDER` in `.env` overrides it.
 `/usage` shows how much work the model did: runs, tokens and the cost at API prices. [configuration.md](apps/resume-engine-optimization/docs/configuration.md#models) has every model variable.
 
 ## FAQ
+
+**Will it make me a CEO?**
+No, but your CV gets the title. CEO stands for CV Engine Optimisation: newrole.it puts the offer's keywords where your experience backs them. What the offer asks for and your data does not show goes on a list of gaps instead of into the CV; if you have it, add it yourself.
 
 **Does it send applications for me?**
 No. The extension fills the form and records what you sent, but you always click Submit yourself.

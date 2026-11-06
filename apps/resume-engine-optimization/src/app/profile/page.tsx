@@ -38,6 +38,7 @@ export default async function ProfilePage() {
               { href: "/profile", label: t("pr.tabProfile"), current: true },
               { href: "/profile/details", label: t("apl.tab"), current: false },
               { href: "/profile/audit", label: t("pr.tabAudit"), current: false },
+              { href: "/profile/linkedin", label: t("li.tab"), current: false },
             ]}
           />
         </div>

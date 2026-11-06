@@ -2,6 +2,29 @@
 
 This file is for AI coding agents working in this repository (Claude Code reads it through `CLAUDE.md`). [CONTRIBUTING.md](CONTRIBUTING.md) has the setup, the commands, what CI checks, the formatting and the commit style; follow it too.
 
+## The database in `.env` holds real data
+
+It is the person's own: their offers, applications, decisions and CVs. Do not lose any of it. These rules come from [plan-p0.md §1](apps/resume-engine-optimization/docs/product/plan-p0.md).
+
+- Never run against it: `prisma migrate reset`, `prisma migrate dev` (that is what `npm run db:migrate` runs), `prisma db push`, `TRUNCATE`, a bulk `deleteMany`, or a restore from a backup without the owner's consent.
+- The schema changes only through `prisma migrate deploy` (`npm run db:deploy`), after a `pg_dump` and a row count before and after.
+- A migration only adds. Dropping a column or a table is the owner's decision.
+- Tests run only against a database whose name ends in `_test`. `npm run test:db` creates and migrates it. The flow tests in `apps/resume-engine-optimization/test/` import `test/only-test-db.ts` first, and newrole.it's `vitest.config.ts` points `DATABASE_URL` at the test database, because without it Prisma reads `.env`.
+- Commit and push only when the owner asks. The working tree holds other sessions' uncommitted changes: no `git checkout`, `git stash` or `git reset`.
+
+## Tests and checks
+
+Run one test file from the repository root:
+
+```bash
+npm test -w @newrole/app -- src/server/auth/api-tokens.test.ts    # newrole.it's vitest tests
+npm test -w @newrole/cv-core -- src/tailor.test.ts                # a package whose test script is vitest run
+npx vitest run --root apps/reo-extension test/form-dom.test.ts    # the Chrome extension
+cd apps/resume-engine-optimization && node scripts/test-db.mjs run npx tsx --test test/auth.test.ts   # one flow test, on the test database
+```
+
+Before you finish, run what CI runs: `npm run lint`, `npm run check:boundaries`, `npm run check:i18n`, `npm run typecheck` and `npm test`. `npm test` includes the flow tests, which need `npm run test:db` once and again after new migrations.
+
 ## Interface text: write for every language
 
 newrole.it is built to be used in any language. Today the interface comes in Polish and English, and more languages must be possible without hunting through the code. Treat every word a person reads as text to be translated, from the first line you write.

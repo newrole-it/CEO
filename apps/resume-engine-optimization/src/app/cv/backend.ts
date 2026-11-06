@@ -16,6 +16,7 @@ import updateCvDocument from "./mutations/updateCvDocument"
 import getCvVersion from "./queries/getCvVersion"
 import getCvVersions from "./queries/getCvVersions"
 import getOfferTextStatus from "./queries/getOfferTextStatus"
+import getTailorProgress from "./queries/getTailorProgress"
 import { cvPdfUrl, cvPrintUrl, cvVersionPdfUrl } from "./urls"
 
 /** @newrole/cv-editor over this app's Blitz mutations: one object for every page. */
@@ -34,6 +35,7 @@ export const newroleCvBackend: CvEditorBackend = {
   tailor: {
     cv: (input) => invoke(tailorCvForJob, input),
     letter: (input) => invoke(generateCoverLetter, input),
+    progress: (runId) => invoke(getTailorProgress, { runId }),
   },
   improve: {
     preview: (input) => invoke(improveCvSection, input),
@@ -59,6 +61,7 @@ export const newroleCvBackend: CvEditorBackend = {
     list: "/cv",
     document: (id) => `/cv/${id}`,
     job: (jobId) => `/offers/${jobId}`,
+    match: (jobId) => `/offers/${jobId}/match`,
     guide: "/features#cv-editor",
   },
 }

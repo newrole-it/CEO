@@ -2,7 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
-import { revokeOtherAccess, upsertLinkedInUser } from "../src/server/auth/accounts"
+import { claimGuest, revokeOtherAccess, upsertLinkedInUser } from "../src/server/auth/accounts"
 import { linkRequestValue } from "../src/server/auth/link-request"
 import {
   assertLoginRateLimit,
@@ -27,6 +27,7 @@ after(async () => {
   await db.loginLink.deleteMany({ where: { email: { contains: `auth-${stamp}` } } })
   await db.authRateLimit.deleteMany({ where: { key: { contains: `auth-${stamp}` } } })
   await db.auditEvent.deleteMany({ where: { action: { contains: `auth-${stamp}` } } })
+  await db.company.deleteMany({ where: { normalizedName: { contains: `auth-${stamp}` } } })
   await db.$disconnect()
 })
 
@@ -124,6 +125,61 @@ test("a sign-in link moves guest data only into the browser that asked for it", 
     await signInWithMagicLink({ token: own, sessionUserId: null, linkRequestCookie: null }),
     null
   )
+})
+
+test("a claimed guest's offers and CVs move, and on an offer both kept the account's own stay", async () => {
+  const company = await db.company.create({
+    data: { name: `Claim Co ${stamp}`, normalizedName: `claim-co-auth-${stamp}` },
+  })
+  const job = (label: string) =>
+    db.job.create({
+      data: {
+        companyId: company.id,
+        sourceType: "LEVER",
+        title: "Engineer",
+        normalizedTitle: "engineer",
+        summary: "A public posting",
+        descriptionText: "A public posting",
+        originalUrl: `https://example.com/jobs/${label}-${stamp}`,
+        canonicalUrl: `https://example.com/jobs/${label}-${stamp}`,
+        contentHash: `hash-${label}-${stamp}`,
+        identityKey: `claim-${label}-auth-${stamp}`,
+        fingerprint: `fp-${label}-${stamp}`,
+      },
+    })
+  const both = await job("both")
+  const guestsOwn = await job("guest")
+  const account = await db.user.create({
+    data: { email: `owner-claim-auth-${stamp}@example.com`, role: "USER" },
+  })
+  const guest = await guestWithData("offers")
+  for (const [userId, jobId, note] of [
+    [account.id, both.id, "account's note"],
+    [guest.id, both.id, "guest's note"],
+    [guest.id, guestsOwn.id, "guest's only offer"],
+  ] as const) {
+    await db.userOffer.create({ data: { userId, jobId, note } })
+    await db.cvDocument.create({ data: { userId, jobId, title: note } })
+  }
+  await db.cvDocument.create({ data: { userId: guest.id, title: "guest's general CV" } })
+
+  await claimGuest(guest.id, account.id)
+
+  assert.equal(await db.user.findUnique({ where: { id: guest.id } }), null)
+  const offers = await db.userOffer.findMany({ where: { userId: account.id } })
+  assert.deepEqual(
+    offers.map((row) => [row.jobId, row.note]).sort(),
+    [
+      [both.id, "account's note"],
+      [guestsOwn.id, "guest's only offer"],
+    ].sort()
+  )
+  const cvs = await db.cvDocument.findMany({ where: { userId: account.id } })
+  assert.deepEqual(cvs.map((row) => row.title).sort(), [
+    "account's note",
+    "guest's general CV",
+    "guest's only offer",
+  ])
 })
 
 test("password sign-in stops after the per-email limit", async () => {

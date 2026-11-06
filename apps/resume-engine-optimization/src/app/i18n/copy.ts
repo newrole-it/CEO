@@ -4,6 +4,8 @@ import { applicationsEn, applicationsPl } from "./copy-applications"
 import { cvEn, cvPl, tailorEn, tailorPl } from "@newrole/cv-editor/copy"
 import { extensionEn, extensionPl } from "./copy-extension"
 import { gmailEn, gmailPl } from "./copy-gmail"
+import { linkedinEn, linkedinPl } from "./copy-linkedin"
+import { matchEn, matchPl } from "./copy-match"
 import { guideEn, guidePl } from "./copy-guide"
 import { offerAddEn, offerAddPl } from "./copy-offer-add"
 import { offersEn, offersPl } from "./copy-offers"
@@ -646,6 +648,8 @@ const pl = {
   ...offerAddPl,
   ...offersPl,
   ...guidePl,
+  ...matchPl,
+  ...linkedinPl,
 }
 
 export type CopyKey = keyof typeof pl
@@ -666,6 +670,8 @@ const en: Dict = {
   ...offerAddEn,
   ...offersEn,
   ...guideEn,
+  ...matchEn,
+  ...linkedinEn,
   skip: "Skip to content",
   brandHome: "newrole.it, home",
   "nav.forYou": "For you",

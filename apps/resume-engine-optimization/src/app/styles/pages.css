@@ -1993,3 +1993,28 @@ details.disclosure > div {
   border-radius: var(--r-md);
   padding-inline: 10px;
 }
+
+/* LinkedIn i CV (/profile/linkedin) */
+.li-gen__form {
+  display: grid;
+  gap: 12px;
+  max-width: 320px;
+}
+.li-text {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.li-text__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.li-text__head h3 {
+  margin: 0;
+}
+.li-text__body {
+  margin: 0;
+  white-space: pre-wrap;
+}

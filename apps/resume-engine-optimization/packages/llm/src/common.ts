@@ -46,6 +46,11 @@ export const PERSONAL_LLM_PURPOSES = [
   "cv-improve",
   "cover-letter",
   "mail-classify",
+  // the offer's analysis can read the candidate's note
+  "offer-analysis",
+  "cv-match",
+  "cv-bullets",
+  "linkedin-sync",
 ] as const
 
 export function isPersonalLlmPurpose(purpose: string): boolean {

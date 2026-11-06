@@ -308,3 +308,226 @@ a.cvo-card__status:hover {
     justify-content: flex-start;
   }
 }
+
+/* ---------------------------------------------------------------- match dashboard */
+
+.mt-head p:first-child {
+  margin: 0 0 8px;
+}
+.mt-head .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mt-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mt-score {
+  display: grid;
+  gap: 16px;
+}
+.mt-score__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+.mt-score__num {
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.mt-score__band {
+  margin: 0 0 2px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.mt-score__head p {
+  margin: 0;
+}
+.mt-groups {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.mt-group {
+  display: grid;
+  gap: 6px;
+}
+.mt-group__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+.mt-group__head strong {
+  font-variant-numeric: tabular-nums;
+}
+.mt-critical {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.mt-critical svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+.mt-figures {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+.mt-tile strong {
+  font-size: 22px;
+}
+.mt-cols {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .mt-cols {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  .mt-cols--even {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.mt-reqs,
+.mt-side,
+.mt-kws,
+.mt-checks,
+.mt-flags,
+.mt-questions {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mt-req {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.mt-req:first-child {
+  border-top: 0;
+}
+.mt-req__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mt-req__status svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.mt-req[data-status="met"] .mt-req__status {
+  color: var(--success);
+}
+.mt-req[data-status="partial"] .mt-req__status {
+  color: var(--warning);
+}
+.mt-req[data-status="missing"] .mt-req__status {
+  color: var(--danger);
+}
+.mt-req__body {
+  display: grid;
+  gap: 4px;
+}
+.mt-req__body p {
+  margin: 0;
+}
+.mt-req__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-weight: 500;
+}
+.mt-side li {
+  display: grid;
+  gap: 2px;
+}
+.mt-kws li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.mt-kws li strong {
+  font-variant-numeric: tabular-nums;
+}
+.mt-kws li[data-found="false"] strong {
+  color: var(--danger);
+}
+.mt-check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.mt-check svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--success);
+}
+.mt-check[data-ok="false"] svg {
+  color: var(--warning);
+}
+.mt-questions li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.mt-questions q {
+  color: var(--text-muted);
+}
+.mt-flags li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+}
+.mt-flags svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--warning);
+}
+.mt-flags--good svg {
+  color: var(--success);
+}
+.mt-plain {
+  margin: 0;
+  padding-left: 18px;
+}
+@media (max-width: 560px) {
+  .mt-req {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .mt-score__num {
+    font-size: 48px;
+  }
+}

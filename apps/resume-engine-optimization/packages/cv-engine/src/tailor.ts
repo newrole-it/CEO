@@ -2,6 +2,7 @@ import type { z } from "zod"
 import type { CvLocale } from "@newrole/cv-core/blank"
 import { buildLetter, LetterReply, type LetterFrame } from "@newrole/cv-core/letter"
 import { inlineToText } from "@newrole/cv-core/sanitize"
+import type { MatchReport, OfferAnalysis } from "@newrole/cv-core/match"
 import { letterSection, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 import {
   applyTailoring,
@@ -42,10 +43,19 @@ What you may do:
 - Keep the CV no longer than it is. Tighten rather than add.
 
 Keywords: a recruiter and an ATS search the CV for the offer's own words. Work in this order:
-1. In "keywords" list up to 15 terms the offer asks for, required ones first: technologies, tools, methods, domains, kinds of work and named qualifications. Write each as the offer writes it ("PostgreSQL", "CI/CD", "zarządzanie zespołem"). Leave out generic words such as "communication" or "teamwork" unless the offer stresses them.
+1. In "keywords" list up to 15 terms the offer asks for, required ones first: technologies, tools, methods, domains, kinds of work and named qualifications. Write each as the offer writes it ("PostgreSQL", "CI/CD", "zarządzanie zespołem"). Leave out generic words such as "communication" or "teamwork" unless the offer stresses them. When the offer's analysis is given, use its keywords in its order, and add a term only when it missed one the offer asks for.
 2. For each term, "evidence" is a short fragment copied exactly from the CV or the candidate context that shows it, or "" when nothing does. A term without evidence goes in "gaps" and nowhere in the CV.
 3. Put each term with evidence where its evidence is: the bullet of the role where the candidate did it, the skills, and for the two or three that matter most, the profile. When the CV says the same thing in other words, use the offer's: "Postgres" becomes "PostgreSQL", "prowadziłem zespół" can become "zarządzałem zespołem". When the CV is in another language than the offer, keep names of technologies and write the rest in the CV's language.
-4. Keep it natural. A term appears once or twice in the whole CV, inside a sentence about what the candidate did. No lists of keywords in the profile or in a bullet, no sentence copied from the offer, no term squeezed into a bullet about something else. When a term does not fit a bullet, the skills are enough; when it fits nowhere, leave it out.
+4. Keep it natural (after the resume-ats-optimizer skill). The two or three terms that matter most appear two or three times: the profile, the skills and a bullet. Any other term appears once or twice in the whole CV, inside a sentence about what the candidate did. No lists of keywords in the profile or in a bullet, no sentence copied from the offer, no term squeezed into a bullet about something else. When a term does not fit a bullet, the skills are enough; when it fits nowhere, leave it out.
+
+The offer's analysis and the match (when given) come from earlier steps: the offer's requirements, required first, whether the candidate's data shows each, with the evidence, and what to lead with. Use them as the resume-tailor skill does:
+- The profile names the role or function this offer is for, as far as the candidate's history supports it.
+- The first skills answer the offer's top requirements, as far as the candidate has them.
+- In each recent role the first bullet answers a requirement that role shows.
+- A requirement marked missing stays out of the CV and goes in "gaps". One marked partial is described as its evidence shows it, no stronger.
+- A technical role (after tech-resume-optimizer): technologies the offer names come first in skills and in the "tech" lines; leave out what it would take for granted, such as office software, unless it asks for it.
+- A leadership role (after executive-resume-writer): lead with scope and outcomes the CV shows: the team, the budget, the change the candidate led.
+- A candidate whose history is in another field (after career-changer-translator): lead with the transferable skills the offer asks for, in the offer's words where the CV shows them.
 
 Content that passes a recruiter and an ATS (after the cv-resume skill, github.com/trfi/skills):
 - The profile (the first text section) is 2 to 4 sentences: who the candidate is, their core strengths and experience, what they bring to this role, with the offer's most important keywords inside those sentences. No clichés such as "hardworking", "team player", "passionate", "pracowity", "komunikatywny".
@@ -78,8 +88,13 @@ List sections in the order they should appear.`
 const TRANSLATE_RULE = `
 This CV changes language: translate everything you return into the target language, and return every section and item, with "title" on each section and "role", "dates" and "degree" where the items have them. For cards include "title". Keep names of companies, schools, products and technologies. Keep the digits of dates exactly.`
 
-/** How a letter reads and what the layout adds, for a letter to an offer and a general one alike. */
-const LETTER_STYLE = `Style: plain, specific and human. No flattery or stock phrases such as "z ogromnym entuzjazmem", "idealny kandydat", "dynamiczny zespół", "passionate", "excited to apply", "team player". Do not list what the CV already lists. In Polish write natural, professional Polish without needless anglicisms, address the employer as "Państwo", and use the grammatical gender the CV uses; when it does not show one, write sentences that avoid it. In English use plain British or international English.
+/**
+ * How a letter reads and what the layout adds, for a letter to an offer and a general one alike.
+ * The openings and closings to avoid are the cover-letter-generator skill's (resumeskills, MIT).
+ */
+const LETTER_STYLE = `Do not open with "I am writing to apply", "I am the perfect candidate", where the offer was seen, or their Polish forms ("Piszę w odpowiedzi na ogłoszenie", "Jestem idealnym kandydatem"). Do not close with "I look forward to hearing from you", "Please find my CV attached", "I am available for an interview at your convenience", or their Polish forms ("Czekam na odpowiedź", "W załączeniu przesyłam CV").
+
+Style: plain, specific and human. No flattery or stock phrases such as "z ogromnym entuzjazmem", "idealny kandydat", "dynamiczny zespół", "passionate", "excited to apply", "team player". Do not list what the CV already lists. In Polish write natural, professional Polish without needless anglicisms, address the employer as "Państwo", and use the grammatical gender the CV uses; when it does not show one, write sentences that avoid it. In English use plain British or international English.
 
 Do not write a greeting, sign-off, date, subject line, placeholders, markdown or surrounding quotes: the layout adds them. Paragraphs are plain text.`
 
@@ -95,10 +110,11 @@ General letter: when the candidate's general cover letter is given, this letter 
 
 ${PAST_LETTERS_RULE} Do not copy a past letter: this one is about this offer.
 
-Content: 3 or 4 short paragraphs, 150 to 250 words in total, enough for one page.
-- First: the role, and the single strongest match with one concrete fact from the CV.
-- Middle: one or two results from the CV, each tied to something this offer asks for.
+Content (after the cover-letter-generator skill, kept to 150 to 250 words so the letter fits one page with its header): 3 or 4 short paragraphs.
+- First: the role, and the single strongest match with one concrete fact from the CV, or a need the offer states in its own words that the candidate has already met. Never open with a claim about the company or its product that the offer does not make.
+- Middle: one or two results from the CV, each as what this offer needs, what the candidate did, and what came of it.
 - Last: one plain sentence on why this role, from what the offer says, and an invitation to talk.
+- When the match analysis is given, build on its strengths and talking points; each must still rest on the CV or context.
 - A skill or tool you name that the offer asks for and the CV shows goes in the offer's own word for it.
 
 ${LETTER_STYLE}`
@@ -223,6 +239,49 @@ function jobPrompt(job: TailorOffer, note: string | undefined): string[] {
   return lines
 }
 
+/** The offer's analysis and the match with the person's data, from the steps before tailoring. */
+function analysisPrompt(
+  analysis: OfferAnalysis | null | undefined,
+  match: MatchReport | null | undefined
+): string[] {
+  if (!analysis) return []
+  const matched = new Map((match?.requirements ?? []).map((item) => [item.id, item]))
+  const requirements = analysis.requirements.map((item) => {
+    const found = matched.get(item.id)
+    const evidence = found?.evidence ? ` (evidence: "${found.evidence}")` : ""
+    return `- [${item.importance}; ${found?.status ?? "not checked"}] ${item.text}${evidence}`
+  })
+  const body = [
+    "Requirements:",
+    ...requirements,
+    analysis.keywords.length
+      ? `Keywords, most important first: ${analysis.keywords.map((item) => item.term).join(", ")}`
+      : "",
+    ...(match?.emphasize.length
+      ? ["Lead with:", ...match.emphasize.map((line) => `- ${line}`)]
+      : []),
+  ].filter(Boolean)
+  return [
+    "",
+    "The offer's analysis and the match with the candidate's data (earlier steps):",
+    wrapLong("offer_analysis", body.join("\n"), 9000),
+  ]
+}
+
+/** What the match found to say in a letter: the strengths and the talking points. */
+function letterPointsPrompt(match: MatchReport | null | undefined): string[] {
+  const points = [
+    ...(match?.strengths ?? []).map((item) => `- ${item.title}: ${item.why}`),
+    ...(match?.talkingPoints ?? []).map((line) => `- ${line}`),
+  ]
+  if (!points.length) return []
+  return [
+    "",
+    "Strengths and talking points from the match analysis:",
+    wrapUntrusted("match_points", points.join("\n")),
+  ]
+}
+
 function attemptLine(attempt: number): string[] {
   return attempt > 1 ? ["", `Attempt ${attempt}: the candidate asked for another take.`] : []
 }
@@ -283,6 +342,10 @@ export async function tailorCv(input: {
   attempt?: number
   /** Ties a cached reply to its owner (a CV prompt is cached only then) */
   userId?: number
+  /** What the offer asks for (the "offer" step), when it could be read */
+  analysis?: OfferAnalysis | null
+  /** The person's data against each requirement (the "match" step) */
+  match?: MatchReport | null
 }): Promise<Generated | null> {
   const { llm, base, language, note, userId, context } = input
   const job = input.offer
@@ -301,6 +364,7 @@ export async function tailorCv(input: {
       `<candidate_context>\n${context || "(empty)"}\n</candidate_context>`,
       "",
       ...jobPrompt(job, note),
+      ...analysisPrompt(input.analysis, input.match),
       "",
       "The CV to adapt:",
       `<cv>\n${cv}\n</cv>`,
@@ -350,6 +414,8 @@ export async function writeCoverLetter(input: {
   maxChars?: number
   attempt?: number
   userId?: number
+  /** The match with the offer, kept with the tailored CV: its strengths and talking points */
+  match?: MatchReport | null
 }): Promise<Generated | null> {
   const { llm, language, note, userId, context, maxChars, general } = input
   const job = input.offer
@@ -370,6 +436,7 @@ export async function writeCoverLetter(input: {
       `<cv>\n${cvText}\n</cv>`,
       "",
       ...jobPrompt(job, note),
+      ...letterPointsPrompt(input.match),
       ...generalLetterPrompt(general),
       ...pastLettersPrompt(pastLetters),
       ...(maxChars

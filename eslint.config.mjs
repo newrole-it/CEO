@@ -17,6 +17,8 @@ export default defineConfig([
     },
   },
   globalIgnores([
+    // Agent runs keep whole git worktrees of this repository here; they are not its code.
+    ".ai/**",
     ".next/**",
     "out/**",
     "build/**",

@@ -114,6 +114,13 @@ function fakeLlm(...replies: unknown[]): LlmClient & { calls: Call[] } {
   }
 }
 
+/** The tailoring call itself: the steps before it read the offer and check the person's data. */
+function tailorCall(llm: { calls: Call[] }): Call {
+  const call = llm.calls.find((entry) => entry.purpose === "cv-tailor")
+  assert.ok(call, "tailoring asked the model")
+  return call
+}
+
 const tailorReply = (body = "Buduję platformy dla dużych zespołów.") => ({
   headline: "Platform Engineering Lead",
   sections: [{ id: "profile", body }],
@@ -189,10 +196,10 @@ test("tailoring again keeps the person's edits in history and works from the ori
   assert.equal(second.id, first.id, "one tailored CV per offer")
   // it read the general CV, not the previous result with its edits
   assert.ok(
-    llm.calls[0].user.includes(`"headline":${JSON.stringify(base.content.header.headline)}`)
+    tailorCall(llm).user.includes(`"headline":${JSON.stringify(base.content.header.headline)}`)
   )
-  assert.ok(!llm.calls[0].user.includes("Mój własny nagłówek"))
-  assert.match(llm.calls[0].user, /Attempt 2/, "a new attempt must not hit the reply cache")
+  assert.ok(!llm.calls.some((call) => call.user.includes("Mój własny nagłówek")))
+  assert.match(tailorCall(llm).user, /Attempt 2/, "a new attempt must not hit the reply cache")
 
   const versions = await listVersions(user.id, first.id)
   assert.deepEqual(
@@ -317,7 +324,7 @@ test("making an uploaded PDF editable keeps one CV, with the file as its origina
   const job = await makeJob()
   const llm = fakeLlm(tailorReply())
   await tailorCvForJob({ userId: user.id, jobId: job.id, llm })
-  assert.match(llm.calls[0].user, /Head of Engineering/)
+  assert.match(tailorCall(llm).user, /Head of Engineering/)
   const tailored = await db.cvDocument.findFirst({
     where: { userId: user.id, jobId: job.id },
     select: { baseCvId: true },
@@ -468,8 +475,12 @@ test("an offer that opted out of AI never reaches the model; the person's own no
 
   const llm = fakeLlm(tailorReply())
   const plain = await tailorCvForJob({ userId: user.id, jobId: job.id, llm })
-  assert.ok(!llm.calls[0].user.includes(secret))
-  assert.match(llm.calls[0].user, /Staff Engineer/)
+  assert.ok(
+    llm.calls.every((call) => !call.user.includes(secret)),
+    "no step reads it"
+  )
+  assert.equal(llm.calls[0].purpose, "cv-tailor", "with no text there is no offer to analyse")
+  assert.match(tailorCall(llm).user, /Staff Engineer/)
   assert.equal(plain.notes.usedJobText, false)
 
   const letters = fakeLlm(letterReply)
@@ -483,7 +494,8 @@ test("an offer that opted out of AI never reaches the model; the person's own no
     note: "Wymagania: Kubernetes",
     llm: withNote,
   })
-  assert.match(withNote.calls[0].user, /Wymagania: Kubernetes/)
+  assert.match(tailorCall(withNote).user, /Wymagania: Kubernetes/)
+  assert.equal(withNote.calls[0].purpose, "offer-analysis", "the note may hold the offer's text")
   assert.equal(noted.notes.usedJobText, true)
 })
 
@@ -524,7 +536,7 @@ test("the model reads the whole offer from its source, and the index keeps only 
   const llm = fakeLlm(tailorReply())
   const result = await tailorCvForJob({ userId: user.id, jobId: job.id, llm, http })
 
-  assert.ok(llm.calls[0].user.includes(`Wymagamy Kubernetes ${stamp}`))
+  assert.ok(tailorCall(llm).user.includes(`Wymagamy Kubernetes ${stamp}`))
   assert.equal(result.notes.offerText?.origin, "full")
   assert.ok((result.notes.offerText?.chars ?? 0) > 300)
 
@@ -556,7 +568,7 @@ test("when the source cannot be read, the model gets the excerpt and the notes s
 
   const llm = fakeLlm(tailorReply())
   const plain = await tailorCvForJob({ userId: user.id, jobId: job.id, llm, http })
-  assert.ok(llm.calls[0].user.includes(excerpt))
+  assert.ok(tailorCall(llm).user.includes(excerpt))
   assert.equal(plain.notes.offerText?.origin, "excerpt")
   assert.equal(readOnlyExcerpt(plain.notes), true)
 
@@ -1282,4 +1294,206 @@ test("Popraw z AI shows a rewritten section first and stores it only when applie
     improveCvSection({ userId: user.id, id, sectionId: "profile", mode: "polish", llm: null }),
     (error: unknown) => error instanceof CvError && error.code === "llm-unavailable"
   )
+})
+
+/** A model that answers each step by its purpose and remembers what it was asked. */
+function stepLlm(replies: Record<string, unknown>): LlmClient & { calls: Call[] } {
+  const calls: Call[] = []
+  return {
+    model: "fake",
+    calls,
+    async completeJson(args) {
+      calls.push({ purpose: args.purpose, user: args.user, system: args.system })
+      const data = replies[args.purpose]
+      if (data == null) return null
+      return { data: args.schema.parse(data), tokenInput: 0, tokenOutput: 0, cached: false }
+    },
+    async completeText() {
+      return null
+    },
+  }
+}
+
+const offerAnalysisReply = {
+  role: "Inżynier platformy.",
+  seniority: "Staff",
+  requirements: [
+    { text: "PostgreSQL", importance: "required", kind: "tool", keyword: "PostgreSQL" },
+    { text: "Kubernetes w produkcji", importance: "required", kind: "tool", keyword: "Kubernetes" },
+    { text: "Go", importance: "preferred", kind: "skill", keyword: "Go" },
+    { text: "Komunikatywność", importance: "soft", kind: "soft" },
+  ],
+  keywords: [
+    { term: "PostgreSQL", type: "hard", importance: "required" },
+    { term: "Kubernetes", type: "hard", importance: "required" },
+    { term: "Terraform", type: "hard", importance: "required" },
+    { term: "Go", type: "hard", importance: "preferred" },
+  ],
+  responsibilities: ["Rozwój platformy"],
+  redFlags: [
+    { quote: "fast-paced", why: "Może oznaczać dużą presję." },
+    { quote: "rockstar", why: "Kultura pracy ponad siły." },
+  ],
+  signals: ["Oferta wymienia narzędzia."],
+}
+
+const matchReply = {
+  requirements: [
+    {
+      id: "r1",
+      status: "met",
+      evidence: "Node.js, PostgreSQL, Kubernetes",
+      note: "Pokaż to na górze.",
+    },
+    { id: "r2", status: "met", evidence: "Kubernetes w chmurze od pięciu lat", note: "" },
+    { id: "r3", status: "missing", gap: "minor", note: "Pokaż pokrewne języki." },
+    { id: "r4", status: "partial", evidence: "", note: "" },
+  ],
+  strengths: [
+    {
+      title: "Platformy",
+      why: "Oferta szuka osoby od platform.",
+      evidence: "projektuję platformy",
+    },
+    { title: "Wymyślona mocna strona", why: "Bez pokrycia.", evidence: "zarządzałem 40 osobami" },
+  ],
+  emphasize: ["Zacznij od platformy."],
+  talkingPoints: ["Platforma od planu do wdrożenia."],
+}
+
+const bulletsReply = {
+  bullets: [
+    {
+      item: "job1",
+      index: 1,
+      issues: ["weak-verb"],
+      rewrite:
+        "Zaprojektowałem architekturę i przełożyłem potrzeby produktowe na plany techniczne.",
+    },
+    {
+      item: "job1",
+      index: 2,
+      issues: ["no-number"],
+      rewrite: "Ustaliłem standardy kodu dla 12 zespołów.",
+      question: "Ilu zespołów dotyczyły standardy?",
+    },
+  ],
+}
+
+test("tailoring runs its steps in order and keeps what each found for the match dashboard", async () => {
+  const user = await makeUser()
+  const job = await makeJob({
+    description:
+      "Wymagamy PostgreSQL i Kubernetes w produkcji. Mile widziane: Go. Pracujemy w trybie fast-paced. Liczy się komunikatywność.",
+  })
+  await general(user.id)
+  const llm = stepLlm({
+    "offer-analysis": offerAnalysisReply,
+    "cv-match": matchReply,
+    "cv-tailor": tailorReply(),
+    "cv-bullets": bulletsReply,
+    "cover-letter": letterReply,
+  })
+  const updates: { step: string; state: string }[] = []
+  const result = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm,
+    locale: "pl",
+    onStep: (update) => updates.push({ step: update.step, state: update.state }),
+  })
+
+  assert.deepEqual(
+    llm.calls.map((call) => call.purpose),
+    ["offer-analysis", "cv-match", "cv-tailor", "cv-bullets"]
+  )
+  assert.deepEqual(
+    updates.filter((update) => update.state !== "running").map((update) => update.step),
+    ["offer", "cv", "match", "tailor", "bullets", "ats", "facts"]
+  )
+  assert.ok(updates.every((update) => update.state === "running" || update.state === "done"))
+  assert.match(tailorCall(llm).user, /untrusted_offer_analysis/, "tailoring builds on the match")
+  assert.match(tailorCall(llm).user, /\[required; met\] PostgreSQL/)
+
+  const match = result.notes.match
+  assert.ok(match?.analysis && match.report && match.bullets)
+  // what the offer does not say is dropped
+  assert.deepEqual(
+    match.analysis.keywords.map((item) => item.term),
+    ["PostgreSQL", "Kubernetes", "Go"]
+  )
+  assert.deepEqual(
+    match.analysis.redFlags.map((flag) => flag.quote),
+    ["fast-paced"]
+  )
+  // evidence the CV does not have does not count
+  assert.deepEqual(
+    match.report.requirements.map((item) => item.status),
+    ["met", "partial", "missing", "missing"]
+  )
+  assert.equal(match.report.requirements[1].evidence, "")
+  assert.deepEqual(match.report.groups.required, { met: 1, partial: 1, total: 2, percent: 75 })
+  assert.equal(match.report.groups.preferred.percent, 0)
+  assert.equal(match.report.score, 53, "75 × 0.7 + 0 × 0.3")
+  assert.equal(match.report.band, "stretch")
+  assert.deepEqual(
+    match.report.strengths.map((item) => item.title),
+    ["Platformy"]
+  )
+
+  // a rewrite that adds a number is refused; the other lands, and the question stays
+  const roles = result.content.sections.find((section) => section.type === "experience")
+  assert.ok(roles?.type === "experience")
+  assert.equal(roles.items[0].bullets[1], bulletsReply.bullets[0].rewrite)
+  assert.doesNotMatch(roles.items[0].bullets[2], /12/)
+  assert.ok(
+    !result.notes.unverified.includes("Zaprojektowałem"),
+    "a bullet's first word is not a name"
+  )
+  assert.equal(match.bullets.rewritten, 1)
+  assert.equal(match.bullets.reverted, 1)
+  assert.deepEqual(
+    match.bullets.questions.map((item) => item.question),
+    ["Ilu zespołów dotyczyły standardy?"]
+  )
+  assert.equal(match.cv.before.weakStart, 2)
+  assert.equal(match.cv.after.weakStart, 1)
+  assert.equal(match.ats.after.total, 2, "the required keywords")
+  assert.equal(match.ats.after.found, 2)
+  assert.equal(match.ats.after.score, 100)
+
+  // stored with the CV, and the letter makes its points from it
+  const stored = await tailorContext(user.id, (await getCv(user.id, result.id))!)
+  assert.equal(stored?.notes?.match?.report?.score, 53)
+  const letterSteps: string[] = []
+  await generateLetterForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm,
+    onStep: (update) => letterSteps.push(`${update.step}:${update.state}`),
+  })
+  const letterCall = llm.calls.find((call) => call.purpose === "cover-letter")
+  assert.match(letterCall?.user ?? "", /Platformy: Oferta szuka osoby od platform\./)
+  assert.deepEqual(letterSteps, ["letter:running", "letter:done", "letterFacts:done"])
+})
+
+test("a step that fails leaves its part empty and tailoring goes on", async () => {
+  const user = await makeUser()
+  const job = await makeJob({ description: "Wymagamy PostgreSQL." })
+  await general(user.id)
+  const updates: string[] = []
+  const result = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    // the analysis and the bullet check get nothing usable; the match is never asked
+    llm: stepLlm({ "cv-tailor": tailorReply() }),
+    onStep: (update) => updates.push(`${update.step}:${update.state}`),
+  })
+  assert.ok(updates.includes("offer:failed"))
+  assert.ok(updates.includes("match:skipped"))
+  assert.ok(updates.includes("bullets:failed"))
+  assert.ok(updates.includes("tailor:done"))
+  assert.equal(result.notes.match?.analysis, null)
+  assert.equal(result.notes.match?.report, null)
+  assert.equal(result.notes.match?.bullets, null)
 })

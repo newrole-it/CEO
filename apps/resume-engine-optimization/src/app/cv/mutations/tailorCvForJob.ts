@@ -1,6 +1,8 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
+import { RunId } from "../run-id"
 import { tailorCvForJob } from "src/server/cv/tailor"
+import { progressReporter } from "src/server/cv/tailor-progress"
 import { requireMember } from "src/app/users/guard"
 import { rethrowCv } from "../guard"
 
@@ -13,12 +15,14 @@ export default resolver.pipe(
       language: z.enum(["pl", "en"]).optional(),
       note: z.string().max(4000).optional(),
       locale: z.enum(["pl", "en"]).optional(),
+      /** Names this run for getTailorProgress */
+      runId: RunId.optional(),
     })
   ),
-  async (input, ctx) => {
+  async ({ runId, ...input }, ctx) => {
     const userId = requireMember(ctx.session)
     try {
-      return await tailorCvForJob({ ...input, userId })
+      return await tailorCvForJob({ ...input, userId, onStep: progressReporter(userId, runId) })
     } catch (error) {
       rethrowCv(error)
     }

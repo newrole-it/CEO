@@ -6,6 +6,13 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ## Unreleased
 
+### Added
+
+- Tailoring a CV to an offer runs in steps you can watch: reading the offer, checking your CV, the match score, tailoring, checking and rewriting bullets, an ATS check and a check of numbers and names, then the cover letter and its check. Each step shows what it found; one that fails is marked and the rest go on without it.
+- Each offer with a tailored CV has a match score page (Match score on the offer's page, /offers/<id>/match). Code counts the score from the offer's requirements: required 70 %, nice to have 30 %, a partial match counts as half, and a requirement only counts as met with a fragment of your CV or profile that shows it. The page also shows each requirement with its evidence, your strengths, what the CV leads with, points for the letter, the offer's keywords with how often each appears before and after tailoring, an ATS checklist, questions about numbers you could add, the offer's warning signs, and what each step did. A CV tailored earlier shows it after Generate again.
+- Profile has LinkedIn and CV (/profile/linkedin): your default CV beside the LinkedIn profile kept here (roles, titles, years, skills, headline, About), and texts for LinkedIn written from the CV for you to paste: a headline, About, role descriptions and skills.
+- The repository carries 22 CV and job-search skills from paramchoudhary/resumeskills in .claude/skills, linked from .agents/skills, so Claude Code finds them in any clone. Tailoring, the match score, the bullet check, the cover letter and the LinkedIn texts follow job-description-analyzer, resume-tailor, resume-ats-optimizer, resume-bullet-writer, resume-quantifier, cover-letter-generator and linkedin-profile-optimizer, under newrole.it's rule that nothing you have not said goes into a CV: where a skill would estimate a number, the app asks you for it instead.
+
 ### Changed
 
 - Save as general also works for a CV for an offer whose general CV was deleted: you pick which general CV to save into, or make it a new general CV, and the two are linked from then on.

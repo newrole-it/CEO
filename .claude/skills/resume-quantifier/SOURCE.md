@@ -1,0 +1,1 @@
+Copied unchanged from https://github.com/paramchoudhary/resumeskills at commit 74ae19e7c62b0516d1c298328e5544976c12da5d (skills/resume-quantifier/SKILL.md; LICENSE from the repository root). MIT licence, see LICENSE.

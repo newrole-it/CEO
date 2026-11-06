@@ -15,51 +15,79 @@ export async function createGuestUser() {
   })
 }
 
-/** Move a guest's searches onto a real account, then remove the guest. */
+/**
+ * Move a guest's data onto a real account, then remove the guest. One transaction: when a step
+ * fails, the guest keeps everything and the account is as it was.
+ */
 export async function claimGuest(guestId: number, userId: number) {
   if (guestId === userId) return
-  const guest = await db.user.findUnique({ where: { id: guestId }, select: { role: true } })
-  if (!guest || guest.role !== "GUEST") return
-  const targetProfile = await db.candidateProfile.findUnique({ where: { userId } })
-  if (!targetProfile) {
-    await db.candidateProfile.updateMany({ where: { userId: guestId }, data: { userId } })
-    await db.profileAuditRun.updateMany({ where: { userId: guestId }, data: { userId } })
-    await db.llmCache.updateMany({ where: { userId: guestId }, data: { userId } })
-  }
-  await db.savedSearch.updateMany({ where: { userId: guestId }, data: { userId } })
-  await db.auditEvent.updateMany({ where: { userId: guestId }, data: { userId } })
-  // The account's own verdict wins. Guest rows for the same offer or company go with the guest.
-  const [judged, watched] = await Promise.all([
-    db.offerFeedback.findMany({ where: { userId }, select: { jobId: true } }),
-    db.watchedCompany.findMany({ where: { userId }, select: { companyId: true } }),
-  ])
-  await db.offerFeedback.updateMany({
-    where: { userId: guestId, jobId: { notIn: judged.map((row) => row.jobId) } },
-    data: { userId },
+  await db.$transaction(async (tx) => {
+    const guest = await tx.user.findUnique({ where: { id: guestId }, select: { role: true } })
+    if (!guest || guest.role !== "GUEST") return
+    const targetProfile = await tx.candidateProfile.findUnique({ where: { userId } })
+    if (!targetProfile) {
+      await tx.candidateProfile.updateMany({ where: { userId: guestId }, data: { userId } })
+      await tx.profileAuditRun.updateMany({ where: { userId: guestId }, data: { userId } })
+      await tx.llmCache.updateMany({ where: { userId: guestId }, data: { userId } })
+    }
+    await tx.savedSearch.updateMany({ where: { userId: guestId }, data: { userId } })
+    await tx.auditEvent.updateMany({ where: { userId: guestId }, data: { userId } })
+    // The account's own verdict wins. Guest rows for the same offer or company go with the guest.
+    const judged = await tx.offerFeedback.findMany({ where: { userId }, select: { jobId: true } })
+    const watched = await tx.watchedCompany.findMany({
+      where: { userId },
+      select: { companyId: true },
+    })
+    await tx.offerFeedback.updateMany({
+      where: { userId: guestId, jobId: { notIn: judged.map((row) => row.jobId) } },
+      data: { userId },
+    })
+    await tx.watchedCompany.updateMany({
+      where: { userId: guestId, companyId: { notIn: watched.map((row) => row.companyId) } },
+      data: { userId },
+    })
+    // The same for an offer both kept: the account's text and notes stay.
+    const kept = await tx.userOffer.findMany({ where: { userId }, select: { jobId: true } })
+    await tx.userOffer.updateMany({
+      where: { userId: guestId, jobId: { notIn: kept.map((row) => row.jobId) } },
+      data: { userId },
+    })
+    // Applications for an offer the account already tracks stay with the guest; the rest move.
+    const tracked = await tx.application.findMany({
+      where: { userId, jobId: { not: null } },
+      select: { jobId: true },
+    })
+    await tx.application.updateMany({
+      where: {
+        userId: guestId,
+        OR: [{ jobId: null }, { jobId: { notIn: tracked.map((row) => row.jobId!) } }],
+      },
+      data: { userId },
+    })
+    // One tailored CV and one letter per offer: where the account has its own, the guest's stays.
+    const tailored = await tx.cvDocument.findMany({
+      where: { userId, jobId: { not: null } },
+      select: { jobId: true, docType: true },
+    })
+    const taken = new Set(tailored.map((doc) => `${doc.docType}:${doc.jobId}`))
+    const guestTailored = await tx.cvDocument.findMany({
+      where: { userId: guestId, jobId: { not: null } },
+      select: { id: true, jobId: true, docType: true },
+    })
+    const clashing = guestTailored
+      .filter((doc) => taken.has(`${doc.docType}:${doc.jobId}`))
+      .map((doc) => doc.id)
+    const hasDefaultCv = await tx.cvDocument.count({ where: { userId, isDefault: true } })
+    if (hasDefaultCv) {
+      await tx.cvDocument.updateMany({ where: { userId: guestId }, data: { isDefault: false } })
+    }
+    await tx.cvDocument.updateMany({
+      where: { userId: guestId, id: { notIn: clashing } },
+      data: { userId },
+    })
+    await tx.answer.updateMany({ where: { userId: guestId }, data: { userId } })
+    await tx.user.delete({ where: { id: guestId } })
   })
-  await db.watchedCompany.updateMany({
-    where: { userId: guestId, companyId: { notIn: watched.map((row) => row.companyId) } },
-    data: { userId },
-  })
-  // Applications for an offer the account already tracks stay with the guest; the rest move.
-  const tracked = await db.application.findMany({
-    where: { userId, jobId: { not: null } },
-    select: { jobId: true },
-  })
-  await db.application.updateMany({
-    where: {
-      userId: guestId,
-      OR: [{ jobId: null }, { jobId: { notIn: tracked.map((row) => row.jobId!) } }],
-    },
-    data: { userId },
-  })
-  const hasDefaultCv = await db.cvDocument.count({ where: { userId, isDefault: true } })
-  if (hasDefaultCv) {
-    await db.cvDocument.updateMany({ where: { userId: guestId }, data: { isDefault: false } })
-  }
-  await db.cvDocument.updateMany({ where: { userId: guestId }, data: { userId } })
-  await db.answer.updateMany({ where: { userId: guestId }, data: { userId } })
-  await db.user.delete({ where: { id: guestId } })
 }
 
 /**

@@ -194,6 +194,21 @@ const tailoringPl: FeatureSection = {
       ],
     },
     {
+      title: "Kroki dopasowania i ocena",
+      items: [
+        {
+          label: "Postęp",
+          body: "Po kliknięciu „Dostosuj CV” widać każdy krok, gdy trwa i co znalazł: analiza oferty (wymagania obowiązkowe, mile widziane i miękkie, słowa kluczowe, sygnały ostrzegawcze), analiza Twojego CV, ocena dopasowania, dopasowanie CV, kontrola i poprawa punktów, kontrola pod ATS, sprawdzenie liczb i nazw, a potem list i jego sprawdzenie. Krok, który się nie uda, jest oznaczony, a dalsze działają bez niego. Kroki opierają się na skillach job-description-analyzer, resume-tailor, resume-ats-optimizer, resume-bullet-writer, resume-quantifier i cover-letter-generator.",
+        },
+        {
+          id: "match-dashboard",
+          label: "Ocena dopasowania",
+          state: "Na stronie oferty z CV i w zakładce „Dopasowanie”",
+          body: "Wynik liczy kod: wymagania obowiązkowe ważą 70%, mile widziane 30%, częściowe spełnienie liczy się w połowie, a wymaganie jest spełnione tylko z fragmentem Twojego CV lub profilu, który to pokazuje. Obok: każde wymaganie z dowodem, mocne strony, na czym oprzeć CV, punkty do listu, słowa kluczowe z liczbą wystąpień, lista kontrolna ATS, pytania o liczby, które możesz dopisać, i to, co mówi oferta. Liczb, których nie podałeś, model nie zgaduje.",
+        },
+      ],
+    },
+    {
       title: "Zakładka „Dopasowanie” w edytorze",
       items: [
         {
@@ -415,6 +430,19 @@ const profilePl: FeatureSection = {
         {
           label: "Zaktualizuj z nowego CV",
           body: "Wczytuje nowy PDF do pól profilu. Nic się nie zapisze, dopóki nie klikniesz „Zapisz zmiany”.",
+        },
+      ],
+    },
+    {
+      title: "LinkedIn i CV (/profile/linkedin)",
+      items: [
+        {
+          label: "Porównanie",
+          body: "Twoje domyślne CV obok profilu LinkedIn zapisanego w newrole.it: które role są na LinkedIn z tą samą nazwą i latami, których brakuje, co jest tylko na LinkedIn, które umiejętności z CV nie są w sekcji Umiejętności, nagłówek i długość sekcji O mnie. Strona mówi, czy profil odczytało rozszerzenie, czy pochodzi z importu.",
+        },
+        {
+          label: "Przygotuj teksty",
+          body: "Model pisze z CV i profilu nagłówek do 220 znaków, sekcję O mnie do 2600 znaków, opisy ról i listę umiejętności, każdy z przyciskiem „Kopiuj”. Fragment z liczbą spoza Twoich danych jest pomijany, a umiejętność, której dane nie pokazują, odpada. Wklejasz to na LinkedIn sam. Według skilla linkedin-profile-optimizer.",
         },
       ],
     },
@@ -844,6 +872,21 @@ const tailoringEn: FeatureSection = {
       ],
     },
     {
+      title: "Tailoring steps and the match score",
+      items: [
+        {
+          label: "Progress",
+          body: "After “Tailor CV” you see each step while it runs and what it found: reading the offer (required, nice-to-have and soft requirements, keywords, warning signs), checking your CV, the match score, tailoring the CV, checking and rewriting bullets, the ATS check, checking numbers and names, then the letter and its check. A step that fails is marked and the next ones run without it. The steps follow the job-description-analyzer, resume-tailor, resume-ats-optimizer, resume-bullet-writer, resume-quantifier and cover-letter-generator skills.",
+        },
+        {
+          id: "match-dashboard",
+          label: "Match score",
+          state: "On an offer's page once it has a CV, and in the “Tailoring” tab",
+          body: "Code counts the score: required items weigh 70%, nice-to-haves 30%, a partial match counts as half, and a requirement only counts as met with a fragment of your CV or profile that shows it. Beside it: each requirement with its evidence, your strengths, what the CV leads with, points for the letter, keywords with how often each appears, an ATS checklist, questions about numbers you could add, and what the offer says. The model doesn't guess numbers you didn't give.",
+        },
+      ],
+    },
+    {
       title: "The “Tailoring” tab in the editor",
       items: [
         {
@@ -1065,6 +1108,19 @@ const profileEn: FeatureSection = {
         {
           label: "Update from a new CV",
           body: "Reads a new PDF into the profile fields. Nothing is saved until you click “Save changes”.",
+        },
+      ],
+    },
+    {
+      title: "LinkedIn and CV (/profile/linkedin)",
+      items: [
+        {
+          label: "Comparison",
+          body: "Your default CV beside the LinkedIn profile kept in newrole.it: which roles are on LinkedIn with the same title and years, which are missing, what is only on LinkedIn, which CV skills the Skills section lacks, the headline and the length of About. The page says whether the extension read the profile or it came from an import.",
+        },
+        {
+          label: "Prepare the texts",
+          body: "The model writes, from the CV and profile, a headline of up to 220 characters, an About of up to 2,600, role descriptions and a list of skills, each with a “Copy” button. A piece with a number your data doesn't have is left out, and a skill your data doesn't show is dropped. You paste them into LinkedIn yourself. After the linkedin-profile-optimizer skill.",
         },
       ],
     },

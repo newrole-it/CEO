@@ -35,7 +35,10 @@ export default async function ApplicantDetailsPage() {
             { href: "/profile", label: t("pr.tabProfile"), current: false },
             { href: "/profile/details", label: t("apl.tab"), current: true },
             ...(signedIn
-              ? [{ href: "/profile/audit", label: t("pr.tabAudit"), current: false }]
+              ? [
+                  { href: "/profile/audit", label: t("pr.tabAudit"), current: false },
+                  { href: "/profile/linkedin", label: t("li.tab"), current: false },
+                ]
               : []),
           ]}
         />

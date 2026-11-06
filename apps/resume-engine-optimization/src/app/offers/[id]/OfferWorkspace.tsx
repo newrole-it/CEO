@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Trash2,
+  Gauge,
 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button, ButtonLink } from "@newrole/ui/Button"
@@ -152,6 +153,11 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
           {offer.letterId ? (
             <ButtonLink href={`/cv/${offer.letterId}`} variant="outline" icon={<Mail />}>
               {t("ow.docs.openLetter")}
+            </ButtonLink>
+          ) : null}
+          {offer.cvId ? (
+            <ButtonLink href={`/offers/${offer.jobId}/match`} variant="outline" icon={<Gauge />}>
+              {t("ow.docs.match")}
             </ButtonLink>
           ) : null}
         </div>

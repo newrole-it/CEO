@@ -1,9 +1,12 @@
-import { fold } from "@newrole/matching/text"
 import { z } from "zod"
 import { defaultConsent, type CvLocale } from "./blank"
+import { MatchNotes } from "./match"
 import { inlineToText, sanitizeInline } from "./sanitize"
 import { parseCvContent, type CvContent, type CvSection } from "./schema"
+import { hasTerm, matchable, TECH_SHAPED } from "./terms"
 import { cvPlainText } from "./text"
+
+export { mentionsTerm } from "./terms"
 
 /**
  * Tailoring a CV to one offer. The model never writes the CV: it proposes wording and order for
@@ -81,6 +84,12 @@ export const TailorNotes = z.object({
   usedJobText: z.boolean(),
   /** How much of the offer the model read. Documents written before this was recorded have none. */
   offerText: z.object({ origin: OfferTextOrigin, chars: z.number(), note: z.boolean() }).optional(),
+  /**
+   * The offer's analysis, the match with it and the checks before and after (./match), for the
+   * match dashboard. Documents tailored before this have none; one that no longer parses is
+   * dropped rather than losing the other notes.
+   */
+  match: MatchNotes.optional().catch(undefined),
 })
 export type TailorNotes = z.infer<typeof TailorNotes>
 
@@ -138,8 +147,6 @@ function linksIn(content: CvContent): Set<string> {
   return new Set([...json.matchAll(/<a href="([^"]*)">/g)].map((match) => match[1]))
 }
 
-const TECH_SHAPED =
-  /^(?:[^\s]*[A-ZĄĆĘŁŃÓŚŹŻ][^\s]*[A-ZĄĆĘŁŃÓŚŹŻ][^\s]*|[a-z]+[A-Z]\S*|\S*\d\S*[A-Za-z]\S*|[A-Za-z]+\d\S*|\S+[#+]+|\w+\.\w+)$/
 const NAME_SHAPED = /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,}$/
 
 /**
@@ -189,42 +196,6 @@ export function unverifiedNumbers(written: string[], evidence: string): string[]
 
 const MAX_KEYWORDS = 15
 
-/** Text as words for matching: folded, punctuation as spaces, "C++" and "C#" kept, padded. */
-const matchable = (text: string) =>
-  ` ${fold(text)
-    .replace(/[^\p{L}\p{N}+#]+/gu, " ")
-    .trim()} `
-
-/**
- * One word of a term in matchable text. A tool-shaped or short word must be there whole; a word of
- * four or five letters may gain an ending of up to three ("React" in "Reactem"), and a longer one
- * counts by its stem ("zarządzanie" in "zarządzałem").
- */
-function hasWord(text: string, raw: string): boolean {
-  const word = matchable(raw).trim()
-  if (!word) return true
-  if (TECH_SHAPED.test(raw) || !/^\p{L}+$/u.test(word) || word.length <= 3)
-    return text.includes(` ${word} `)
-  if (word.length <= 5) return new RegExp(` ${word}\\p{L}{0,3} `, "u").test(text)
-  return text.includes(` ${word.slice(0, Math.max(5, word.length - 3))}`)
-}
-
-function hasTerm(text: string, term: string): boolean {
-  const words = term
-    .split(/\s+/)
-    .map((word) => word.replace(/^["'„“(]+|["'”).,;:!?]+$/g, ""))
-    .filter(Boolean)
-  return words.length > 0 && words.every((word) => hasWord(text, word))
-}
-
-/**
- * True when the text has every word of the term, by stem where Polish changes endings, so
- * "zarządzanie zespołem" is found in "zarządzałem zespołem". A hint, not a verdict.
- */
-export function mentionsTerm(text: string, term: string): boolean {
-  return hasTerm(matchable(text), term)
-}
-
 /**
  * The offer's key terms the model listed, checked by code: whether the tailored CV has each one,
  * and whether the person's data backs it, by the term itself or by the words the model quoted as
@@ -260,6 +231,25 @@ export function keywordNotes(
     if (notes.length === MAX_KEYWORDS) break
   }
   return { keywords: notes, unsupported }
+}
+
+/**
+ * Keyword statuses after a later step (the bullet check) changed the CV: a term it no longer
+ * shows is unplaced, one the person's data backs and it now shows is added.
+ */
+export function refreshKeywordNotes(
+  keywords: KeywordNote[] | undefined,
+  content: CvContent
+): KeywordNote[] | undefined {
+  if (!keywords) return keywords
+  const text = matchable(cvPlainText(content))
+  return keywords.map((note): KeywordNote => {
+    const inCv = hasTerm(text, note.term)
+    if (inCv && note.status === "unplaced") return { ...note, status: "added" }
+    if (!inCv && (note.status === "kept" || note.status === "added"))
+      return { ...note, status: "unplaced" }
+    return note
+  })
 }
 
 /* ---------------------------------------------------------------- merge */
@@ -520,5 +510,58 @@ export function applySectionRewrite(
     section: result,
     unverified: unverifiedTerms(writer.written, opts.evidence).slice(0, 12),
     reverted: writer.reverted(),
+  }
+}
+
+/* ---------------------------------------------------------------- bullets */
+
+/** One bullet of a role, rewritten: `index` counts the role's bullets from 0. */
+export type BulletRewrite = { item: string; index: number; text: string }
+
+export type BulletsApplied = {
+  content: CvContent
+  /** Bullets whose text changed */
+  applied: number
+  /** Rewrites refused because they added a number the person's data does not have */
+  reverted: number
+  /** Names in the new text that the person's data does not have */
+  unverified: string[]
+}
+
+/**
+ * Rewrites of single bullets (the bullet check after tailoring), under the rules of tailoring:
+ * a rewrite that adds a number nothing backs, or runs past the limit, leaves its bullet as it was,
+ * and no bullet is added, removed or moved. Null when the result is not a valid CV.
+ */
+export function applyBulletRewrites(
+  base: CvContent,
+  rewrites: BulletRewrite[],
+  opts: { evidence: string }
+): BulletsApplied | null {
+  const writer = createWriter(base, opts.evidence)
+  const wanted = new Map(rewrites.map((rewrite) => [`${rewrite.item}:${rewrite.index}`, rewrite]))
+  let applied = 0
+  const sections = base.sections.map((section) => {
+    if (section.type !== "experience" || section.hidden) return section
+    const items = section.items.map((item) => {
+      const bullets = item.bullets.map((bullet, index) => {
+        const rewrite = wanted.get(`${item.id}:${index}`)
+        if (!rewrite) return bullet
+        const next = writer.rich(rewrite.text, MAX.bullet)
+        if (!next || inlineToText(next).trim() === inlineToText(bullet).trim()) return bullet
+        applied += 1
+        return next
+      })
+      return { ...item, bullets }
+    })
+    return { ...section, items }
+  })
+  const content = parseCvContent({ ...base, sections })
+  if (!content) return null
+  return {
+    content,
+    applied,
+    reverted: writer.reverted(),
+    unverified: unverifiedTerms(writer.written, opts.evidence).slice(0, 12),
   }
 }

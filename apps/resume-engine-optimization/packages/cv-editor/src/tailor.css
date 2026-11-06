@@ -393,6 +393,68 @@
   width: 16px;
   height: 16px;
 }
+/* the run's steps while it works (TailorStart) */
+.cvt-run__now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+}
+.cvt-run__now svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.cvt-run {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cvt-run__step {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+}
+.cvt-run__step > svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+.cvt-run__step div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.cvt-run__step strong {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.cvt-run__step[data-state="running"] {
+  background: var(--primary-soft);
+}
+.cvt-run__step[data-state="running"] strong,
+.cvt-run__step[data-state="done"] strong {
+  color: var(--text);
+}
+.cvt-run__step[data-state="running"] > svg {
+  color: var(--primary);
+}
+.cvt-run__step[data-state="done"] > svg {
+  color: var(--success);
+}
+.cvt-run__step[data-state="failed"] > svg {
+  color: var(--warning);
+}
+.cvt-run__step[data-state="waiting"] > svg {
+  color: var(--border-strong);
+}
 .cvt-notice {
   margin: 0;
   padding: 12px;

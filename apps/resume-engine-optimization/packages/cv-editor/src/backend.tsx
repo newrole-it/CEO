@@ -4,6 +4,7 @@ import { createContext, useContext } from "react"
 import type { CvAudit } from "@newrole/cv-core/audit"
 import type { CvLocale } from "@newrole/cv-core/blank"
 import type { CvContent, CvSection } from "@newrole/cv-core/schema"
+import type { TailorProgress } from "@newrole/cv-core/progress"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type {
   CvVersionView,
@@ -65,8 +66,21 @@ export type CvEditorBackend = {
       note?: string
       /** The language of the notes for the person */
       locale?: CvLocale
+      /** Names the run, so `progress` can follow its steps */
+      runId?: string
     }) => Promise<TailorResult>
-    letter: (input: { jobId: string; language?: CvLocale; note?: string }) => Promise<TailorResult>
+    letter: (input: {
+      jobId: string
+      language?: CvLocale
+      note?: string
+      /** The CV's run when the letter follows it, so one list shows both */
+      runId?: string
+    }) => Promise<TailorResult>
+    /**
+     * The steps a run has reported so far (@newrole/cv-core/progress); null when the server has
+     * not seen it. Without it TailorStart shows one line while it waits.
+     */
+    progress?: (runId: string) => Promise<TailorProgress | null>
   }
   /**
    * "Popraw z AI" on one section of a CV; without it the editor offers none. `preview` stores
@@ -107,6 +121,8 @@ export type CvEditorBackend = {
     job: (jobId: string) => string | null
     /** A page that explains every feature; "How to edit" links to it when it is set */
     guide?: string
+    /** The match dashboard of an offer; TailorStart opens it when done, the review links to it */
+    match?: (jobId: string) => string
   }
 }
 

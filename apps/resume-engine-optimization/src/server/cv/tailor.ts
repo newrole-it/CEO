@@ -10,16 +10,25 @@ import {
   type PastLetter,
   type TailorOffer,
 } from "@newrole/cv-engine/tailor"
+import { analyzeOffer, checkBullets, matchCv, type MatchOffer } from "@newrole/cv-engine/match"
 import type { LlmClient } from "@newrole/llm/common"
+import { atsReport, checkCv } from "@newrole/cv-core/ats"
 import { cvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
-import { parseCvContent, type CvContent } from "@newrole/cv-core/schema"
+import type { MatchNotes, MatchReport } from "@newrole/cv-core/match"
+import type { StepReporter, StepUpdate, TailorStep } from "@newrole/cv-core/progress"
+import { letterSection, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
+import { inlineToText } from "@newrole/cv-core/sanitize"
 import {
   OFFER_TEXT_LIMIT,
   parseTailorNotes,
+  refreshKeywordNotes,
+  unverifiedNumbers,
+  unverifiedTerms,
   type OfferTextOrigin,
   type TailorNotes,
 } from "@newrole/cv-core/tailor"
+import { cvPlainText } from "@newrole/cv-core/text"
 import type { TailorContext, TailorResult } from "@newrole/cv-core/views"
 import {
   indexedOfferText,
@@ -429,8 +438,59 @@ function writingClient(llm: LlmClient | null | undefined): LlmClient {
 }
 
 /**
- * "Dostosuj CV". `llm` is injectable for tests. Throws a CvError; nothing is stored when the model
- * fails. Calling it again for the same offer adds a new version to the same document.
+ * The steps of one run as they happen: each is reported running, then done with what it found,
+ * skipped when there was nothing to do, or failed. A step that throws is logged and counts as
+ * failed; the run goes on without it.
+ */
+function stepLog(onStep: StepReporter | undefined) {
+  const log = new Map<TailorStep, StepUpdate>()
+  const report = (update: StepUpdate) => {
+    log.set(update.step, update)
+    onStep?.(update)
+  }
+  async function run<T>(
+    step: TailorStep,
+    work: (() => Promise<T | null> | T | null) | null,
+    detail: (result: T) => Record<string, number>
+  ): Promise<T | null> {
+    if (!work) {
+      report({ step, state: "skipped" })
+      return null
+    }
+    report({ step, state: "running" })
+    try {
+      const result = await work()
+      report(
+        result == null ? { step, state: "failed" } : { step, state: "done", detail: detail(result) }
+      )
+      return result
+    } catch (error) {
+      console.error(`tailoring step ${step} failed`, error instanceof Error ? error.message : error)
+      report({ step, state: "failed" })
+      return null
+    }
+  }
+  return { run, report, steps: () => [...log.values()] }
+}
+
+/**
+ * Every line of the CV's own text, for checking the names and numbers of a finished CV. A bullet
+ * loses its "- ", so its first word reads as the start of a sentence, not as a name.
+ */
+function cvLines(content: CvContent): string[] {
+  return cvPlainText(content)
+    .split("\n")
+    .map((line) => line.replace(/^-\s+/, ""))
+    .filter((line) => line.trim())
+}
+
+/**
+ * "Dostosuj CV": the steps of @newrole/cv-core/progress in order. The offer is read and the
+ * person's data checked against it, the CV is tailored with what that found, its bullets are
+ * checked, and code checks keywords, layout, numbers and names of the result. Only tailoring
+ * itself must succeed; any other step that fails leaves its part of the notes empty. `llm` is
+ * injectable for tests. Throws a CvError; nothing is stored when tailoring fails. Calling it again
+ * for the same offer adds a new version to the same document.
  */
 export async function tailorCvForJob(input: {
   userId: number
@@ -438,10 +498,12 @@ export async function tailorCvForJob(input: {
   baseCvId?: string
   language?: CvLanguage
   note?: string
-  /** The language of the notes for the person */
+  /** The language of the notes for the person; the CV's language when not given */
   locale?: CvLanguage
   llm?: LlmClient | null
   http?: HttpClient
+  /** Told about each step as it starts and ends (src/server/cv/tailor-progress.ts) */
+  onStep?: StepReporter
 }): Promise<TailorResult> {
   const { userId, jobId, note } = input
   const llm = writingClient(input.llm)
@@ -454,21 +516,179 @@ export async function tailorCvForJob(input: {
     existing,
     offer: job.language,
   })
-  const attempt = await attemptNumber(existing?.id)
+  const locale = input.locale ?? language
+  const [attempt, context] = await Promise.all([
+    attemptNumber(existing?.id),
+    candidateContext(userId),
+  ])
+  const evidence = `${cvPlainText(base.content)}\n${context}`
+  const offer: MatchOffer = { company: job.company, title: job.title, text: job.text }
+  const steps = stepLog(input.onStep)
 
-  const generated = await tailorCv({
-    llm,
-    base,
-    offer: job,
-    language,
-    locale: input.locale,
-    context: await candidateContext(userId),
-    note,
-    attempt,
-    userId,
+  const analysis = await steps.run(
+    "offer",
+    job.text || note?.trim() ? () => analyzeOffer({ llm, offer, note, locale, userId }) : null,
+    (result) => ({
+      required: result.requirements.filter((item) => item.importance === "required").length,
+      preferred: result.requirements.filter((item) => item.importance === "preferred").length,
+      soft: result.requirements.filter((item) => item.importance === "soft").length,
+      keywords: result.keywords.length,
+      redFlags: result.redFlags.length,
+    })
+  )
+
+  const before =
+    (await steps.run(
+      "cv",
+      () => checkCv(base.content),
+      (check) => ({
+        bullets: check.bullets,
+        withNumber: check.withNumber,
+        weakStart: check.weakStart,
+        long: check.long,
+      })
+    )) ?? checkCv(base.content)
+
+  const match: MatchReport | null = await steps.run(
+    "match",
+    analysis
+      ? () =>
+          matchCv({
+            llm,
+            analysis,
+            offer,
+            cv: base.content,
+            context,
+            evidence,
+            locale,
+            userId,
+          })
+      : null,
+    (report) => ({
+      ...(report.score == null ? {} : { score: report.score }),
+      met: report.groups.required.met,
+      partial: report.groups.required.partial,
+      total: report.groups.required.total,
+      critical: report.critical,
+    })
+  )
+
+  steps.report({ step: "tailor", state: "running" })
+  let generated: Awaited<ReturnType<typeof tailorCv>>
+  try {
+    generated = await tailorCv({
+      llm,
+      base,
+      offer: job,
+      language,
+      locale,
+      context,
+      note,
+      attempt,
+      userId,
+      analysis,
+      match,
+    })
+  } catch (error) {
+    steps.report({ step: "tailor", state: "failed" })
+    throw error
+  }
+  if (!generated) {
+    steps.report({ step: "tailor", state: "failed" })
+    throw new CvError("llm-failed", "The model did not return a usable CV.")
+  }
+  const keywordsIn = (generated.notes.keywords ?? []).filter(
+    (item) => item.status === "kept" || item.status === "added"
+  ).length
+  steps.report({
+    step: "tailor",
+    state: "done",
+    detail: {
+      changes: generated.notes.changes.length,
+      keywordsIn,
+      keywords: generated.notes.keywords?.length ?? 0,
+      reverted: generated.notes.reverted,
+    },
   })
-  if (!generated) throw new CvError("llm-failed", "The model did not return a usable CV.")
-  const { content, notes } = generated
+
+  const bullets = await steps.run(
+    "bullets",
+    () =>
+      checkBullets({
+        llm,
+        cv: generated.content,
+        language,
+        locale,
+        analysis,
+        offer,
+        context,
+        evidence,
+        userId,
+      }),
+    (result) => ({
+      checked: result.report.checked,
+      flagged: result.report.flagged,
+      rewritten: result.report.rewritten,
+      questions: result.report.questions.length,
+    })
+  )
+  const content = bullets?.content ?? generated.content
+
+  // the offer's keywords when it was analysed, else the ones tailoring listed
+  const keywords = analysis
+    ? analysis.keywords.map((item) => ({ term: item.term, importance: item.importance }))
+    : (generated.notes.keywords ?? []).map((item) => ({
+        term: item.term,
+        importance: "preferred" as const,
+      }))
+  const ats = (await steps.run(
+    "ats",
+    () => ({ before: atsReport(base.content, keywords), after: atsReport(content, keywords) }),
+    (result) => ({
+      ...(result.before.score == null ? {} : { before: result.before.score }),
+      ...(result.after.score == null ? {} : { after: result.after.score }),
+      found: result.after.found,
+      total: result.after.total,
+      oddTitles: result.after.check.oddTitles.length,
+    })
+  )) ?? { before: atsReport(base.content, keywords), after: atsReport(content, keywords) }
+
+  const translated = language !== base.language
+  const facts = (await steps.run(
+    "facts",
+    () => {
+      const lines = cvLines(content)
+      const found = new Map(
+        [
+          ...generated.notes.unverified,
+          ...(bullets?.unverified ?? []),
+          ...unverifiedTerms(lines, evidence, { translated }),
+          ...unverifiedNumbers(lines, evidence),
+        ].map((term) => [term.toLowerCase(), term])
+      )
+      return {
+        unverified: [...found.values()].slice(0, 12),
+        reverted: generated.notes.reverted + (bullets?.report.reverted ?? 0),
+      }
+    },
+    (result) => ({ unverified: result.unverified.length, reverted: result.reverted })
+  )) ?? { unverified: generated.notes.unverified, reverted: generated.notes.reverted }
+
+  const matchNotes: MatchNotes = {
+    analysis,
+    report: match,
+    cv: { before, after: ats.after.check },
+    ats,
+    bullets: bullets?.report ?? null,
+    steps: steps.steps(),
+  }
+  const notes: TailorNotes = {
+    ...generated.notes,
+    unverified: facts.unverified,
+    reverted: facts.reverted,
+    keywords: refreshKeywordNotes(generated.notes.keywords, content),
+    match: matchNotes,
+  }
   const { id, updatedAt } = await storeGenerated({
     userId,
     job,
@@ -484,6 +704,15 @@ export async function tailorCvForJob(input: {
     data: { cvDocumentId: id },
   })
   return { id, content, language, notes, updatedAt }
+}
+
+/** The match with the offer kept with a tailored CV, for the letter that goes with it. */
+async function matchOfCv(cvId: string): Promise<MatchReport | null> {
+  const row = await db.cvDocument.findUnique({
+    where: { id: cvId },
+    select: { tailorNotes: true },
+  })
+  return parseTailorNotes(row?.tailorNotes)?.match?.report ?? null
 }
 
 /**
@@ -516,9 +745,12 @@ export async function generateLetterForJob(input: {
   pageText?: string
   llm?: LlmClient | null
   http?: HttpClient
+  /** Told about the letter's steps as they start and end (src/server/cv/tailor-progress.ts) */
+  onStep?: StepReporter
 }): Promise<TailorResult> {
   const { userId, jobId, note } = input
   const llm = writingClient(input.llm)
+  const steps = stepLog(input.onStep)
   const loaded = await loadTailorJob(jobId, { http: input.http }, userId)
   if (!loaded) throw new CvError("job-not-found", "This offer is not in the index.")
   const job = withPageText(loaded, input.pageText)
@@ -537,27 +769,51 @@ export async function generateLetterForJob(input: {
   })
   const general =
     input.general !== undefined ? input.general : await generalLetterForJob(userId, jobId)
-  const [attempt, context, pastLetters] = await Promise.all([
+  const [attempt, context, pastLetters, match] = await Promise.all([
     attemptNumber(existing?.id),
     candidateContext(userId),
     input.pastLetters ?? recentLetters(userId, { exceptJobId: jobId, exceptId: general?.id }),
+    tailoredCv ? matchOfCv(tailoredCv.id) : null,
   ])
 
-  const generated = await writeCoverLetter({
-    llm,
-    cv: source,
-    offer: job,
-    language,
-    context,
-    note,
-    pastLetters,
-    general,
-    maxChars: input.maxChars,
-    attempt,
-    userId,
-  })
-  if (!generated) throw new CvError("llm-failed", "The model did not return a usable letter.")
+  steps.report({ step: "letter", state: "running" })
+  let generated: Awaited<ReturnType<typeof writeCoverLetter>>
+  try {
+    generated = await writeCoverLetter({
+      llm,
+      cv: source,
+      offer: job,
+      language,
+      context,
+      note,
+      pastLetters,
+      general,
+      maxChars: input.maxChars,
+      attempt,
+      userId,
+      match,
+    })
+  } catch (error) {
+    steps.report({ step: "letter", state: "failed" })
+    throw error
+  }
+  if (!generated) {
+    steps.report({ step: "letter", state: "failed" })
+    throw new CvError("llm-failed", "The model did not return a usable letter.")
+  }
   const { content, notes } = generated
+  const words = (letterSection(content)?.paragraphs ?? [])
+    .map((paragraph) => inlineToText(paragraph))
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean).length
+  steps.report({ step: "letter", state: "done", detail: { words } })
+  // writeCoverLetter has checked every number and name of the reply against the person's data
+  steps.report({
+    step: "letterFacts",
+    state: "done",
+    detail: { unverified: notes.unverified.length },
+  })
   const { id, updatedAt } = await storeGenerated({
     userId,
     job,

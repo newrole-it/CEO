@@ -16,6 +16,7 @@ import { Badge, Field, Skeleton } from "@newrole/ui/primitives"
 import { relativeTime } from "@newrole/ui/time"
 import { compactDiff, diffCv, hasChanges } from "@newrole/cv-core/diff"
 import type { CvContent } from "@newrole/cv-core/schema"
+import type { MatchNotes } from "@newrole/cv-core/match"
 import { readOnlyExcerpt, type KeywordNote, type TailorNotes } from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorContext } from "@newrole/cv-core/views"
 import { useCvBackend } from "./backend"
@@ -404,6 +405,30 @@ function KeywordList({ keywords }: { keywords: KeywordNote[] }) {
   )
 }
 
+/** The match with the offer in short, and the way to its dashboard. */
+function MatchSummary({ match, jobId }: { match: MatchNotes; jobId: string | null }) {
+  const { t } = useCvCopy()
+  const backend = useCvBackend()
+  const href = jobId && backend.routes.match ? backend.routes.match(jobId) : null
+  const score = match.report?.score
+  const ats = match.ats.after
+  const questions = match.bullets?.questions.length ?? 0
+  if (score == null && !ats.total && !questions && !href) return null
+  return (
+    <section className="cvt-note">
+      <h3>{t("tl.r.match")}</h3>
+      {score != null ? <p>{t("tl.r.matchScore", { n: score })}</p> : null}
+      {ats.total ? <p>{t("tl.r.matchAts", { found: ats.found, total: ats.total })}</p> : null}
+      {questions ? <p>{t("tl.r.matchQuestions", { n: questions })}</p> : null}
+      {href ? (
+        <ButtonLink href={href} size="sm" variant="secondary">
+          {t("tl.r.matchOpen")}
+        </ButtonLink>
+      ) : null}
+    </section>
+  )
+}
+
 function ReviewTab({
   doc,
   isLetter,
@@ -484,6 +509,7 @@ function ReviewTab({
           <p>{t("tl.r.reverted", { n: notes.reverted })}</p>
         </section>
       ) : null}
+      {!isLetter && notes?.match ? <MatchSummary match={notes.match} jobId={jobId} /> : null}
       {notes?.keywords?.length ? <KeywordList keywords={notes.keywords} /> : null}
       {notes?.changes.length ? (
         <section className="cvt-note">

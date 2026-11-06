@@ -3,13 +3,21 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useId, useState } from "react"
-import { Check, FileText, LoaderCircle, Sparkles } from "lucide-react"
+import { Check, Circle, CircleAlert, FileText, LoaderCircle, Minus, Sparkles } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
 import { CompanyInitial, Field } from "@newrole/ui/primitives"
+import {
+  LETTER_STEPS,
+  TAILOR_STEPS,
+  type StepState,
+  type StepUpdate,
+  type TailorStep,
+} from "@newrole/cv-core/progress"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./backend"
 import { useCvCopy } from "./locale"
+import { STATE_KEY, STEP_KEYS, stepLine } from "./steps"
 import { tailorErrorKey } from "./tailor-errors"
 
 export type StartJob = {
@@ -24,6 +32,24 @@ export type StartJob = {
 export type StartCv = { id: string; title: string; isDefault: boolean; hasLetter?: boolean }
 
 type Phase = "idle" | "cv" | "letter"
+
+/** How often the page asks for the run's steps while it waits. */
+const POLL_MS = 1000
+
+function StepIcon({ state }: { state: StepState | "waiting" }) {
+  if (state === "running") return <LoaderCircle className="spin" aria-hidden />
+  if (state === "done") return <Check aria-hidden />
+  if (state === "failed") return <CircleAlert aria-hidden />
+  if (state === "skipped") return <Minus aria-hidden />
+  return <Circle aria-hidden />
+}
+
+/** A run's id, unique enough to follow one run of one person. */
+function newRunId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+}
 
 type StartProps = {
   job: StartJob
@@ -59,6 +85,8 @@ function Start({ job, cvs, hasLetter }: StartProps) {
   const [note, setNote] = useState("")
   const [phase, setPhase] = useState<Phase>("idle")
   const [error, setError] = useState<string | null>(null)
+  const [runId, setRunId] = useState<string | null>(null)
+  const [steps, setSteps] = useState<StepUpdate[]>([])
   const [offerText, setOfferText] = useState<{ origin: OfferTextOrigin; chars: number } | null>(
     job.withheld ? { origin: "withheld", chars: 0 } : null
   )
@@ -78,9 +106,29 @@ function Start({ job, cvs, hasLetter }: StartProps) {
     }
   }, [job.id, job.withheld, backend])
 
+  // the run's steps, read while its request runs; a failed read waits for the next one
+  useEffect(() => {
+    const progress = backend.tailor.progress
+    if (!runId || !progress) return
+    let live = true
+    const read = () =>
+      progress(runId)
+        .then((found) => live && found && setSteps(found.steps))
+        .catch(() => undefined)
+    void read()
+    const timer = window.setInterval(read, POLL_MS)
+    return () => {
+      live = false
+      window.clearInterval(timer)
+    }
+  }, [runId, backend])
+
   async function start() {
     setError(null)
+    setSteps([])
     setPhase("cv")
+    const run = newRunId()
+    setRunId(run)
     const trimmed = note.trim() || undefined
     try {
       const cv = await backend.tailor.cv({
@@ -89,22 +137,26 @@ function Start({ job, cvs, hasLetter }: StartProps) {
         language,
         note: trimmed,
         locale,
+        runId: run,
       })
       if (!cv) throw new Error("no result")
       if (withLetter) {
         setPhase("letter")
         try {
-          await backend.tailor.letter({ jobId: job.id, language, note: trimmed })
+          await backend.tailor.letter({ jobId: job.id, language, note: trimmed, runId: run })
         } catch {
           toast.show({ message: t("tl.err.letter"), tone: "danger", duration: 8000 })
         }
       }
-      router.replace(backend.routes.document(cv.id))
+      router.replace(backend.routes.match?.(job.id) ?? backend.routes.document(cv.id))
     } catch (failure) {
       setError(t(tailorErrorKey(failure)))
       setPhase("idle")
+      setRunId(null)
     }
   }
+
+  const shownSteps: TailorStep[] = [...TAILOR_STEPS, ...(withLetter ? LETTER_STEPS : [])]
 
   const busy = phase !== "idle"
   const jobPage = backend.routes.job(job.id)
@@ -119,7 +171,38 @@ function Start({ job, cvs, hasLetter }: StartProps) {
       </div>
       <p>{t("tl.start.lead")}</p>
 
-      {busy ? (
+      {busy && backend.tailor.progress ? (
+        <div className="stack-sm">
+          <p className="cvt-run__now" aria-live="polite">
+            <LoaderCircle className="spin" aria-hidden />
+            {t(phase === "letter" ? "tl.progress.letter" : "tl.progress.cv")}
+          </p>
+          <ol className="cvt-run" aria-label={t("tl.progress.label")}>
+            {shownSteps.map((step) => {
+              const update = steps.find((entry) => entry.step === step)
+              const state = update?.state ?? "waiting"
+              return (
+                <li
+                  key={step}
+                  className="cvt-run__step"
+                  data-state={state}
+                  aria-current={state === "running" ? "step" : undefined}
+                >
+                  <StepIcon state={state} />
+                  <div>
+                    <strong>
+                      {t(STEP_KEYS[step].label)}
+                      <span className="sr-only">: {t(STATE_KEY[state])}</span>
+                    </strong>
+                    <span className="t-sm muted">{stepLine(t, update, step)}</span>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+          <p className="t-sm muted">{t("tl.progress.hint")}</p>
+        </div>
+      ) : busy ? (
         <div aria-live="polite" className="stack-sm">
           <ol className="cvt-steps">
             <li aria-current={phase === "cv" ? "step" : undefined}>
@@ -141,7 +224,7 @@ function Start({ job, cvs, hasLetter }: StartProps) {
               </li>
             ) : null}
           </ol>
-          <p className="t-sm muted">{t("tl.progress.hint")}</p>
+          <p className="t-sm muted">{t("tl.progress.wait")}</p>
         </div>
       ) : (
         <form

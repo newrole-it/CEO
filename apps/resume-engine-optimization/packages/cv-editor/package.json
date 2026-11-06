@@ -20,7 +20,8 @@
     "./tailor-errors": "./src/tailor-errors.ts",
     "./useCvAudit": "./src/useCvAudit.ts",
     "./useCvDocument": "./src/useCvDocument.ts",
-    "./usePagination": "./src/usePagination.ts"
+    "./usePagination": "./src/usePagination.ts",
+    "./steps": "./src/steps.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p ."

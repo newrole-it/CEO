@@ -13,3 +13,7 @@ matching
 sources
 apps/resume-engine-optimization/config/seed-companies.json
 apps/resume-engine-optimization/config/seed-companies-pl.json
+
+# skills copied unchanged from other repositories (each has its SOURCE.md); newrole is ours
+.claude/skills/*/
+!.claude/skills/newrole/
