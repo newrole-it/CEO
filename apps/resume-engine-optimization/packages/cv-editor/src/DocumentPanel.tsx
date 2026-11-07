@@ -14,12 +14,14 @@ import { Button, ButtonLink } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"
 import { Badge, Field, Skeleton } from "@newrole/ui/primitives"
 import { relativeTime } from "@newrole/ui/time"
+import { consentCompanyOf } from "@newrole/cv-core/blank"
 import { compactDiff, diffCv, hasChanges } from "@newrole/cv-core/diff"
 import type { CvContent } from "@newrole/cv-core/schema"
 import type { MatchNotes } from "@newrole/cv-core/match"
 import { readOnlyExcerpt, type KeywordNote, type TailorNotes } from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorContext } from "@newrole/cv-core/views"
 import { useCvBackend } from "./backend"
+import { ConsentCompany, consentCompany, type ConsentChoice } from "./ConsentCompany"
 import { DiffRows } from "./DiffRows"
 import { ImproveTab } from "./ImproveTab"
 import { useCvCopy } from "./locale"
@@ -124,6 +126,7 @@ export function DocumentPanel({
             doc={doc}
             isLetter={isLetter}
             jobId={tailor.job.id}
+            company={tailor.job.company}
             notes={notes}
             onNotes={onNotes}
           />
@@ -433,12 +436,15 @@ function ReviewTab({
   doc,
   isLetter,
   jobId,
+  company,
   notes,
   onNotes,
 }: {
   doc: PanelDoc
   isLetter: boolean
   jobId: string | null
+  /** The offer's company, for the consent clause */
+  company: string
   notes: TailorNotes | null
   onNotes: (notes: TailorNotes) => void
 }) {
@@ -448,6 +454,11 @@ function ReviewTab({
   const noteId = useId()
   const [note, setNote] = useState("")
   const [busy, setBusy] = useState(false)
+  // as the clause has it now: a company named there is kept unless the person turns it off
+  const [consent, setConsent] = useState<ConsentChoice>(() => {
+    const named = consentCompanyOf(doc.content.consent)
+    return { on: Boolean(named), company: named ?? company }
+  })
 
   async function generateAgain() {
     if (!jobId) return
@@ -457,7 +468,7 @@ function ReviewTab({
       const input = { jobId, note: note.trim() || undefined, language: doc.language }
       const result = isLetter
         ? await backend.tailor.letter(input)
-        : await backend.tailor.cv({ ...input, locale })
+        : await backend.tailor.cv({ ...input, locale, consentCompany: consentCompany(consent) })
       if (!result) throw new Error("no result")
       doc.replace({ content: result.content, language: result.language }, result.updatedAt)
       onNotes(result.notes)
@@ -553,6 +564,9 @@ function ReviewTab({
               onChange={(event) => setNote(event.target.value)}
             />
           </Field>
+          {isLetter ? null : (
+            <ConsentCompany value={consent} onChange={setConsent} language={doc.language} />
+          )}
           <Button type="submit" size="sm" variant="secondary" icon={<Sparkles />} loading={busy}>
             {t(isLetter ? "tl.r.againLetter" : "tl.r.again")}
           </Button>

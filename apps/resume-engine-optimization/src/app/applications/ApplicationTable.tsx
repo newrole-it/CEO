@@ -1,6 +1,7 @@
 "use client"
 
-import { ArrowDownUp, ArrowDown, ArrowUp, ExternalLink } from "lucide-react"
+import Link from "next/link"
+import { ArrowDownUp, ArrowDown, ArrowUp, ExternalLink, Gauge } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
 import { CompanyInitial } from "@newrole/ui/primitives"
@@ -14,6 +15,7 @@ import {
 } from "src/shared/applications"
 import { dayLabel, daysLabel, daysSince, isOverdue, longDate, sourceKey, type AppRow } from "./rows"
 import { StatusSelect } from "./StatusSelect"
+import type { MatchScore } from "src/server/cv/match-rounds"
 
 export type SortKey =
   | "company"
@@ -96,6 +98,22 @@ function OfferMeta({ row }: { row: AppRow }) {
   return meta ? <span className="apps-sub">{meta}</span> : null
 }
 
+/** The match score of the CV written for the offer, linking to its dashboard. */
+function MatchLink({ row, match }: { row: AppRow; match: MatchScore | undefined }) {
+  const { t } = useCopy()
+  if (!row.jobId || !match) return null
+  return (
+    <Link
+      className="apps-match"
+      href={`/offers/${row.jobId}/match`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Gauge aria-hidden width={14} height={14} />
+      {match.score != null ? t("mt.link.score", { n: match.score }) : t("mt.link.none")}
+    </Link>
+  )
+}
+
 function OfferLink({ row }: { row: AppRow }) {
   const { t } = useCopy()
   if (!row.url) return null
@@ -122,6 +140,7 @@ export function ApplicationTable({
   onOpen,
   onStatus,
   listId,
+  matches,
 }: {
   rows: AppRow[]
   sort: Sort | null
@@ -130,6 +149,8 @@ export function ApplicationTable({
   onOpen: (id: string) => void
   onStatus: (row: AppRow, status: ApplicationStatus) => void
   listId: string
+  /** By the offer's id */
+  matches: Record<string, MatchScore>
 }) {
   const { t, locale } = useCopy()
 
@@ -200,6 +221,7 @@ export function ApplicationTable({
                   {row.title}
                   {row.stageNote ? <span className="apps-sub">{row.stageNote}</span> : null}
                   <OfferMeta row={row} />
+                  <MatchLink row={row} match={row.jobId ? matches[row.jobId] : undefined} />
                 </td>
                 <td>
                   <StatusSelect
@@ -248,6 +270,7 @@ export function ApplicationTable({
               </button>
               <span>{row.title}</span>
               <OfferMeta row={row} />
+              <MatchLink row={row} match={row.jobId ? matches[row.jobId] : undefined} />
               <span className="apps-card__meta">
                 {t("app.col.applied")} {dayLabel(row.appliedAt, locale)} ·{" "}
                 {t(sourceKey(row.source))}

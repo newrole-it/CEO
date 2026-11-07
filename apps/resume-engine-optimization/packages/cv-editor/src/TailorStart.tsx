@@ -16,6 +16,7 @@ import {
 } from "@newrole/cv-core/progress"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./backend"
+import { ConsentCompany, consentCompany, type ConsentChoice } from "./ConsentCompany"
 import { useCvCopy } from "./locale"
 import { STATE_KEY, STEP_KEYS, stepLine } from "./steps"
 import { tailorErrorKey } from "./tailor-errors"
@@ -83,6 +84,11 @@ function Start({ job, cvs, hasLetter }: StartProps) {
   const [language, setLanguage] = useState<"pl" | "en">(job.language)
   const [withLetter, setWithLetter] = useState(!hasLetter)
   const [note, setNote] = useState("")
+  // the offer's company, ready to go into the consent clause
+  const [consent, setConsent] = useState<ConsentChoice>({
+    on: Boolean(job.company.trim()),
+    company: job.company,
+  })
   const [phase, setPhase] = useState<Phase>("idle")
   const [error, setError] = useState<string | null>(null)
   const [runId, setRunId] = useState<string | null>(null)
@@ -137,6 +143,7 @@ function Start({ job, cvs, hasLetter }: StartProps) {
         language,
         note: trimmed,
         locale,
+        consentCompany: consentCompany(consent),
         runId: run,
       })
       if (!cv) throw new Error("no result")
@@ -294,6 +301,8 @@ function Start({ job, cvs, hasLetter }: StartProps) {
               onChange={(event) => setNote(event.target.value)}
             />
           </Field>
+
+          <ConsentCompany value={consent} onChange={setConsent} language={language} />
 
           {hasLetter ? null : (
             <label className="cvt-check">

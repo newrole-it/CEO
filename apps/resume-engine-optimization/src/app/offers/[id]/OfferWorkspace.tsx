@@ -157,7 +157,9 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
           ) : null}
           {offer.cvId ? (
             <ButtonLink href={`/offers/${offer.jobId}/match`} variant="outline" icon={<Gauge />}>
-              {t("ow.docs.match")}
+              {offer.match?.score != null
+                ? t("mt.link.score", { n: offer.match.score })
+                : t("ow.docs.match")}
             </ButtonLink>
           ) : null}
         </div>

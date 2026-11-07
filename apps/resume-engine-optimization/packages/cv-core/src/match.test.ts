@@ -6,7 +6,12 @@ import {
   bandOf,
   buildMatchReport,
   cleanOfferAnalysis,
+  commentsForModel,
   matchScore,
+  parseMatchComments,
+  withComment,
+  type MatchComment,
+  type MatchNotes,
   type OfferAnalysis,
 } from "./match"
 import type { CvContent, CvExperienceSection } from "./schema"
@@ -208,5 +213,79 @@ describe("the bullet check", () => {
       syntheticCv(1)
     )
     expect(keywords?.map((item) => item.status)).toEqual(["added", "unplaced", "missing"])
+  })
+})
+
+describe("comments on a round", () => {
+  const analysis = cleanOfferAnalysis(analysisReply, "PostgreSQL. Go.") as OfferAnalysis
+  const at = "2026-11-06T12:00:00.000Z"
+  const on = (kind: MatchComment["kind"], key: string, text: string, subject = key) => ({
+    kind,
+    key,
+    subject,
+    text,
+    at,
+  })
+
+  it("keeps one comment per point, and empty text takes it out", () => {
+    let comments: MatchComment[] = []
+    comments = withComment(comments, on("requirement", "r1", "  Mam to od 2020.  "))
+    comments = withComment(comments, on("keyword", "Go", "Nie znam."))
+    comments = withComment(comments, on("requirement", "r1", "Mam to od 2019."))
+    expect(comments.map((item) => [item.key, item.text])).toEqual([
+      ["Go", "Nie znam."],
+      ["r1", "Mam to od 2019."],
+    ])
+    expect(withComment(comments, on("keyword", "Go", "   ")).map((item) => item.key)).toEqual([
+      "r1",
+    ])
+  })
+
+  it("drops a stored comment that no longer parses, not the others", () => {
+    expect(
+      parseMatchComments([on("keyword", "Go", "Nie znam."), { kind: "other", key: "x" }, null])
+    ).toHaveLength(1)
+    expect(parseMatchComments("nope")).toEqual([])
+  })
+
+  it("tells the model what each comment answers and what the round found there", () => {
+    const evidence = cvPlainText(syntheticCv(2))
+    const report = buildMatchReport(
+      analysis,
+      {
+        requirements: [
+          { id: "r1", status: "met", evidence: "Node.js, PostgreSQL" },
+          { id: "r2", status: "missing", gap: "minor" },
+        ],
+        strengths: [],
+        emphasize: [],
+        talkingPoints: [],
+      },
+      evidence
+    )
+    const notes = {
+      report,
+      ats: {
+        after: {
+          keywords: [
+            { term: "Go", importance: "preferred", count: 0 },
+            { term: "PostgreSQL", importance: "required", count: 3 },
+          ],
+        },
+      },
+    } as unknown as MatchNotes
+    const text = commentsForModel(
+      [
+        on("requirement", "r2", "Piszę w Go od 2021 w projekcie Kite.", "Go"),
+        on("keyword", "Go", "Tak, jak wyżej."),
+        on("keyword", "PostgreSQL", "Też w Kite."),
+        on("question", "Prowadziłem standardy kodu.", "6 zespołów.", "Prowadziłem standardy kodu."),
+      ],
+      notes
+    )
+    expect(text).toContain("- Requirement (preferred; missing): Go\n  Comment: Piszę w Go od 2021")
+    expect(text).toContain("- Keyword (not in the CV): Go\n  Comment: Tak, jak wyżej.")
+    expect(text).toContain("- Keyword (in the CV 3×): PostgreSQL")
+    expect(text).toContain("- Bullet the check asked about: Prowadziłem standardy kodu.")
   })
 })

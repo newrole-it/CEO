@@ -145,6 +145,11 @@ export async function matchCv(input: {
   evidence: string
   locale: CvLocale
   userId?: number
+  /**
+   * The person's comments on the last round (commentsForModel in @newrole/cv-core/match): they say
+   * which requirement a fact in the context answers. Evidence is still copied from the data.
+   */
+  comments?: string
 }): Promise<MatchReport | null> {
   const { llm, analysis, offer, locale } = input
   const reply = await llm.completeJson({
@@ -163,6 +168,13 @@ export async function matchCv(input: {
       "",
       "The candidate's CV:",
       `<cv>\n${JSON.stringify(cvForModel(input.cv))}\n</cv>`,
+      ...(input.comments?.trim()
+        ? [
+            "",
+            "The candidate's comments on the last check against this offer. Their words are in the candidate context as facts; a comment tells you which requirement such a fact answers. Copy evidence from the candidate context or the CV, never from a requirement's text.",
+            wrapLong("candidate_comments", input.comments.trim(), 9000),
+          ]
+        : []),
     ].join("\n"),
     schema: MatchReply as unknown as z.ZodType<MatchReply>,
     maxTokens: 3500,

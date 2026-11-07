@@ -4,6 +4,7 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { listApplications } from "src/server/applications/service"
+import { matchScoresByJob } from "src/server/cv/match-rounds"
 import { sheetStatus } from "src/server/applications/sheet"
 import { ApplicationsScreen } from "./ApplicationsScreen"
 import { toRow } from "./rows"
@@ -26,6 +27,8 @@ export default async function ApplicationsPage({
   const [rows, sheet] = user
     ? await Promise.all([listApplications(user.id, { group: "all" }), sheetStatus(user.id)])
     : [[], null]
+  const jobIds = rows.flatMap((row) => (row.jobId ? [row.jobId] : []))
+  const matches = user ? await matchScoresByJob(user.id, jobIds) : {}
   const group =
     params.group === "all" || params.group === "closed" || params.group === "rejected"
       ? params.group
@@ -35,6 +38,7 @@ export default async function ApplicationsPage({
       <ApplicationsScreen
         signedIn={Boolean(user)}
         initialRows={rows.map(toRow)}
+        matches={matches}
         initialGroup={group}
         initialOpenId={params.id ?? null}
         sheetUrl={sheet?.configured ? sheet.spreadsheetUrl : null}

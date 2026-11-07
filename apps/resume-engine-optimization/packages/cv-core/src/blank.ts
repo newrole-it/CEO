@@ -1,3 +1,4 @@
+import { CONSENT_COPY } from "./copy-consent"
 import {
   CV_ACCENT,
   CV_VERSION,
@@ -12,11 +13,6 @@ export type CvLocale = "pl" | "en"
 /** A stored language column as a CvLocale; anything but "en" reads as Polish. */
 export function cvLocale(value: unknown): CvLocale {
   return value === "en" ? "en" : "pl"
-}
-
-const CONSENT: Record<CvLocale, string> = {
-  pl: "Wyrażam zgodę na przetwarzanie moich danych osobowych zawartych w tym dokumencie w celu realizacji procesu rekrutacji, zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. (RODO).",
-  en: "I consent to the processing of my personal data contained in this document for the purposes of the recruitment process, in accordance with Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 (GDPR).",
 }
 
 const TECH_LABEL: Record<CvLocale, string> = { pl: "Technologie", en: "Technology" }
@@ -45,7 +41,32 @@ export const SECTION_TITLES: Record<
 }
 
 export function defaultConsent(locale: CvLocale): string {
-  return CONSENT[locale]
+  return CONSENT_COPY[locale].plain
+}
+
+/** The longest company name a consent clause takes. */
+export const CONSENT_COMPANY_MAX = 160
+
+/** The consent clause that names the company the CV is sent to, in the CV's language. */
+export function companyConsent(locale: CvLocale, company: string): string {
+  const name = company
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, CONSENT_COMPANY_MAX)
+  return CONSENT_COPY[locale].company.replace("{company}", () => name)
+}
+
+/** The company a clause made by companyConsent names, in any language; null for any other text. */
+export function consentCompanyOf(text: string | null | undefined): string | null {
+  const value = text?.trim() ?? ""
+  for (const copy of Object.values(CONSENT_COPY)) {
+    const [before, after] = copy.company.split("{company}")
+    if (value.length <= before.length + after.length) continue
+    if (value.startsWith(before) && value.endsWith(after))
+      return value.slice(before.length, value.length - after.length).trim() || null
+  }
+  return null
 }
 
 export function techLine(locale: CvLocale, value = ""): string {
@@ -168,6 +189,6 @@ export function blankCv(locale: CvLocale = "pl"): CvContent {
         body: pl ? "polski (ojczysty) · angielski (poziom)" : "Polish (native) · English (level)",
       },
     ],
-    consent: CONSENT[locale],
+    consent: CONSENT_COPY[locale].plain,
   }
 }

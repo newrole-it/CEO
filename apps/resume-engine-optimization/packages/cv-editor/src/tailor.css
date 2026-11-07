@@ -370,6 +370,22 @@
   color: var(--text-muted);
   font-size: 13px;
 }
+.cvt-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cvt-consent__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
 .cvt-steps {
   display: flex;
   flex-direction: column;

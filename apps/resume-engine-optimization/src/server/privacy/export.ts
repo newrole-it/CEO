@@ -54,8 +54,12 @@ export async function exportAccount(userId: number) {
       },
       cvDocuments: {
         orderBy: { updatedAt: "desc" },
-        include: { versions: { orderBy: { number: "asc" } } },
+        include: {
+          versions: { orderBy: { number: "asc" } },
+          matchRounds: { orderBy: { number: "asc" } },
+        },
       },
+      candidateFacts: { orderBy: { createdAt: "desc" } },
       offers: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -149,10 +153,12 @@ export async function exportAccount(userId: number) {
     })),
     applicant: user.applicant,
     applications: user.applications.map(({ userId: _userId, ...row }) => row),
-    cvDocuments: user.cvDocuments.map(({ pdf, userId: _userId, ...row }) => ({
+    cvDocuments: user.cvDocuments.map(({ pdf, userId: _userId, matchRounds, ...row }) => ({
       ...row,
       pdfBytes: pdf ? pdf.length : 0,
+      matchRounds: matchRounds.map(({ userId: _owner, ...round }) => round),
     })),
+    facts: user.candidateFacts.map(({ userId: _userId, ...row }) => row),
     offers: user.offers.map(({ userId: _userId, job, ...row }) => ({
       ...row,
       title: job.title,

@@ -6,10 +6,14 @@ import { GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 
 type Writer = Prisma.TransactionClient | typeof db
 
-/** Removes the CV, the parsed profile, profile audits, and CV-derived model cache rows. */
+/**
+ * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, and
+ * CV-derived model cache rows.
+ */
 export async function eraseProfile(userId: number, client: Writer = db) {
   await client.profileAuditRun.deleteMany({ where: { userId } })
   await client.candidateProfile.deleteMany({ where: { userId } })
+  await client.candidateFact.deleteMany({ where: { userId } })
   await client.llmCache.deleteMany({
     where: { userId, purpose: { in: [...PERSONAL_LLM_PURPOSES] } },
   })

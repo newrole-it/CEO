@@ -66,6 +66,8 @@ export type CvEditorBackend = {
       note?: string
       /** The language of the notes for the person */
       locale?: CvLocale
+      /** The company the consent clause names (companyConsent); without it the clause stays */
+      consentCompany?: string
       /** Names the run, so `progress` can follow its steps */
       runId?: string
     }) => Promise<TailorResult>

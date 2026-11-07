@@ -355,6 +355,89 @@ export function buildMatchReport(
   }
 }
 
+/* ---------------------------------------------------------------- comments on a round */
+
+/**
+ * What a comment is on: a requirement (by its id), a keyword, a bullet the bullet check asked
+ * about, or a name or number the facts check could not find in the person's data.
+ */
+export const MatchCommentKind = z.enum(["requirement", "keyword", "question", "unverified"])
+export type MatchCommentKind = z.infer<typeof MatchCommentKind>
+
+export const COMMENT_MAX = 2000
+
+export const MatchComment = z.object({
+  kind: MatchCommentKind,
+  /** The point within its kind: a requirement's id, the keyword, the bullet, the term */
+  key: z.string().min(1).max(600),
+  /** The point as the round showed it, so the next round and the profile know what it answers */
+  subject: z.string().max(600),
+  text: z.string().min(1).max(COMMENT_MAX),
+  at: z.string(),
+})
+export type MatchComment = z.infer<typeof MatchComment>
+
+/** A round's comments as stored; one that no longer parses is dropped, not the others. */
+export function parseMatchComments(value: unknown): MatchComment[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const parsed = MatchComment.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  })
+}
+
+export const commentId = (comment: Pick<MatchComment, "kind" | "key">) =>
+  `${comment.kind}:${comment.key}`
+
+/**
+ * The comments with this one put in, in place of an earlier one on the same point; empty text
+ * takes the point's comment out.
+ */
+export function withComment(
+  comments: MatchComment[],
+  next: Omit<MatchComment, "text"> & { text: string }
+): MatchComment[] {
+  const id = commentId(next)
+  const text = next.text.trim().slice(0, COMMENT_MAX)
+  const others = comments.filter((item) => commentId(item) !== id)
+  return text ? [...others, { ...next, text }] : others
+}
+
+const COMMENT_LABEL: Record<MatchCommentKind, string> = {
+  requirement: "Requirement",
+  keyword: "Keyword",
+  question: "Bullet the check asked about",
+  unverified: "Name or number the check could not find in the candidate's data",
+}
+
+/**
+ * The person's comments on the last round, for the model that writes the next one: what each
+ * comment answers, and what the round found there. In English; the comments stay as written.
+ */
+export function commentsForModel(comments: MatchComment[], notes: MatchNotes | null): string {
+  const requirements = new Map(
+    (notes?.report?.requirements ?? []).map((item) => [item.id, item] as const)
+  )
+  const found = new Map((notes?.ats.after.keywords ?? []).map((item) => [item.term, item.count]))
+  return comments
+    .map((comment) => {
+      const requirement = comment.kind === "requirement" ? requirements.get(comment.key) : null
+      const state = requirement
+        ? ` (${requirement.importance}; ${requirement.status})`
+        : comment.kind === "keyword" && found.has(comment.key)
+        ? found.get(comment.key)
+          ? ` (in the CV ${found.get(comment.key)}×)`
+          : " (not in the CV)"
+        : ""
+      const subject = line(comment.subject || comment.key, 300)
+      return `- ${COMMENT_LABEL[comment.kind]}${state}: ${subject}\n  Comment: ${line(
+        comment.text,
+        COMMENT_MAX
+      )}`
+    })
+    .join("\n")
+}
+
 /* ---------------------------------------------------------------- stored with the CV */
 
 /** Everything the match dashboard shows for one CV tailored to an offer. */

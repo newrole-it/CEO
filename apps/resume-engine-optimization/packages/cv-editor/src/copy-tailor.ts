@@ -21,6 +21,11 @@ export const tailorPl = {
   "tl.start.letterHintGeneral":
     "Twój list do tego CV, przerobiony pod tę ofertę i oparty na dostosowanym CV.",
   "tl.start.note": "Wskazówki dla modelu (opcjonalnie)",
+  "tl.consent.label": "Wpisz firmę do klauzuli RODO",
+  "tl.consent.hint":
+    "Klauzula w tym CV będzie zgodą dla tej firmy. Gdy CV nie ma klauzuli, zostanie dodana. Ogólne CV się nie zmieni.",
+  "tl.consent.company": "Nazwa firmy w klauzuli",
+  "tl.consent.preview": "Klauzula w CV",
   "tl.start.notePh": "Np. podkreśl doświadczenie z płatnościami, pomiń projekty poboczne.",
   "tl.start.noteOffer": "Tu możesz też wkleić treść oferty.",
   "tl.start.go": "Dostosuj CV",
@@ -54,6 +59,8 @@ export const tailorPl = {
   "tl.step.offer.done":
     "Wymagania obowiązkowe: {required}, mile widziane: {preferred}, miękkie: {soft}. Słowa kluczowe: {keywords}.",
   "tl.step.offer.skipped": "Nie ma treści oferty, więc nie ma czego analizować.",
+  "tl.step.offer.kept":
+    "Ta sama analiza co w poprzedniej rundzie, żeby wyniki dało się porównać. Wymagania obowiązkowe: {required}, mile widziane: {preferred}, miękkie: {soft}. Słowa kluczowe: {keywords}.",
   "tl.step.cv": "Analiza Twojego CV",
   "tl.step.cv.hint": "Punkty, liczby, nagłówki sekcji i dane kontaktowe, sprawdzane przez kod.",
   "tl.step.cv.done":
@@ -68,11 +75,14 @@ export const tailorPl = {
   "tl.step.tailor.hint": "Profil, kolejność, punkty i słowa kluczowe pod tę ofertę.",
   "tl.step.tailor.done":
     "Zmian: {changes}. Słowa kluczowe z oferty w CV: {keywordsIn} z {keywords}.",
+  "tl.step.tailor.skipped": "Ta runda tylko sprawdza CV, więc zostaje ono takie, jakie jest.",
   "tl.step.bullets": "Kontrola i poprawa punktów",
   "tl.step.bullets.hint":
     "Słabe punkty przepisane z tych samych faktów, pytania tam, gdzie brakuje liczb.",
   "tl.step.bullets.done":
     "Sprawdzone: {checked}, do poprawy: {flagged}, przepisane: {rewritten}. Pytania do Ciebie: {questions}.",
+  "tl.step.bullets.skipped":
+    "Punkty są sprawdzane po przepisaniu CV, a ta runda go nie przepisuje.",
   "tl.step.ats": "Kontrola pod ATS",
   "tl.step.ats.hint": "Słowa kluczowe oferty, nagłówki sekcji i daty w gotowym CV.",
   "tl.step.ats.done":
@@ -290,6 +300,11 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.start.letterHintGeneral":
     "Your letter for this CV, reworked for this offer and based on the tailored CV.",
   "tl.start.note": "Notes for the model (optional)",
+  "tl.consent.label": "Name the company in the GDPR clause",
+  "tl.consent.hint":
+    "The clause in this CV becomes consent for this company. A CV without a clause gets one. Your general CV stays as it is.",
+  "tl.consent.company": "Company name in the clause",
+  "tl.consent.preview": "Clause in the CV",
   "tl.start.notePh": "E.g. stress the payments experience, leave out side projects.",
   "tl.start.noteOffer": "You can also paste the text of the offer here.",
   "tl.start.go": "Tailor CV",
@@ -323,6 +338,8 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.step.offer.done":
     "Required: {required}, nice to have: {preferred}, soft skills: {soft}. Keywords: {keywords}.",
   "tl.step.offer.skipped": "There's no offer text, so there's nothing to read.",
+  "tl.step.offer.kept":
+    "The same reading as in the round before, so the results compare. Required: {required}, nice to have: {preferred}, soft skills: {soft}. Keywords: {keywords}.",
   "tl.step.cv": "Checking your CV",
   "tl.step.cv.hint": "Bullets, numbers, section titles and contact details, checked by code.",
   "tl.step.cv.done":
@@ -336,11 +353,14 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
   "tl.step.tailor.hint": "Profile, order, bullets and keywords aimed at this offer.",
   "tl.step.tailor.done":
     "Changes: {changes}. The offer's keywords in the CV: {keywordsIn} of {keywords}.",
+  "tl.step.tailor.skipped": "This round only checks the CV, so it stays as it is.",
   "tl.step.bullets": "Checking and rewriting bullets",
   "tl.step.bullets.hint":
     "Weak bullets rewritten from the same facts, questions where a number is missing.",
   "tl.step.bullets.done":
     "Checked: {checked}, to improve: {flagged}, rewritten: {rewritten}. Questions for you: {questions}.",
+  "tl.step.bullets.skipped":
+    "Bullets are checked after a rewrite, and this round doesn't rewrite the CV.",
   "tl.step.ats": "ATS check",
   "tl.step.ats.hint": "The offer's keywords, section titles and dates in the finished CV.",
   "tl.step.ats.done":

@@ -48,6 +48,8 @@ model User {
   sheetLink        SheetLink?
   gmailLink        GmailLink?
   mailEvents       MailEvent[]
+  candidateFacts   CandidateFact[]
+  matchRounds      MatchRound[]
 }
 
 model Session {
@@ -125,6 +127,25 @@ model CandidateProfile {
   linkedinImportedAt DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+}
+
+/// What the person said about themselves in their own words, answering a point of a match
+/// (src/server/cv/match-rounds.ts). It is their data: the model may write it into a CV, and the
+/// match counts it as evidence, for every offer (src/server/profile/context.ts).
+model CandidateFact {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String   @db.Text
+  /// The requirement, keyword or bullet it answers, as the match showed it
+  topic     String?
+  /// The offer whose match it was written on
+  jobId     String?
+  job       Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
 }
 
 // Audits of the LinkedIn profile: one row per audit the Chrome extension ran on the person's own
@@ -393,6 +414,7 @@ model Job {
   applications Application[]
   cvDocuments  CvDocument[]
   userOffers   UserOffer[]
+  facts        CandidateFact[]
 
   @@index([fingerprint])
   /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
@@ -734,6 +756,7 @@ model CvDocument {
 
   applications Application[]
   versions     CvVersion[]
+  matchRounds  MatchRound[]
 
   /// One tailored CV and one letter per offer; general CVs have no jobId and are not limited
   @@unique([userId, jobId, docType])
@@ -791,6 +814,31 @@ model CvVersion {
   createdAt    DateTime   @default(now())
 
   @@unique([documentId, number])
+}
+
+/// One round of the match of a CV written for an offer: what the steps found (@newrole/cv-core
+/// tailor notes, as the CV kept them then) and the person's comments on it, which the next round
+/// works from (src/server/cv/match-rounds.ts). A new round never changes an earlier one.
+model MatchRound {
+  id         String     @id @default(cuid())
+  userId     Int
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId String
+  document   CvDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  /// 1, 2, 3… within the document
+  number     Int
+  /// What the round found (@newrole/cv-core/tailor TailorNotes)
+  notes      Json
+  /// The match score and the ATS keyword score, for lists that do not read the notes
+  score      Int?
+  atsScore   Int?
+  /// The person's comments on this round's points (@newrole/cv-core/match MatchComment[])
+  comments   Json       @default("[]")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([documentId, number])
+  @@index([userId, createdAt])
 }
 
 /// One reusable answer to an application question. The same question can have variants.

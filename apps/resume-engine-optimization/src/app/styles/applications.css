@@ -259,6 +259,19 @@ th[aria-sort="descending"] .apps-sort svg {
   color: var(--text-muted);
   font-weight: 500;
 }
+.apps-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.apps-match:hover {
+  text-decoration: underline;
+}
 .apps-next {
   display: grid;
   gap: 1px;

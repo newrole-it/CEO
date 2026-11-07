@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BriefcaseBusiness, FileText, Pencil } from "lucide-react"
+import { BriefcaseBusiness, FileText, Gauge, Pencil } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { ButtonLink } from "@newrole/ui/Button"
 import { Badge, EmptyState } from "@newrole/ui/primitives"
@@ -45,6 +45,14 @@ export function OfferList({ offers }: { offers: OfferRow[] }) {
                 {!offer.textChars ? <Badge tone="plain">{t("of.noText")}</Badge> : null}
                 {offer.closed ? <Badge tone="warning">{t("of.closed")}</Badge> : null}
               </div>
+              {offer.cvId && offer.match ? (
+                <Link className="link offer-item__match" href={`/offers/${offer.jobId}/match`}>
+                  <Gauge aria-hidden size={14} />
+                  {offer.match.score != null
+                    ? t("mt.link.score", { n: offer.match.score })
+                    : t("mt.link.none")}
+                </Link>
+              ) : null}
             </div>
             <div className="offer-item__actions">
               <ButtonLink

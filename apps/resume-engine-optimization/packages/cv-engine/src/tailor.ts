@@ -268,6 +268,16 @@ function analysisPrompt(
   ]
 }
 
+/** The person's comments on the last check of this CV, for the next round (@newrole/cv-core/match). */
+function commentsPrompt(comments: string | undefined): string[] {
+  if (!comments?.trim()) return []
+  return [
+    "",
+    "This CV was already tailored to this offer and checked, and the candidate commented on points of that check. A comment that states a fact about the candidate is their data, as the candidate context is. A comment that asks for a change says what to do in this CV. Act on every comment as far as the rules above allow, and keep what no comment or requirement of the offer asks you to change.",
+    wrapLong("candidate_comments", comments.trim(), 9000),
+  ]
+}
+
 /** What the match found to say in a letter: the strengths and the talking points. */
 function letterPointsPrompt(match: MatchReport | null | undefined): string[] {
   const points = [
@@ -346,6 +356,8 @@ export async function tailorCv(input: {
   analysis?: OfferAnalysis | null
   /** The person's data against each requirement (the "match" step) */
   match?: MatchReport | null
+  /** The person's comments on the last round of this CV (commentsForModel in @newrole/cv-core/match) */
+  comments?: string
 }): Promise<Generated | null> {
   const { llm, base, language, note, userId, context } = input
   const job = input.offer
@@ -365,6 +377,7 @@ export async function tailorCv(input: {
       "",
       ...jobPrompt(job, note),
       ...analysisPrompt(input.analysis, input.match),
+      ...commentsPrompt(input.comments),
       "",
       "The CV to adapt:",
       `<cv>\n${cv}\n</cv>`,

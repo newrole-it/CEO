@@ -21,11 +21,14 @@ import {
   documentsForJob,
   generalLetterForJob,
   generateLetterForJob,
+  nextMatchRound,
   saveToGeneralCv,
   tailorContext,
   tailorCvForJob,
   writeGeneralLetterForCv,
 } from "../src/server/cv/tailor"
+import { getRound, listRounds, matchScores, saveMatchComment } from "../src/server/cv/match-rounds"
+import { listOffers } from "../src/server/offers/service"
 import {
   AUTO_VERSION_MS,
   getVersion,
@@ -45,6 +48,7 @@ import type { HttpClient } from "../src/server/security/safe-fetch"
 import { syntheticCv } from "@newrole/cv-core/fixtures"
 import { letterSection, type CvContent } from "@newrole/cv-core/schema"
 import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
+import { companyConsent, consentCompanyOf, defaultConsent } from "@newrole/cv-core/blank"
 
 const db = new PrismaClient()
 const stamp = `tailor-${Date.now()}`
@@ -1496,4 +1500,210 @@ test("a step that fails leaves its part empty and tailoring goes on", async () =
   assert.equal(result.notes.match?.analysis, null)
   assert.equal(result.notes.match?.report, null)
   assert.equal(result.notes.match?.bullets, null)
+})
+
+const roundReplies = () => ({
+  "offer-analysis": offerAnalysisReply,
+  "cv-match": matchReply,
+  "cv-tailor": tailorReply(),
+  "cv-bullets": bulletsReply,
+})
+
+test("each run keeps a round, and the next one works from the comments and the CV as it is", async () => {
+  const user = await makeUser()
+  const job = await makeJob({
+    description:
+      "Wymagamy PostgreSQL i Kubernetes w produkcji. Mile widziane: Go. Pracujemy w trybie fast-paced. Liczy się komunikatywność.",
+  })
+  await general(user.id)
+  const first = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: stepLlm(roundReplies()),
+    locale: "pl",
+  })
+  assert.deepEqual(
+    (await listRounds(user.id, first.id))?.map((round) => [round.number, round.score]),
+    [[1, 53]]
+  )
+
+  // comments on the newest round, one per point; empty text takes one out
+  const comment = { documentId: first.id, round: 1, subject: "Go" }
+  await saveMatchComment(user.id, {
+    ...comment,
+    kind: "requirement",
+    key: "r3",
+    text: "Piszę w Go od 2021 w projekcie Kite.",
+  })
+  await saveMatchComment(user.id, { ...comment, kind: "keyword", key: "Go", text: "Tak." })
+  const comments = await saveMatchComment(user.id, {
+    ...comment,
+    kind: "keyword",
+    key: "Go",
+    text: " ",
+  })
+  assert.deepEqual(
+    comments.map((item) => item.key),
+    ["r3"]
+  )
+
+  // the person edits the CV for the offer; the next round starts from that, not the general CV
+  const edited = { ...first.content, header: { ...first.content.header, headline: "Mój nagłówek" } }
+  await db.cvDocument.update({ where: { id: first.id }, data: { content: edited } })
+
+  const llm = stepLlm({
+    "cv-match": {
+      ...matchReply,
+      requirements: matchReply.requirements.map((item) =>
+        item.id === "r3" ? { id: "r3", status: "met", evidence: "Piszę w Go od 2021" } : item
+      ),
+    },
+    "cv-tailor": tailorReply(),
+    "cv-bullets": { bullets: [] },
+  })
+  const second = await nextMatchRound({
+    userId: user.id,
+    jobId: job.id,
+    rewrite: true,
+    llm,
+    locale: "pl",
+  })
+  assert.equal(second.round, 2)
+  assert.deepEqual(
+    llm.calls.map((call) => call.purpose),
+    ["cv-match", "cv-tailor", "cv-bullets"],
+    "the offer's analysis of round 1 is kept"
+  )
+  const facts = await db.candidateFact.findMany({ where: { userId: user.id } })
+  assert.deepEqual(
+    facts.map((fact) => [fact.text, fact.topic, fact.jobId]),
+    [["Piszę w Go od 2021 w projekcie Kite.", "Go", job.id]]
+  )
+  const matchCall = llm.calls.find((call) => call.purpose === "cv-match")
+  assert.match(matchCall?.user ?? "", /- Piszę w Go od 2021 w projekcie Kite\./, "a fact")
+  assert.match(matchCall?.user ?? "", /untrusted_candidate_comments/)
+  assert.match(tailorCall(llm).user, /Requirement \(preferred; missing\): Go/)
+  assert.match(tailorCall(llm).user, /Mój nagłówek/, "the CV as the person left it")
+  // the fact is the person's data: it backs the requirement it answers
+  const report = second.notes.match?.report
+  assert.equal(report?.requirements.find((item) => item.id === "r3")?.status, "met")
+  assert.equal(report?.groups.preferred.percent, 100)
+
+  const kept = await getRound(user.id, first.id, 1)
+  assert.equal(kept?.comments.length, 1, "round 1 keeps its comments")
+  await assert.rejects(
+    saveMatchComment(user.id, { ...comment, kind: "keyword", key: "Go", text: "Za późno." }),
+    (error: unknown) => error instanceof CvError && error.code === "conflict"
+  )
+
+  // only checking again: the CV, its versions and when it changed stay as they were
+  const versions = await db.cvVersion.count({ where: { documentId: first.id } })
+  const before = await db.cvDocument.findUniqueOrThrow({
+    where: { id: first.id },
+    select: { content: true, updatedAt: true },
+  })
+  const check = stepLlm({ "cv-match": matchReply })
+  const updates: string[] = []
+  const third = await nextMatchRound({
+    userId: user.id,
+    jobId: job.id,
+    rewrite: false,
+    llm: check,
+    onStep: (update) => updates.push(`${update.step}:${update.state}`),
+  })
+  assert.equal(third.round, 3)
+  assert.deepEqual(
+    check.calls.map((call) => call.purpose),
+    ["cv-match"]
+  )
+  assert.ok(updates.includes("tailor:skipped") && updates.includes("bullets:skipped"))
+  const after = await db.cvDocument.findUniqueOrThrow({
+    where: { id: first.id },
+    select: { content: true, updatedAt: true },
+  })
+  assert.deepEqual(after, before)
+  assert.equal(await db.cvVersion.count({ where: { documentId: first.id } }), versions)
+  assert.equal(await db.candidateFact.count({ where: { userId: user.id } }), 1)
+
+  // the lists show the newest round
+  assert.deepEqual((await matchScores(user.id, [first.id])).get(first.id), {
+    score: 53,
+    atsScore: 100,
+    rounds: 3,
+  })
+  const offer = (await listOffers(user.id)).find((row) => row.jobId === job.id)
+  assert.equal(offer?.match?.rounds, 3)
+})
+
+test("a CV tailored before rounds were kept gets its first round from its notes", async () => {
+  const user = await makeUser()
+  const job = await makeJob({ description: "Wymagamy PostgreSQL i Kubernetes. Mile widziane: Go." })
+  await general(user.id)
+  const first = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: stepLlm(roundReplies()),
+  })
+  await db.matchRound.deleteMany({ where: { documentId: first.id } })
+  const { updatedAt } = await db.cvDocument.findUniqueOrThrow({
+    where: { id: first.id },
+    select: { updatedAt: true },
+  })
+  // a list reads the notes until then
+  assert.equal((await matchScores(user.id, [first.id])).get(first.id)?.rounds, 1)
+
+  // tailoring again keeps the old notes as round 1 before it adds round 2
+  await tailorCvForJob({ userId: user.id, jobId: job.id, llm: stepLlm(roundReplies()) })
+  const rounds = await listRounds(user.id, first.id)
+  assert.deepEqual(
+    rounds?.map((round) => round.number),
+    [1, 2]
+  )
+  assert.equal(rounds?.[0].createdAt.getTime(), updatedAt.getTime())
+})
+
+test("the consent clause of a CV for an offer can name the company, and keeps it in the next round", async () => {
+  const user = await makeUser()
+  const job = await makeJob({ description: "Wymagamy PostgreSQL i Kubernetes. Mile widziane: Go." })
+  const base = await general(user.id)
+  const own = base.content.consent
+  assert.ok(own, "the general CV has its own clause")
+
+  const named = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: stepLlm(roundReplies()),
+    consentCompany: "  Acme Sp. z o.o. ",
+  })
+  assert.equal(named.content.consent, companyConsent(named.language, "Acme Sp. z o.o."))
+  const stored = await getCv(user.id, named.id)
+  assert.equal(stored?.content?.consent, companyConsent(named.language, "Acme Sp. z o.o."))
+  assert.equal(
+    (await getCv(user.id, base.id))?.content?.consent,
+    own,
+    "the general CV stays as it was"
+  )
+
+  // the next round works on this CV and keeps its clause
+  const next = await nextMatchRound({
+    userId: user.id,
+    jobId: job.id,
+    rewrite: true,
+    llm: stepLlm({
+      "cv-match": matchReply,
+      "cv-tailor": tailorReply(),
+      "cv-bullets": { bullets: [] },
+    }),
+  })
+  assert.equal(next.content.consent, companyConsent(named.language, "Acme Sp. z o.o."))
+
+  // without a company, tailoring again from the general CV names none (translated, the clause
+  // becomes the plain one in the CV's language, as before)
+  const again = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: stepLlm(roundReplies()),
+  })
+  assert.equal(consentCompanyOf(again.content.consent), null)
+  assert.equal(again.content.consent, again.language === "pl" ? own : defaultConsent("en"))
 })

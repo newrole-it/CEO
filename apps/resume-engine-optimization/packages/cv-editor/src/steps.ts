@@ -36,21 +36,24 @@ export const STATE_KEY: Record<StepState | "waiting", CvCopyKey> = {
   waiting: "tl.step.state.waiting",
 }
 
+/** Why a step did not run, where it has its own reason. */
+const SKIPPED_KEY: Partial<Record<TailorStep, CvCopyKey>> = {
+  offer: "tl.step.offer.skipped",
+  match: "tl.step.match.skipped",
+  tailor: "tl.step.tailor.skipped",
+  bullets: "tl.step.bullets.skipped",
+}
+
 /** What a step found, in words: the line under its name once it is done. */
 export function stepLine(t: CvT, update: StepUpdate | undefined, step: TailorStep): string {
   const keys = STEP_KEYS[step]
   if (!update) return t(keys.hint)
   if (update.state === "running") return t(keys.hint)
   if (update.state === "failed") return t("tl.step.failed")
-  if (update.state === "skipped")
-    return t(
-      step === "offer"
-        ? "tl.step.offer.skipped"
-        : step === "match"
-        ? "tl.step.match.skipped"
-        : "tl.step.state.skipped"
-    )
+  if (update.state === "skipped") return t(SKIPPED_KEY[step] ?? "tl.step.state.skipped")
   const detail = update.detail ?? {}
+  // a next round of the match keeps the offer's analysis of the round before
+  if (step === "offer" && detail.kept) return t("tl.step.offer.kept", detail)
   if (step === "match" && detail.score == null) return t("tl.step.match.doneNoScore")
   if (step === "ats" && detail.after == null) return t("tl.step.ats.doneNoScore")
   return t(keys.done, detail)

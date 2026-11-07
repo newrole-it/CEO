@@ -32,6 +32,7 @@ import {
   type SortKey,
 } from "./ApplicationTable"
 import { GROUPS, inGroup, sourceKey, toRow, type AppGroup, type AppRow } from "./rows"
+import type { MatchScore } from "src/server/cv/match-rounds"
 
 export function ApplicationsScreen({
   signedIn,
@@ -39,9 +40,12 @@ export function ApplicationsScreen({
   initialGroup,
   initialOpenId,
   sheetUrl,
+  matches,
 }: {
   signedIn: boolean
   initialRows: AppRow[]
+  /** The newest match score of the CV written for each offer, by the offer's id */
+  matches: Record<string, MatchScore>
   initialGroup: AppGroup
   initialOpenId: string | null
   /** The connected Google Sheet, when the person saved its link in Settings */
@@ -386,6 +390,7 @@ export function ApplicationsScreen({
                   openId={openId}
                   onOpen={open}
                   onStatus={(row, status) => void changeStatus(row, status)}
+                  matches={matches}
                 />
               </div>
             ) : (

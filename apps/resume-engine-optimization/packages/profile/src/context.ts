@@ -17,12 +17,18 @@ export type ContextProfile = {
 
 /**
  * What a model may know about the candidate when writing for them: the structured profile, the
- * CV's text (without hidden sections) and the imported CV/LinkedIn sections. Capped at maxChars;
- * the CV comes before the imported sections because it is curated.
+ * facts they added in their own words, the CV's text (without hidden sections) and the imported
+ * CV/LinkedIn sections. Capped at maxChars; the facts come before the CV because the person wrote
+ * them to fill what it misses, and the CV before the imported sections because it is curated.
  */
 export function candidateContextText(input: {
   name?: string | null
   profile?: ContextProfile | null
+  /**
+   * What the candidate said about themselves on points of a match, their words only: the point's
+   * own text is the offer's, and in here it would read as the candidate's evidence.
+   */
+  facts?: string[]
   cvText?: string | null
   document?: LinkedInDocument | null
   maxChars?: number
@@ -51,6 +57,12 @@ export function candidateContextText(input: {
     line("Locations", profile.locations)
     line("Work mode", profile.remotePreference)
   }
+  const facts = (input.facts ?? [])
+    .map((fact) => fact.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .map((fact) => `- ${fact}`)
+  if (facts.length)
+    parts.push(`\nFacts the candidate added in their own words:\n${facts.join("\n")}`)
   if (cvText) parts.push(`\nCV:\n${cvText}`)
   const imported = document ? profileText(document) : ""
   if (imported) parts.push(`\nImported CV / LinkedIn sections:\n${imported}`)

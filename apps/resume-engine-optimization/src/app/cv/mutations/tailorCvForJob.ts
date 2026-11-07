@@ -1,5 +1,6 @@
 import { resolver } from "@blitzjs/rpc"
 import { z } from "zod"
+import { CONSENT_COMPANY_MAX } from "@newrole/cv-core/blank"
 import { RunId } from "../run-id"
 import { tailorCvForJob } from "src/server/cv/tailor"
 import { progressReporter } from "src/server/cv/tailor-progress"
@@ -15,6 +16,8 @@ export default resolver.pipe(
       language: z.enum(["pl", "en"]).optional(),
       note: z.string().max(4000).optional(),
       locale: z.enum(["pl", "en"]).optional(),
+      /** The company the CV's consent clause names; without it the clause stays as it is */
+      consentCompany: z.string().max(CONSENT_COMPANY_MAX).optional(),
       /** Names this run for getTailorProgress */
       runId: RunId.optional(),
     })

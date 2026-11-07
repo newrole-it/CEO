@@ -5,6 +5,8 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { setupBack } from "src/app/setup/back"
+import { listFacts } from "src/server/profile/facts"
+import { FactList } from "./FactList"
 import { ProfileEditor } from "./ProfileEditor"
 import getProfile from "./queries/getProfile"
 
@@ -19,6 +21,7 @@ export default async function ProfilePage() {
   // no profile comes back as { draft: null }; a database error goes to error.tsx
   const profile = user ? await invoke(getProfile, null) : null
   const signedIn = Boolean(user && user.role !== "GUEST")
+  const facts = user ? await listFacts(user.id) : []
   return (
     <SiteFrame
       user={user}
@@ -44,6 +47,13 @@ export default async function ProfilePage() {
         </div>
       ) : null}
       <ProfileEditor initial={profile?.draft ?? null} guest={Boolean(user && !signedIn)} />
+      {facts.length ? (
+        <div style={{ marginTop: 24 }}>
+          <FactList
+            initial={facts.map((fact) => ({ ...fact, createdAt: fact.createdAt.toISOString() }))}
+          />
+        </div>
+      ) : null}
     </SiteFrame>
   )
 }

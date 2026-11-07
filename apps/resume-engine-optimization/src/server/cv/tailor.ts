@@ -13,9 +13,9 @@ import {
 import { analyzeOffer, checkBullets, matchCv, type MatchOffer } from "@newrole/cv-engine/match"
 import type { LlmClient } from "@newrole/llm/common"
 import { atsReport, checkCv } from "@newrole/cv-core/ats"
-import { cvLocale } from "@newrole/cv-core/blank"
+import { companyConsent, cvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
-import type { MatchNotes, MatchReport } from "@newrole/cv-core/match"
+import { commentsForModel, type MatchNotes, type MatchReport } from "@newrole/cv-core/match"
 import type { StepReporter, StepUpdate, TailorStep } from "@newrole/cv-core/progress"
 import { letterSection, parseCvContent, type CvContent } from "@newrole/cv-core/schema"
 import { inlineToText } from "@newrole/cv-core/sanitize"
@@ -39,6 +39,7 @@ import {
 } from "src/server/offers/text"
 import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
+import { keepCommentsAsFacts } from "src/server/profile/facts"
 import type { HttpClient } from "src/server/security/safe-fetch"
 import { recentLetters } from "./letters"
 import {
@@ -51,6 +52,7 @@ import {
   type CvDetail,
   type CvLanguage,
 } from "./service"
+import { appendRound, getRound, listRounds } from "./match-rounds"
 import { createEditableFromUpload } from "./structure"
 import { appendVersion, contentHash, keepCurrentState, toStoredJson } from "./versions"
 
@@ -370,7 +372,7 @@ async function storeGenerated(input: {
     db.$transaction(async (tx): Promise<{ id: string; updatedAt: Date }> => {
       const existing = await tx.cvDocument.findUnique({
         where: { userId_jobId_docType: { userId, jobId: job.id, docType } },
-        select: { id: true, content: true, language: true },
+        select: { id: true, content: true, language: true, tailorNotes: true, updatedAt: true },
       })
       const fields = {
         language,
@@ -420,6 +422,14 @@ async function storeGenerated(input: {
         }
       }
       await appendVersion(tx, { documentId: id, content, language, origin: "generated" })
+      if (docType === "CV" && notes.match) {
+        await appendRound(tx, {
+          userId,
+          documentId: id,
+          notes,
+          before: existing ? { notes: existing.tailorNotes, at: existing.updatedAt } : null,
+        })
+      }
       return { id, updatedAt }
     })
   try {
@@ -429,6 +439,37 @@ async function storeGenerated(input: {
     if (isUniqueError(error)) return write()
     throw error
   }
+}
+
+/**
+ * A round that only checked the CV again: its notes and a new round, the CV as it was. updatedAt
+ * stays, as for an audit: it says when the CV last changed.
+ */
+async function storeAudit(input: {
+  userId: number
+  documentId: string
+  notes: TailorNotes
+}): Promise<{ id: string; updatedAt: Date }> {
+  const { userId, documentId, notes } = input
+  return db.$transaction(async (tx) => {
+    const row = await tx.cvDocument.findUnique({
+      where: { id: documentId },
+      select: { tailorNotes: true, updatedAt: true },
+    })
+    if (!row) throw new CvError("not-found", "CV not found.")
+    await tx.cvDocument.update({
+      where: { id: documentId },
+      data: { tailorNotes: notes, updatedAt: row.updatedAt },
+      select: { id: true },
+    })
+    await appendRound(tx, {
+      userId,
+      documentId,
+      notes,
+      before: { notes: row.tailorNotes, at: row.updatedAt },
+    })
+    return { id: documentId, updatedAt: row.updatedAt }
+  })
 }
 
 function writingClient(llm: LlmClient | null | undefined): LlmClient {
@@ -484,13 +525,28 @@ function cvLines(content: CvContent): string[] {
     .filter((line) => line.trim())
 }
 
+/** The round after the newest one of a CV for an offer (nextMatchRound). */
+type NextRound = {
+  /** False only checks the CV again, as the person left it */
+  rewrite: boolean
+  /** What the round before found: its analysis of the offer is kept, so rounds compare */
+  notes: TailorNotes
+  /** The person's comments on it, for the model (commentsForModel) */
+  comments: string
+}
+
 /**
  * "Dostosuj CV": the steps of @newrole/cv-core/progress in order. The offer is read and the
  * person's data checked against it, the CV is tailored with what that found, its bullets are
  * checked, and code checks keywords, layout, numbers and names of the result. Only tailoring
  * itself must succeed; any other step that fails leaves its part of the notes empty. `llm` is
  * injectable for tests. Throws a CvError; nothing is stored when tailoring fails. Calling it again
- * for the same offer adds a new version to the same document.
+ * for the same offer adds a new version to the same document. Every run adds a round of the match
+ * (./match-rounds).
+ *
+ * `round` is the next round of the CV already written for the offer: the model works on that CV
+ * as it is now, with the person's comments, and every claim is still checked against the person's
+ * own CV and profile, not against the CV it rewrites.
  */
 export async function tailorCvForJob(input: {
   userId: number
@@ -504,13 +560,27 @@ export async function tailorCvForJob(input: {
   http?: HttpClient
   /** Told about each step as it starts and ends (src/server/cv/tailor-progress.ts) */
   onStep?: StepReporter
+  round?: NextRound
+  /**
+   * The company the consent clause names (companyConsent), in the CV's language. Without it the
+   * clause stays as the CV it starts from has it.
+   */
+  consentCompany?: string
 }): Promise<TailorResult> {
-  const { userId, jobId, note } = input
+  const { userId, jobId, note, round } = input
   const llm = writingClient(input.llm)
   const job = await loadTailorJob(jobId, { http: input.http }, userId)
   if (!job) throw new CvError("job-not-found", "This offer is not in the index.")
   const existing = await findExisting(userId, jobId, "CV")
-  const base = await baseForTailoring(userId, existing, input.baseCvId)
+  const current = round ? parseCvContent(existing?.content) : null
+  if (round && (!existing || !current)) throw new CvError("not-found", "CV not found.")
+  // the person's own CV: what the match reads and every claim is checked against
+  const origin = await baseForTailoring(userId, existing, input.baseCvId)
+  // the CV the model works on: in a next round, the one written for the offer
+  const base =
+    current && existing
+      ? { id: null, content: current, language: cvLocale(existing.language) }
+      : origin
   const language = tailoredCvLanguage({
     requested: input.language,
     existing,
@@ -521,19 +591,25 @@ export async function tailorCvForJob(input: {
     attemptNumber(existing?.id),
     candidateContext(userId),
   ])
-  const evidence = `${cvPlainText(base.content)}\n${context}`
+  const evidence = `${cvPlainText(origin.content)}\n${context}`
   const offer: MatchOffer = { company: job.company, title: job.title, text: job.text }
   const steps = stepLog(input.onStep)
 
+  const kept = round?.notes.match?.analysis ?? null
   const analysis = await steps.run(
     "offer",
-    job.text || note?.trim() ? () => analyzeOffer({ llm, offer, note, locale, userId }) : null,
+    round
+      ? kept && (() => kept)
+      : job.text || note?.trim()
+      ? () => analyzeOffer({ llm, offer, note, locale, userId })
+      : null,
     (result) => ({
       required: result.requirements.filter((item) => item.importance === "required").length,
       preferred: result.requirements.filter((item) => item.importance === "preferred").length,
       soft: result.requirements.filter((item) => item.importance === "soft").length,
       keywords: result.keywords.length,
       redFlags: result.redFlags.length,
+      ...(round ? { kept: 1 } : {}),
     })
   )
 
@@ -557,11 +633,12 @@ export async function tailorCvForJob(input: {
             llm,
             analysis,
             offer,
-            cv: base.content,
+            cv: origin.content,
             context,
             evidence,
             locale,
             userId,
+            comments: round?.comments,
           })
       : null,
     (report) => ({
@@ -573,58 +650,65 @@ export async function tailorCvForJob(input: {
     })
   )
 
-  steps.report({ step: "tailor", state: "running" })
-  let generated: Awaited<ReturnType<typeof tailorCv>>
-  try {
-    generated = await tailorCv({
-      llm,
-      base,
-      offer: job,
-      language,
-      locale,
-      context,
-      note,
-      attempt,
-      userId,
-      analysis,
-      match,
+  const tailor = async () => {
+    steps.report({ step: "tailor", state: "running" })
+    let result: Awaited<ReturnType<typeof tailorCv>>
+    try {
+      result = await tailorCv({
+        llm,
+        base,
+        offer: job,
+        language,
+        locale,
+        context,
+        note,
+        attempt,
+        userId,
+        analysis,
+        match,
+        comments: round?.comments,
+      })
+    } catch (error) {
+      steps.report({ step: "tailor", state: "failed" })
+      throw error
+    }
+    if (!result) {
+      steps.report({ step: "tailor", state: "failed" })
+      throw new CvError("llm-failed", "The model did not return a usable CV.")
+    }
+    const keywordsIn = (result.notes.keywords ?? []).filter(
+      (item) => item.status === "kept" || item.status === "added"
+    ).length
+    steps.report({
+      step: "tailor",
+      state: "done",
+      detail: {
+        changes: result.notes.changes.length,
+        keywordsIn,
+        keywords: result.notes.keywords?.length ?? 0,
+        reverted: result.notes.reverted,
+      },
     })
-  } catch (error) {
-    steps.report({ step: "tailor", state: "failed" })
-    throw error
+    return result
   }
-  if (!generated) {
-    steps.report({ step: "tailor", state: "failed" })
-    throw new CvError("llm-failed", "The model did not return a usable CV.")
-  }
-  const keywordsIn = (generated.notes.keywords ?? []).filter(
-    (item) => item.status === "kept" || item.status === "added"
-  ).length
-  steps.report({
-    step: "tailor",
-    state: "done",
-    detail: {
-      changes: generated.notes.changes.length,
-      keywordsIn,
-      keywords: generated.notes.keywords?.length ?? 0,
-      reverted: generated.notes.reverted,
-    },
-  })
+  const generated = round && !round.rewrite ? null : await tailor()
+  if (!generated) steps.report({ step: "tailor", state: "skipped" })
 
   const bullets = await steps.run(
     "bullets",
-    () =>
-      checkBullets({
-        llm,
-        cv: generated.content,
-        language,
-        locale,
-        analysis,
-        offer,
-        context,
-        evidence,
-        userId,
-      }),
+    generated &&
+      (() =>
+        checkBullets({
+          llm,
+          cv: generated.content,
+          language,
+          locale,
+          analysis,
+          offer,
+          context,
+          evidence,
+          userId,
+        })),
     (result) => ({
       checked: result.report.checked,
       flagged: result.report.flagged,
@@ -632,12 +716,18 @@ export async function tailorCvForJob(input: {
       questions: result.report.questions.length,
     })
   )
-  const content = bullets?.content ?? generated.content
+  const drafted = bullets?.content ?? generated?.content ?? base.content
+  // only a rewritten CV is stored, so only a rewrite takes the clause
+  const company = generated ? input.consentCompany?.trim() : ""
+  const content = company ? { ...drafted, consent: companyConsent(language, company) } : drafted
+  // what the model wrote now, else what the round before wrote when this one only checks
+  const written = generated?.notes ?? round?.notes
+  if (!written) throw new CvError("llm-failed", "The model did not return a usable CV.")
 
   // the offer's keywords when it was analysed, else the ones tailoring listed
   const keywords = analysis
     ? analysis.keywords.map((item) => ({ term: item.term, importance: item.importance }))
-    : (generated.notes.keywords ?? []).map((item) => ({
+    : (written.keywords ?? []).map((item) => ({
         term: item.term,
         importance: "preferred" as const,
       }))
@@ -653,26 +743,26 @@ export async function tailorCvForJob(input: {
     })
   )) ?? { before: atsReport(base.content, keywords), after: atsReport(content, keywords) }
 
-  const translated = language !== base.language
+  const translated = language !== origin.language
+  const reverted = generated
+    ? generated.notes.reverted + (bullets?.report.reverted ?? 0)
+    : written.reverted
   const facts = (await steps.run(
     "facts",
     () => {
       const lines = cvLines(content)
       const found = new Map(
         [
-          ...generated.notes.unverified,
+          ...(generated?.notes.unverified ?? []),
           ...(bullets?.unverified ?? []),
           ...unverifiedTerms(lines, evidence, { translated }),
           ...unverifiedNumbers(lines, evidence),
         ].map((term) => [term.toLowerCase(), term])
       )
-      return {
-        unverified: [...found.values()].slice(0, 12),
-        reverted: generated.notes.reverted + (bullets?.report.reverted ?? 0),
-      }
+      return { unverified: [...found.values()].slice(0, 12), reverted }
     },
     (result) => ({ unverified: result.unverified.length, reverted: result.reverted })
-  )) ?? { unverified: generated.notes.unverified, reverted: generated.notes.reverted }
+  )) ?? { unverified: written.unverified, reverted }
 
   const matchNotes: MatchNotes = {
     analysis,
@@ -683,27 +773,68 @@ export async function tailorCvForJob(input: {
     steps: steps.steps(),
   }
   const notes: TailorNotes = {
-    ...generated.notes,
+    ...written,
     unverified: facts.unverified,
     reverted: facts.reverted,
-    keywords: refreshKeywordNotes(generated.notes.keywords, content),
+    keywords: refreshKeywordNotes(written.keywords, content),
     match: matchNotes,
   }
-  const { id, updatedAt } = await storeGenerated({
-    userId,
-    job,
-    docType: "CV",
-    language,
-    content,
-    notes,
-    base,
-  })
+  const { id, updatedAt } =
+    generated || !existing
+      ? await storeGenerated({
+          userId,
+          job,
+          docType: "CV",
+          language,
+          content,
+          notes,
+          base: origin,
+        })
+      : await storeAudit({ userId, documentId: existing.id, notes })
   // an application made before tailoring now shows the CV written for it
   await db.application.updateMany({
     where: { userId, jobId, cvDocumentId: null },
     data: { cvDocumentId: id },
   })
   return { id, content, language, notes, updatedAt }
+}
+
+/**
+ * "Popraw CV i sprawdź ponownie" on the match dashboard: the newest round's comments become the
+ * person's facts (src/server/profile/facts.ts), then the next round runs on the CV written for
+ * the offer. `rewrite` false checks it again without rewriting it, after the person edited it.
+ */
+export async function nextMatchRound(input: {
+  userId: number
+  jobId: string
+  rewrite: boolean
+  locale?: CvLanguage
+  llm?: LlmClient | null
+  http?: HttpClient
+  onStep?: StepReporter
+}): Promise<TailorResult & { round: number }> {
+  const { userId, jobId, rewrite } = input
+  const existing = await findExisting(userId, jobId, "CV")
+  if (!existing) throw new CvError("not-found", "CV not found.")
+  // a CV tailored before rounds were kept gets its first one now
+  await listRounds(userId, existing.id)
+  const last = await getRound(userId, existing.id)
+  if (!last?.notes.match) throw new CvError("no-content", "This CV has no match to go on from.")
+  await keepCommentsAsFacts(userId, jobId, last.comments)
+  const result = await tailorCvForJob({
+    userId,
+    jobId,
+    locale: input.locale,
+    llm: input.llm,
+    http: input.http,
+    onStep: input.onStep,
+    round: {
+      rewrite,
+      notes: last.notes,
+      comments: commentsForModel(last.comments, last.notes.match),
+    },
+  })
+  return { ...result, round: last.number + 1 }
 }
 
 /** The match with the offer kept with a tailored CV, for the letter that goes with it. */
