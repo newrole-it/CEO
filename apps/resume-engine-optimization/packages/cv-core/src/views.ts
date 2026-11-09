@@ -76,6 +76,19 @@ export type TailorContext = {
 }
 
 /**
+ * What a CV for an offer still says about the offer's company, checked before it is saved as a
+ * general CV.
+ */
+export type GeneralCvCheck = {
+  /** The offer's company; empty when the CV names none */
+  company: string
+  /** Its consent clause names the company; the general CV gets a clause without it */
+  consent: boolean
+  /** Lines of the text that name the company, as they would go into the general CV */
+  lines: string[]
+}
+
+/**
  * What the editor shows around a general CV or its general letter: the pair they make. The
  * letters for offers start from the letter of the CV they were tailored from.
  */

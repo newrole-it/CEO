@@ -309,7 +309,10 @@ export function SheetSettings({ after = null }: { after?: string | null }) {
           </div>
           {status.lastError ? (
             <Banner tone="danger">
-              {t("sheet.lastError", { error: errorText(status) ?? "" })}
+              <p>{t("sheet.lastError", { error: errorText(status) ?? "" })}</p>
+              {status.lastErrorDetail ? (
+                <p>{t("sheet.lastErrorDetail", { detail: status.lastErrorDetail })}</p>
+              ) : null}
             </Banner>
           ) : null}
           {queuedLong ? (

@@ -117,6 +117,25 @@ const MESSAGES: Record<SyncErrorCode, string> = {
     "Zakładka ma dane, których newrole.it nie zapisał, więc ich nie nadpisze. Zsynchronizuj jeszcze raz.",
 }
 
+/** SheetLink.lastError: "code: message (what the script or Google said)". */
+export function syncErrorText(code: SyncErrorCode, detail: string): string {
+  return `${code}: ${MESSAGES[code]}${detail ? ` (${detail})` : ""}`.slice(0, 500)
+}
+
+/** What the script or Google said, from a stored lastError; null when it said nothing more. */
+export function syncErrorDetail(value: string | null): string | null {
+  const error = parseSyncError(value)
+  if (!error?.code) return null
+  const prefix = `${MESSAGES[error.code]} (`
+  if (!error.detail.startsWith(prefix)) return null
+  return (
+    error.detail
+      .slice(prefix.length)
+      .replace(/\)$/, "")
+      .replace(/^exception: /, "") || null
+  )
+}
+
 /** "auth: …" → { code: "auth", detail: "…" }; unknown text keeps the whole string as detail. */
 export function parseSyncError(
   value: string | null
@@ -285,9 +304,7 @@ export async function syncSheet(userId: number): Promise<SyncResult> {
   const fail = async (code: SyncErrorCode, detail: string): Promise<SyncResult> => {
     await db.sheetLink.update({
       where: { userId },
-      data: {
-        lastError: `${code}: ${MESSAGES[code]}${detail ? ` (${detail})` : ""}`.slice(0, 500),
-      },
+      data: { lastError: syncErrorText(code, detail) },
     })
     return { status: "failed", rows: 0, message: MESSAGES[code] }
   }
@@ -463,6 +480,11 @@ export async function importCsv(
  * already queued.
  */
 export const SHEET_PULL_MS = 5 * 60_000
+/**
+ * After a failed sync the pull waits this long, so a sheet that keeps failing is not called every
+ * minute. A change in newrole.it and "Synchronizuj teraz" still sync at once.
+ */
+export const SHEET_RETRY_MS = 60 * 60_000
 
 export async function enqueueStaleSheetSyncs(now = new Date()): Promise<number> {
   const links = await db.sheetLink.findMany({
@@ -470,8 +492,10 @@ export async function enqueueStaleSheetSyncs(now = new Date()): Promise<number> 
       webhookUrl: { not: null },
       autoSync: true,
       OR: [
-        { lastSyncedAt: null },
-        { lastSyncedAt: { lt: new Date(now.getTime() - SHEET_PULL_MS) } },
+        { lastError: null, lastSyncedAt: null },
+        { lastError: null, lastSyncedAt: { lt: new Date(now.getTime() - SHEET_PULL_MS) } },
+        // A failed sync writes lastError, so updatedAt is when it ended.
+        { lastError: { not: null }, updatedAt: { lt: new Date(now.getTime() - SHEET_RETRY_MS) } },
       ],
     },
     select: { userId: true },
@@ -574,6 +598,8 @@ export type SheetStatus = {
   lastRowCount: number | null
   lastError: string | null
   lastErrorCode: SyncErrorCode | null
+  /** What the script or Google said, in the spreadsheet owner's language */
+  lastErrorDetail: string | null
   /** When a queued sync was due; a time well in the past means the app is not running */
   pendingSince: Date | null
 }
@@ -599,6 +625,7 @@ export async function sheetStatus(userId: number): Promise<SheetStatus> {
     lastRowCount: link?.lastRowCount ?? null,
     lastError: link?.lastError ?? null,
     lastErrorCode: error?.code ?? null,
+    lastErrorDetail: syncErrorDetail(link?.lastError ?? null),
     pendingSince: pending?.runAt ?? null,
   }
 }

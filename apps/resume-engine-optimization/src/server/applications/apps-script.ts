@@ -109,7 +109,7 @@ function write_(body) {
     if (first.indexOf(ID_HEADER) < 0) {
       // Rows newrole.it did not write: only after it read them, and never without a copy.
       if (!body.adopt) return { ok: false, error: "foreign-tab" };
-      sheet.copyTo(book).setName(body.backupName || name + " (kopia)");
+      backup_(book, sheet, body.backupName || name + " (kopia)");
     }
   }
   if (!sheet) sheet = book.insertSheet(name);
@@ -153,6 +153,20 @@ function write_(body) {
     console.warn("newrole.it: formatting skipped: " + err);
   }
   return { ok: true, rows: rows.length, table: table, syncedAt: body.syncedAt || null };
+}
+
+/**
+ * A copy of the tab under a name no other tab has: the given one, then " 2", " 3"… A copy with the
+ * same rows, left by a sync that failed after making it, is kept instead of making another.
+ */
+function backup_(book, sheet, name) {
+  var rows = JSON.stringify(sheet.getDataRange().getDisplayValues());
+  var free = name;
+  for (var n = 2; book.getSheetByName(free); n++) {
+    if (JSON.stringify(book.getSheetByName(free).getDataRange().getDisplayValues()) === rows) return;
+    free = name + " " + n;
+  }
+  sheet.copyTo(book).setName(free);
 }
 
 /** Looks only: bold header, frozen row, widths, hidden technical columns, status colours. */

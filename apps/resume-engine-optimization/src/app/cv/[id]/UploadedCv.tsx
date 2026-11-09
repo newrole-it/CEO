@@ -33,7 +33,7 @@ export function UploadedCv({
       if (!result) throw new Error("no result")
       if (result.reader === "text") toast.show({ message: t("cv.up.textOnly"), duration: 10_000 })
       // the same CV, now editable: this address renders the editor once refreshed
-      router.replace(`/cv/${result.id}${forAudit ? "?audit=1" : ""}`)
+      router.replace(`/cv/${result.id}${forAudit ? "?audit=1" : "?look=1"}`)
       router.refresh()
     } catch {
       toast.show({ message: t("cv.up.err"), tone: "danger" })

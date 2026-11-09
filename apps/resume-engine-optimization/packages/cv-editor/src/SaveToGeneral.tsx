@@ -1,12 +1,12 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { FileUp } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { Modal, ModalHead, useToast } from "@newrole/ui/interactive"
 import { Field } from "@newrole/ui/primitives"
-import type { TailorContext } from "@newrole/cv-core/views"
+import type { GeneralCvCheck, TailorContext } from "@newrole/cv-core/views"
 import { useCvBackend } from "./backend"
 import { useCvCopy } from "./locale"
 import type { CvLanguage } from "./useCvDocument"
@@ -18,6 +18,7 @@ const NEW = "new"
  * "Zapisz jako ogólne" in the toolbar of a CV for an offer: once confirmed, what is on the sheet
  * becomes the newest version of the general CV it was tailored from (versions.toGeneral). When
  * that CV is gone, the person picks another general CV, or makes this one a general CV of its own.
+ * The dialog first checks what the CV still says about the offer's company (versions.checkGeneral).
  */
 export function SaveToGeneral({
   id,
@@ -41,11 +42,36 @@ export function SaveToGeneral({
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [into, setInto] = useState(choices[0]?.id ?? NEW)
+  /** undefined while it runs, null when it failed */
+  const [check, setCheck] = useState<GeneralCvCheck | null | undefined>(undefined)
+  // only the newest check shows, when the pick changes while one runs
+  const checkRun = useRef(0)
   const toGeneral = backend.versions.toGeneral
+  const checkGeneral = backend.versions.checkGeneral
   if (!toGeneral) return null
   /** The general CV it goes into; null for a new one */
   const target = general ?? choices.find((choice) => choice.id === into) ?? null
   const title = target?.title ?? ""
+  const named = check?.company ? check : null
+
+  async function runCheck(pick: string) {
+    if (!checkGeneral) return
+    const run = ++checkRun.current
+    setCheck(undefined)
+    let found: GeneralCvCheck | null = null
+    try {
+      // the server reads what is stored, so what is on the sheet has to be stored first
+      if (await flush()) found = await checkGeneral(id, general ? undefined : pick)
+    } catch {
+      found = null
+    }
+    if (run === checkRun.current) setCheck(found)
+  }
+
+  function openDialog() {
+    setOpen(true)
+    void runCheck(into)
+  }
 
   async function save() {
     if (!toGeneral) return
@@ -87,7 +113,7 @@ export function SaveToGeneral({
         icon={<FileUp />}
         title={general ? t("tl.tg.hint", { title }) : t("tl.tg.hintPick")}
         aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
+        onClick={openDialog}
       >
         {t("tl.tg.button")}
       </Button>
@@ -102,7 +128,10 @@ export function SaveToGeneral({
                   id={pickId}
                   className="select"
                   value={into}
-                  onChange={(event) => setInto(event.target.value)}
+                  onChange={(event) => {
+                    setInto(event.target.value)
+                    void runCheck(event.target.value)
+                  }}
                 >
                   {choices.map((choice) => (
                     <option key={choice.id} value={choice.id}>
@@ -126,13 +155,49 @@ export function SaveToGeneral({
           ) : (
             <p className="t-sm">{t("tl.tg.newBody")}</p>
           )}
+          {!checkGeneral ? null : check === undefined ? (
+            <p className="t-sm muted" role="status">
+              {t("tl.tg.check.running")}
+            </p>
+          ) : check === null ? (
+            <p className="t-sm muted" role="status">
+              {t("tl.tg.check.failed")}
+            </p>
+          ) : named ? (
+            <>
+              {named.consent ? (
+                <p className="t-sm">{t("tl.tg.check.consent", { company: named.company })}</p>
+              ) : null}
+              {named.lines.length ? (
+                <section className="cvt-note cvt-note--warn" role="status">
+                  <p>{t("tl.tg.check.lines", { company: named.company })}</p>
+                  <ul>
+                    {named.lines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                  <p>{t("tl.tg.check.fix")}</p>
+                </section>
+              ) : (
+                <p className="t-sm muted" role="status">
+                  {t("tl.tg.check.clean", { company: named.company })}
+                </p>
+              )}
+            </>
+          ) : null}
         </div>
         <div className="modal__foot">
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
             {t("common.cancel")}
           </Button>
-          <Button type="button" variant="primary" loading={busy} onClick={() => void save()}>
-            {t(target ? "tl.tg.go" : "tl.tg.goNew")}
+          <Button
+            type="button"
+            variant="primary"
+            loading={busy}
+            disabled={check === undefined && Boolean(checkGeneral)}
+            onClick={() => void save()}
+          >
+            {t(named?.lines.length ? "tl.tg.goAnyway" : target ? "tl.tg.go" : "tl.tg.goNew")}
           </Button>
         </div>
       </Modal>

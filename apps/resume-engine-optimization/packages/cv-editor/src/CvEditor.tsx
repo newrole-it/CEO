@@ -12,6 +12,7 @@ import {
   History,
   Italic,
   Link2,
+  Palette,
   Printer,
   Redo2,
   RotateCcw,
@@ -22,11 +23,17 @@ import { useToast } from "@newrole/ui/interactive"
 import type { CvAudit } from "@newrole/cv-core/audit"
 import { newSection } from "@newrole/cv-core/blank"
 import { insertSection, removeSection, updateHeader } from "@newrole/cv-core/edit"
-import { atomKey, cvFlow, footerText } from "@newrole/cv-core/flow"
+import { atomKey, cvFlow, footerText, type CvAtom } from "@newrole/cv-core/flow"
 import { normalizeHref } from "@newrole/cv-core/sanitize"
 import type { CvContent, CvSection } from "@newrole/cv-core/schema"
 import { CV_CSS, MM, PAGE_MM } from "@newrole/cv-core/styles"
 import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
+import {
+  documentTemplate,
+  onAccent,
+  templateClass,
+  TEMPLATES_CSS,
+} from "@newrole/cv-core/templates"
 import type { PairContext, TailorContext } from "@newrole/cv-core/views"
 import { AtomContent, type EditorOps } from "./atoms"
 import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./backend"
@@ -36,6 +43,7 @@ import { DocumentPanel, type PanelTab } from "./DocumentPanel"
 import { placeCaret } from "./Editable"
 import { EditorHelp, useEditorHelp } from "./EditorHelp"
 import { LinksPopover } from "./LinksPopover"
+import { LookPanel } from "./LookPanel"
 import { useCvCopy } from "./locale"
 import { Outline } from "./Outline"
 import { photoToDataUrl } from "./photo"
@@ -75,12 +83,29 @@ type EditorProps = {
   initialAudit: CvAudit | null
   /** Arrived from the "CV audit" link: the audit is what the person came for */
   startAudit: boolean
+  /** A CV just made: the look panel opens first, to pick a template and a colour */
+  startLook?: boolean
   /** A cover letter: one section, so no outline and no audit */
   isLetter?: boolean
   /** Set when this document was written for an offer */
   tailor?: TailorContext | null
   /** Set for a general CV and its general letter */
   pair?: PairContext | null
+}
+
+/** One atom on the sheet; usePagination reads data-keep and data-lead. */
+function SheetAtom({ ops, atom }: { ops: EditorOps; atom: CvAtom }) {
+  return (
+    <div
+      className={`cv-atom cv-atom--${atom.kind}${atom.side ? " cv-atom--side" : ""}`}
+      data-key={atom.key}
+      data-keep={atom.keepWithNext ? "1" : undefined}
+      data-lead={atom.lead}
+      style={{ paddingTop: `${atom.lead}mm` }}
+    >
+      <AtomContent ops={ops} atom={atom} />
+    </div>
+  )
 }
 
 /**
@@ -101,6 +126,7 @@ function Editor({
   loadedAt,
   initialAudit,
   startAudit,
+  startLook = false,
   isLetter = false,
   tailor = null,
   pair = null,
@@ -113,26 +139,42 @@ function Editor({
 
   const [keep, setKeep] = useState<ReadonlySet<string>>(() => new Set())
   const atoms = useMemo(() => cvFlow(content, { editing: true, keep }), [content, keep])
+  const template = documentTemplate(content)
+  const columns = template.columns ?? null
+  // a two-column template has a side column that breaks across pages on its own
+  const mainAtoms = useMemo(() => atoms.filter((atom) => !atom.side), [atoms])
+  const sideAtoms = useMemo(() => atoms.filter((atom) => atom.side), [atoms])
 
+  const docRef = useRef<HTMLDivElement>(null)
   const flowRef = useRef<HTMLDivElement>(null)
-  const { pageCount, ready, schedule } = usePagination(flowRef, atoms)
+  const sideRef = useRef<HTMLDivElement>(null)
+  const main = usePagination(flowRef, mainAtoms)
+  const side = usePagination(sideRef, sideAtoms)
+  const pageCount = columns ? Math.max(main.pageCount, side.pageCount) : main.pageCount
+  const { schedule: scheduleMain } = main
+  const { schedule: scheduleSide } = side
+  const schedule = useCallback(() => {
+    scheduleMain()
+    scheduleSide()
+  }, [scheduleMain, scheduleSide])
   const audit = useCvAudit({
     id,
     content,
     initial: initialAudit,
     startOpen: startAudit,
-    flowRef,
+    // with two columns the fields are in two flows; the sheet holds both
+    flowRef: columns ? docRef : flowRef,
     flush: doc.flush,
     edit,
     undo,
   })
 
-  // versions and tailoring share the place of the audit rail, so only one of them is open
-  const [panel, setPanel] = useState<PanelTab | null>(null)
+  // versions, tailoring and the look share the place of the audit rail, so only one is open
+  const [panel, setPanel] = useState<PanelTab | "look" | null>(startLook ? "look" : null)
   const [tailorNotes, setTailorNotes] = useState(tailor?.notes ?? null)
   /** The section "Popraw z AI" works on */
   const [improveSection, setImproveSection] = useState<string | null>(null)
-  function togglePanel(tab: PanelTab) {
+  function togglePanel(tab: PanelTab | "look") {
     if (audit.open) audit.toggle()
     setPanel((current) => (current === tab ? null : tab))
   }
@@ -177,7 +219,7 @@ function Editor({
   useLayoutEffect(() => {
     const pending = pendingFocus.current
     if (!pending) return
-    const element = flowRef.current?.querySelector<HTMLElement>(
+    const element = docRef.current?.querySelector<HTMLElement>(
       `[data-field="${CSS.escape(pending.field)}"]`
     )
     if (!element) return
@@ -290,7 +332,7 @@ function Editor({
       error: false,
       hasAnchor: Boolean(anchor),
     })
-  }, [])
+  }, [setLinkBox])
 
   function restoreLinkRange(): { host: HTMLElement; anchor: HTMLAnchorElement | null } | null {
     const range = linkRange.current
@@ -411,7 +453,7 @@ function Editor({
 
   return (
     <div className="cve" ref={rootRef}>
-      <style dangerouslySetInnerHTML={{ __html: CV_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: CV_CSS + TEMPLATES_CSS }} />
       <div className="cve-toolbar" role="toolbar" aria-label={t("cv.ed.tools")}>
         <Link
           className="cve-toolbar__back"
@@ -497,6 +539,15 @@ function Editor({
         <span className="cve-toolbar__pages t-sm muted" aria-live="polite">
           {t("cv.ed.pages", { n: pageCount })}
         </span>
+        <Button
+          size="sm"
+          variant={panel === "look" ? "soft" : "ghost"}
+          icon={<Palette />}
+          aria-pressed={panel === "look"}
+          onClick={() => togglePanel("look")}
+        >
+          {t("look.button")}
+        </Button>
         {isLetter || !backend.audit ? null : (
           <Button
             size="sm"
@@ -605,10 +656,12 @@ function Editor({
             style={{ width: PAGE_WIDTH * scale, height: stageHeight * scale }}
           >
             <div
-              className="cv-doc cve-doc"
+              ref={docRef}
+              className={`cv-doc cve-doc ${templateClass(template)}`}
               style={
                 {
                   "--cv-accent": content.theme.accent,
+                  "--cv-on-accent": onAccent(content.theme.accent),
                   transform: scale === 1 ? undefined : `scale(${scale})`,
                   height: stageHeight,
                 } as React.CSSProperties
@@ -619,18 +672,23 @@ function Editor({
                   <div className="cv-footer">{footerText(content, index + 1, pageCount)}</div>
                 </div>
               ))}
-              <div className={`cv-flow cve-flow${ready ? " is-ready" : ""}`} ref={flowRef}>
-                {atoms.map((atom) => (
-                  <div
-                    key={atom.key}
-                    className={`cv-atom cv-atom--${atom.kind}`}
-                    data-key={atom.key}
-                    data-keep={atom.keepWithNext ? "1" : undefined}
-                    data-lead={atom.lead}
-                    style={{ paddingTop: `${atom.lead}mm` }}
-                  >
-                    <AtomContent ops={ops} atom={atom} />
-                  </div>
+              <div
+                className={`cv-flow cve-flow${main.ready ? " is-ready" : ""}`}
+                ref={flowRef}
+                style={columns ? { left: `${columns.main.left}mm` } : undefined}
+              >
+                {mainAtoms.map((atom) => (
+                  <SheetAtom key={atom.key} ops={ops} atom={atom} />
+                ))}
+              </div>
+              {/* always mounted, so its pagination observes it from the start */}
+              <div
+                className={`cv-flow cv-flow--side cve-flow${side.ready ? " is-ready" : ""}`}
+                ref={sideRef}
+                style={columns ? { left: `${columns.side.left}mm` } : { display: "none" }}
+              >
+                {sideAtoms.map((atom) => (
+                  <SheetAtom key={atom.key} ops={ops} atom={atom} />
                 ))}
               </div>
             </div>
@@ -638,7 +696,15 @@ function Editor({
         </div>
 
         {audit.open ? <AuditRail state={audit} /> : null}
-        {panel ? (
+        {panel === "look" ? (
+          <LookPanel
+            content={content}
+            edit={edit}
+            isLetter={isLetter}
+            intro={startLook}
+            onClose={() => setPanel(null)}
+          />
+        ) : panel ? (
           <DocumentPanel
             id={id}
             doc={doc}

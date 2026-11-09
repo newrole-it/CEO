@@ -15,6 +15,7 @@ import tailorCvForJob from "./mutations/tailorCvForJob"
 import updateCvDocument from "./mutations/updateCvDocument"
 import getCvVersion from "./queries/getCvVersion"
 import getCvVersions from "./queries/getCvVersions"
+import getGeneralCvCheck from "./queries/getGeneralCvCheck"
 import getOfferTextStatus from "./queries/getOfferTextStatus"
 import getTailorProgress from "./queries/getTailorProgress"
 import { cvPdfUrl, cvPrintUrl, cvVersionPdfUrl } from "./urls"
@@ -30,6 +31,7 @@ export const newroleCvBackend: CvEditorBackend = {
     save: (id, label) => invoke(saveCvVersion, { id, label }),
     restore: (id, versionId) => invoke(restoreCvVersion, { id, versionId }),
     toGeneral: (id, into) => invoke(saveCvToGeneral, { id, into }),
+    checkGeneral: (id, into) => invoke(getGeneralCvCheck, { id, into }),
     pdfUrl: cvVersionPdfUrl,
   },
   tailor: {

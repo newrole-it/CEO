@@ -10,9 +10,11 @@ export const matchPl = {
   "mt.openCv": "Otwórz CV",
   "mt.openLetter": "Otwórz list",
   "mt.back": "Wróć do oferty",
-  "mt.none.title": "Ta ocena powstaje przy dopasowaniu CV",
+  "mt.none.title": "To CV nie ma jeszcze oceny dopasowania",
   "mt.none.body":
-    "To CV dopasowano, zanim newrole.it zaczął oceniać dopasowanie. Otwórz CV i w panelu Dopasowanie kliknij „Wygeneruj ponownie”. Obecny tekst zostanie w historii wersji.",
+    "To CV dopasowano, zanim newrole.it zaczął oceniać dopasowanie. „Sprawdź dopasowanie” oceni je takie, jakie jest, i nie zmieni jego tekstu. „Popraw CV i sprawdź” przepisze je pod tę ofertę i oceni od nowa; obecna wersja zostanie w historii wersji.",
+  "mt.none.check": "Sprawdź dopasowanie",
+  "mt.none.rewrite": "Popraw CV i sprawdź",
 
   "mt.score.title": "Dopasowanie do wymagań",
   "mt.score.value": "{n}%",
@@ -166,14 +168,19 @@ export const matchPl = {
   "mt.next.hint":
     "Komentarze trafią do Twojego profilu jako fakty o Tobie. „Popraw CV i sprawdź ponownie” przepisze obecne CV pod tę ofertę i oceni je od nowa; obecna wersja zostanie w historii wersji. „Tylko sprawdź ponownie” nie zmienia CV i przydaje się po Twoich zmianach w edytorze.",
   "mt.next.rewrite": "Popraw CV i sprawdź ponownie",
+  "mt.next.fresh": "Stwórz nowe CV pod tę ofertę",
+  "mt.next.fresh.hint":
+    "„Stwórz nowe CV pod tę ofertę” napisze je od nowa z CV ogólnego „{title}” w jego obecnej postaci, z Twoimi komentarzami; obecna wersja też zostanie w historii wersji.",
+  "mt.next.fresh.hintGone":
+    "„Stwórz nowe CV pod tę ofertę” napisze je od nowa z CV, od którego to CV powstało, z Twoimi komentarzami; obecna wersja też zostanie w historii wersji.",
   "mt.next.check": "Tylko sprawdź ponownie",
   "mt.next.dirty": "Zapisz albo anuluj komentarz, który piszesz.",
   "mt.next.running": "Runda {n} w toku",
   "mt.next.wait": "To może potrwać kilka minut. Nie zamykaj tej karty.",
-  "mt.next.err.noMatch": "To CV nie ma jeszcze oceny, od której można zacząć następną rundę.",
 
   "mt.link.score": "Ocena dopasowania: {n}%",
   "mt.link.none": "Ocena dopasowania",
+  "mt.link.check": "Sprawdź dopasowanie",
 
   "mt.facts.title": "Fakty o Tobie",
   "mt.facts.sub":
@@ -196,9 +203,11 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
   "mt.openCv": "Open the CV",
   "mt.openLetter": "Open the letter",
   "mt.back": "Back to the offer",
-  "mt.none.title": "This score is made when the CV is tailored",
+  "mt.none.title": "This CV has no match score yet",
   "mt.none.body":
-    "This CV was tailored before newrole.it started scoring matches. Open the CV and, in the Tailoring tab, click “Generate again”. The current text stays in the version history.",
+    "This CV was tailored before newrole.it started scoring matches. “Check the match” scores it as it is and leaves its text alone. “Improve the CV and check” rewrites it for this offer and scores it again; the current version stays in the version history.",
+  "mt.none.check": "Check the match",
+  "mt.none.rewrite": "Improve the CV and check",
 
   "mt.score.title": "Match with the requirements",
   "mt.score.value": "{n}%",
@@ -352,14 +361,19 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
   "mt.next.hint":
     "Your comments go into your profile as facts about you. “Improve the CV and check again” rewrites the current CV for this offer and scores it again; the current version stays in the version history. “Only check again” leaves the CV as it is, for after your own edits.",
   "mt.next.rewrite": "Improve the CV and check again",
+  "mt.next.fresh": "Write a new CV for this offer",
+  "mt.next.fresh.hint":
+    "“Write a new CV for this offer” writes it again from your general CV “{title}” as it is now, with your comments; the current version stays in the version history too.",
+  "mt.next.fresh.hintGone":
+    "“Write a new CV for this offer” writes it again from the CV this one was first made from, with your comments; the current version stays in the version history too.",
   "mt.next.check": "Only check again",
   "mt.next.dirty": "Save or cancel the comment you're writing.",
   "mt.next.running": "Round {n} in progress",
   "mt.next.wait": "This can take a few minutes. Keep this tab open.",
-  "mt.next.err.noMatch": "This CV has no match yet to start the next round from.",
 
   "mt.link.score": "Match score: {n}%",
   "mt.link.none": "Match score",
+  "mt.link.check": "Check the match",
 
   "mt.facts.title": "Facts about you",
   "mt.facts.sub":

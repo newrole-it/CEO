@@ -11,31 +11,15 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { useRouter } from "next/navigation"
 import { invoke } from "@blitzjs/rpc"
-import {
-  Check,
-  Circle,
-  CircleAlert,
-  LoaderCircle,
-  MessageSquarePlus,
-  Minus,
-  Pencil,
-  RefreshCw,
-  Sparkles,
-  Trash2,
-} from "lucide-react"
+import { FilePlus2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
-import { Modal, useToast } from "@newrole/ui/interactive"
+import { useToast } from "@newrole/ui/interactive"
 import { commentId, type MatchComment, type MatchCommentKind } from "@newrole/cv-core/match"
-import { TAILOR_STEPS, type StepState, type StepUpdate } from "@newrole/cv-core/progress"
-import { STATE_KEY, STEP_KEYS, stepLine } from "@newrole/cv-editor/steps"
-import { tailorErrorKey } from "@newrole/cv-editor/tailor-errors"
 import { useCopy } from "src/app/i18n/Locale"
 import { pluralKind, type CopyKey } from "src/app/i18n/copy"
-import getTailorProgress from "src/app/cv/queries/getTailorProgress"
-import runMatchRound from "src/app/offers/mutations/runMatchRound"
 import saveMatchComment from "src/app/offers/mutations/saveMatchComment"
+import { RunDialog, useMatchRun } from "./MatchRun"
 
 /**
  * The person's comments on one round of the match, and the next round they start. Comments are
@@ -49,6 +33,8 @@ export type RoundInfo = {
   number: number
   /** Only the newest round takes comments and starts the next one */
   editable: boolean
+  /** The title of the general CV a new CV for the offer is written from; null when it is gone */
+  general: string | null
 }
 
 type Context = {
@@ -74,16 +60,6 @@ const PLACEHOLDER: Record<MatchCommentKind, CopyKey> = {
   keyword: "mt.c.ph.keyword",
   question: "mt.c.ph.question",
   unverified: "mt.c.ph.unverified",
-}
-
-/** How often the dialog asks for the run's steps while it waits. */
-const POLL_MS = 1000
-
-/** A run's id, unique enough to follow one run of one person. */
-function newRunId(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 }
 
 export function RoundComments({
@@ -277,62 +253,18 @@ export function CommentBox({
   )
 }
 
-function StepIcon({ state }: { state: StepState | "waiting" }) {
-  if (state === "running") return <LoaderCircle className="spin" aria-hidden />
-  if (state === "done") return <Check aria-hidden />
-  if (state === "failed") return <CircleAlert aria-hidden />
-  if (state === "skipped") return <Minus aria-hidden />
-  return <Circle aria-hidden />
-}
-
 /** The next round: how many comments it starts from, and the two ways to run it. */
 export function RoundActions() {
   const { t, locale } = useCopy()
   const context = useContext(CommentsContext)
-  const router = useRouter()
   const titleId = useId()
-  const dialogTitleId = useId()
-  const [runId, setRunId] = useState<string | null>(null)
-  const [steps, setSteps] = useState<StepUpdate[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  // the run's steps, read while its request runs; a failed read waits for the next one
-  useEffect(() => {
-    if (!runId) return
-    let live = true
-    const read = () =>
-      invoke(getTailorProgress, { runId })
-        .then((found) => live && found && setSteps(found.steps))
-        .catch(() => undefined)
-    void read()
-    const timer = window.setInterval(read, POLL_MS)
-    return () => {
-      live = false
-      window.clearInterval(timer)
-    }
-  }, [runId])
+  const run = useMatchRun(context?.round.jobId ?? "")
 
   if (!context?.round.editable) return null
   const { round, comments, unsaved } = context
 
-  async function start(rewrite: boolean) {
-    const run = newRunId()
-    setError(null)
-    setSteps([])
-    setRunId(run)
-    try {
-      await invoke(runMatchRound, { jobId: round.jobId, rewrite, locale, runId: run })
-      router.replace(`/offers/${round.jobId}/match`)
-      router.refresh()
-    } catch (failure) {
-      const code = failure instanceof Error ? failure.message : ""
-      setError(t(code === "no-content" ? "mt.next.err.noMatch" : tailorErrorKey(failure)))
-      setRunId(null)
-    }
-  }
-
   const count = comments.length
-  const blocked = unsaved.size > 0 || Boolean(runId)
+  const blocked = unsaved.size > 0 || run.running
   return (
     <section className="mt-next" aria-labelledby={titleId}>
       <div className="mt-next__text">
@@ -345,14 +277,19 @@ export function RoundActions() {
             : t("mt.next.none")}
         </p>
         <p className="t-sm muted">{t("mt.next.hint")}</p>
+        <p className="t-sm muted">
+          {round.general
+            ? t("mt.next.fresh.hint", { title: round.general })
+            : t("mt.next.fresh.hintGone")}
+        </p>
         {unsaved.size ? (
           <p className="t-sm mt-next__warn" role="status">
             {t("mt.next.dirty")}
           </p>
         ) : null}
-        {error ? (
+        {run.error ? (
           <p className="field__error" role="alert">
-            {error}
+            {run.error}
           </p>
         ) : null}
       </div>
@@ -361,53 +298,28 @@ export function RoundActions() {
           variant="primary"
           icon={<Sparkles />}
           disabled={blocked}
-          onClick={() => void start(true)}
+          onClick={() => void run.start("rewrite")}
         >
           {t("mt.next.rewrite")}
         </Button>
         <Button
           variant="outline"
+          icon={<FilePlus2 />}
+          disabled={blocked}
+          onClick={() => void run.start("fresh")}
+        >
+          {t("mt.next.fresh")}
+        </Button>
+        <Button
+          variant="outline"
           icon={<RefreshCw />}
           disabled={blocked}
-          onClick={() => void start(false)}
+          onClick={() => void run.start("check")}
         >
           {t("mt.next.check")}
         </Button>
       </div>
-
-      <Modal open={Boolean(runId)} onClose={() => undefined} labelledBy={dialogTitleId}>
-        <div className="modal__head">
-          <h2 className="t-h3" id={dialogTitleId}>
-            {t("mt.next.running", { n: round.number + 1 })}
-          </h2>
-        </div>
-        <div className="modal__body stack-sm">
-          <ol className="cvt-run" aria-live="polite">
-            {TAILOR_STEPS.map((step) => {
-              const update = steps.find((entry) => entry.step === step)
-              const state = update?.state ?? "waiting"
-              return (
-                <li
-                  key={step}
-                  className="cvt-run__step"
-                  data-state={state}
-                  aria-current={state === "running" ? "step" : undefined}
-                >
-                  <StepIcon state={state} />
-                  <div>
-                    <strong>
-                      {t(STEP_KEYS[step].label)}
-                      <span className="sr-only">: {t(STATE_KEY[state])}</span>
-                    </strong>
-                    <span className="t-sm muted">{stepLine(t, update, step)}</span>
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
-          <p className="t-sm muted">{t("mt.next.wait")}</p>
-        </div>
-      </Modal>
+      <RunDialog open={run.running} number={round.number + 1} steps={run.steps} />
     </section>
   )
 }

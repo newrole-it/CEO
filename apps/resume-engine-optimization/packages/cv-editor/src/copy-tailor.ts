@@ -249,6 +249,16 @@ export const tailorPl = {
     "Treść tego CV, z Twoimi poprawkami, stanie się nowym CV ogólnym. Z niego powstaną CV pod kolejne oferty, a to CV pod ofertę będzie z nim powiązane.",
   "tl.tg.goNew": "Utwórz CV ogólne",
   "tl.tg.created": "Utworzono CV ogólne „{title}”.",
+  "tl.tg.check.running": "Sprawdzam, czy w CV zostały dane firmy z oferty…",
+  "tl.tg.check.failed":
+    "Nie udało się sprawdzić, czy w CV zostały dane firmy z oferty. Klauzula RODO z nazwą firmy i tak nie przejdzie do ogólnego CV.",
+  "tl.tg.check.consent":
+    "Klauzula RODO w tym CV wymienia {company}. Do ogólnego CV trafi klauzula bez nazwy firmy.",
+  "tl.tg.check.lines": "Nazwa {company} jest jeszcze w tekście CV:",
+  "tl.tg.check.fix":
+    "Popraw te miejsca w edytorze, zanim zapiszesz, albo zapisz mimo to: przejdą do ogólnego CV tak, jak są.",
+  "tl.tg.check.clean": "W tekście CV nie ma nazwy {company}.",
+  "tl.tg.goAnyway": "Zapisz mimo to",
   // "Popraw z AI": one section of a CV rewritten by the model
   "tl.ai.tab": "Popraw z AI",
   "tl.ai.control": "Popraw z AI",
@@ -523,6 +533,16 @@ export const tailorEn: Record<keyof typeof tailorPl, string> = {
     "This CV, with your edits, becomes a new general CV. The CVs for your next offers start from it, and this CV for an offer is linked to it.",
   "tl.tg.goNew": "Create the general CV",
   "tl.tg.created": "Created the general CV “{title}”.",
+  "tl.tg.check.running": "Checking whether the CV still names the offer's company…",
+  "tl.tg.check.failed":
+    "Couldn't check whether the CV still names the offer's company. A GDPR clause that names the company won't go into the general CV either way.",
+  "tl.tg.check.consent":
+    "This CV's GDPR clause names {company}. The general CV gets a clause that names no company.",
+  "tl.tg.check.lines": "The CV's text still names {company}:",
+  "tl.tg.check.fix":
+    "Fix these in the editor before you save, or save anyway: they go into the general CV as they are.",
+  "tl.tg.check.clean": "The CV's text doesn't name {company}.",
+  "tl.tg.goAnyway": "Save anyway",
   "tl.ai.tab": "Improve with AI",
   "tl.ai.control": "Improve with AI",
   "tl.ai.lead":

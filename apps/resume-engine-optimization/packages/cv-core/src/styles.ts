@@ -68,6 +68,8 @@ padding-bottom:1.5mm;border-bottom:1px solid var(--cv-line)}
 .cv-doc .cv-card{display:block;min-width:0}
 .cv-doc .cv-card__title{display:block;font-size:10pt;font-weight:700;padding-bottom:1mm}
 .cv-doc .cv-card__body{display:block;font-size:9pt;padding-bottom:2mm}
+.cv-doc .cv-cols-1{grid-template-columns:1fr}
+.cv-doc .cv-cols-3{grid-template-columns:1fr 1fr 1fr}
 .cv-doc .cv-edu{display:flex;justify-content:space-between;column-gap:6mm}
 .cv-doc .cv-edu__main{display:block;min-width:0}
 .cv-doc .cv-edu__school{display:block;font-weight:700}

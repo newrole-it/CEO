@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { syntheticCv } from "@newrole/cv-core/fixtures"
 import { CV_CSS } from "@newrole/cv-core/styles"
+import { TEMPLATES_CSS } from "@newrole/cv-core/templates"
 import { findChrome, renderCvAtoms, renderCvHtml } from "./render"
 
 describe("renderCvHtml", () => {
@@ -59,6 +60,50 @@ describe("renderCvHtml", () => {
     expect(renderCvAtoms(cv)).toContain('<img class="cv-photo" src=')
     cv.header.photoShape = "square"
     expect(renderCvAtoms(cv)).toContain('<img class="cv-photo cv-photo--square" src=')
+  })
+
+  it("lays cards and skills out in the section's columns, two unless it says otherwise", () => {
+    const cv = syntheticCv(1)
+    expect(renderCvAtoms(cv)).toContain('<div class="cv-cards cv-cols-2">')
+    const cards = cv.sections[3]
+    if (cards.type !== "cards") throw new Error("the fixture's fourth section is cards")
+    cv.sections[3] = { ...cards, columns: 1 }
+    expect(renderCvAtoms(cv)).toContain('<div class="cv-cards cv-cols-1">')
+    expect(renderCvAtoms(cv)).toContain('<div class="cv-skills cv-cols-2">')
+  })
+})
+
+describe("renderCvHtml with a template", () => {
+  const withTemplate = (template: string) => {
+    const cv = syntheticCv(2)
+    return { ...cv, theme: { ...cv.theme, template } }
+  }
+  const between = (html: string, start: string, end: string) =>
+    html.slice(html.indexOf(start), html.indexOf(end, html.indexOf(start)))
+
+  it("loads every template's CSS and switches on the CV's own", () => {
+    const html = renderCvHtml(withTemplate("band"))
+    expect(html).toContain(TEMPLATES_CSS)
+    expect(html).toContain(
+      '<div class="cv-doc cv-tpl-band" style="--cv-accent:#175c72;--cv-on-accent:#ffffff">'
+    )
+    expect(html).not.toContain('id="cv-flow-side"')
+    expect(renderCvHtml(syntheticCv(1))).toContain('<div class="cv-doc cv-tpl-classic"')
+  })
+
+  it("gives a two-column template a side flow with the contact details, skills and languages", () => {
+    const html = renderCvHtml(withTemplate("sidebar"))
+    const main = between(html, '<div class="cv-flow" id="cv-flow">', 'id="cv-flow-side"')
+    const side = between(html, 'id="cv-flow-side"', '<div id="cv-pages">')
+    expect(side).toContain('<div class="cv-contact-card">')
+    expect(side).toContain("cv-atom--skills cv-atom--side")
+    expect(side).toContain("Języki")
+    expect(side).not.toContain("cv-atom--job-head")
+    expect(main).toContain("cv-atom--job-head")
+    expect(main).toContain('<h1 class="cv-name">')
+    expect(main).not.toContain('class="cv-contact"')
+    expect(main).not.toContain("cv-atom--skills")
+    expect(html).toContain('getElementById("cv-flow-side")')
   })
 })
 

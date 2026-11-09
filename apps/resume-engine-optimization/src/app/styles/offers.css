@@ -651,6 +651,12 @@ a.cvo-card__status:hover {
   flex-wrap: wrap;
   gap: 8px;
 }
+/* under the buttons of the first round, on a line of its own */
+.mt-first__error {
+  flex-basis: 100%;
+  order: 1;
+  margin: 0;
+}
 @media (min-width: 900px) {
   /* stays in sight while the person comments further up the page */
   .mt-next {

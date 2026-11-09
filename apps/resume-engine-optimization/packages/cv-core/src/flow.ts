@@ -1,5 +1,14 @@
 import { isBlankInline } from "./sanitize"
-import { letterSection, type CvContent, type CvLetterSection, type CvSection } from "./schema"
+import { documentTemplate, sectionOnSide } from "./templates"
+import {
+  letterSection,
+  type CvCardsSection,
+  type CvColumns,
+  type CvContent,
+  type CvLetterSection,
+  type CvSection,
+  type CvSkillsSection,
+} from "./schema"
 
 /**
  * The CV as a flat sequence of atoms: the unit the paginator moves between pages. The editor
@@ -28,6 +37,8 @@ export type AtomKind =
   | "letter-greeting"
   | "letter-para"
   | "letter-closing"
+  /** Two-column templates: the photo and the contact details, at the top of the side column */
+  | "contact"
 
 export type CvAtom = {
   /** Unique and stable across edits (React key, focus restore) */
@@ -35,13 +46,15 @@ export type CvAtom = {
   kind: AtomKind
   sectionId?: string
   itemId?: string
-  /** skills / cards rows: the items in this row (1 or 2) */
+  /** skills / cards rows: the items in this row (up to the section's columns) */
   itemIds?: string[]
   /** bullet index within the item */
   index?: number
   /** Space above, in mm (dropped when the atom starts a page) */
   lead: number
   keepWithNext: boolean
+  /** Two-column templates: the atom flows in the side column, which breaks across pages alone */
+  side?: boolean
 }
 
 export const LEAD = {
@@ -81,10 +94,15 @@ export function atomKey(...parts: (string | number)[]): string {
   return parts.join(":")
 }
 
-function pairs<T>(items: T[]): T[][] {
-  const rows: T[][] = []
-  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2))
-  return rows
+/** Items side by side in a skills or cards section: 2 unless the section says otherwise. */
+export function sectionColumns(section: CvSkillsSection | CvCardsSection): CvColumns {
+  return section.columns ?? 2
+}
+
+function rows<T>(items: T[], columns: number): T[][] {
+  const result: T[][] = []
+  for (let i = 0; i < items.length; i += columns) result.push(items.slice(i, i + columns))
+  return result
 }
 
 /** A letter reads top to bottom with no heading; each paragraph can move to the next page alone. */
@@ -131,7 +149,7 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
     const items = editing
       ? section.items
       : section.items.filter((item) => item.label.trim() || !isBlankInline(item.text))
-    pairs(items).forEach((row, index) => {
+    rows(items, sectionColumns(section)).forEach((row, index) => {
       body.push({
         key: atomKey(sid, "row", row[0].id),
         kind: "skills",
@@ -145,7 +163,7 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
     const items = editing
       ? section.items
       : section.items.filter((item) => item.title.trim() || !isBlankInline(item.body))
-    pairs(items).forEach((row, index) => {
+    rows(items, sectionColumns(section)).forEach((row, index) => {
       body.push({
         key: atomKey(sid, "row", row[0].id),
         kind: "cards",
@@ -270,12 +288,20 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
   ]
 }
 
-/** The atoms of a CV in reading order. Hidden sections are left out. */
+/**
+ * The atoms of a CV in reading order. Hidden sections are left out. In a two-column template the
+ * contact atom and the atoms of the sections on the side carry `side`; each column keeps its order.
+ */
 export function cvFlow(content: CvContent, opts: FlowOptions = {}): CvAtom[] {
+  const columns = Boolean(documentTemplate(content).columns)
   const atoms: CvAtom[] = [{ key: "header", kind: "header", lead: 0, keepWithNext: false }]
+  if (columns)
+    atoms.push({ key: "contact", kind: "contact", lead: 0, keepWithNext: false, side: true })
   for (const section of content.sections) {
     if (section.hidden) continue
-    atoms.push(...sectionAtoms(section, opts))
+    const side = columns && sectionOnSide(section)
+    const own = sectionAtoms(section, opts)
+    atoms.push(...(side ? own.map((atom) => ({ ...atom, side: true })) : own))
   }
   if (content.consent != null && (opts.editing || content.consent.trim())) {
     atoms.push({ key: "consent", kind: "consent", lead: LEAD.consent, keepWithNext: false })

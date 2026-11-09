@@ -69,7 +69,16 @@ const sectionBase = {
   id: CvId,
   title: plain(120),
   hidden: z.boolean().optional(),
+  /** Templates with two columns: true puts it in the side column; unset follows sectionOnSide */
+  side: z.boolean().optional(),
 }
+
+/** A template's id (./templates); one that is no longer there reads as the classic look. */
+export const CvTemplateRef = z.string().regex(/^[a-z0-9-]{1,40}$/)
+
+/** Items side by side in a skills or cards section; a section without it shows 2. */
+export const CV_COLUMNS = [1, 2, 3] as const
+export const CvColumns = z.union([z.literal(1), z.literal(2), z.literal(3)])
 
 export const CvSkillItem = z.object({ id: CvId, label: plain(160), text: rich(2000) })
 
@@ -103,6 +112,7 @@ export const CvTextSection = z.object({
 export const CvSkillsSection = z.object({
   ...sectionBase,
   type: z.literal("skills"),
+  columns: CvColumns.optional(),
   items: z.array(CvSkillItem).max(60),
 })
 export const CvExperienceSection = z.object({
@@ -113,6 +123,7 @@ export const CvExperienceSection = z.object({
 export const CvCardsSection = z.object({
   ...sectionBase,
   type: z.literal("cards"),
+  columns: CvColumns.optional(),
   items: z.array(CvCardItem).max(30),
 })
 export const CvEducationSection = z.object({
@@ -154,6 +165,8 @@ export const CvContent = z.object({
   consent: plain(3000).nullable(),
   theme: z.object({
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    /** The look from ./templates; unset is the classic one */
+    template: CvTemplateRef.optional(),
   }),
 })
 
@@ -161,6 +174,7 @@ export type CvContent = z.infer<typeof CvContent>
 export type CvHeader = z.infer<typeof CvHeader>
 export type CvLink = z.infer<typeof CvLink>
 export type CvPhotoShape = z.infer<typeof CvPhotoShape>
+export type CvColumns = z.infer<typeof CvColumns>
 export type CvSection = z.infer<typeof CvSection>
 /** What can be added to a CV; a letter's section comes only with the letter. */
 export type CvSectionType = Exclude<CvSection["type"], "letter">

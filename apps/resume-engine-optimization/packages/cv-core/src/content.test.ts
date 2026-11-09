@@ -9,7 +9,9 @@ import {
   cvTooLongLimit,
   MAX_PHOTO_CHARS,
   parseCvContent,
+  type CvCardsSection,
   type CvExperienceSection,
+  type CvSkillsSection,
 } from "./schema"
 import { cvPlainText } from "./text"
 
@@ -95,6 +97,28 @@ describe("cvFlow", () => {
     expect(atoms.filter((atom) => atom.kind === "cards").map((atom) => atom.itemIds)).toEqual([
       ["c1", "c2"],
     ])
+  })
+
+  it("puts as many items in a row as the section has columns", () => {
+    const cv = syntheticCv(1)
+    cv.sections[1] = { ...(cv.sections[1] as CvSkillsSection), columns: 3 }
+    cv.sections[3] = { ...(cv.sections[3] as CvCardsSection), columns: 1 }
+    const atoms = cvFlow(cv)
+    expect(atoms.filter((atom) => atom.kind === "skills").map((atom) => atom.itemIds)).toEqual([
+      ["sk1", "sk2", "sk3"],
+    ])
+    expect(atoms.filter((atom) => atom.kind === "cards").map((atom) => atom.itemIds)).toEqual([
+      ["c1"],
+      ["c2"],
+    ])
+  })
+
+  it("keeps the column count through a parse and rejects one it cannot lay out", () => {
+    const cv = syntheticCv(1)
+    cv.sections[3] = { ...(cv.sections[3] as CvCardsSection), columns: 1 }
+    expect(parseCvContent(cv)?.sections[3]).toMatchObject({ columns: 1 })
+    cv.sections[3] = { ...(cv.sections[3] as CvCardsSection), columns: 4 as 1 }
+    expect(cvContentError(cv)).toContain("columns")
   })
 
   it("leaves blanks and hidden sections out of print but keeps them in the editor", () => {

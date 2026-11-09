@@ -4,11 +4,24 @@ import { mkdtemp, readFile, rm, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 import { pathToFileURL } from "url"
-import { contactLines, cvFlow, documentLabel, footerText, type CvAtom } from "@newrole/cv-core/flow"
+import {
+  contactLines,
+  cvFlow,
+  documentLabel,
+  footerText,
+  sectionColumns,
+  type CvAtom,
+} from "@newrole/cv-core/flow"
 import { assignPages, computePageBreaks } from "@newrole/cv-core/paginate"
 import { escapeAttr, escapeHtml, sanitizeInline } from "@newrole/cv-core/sanitize"
 import { CV_ACCENT, type CvContent, type CvSection } from "@newrole/cv-core/schema"
 import { CV_CSS, PAGE_MM } from "@newrole/cv-core/styles"
+import {
+  documentTemplate,
+  onAccent,
+  templateClass,
+  TEMPLATES_CSS,
+} from "@newrole/cv-core/templates"
 
 /**
  * The print/PDF view of a CV: a standalone HTML document with the shared CV stylesheet, the
@@ -33,7 +46,11 @@ function sectionById(content: CvContent, id: string | undefined): CvSection | un
   return content.sections.find((section) => section.id === id)
 }
 
-function headerHtml(content: CvContent): string {
+/**
+ * The header: everything ("all"), or in a two-column template the name and headline in the main
+ * column ("name") and the photo with the contact details at the top of the side one ("contact").
+ */
+function headerHtml(content: CvContent, part: "all" | "name" | "contact" = "all"): string {
   const header = content.header
   const { first, links } = contactLines(content)
   const sep = '<span class="cv-sep">·</span>'
@@ -59,25 +76,30 @@ function headerHtml(content: CvContent): string {
     })
     .join(sep)
   const contact = [firstLine, linkLine].filter(Boolean).join("<br>")
+  const contactHtml = contact ? `<div class="cv-contact">${contact}</div>` : ""
   const photo = header.photo
+  const photoHtml = photo
+    ? `<img class="cv-photo${
+        header.photoShape === "square" ? " cv-photo--square" : ""
+      }" src="${escapeAttr(photo)}" alt="${escapeAttr(header.name)}">`
+    : ""
+  if (part === "contact") return `<div class="cv-contact-card">${photoHtml}${contactHtml}</div>`
+  const own = part === "all"
   return [
-    `<div class="cv-header${photo ? "" : " cv-header--nophoto"}">`,
+    `<div class="cv-header${photo && own ? "" : " cv-header--nophoto"}">`,
     '<div class="cv-header__main">',
     `<h1 class="cv-name">${text(header.name)}</h1>`,
     header.headline.trim() ? `<p class="cv-headline">${text(header.headline)}</p>` : "",
-    contact ? `<div class="cv-contact">${contact}</div>` : "",
+    own ? contactHtml : "",
     "</div>",
-    photo
-      ? `<img class="cv-photo${
-          header.photoShape === "square" ? " cv-photo--square" : ""
-        }" src="${escapeAttr(photo)}" alt="${escapeAttr(header.name)}">`
-      : "",
+    own ? photoHtml : "",
     "</div>",
   ].join("")
 }
 
-function atomInner(content: CvContent, atom: CvAtom): string {
-  if (atom.kind === "header") return headerHtml(content)
+function atomInner(content: CvContent, atom: CvAtom, columns: boolean): string {
+  if (atom.kind === "header") return headerHtml(content, columns ? "name" : "all")
+  if (atom.kind === "contact") return headerHtml(content, "contact")
   if (atom.kind === "consent") return `<p class="cv-consent">${text(content.consent ?? "")}</p>`
   const section = sectionById(content, atom.sectionId)
   if (!section) return ""
@@ -110,7 +132,7 @@ function atomInner(content: CvContent, atom: CvAtom): string {
     const items = (atom.itemIds ?? [])
       .map((id) => section.items.find((item) => item.id === id))
       .filter(Boolean)
-    return `<div class="cv-skills">${items
+    return `<div class="cv-skills cv-cols-${sectionColumns(section)}">${items
       .map((item) => {
         const label = item!.label.trim().replace(/:\s*$/, "")
         return `<p class="cv-skill">${label ? `<strong>${text(label)}:</strong> ` : ""}${rich(
@@ -123,7 +145,7 @@ function atomInner(content: CvContent, atom: CvAtom): string {
     const items = (atom.itemIds ?? [])
       .map((id) => section.items.find((item) => item.id === id))
       .filter(Boolean)
-    return `<div class="cv-cards">${items
+    return `<div class="cv-cards cv-cols-${sectionColumns(section)}">${items
       .map(
         (item) =>
           `<div class="cv-card"><h3 class="cv-card__title">${text(
@@ -160,16 +182,22 @@ function atomInner(content: CvContent, atom: CvAtom): string {
   return ""
 }
 
-/** The atoms as HTML, in flow order (print mode: blanks left out). */
-export function renderCvAtoms(content: CvContent): string {
-  return cvFlow(content)
+function atomsHtml(content: CvContent, atoms: CvAtom[], columns: boolean): string {
+  return atoms
     .map(
       (atom) =>
-        `<div class="cv-atom cv-atom--${atom.kind}" data-key="${escapeAttr(atom.key)}"${
+        `<div class="cv-atom cv-atom--${atom.kind}${
+          atom.side ? " cv-atom--side" : ""
+        }" data-key="${escapeAttr(atom.key)}"${
           atom.keepWithNext ? ' data-keep="1"' : ""
-        } style="padding-top:${atom.lead}mm">${atomInner(content, atom)}</div>`
+        } style="padding-top:${atom.lead}mm">${atomInner(content, atom, columns)}</div>`
     )
     .join("\n")
+}
+
+/** The atoms as HTML, in flow order (print mode: blanks left out), both columns' together. */
+export function renderCvAtoms(content: CvContent): string {
+  return atomsHtml(content, cvFlow(content), Boolean(documentTemplate(content).columns))
 }
 
 function pageScript(content: CvContent, autoPrint: boolean): string {
@@ -186,10 +214,8 @@ function pageScript(content: CvContent, autoPrint: boolean): string {
     PAGE_MM.top
   } * MM, marginBottom: ${PAGE_MM.bottom} * MM, gap: 0 };
   var footer = ${json(prefix)};
-  function layout() {
-    var flow = document.getElementById("cv-flow");
-    var host = document.getElementById("cv-pages");
-    if (!flow || !host) return;
+  // one column's atoms, measured in its unpaginated flow, with their pages
+  function paginate(flow) {
     var atoms = Array.prototype.slice.call(flow.children);
     var origin = flow.getBoundingClientRect().top;
     var measured = atoms.map(function (el) {
@@ -202,28 +228,48 @@ function pageScript(content: CvContent, autoPrint: boolean): string {
       };
     });
     var spacers = computePageBreaks(measured, geometry);
-    var pages = assignPages(measured, spacers, geometry);
+    return { flow: flow, atoms: atoms, pages: assignPages(measured, spacers, geometry) };
+  }
+  function place(column, boxes) {
+    column.atoms.forEach(function (el, i) {
+      var at = column.pages.pageOf[i];
+      if (i > 0 && column.pages.pageOf[i - 1] !== at) el.style.paddingTop = "0";
+      boxes[at].appendChild(el);
+    });
+    column.flow.parentNode.removeChild(column.flow);
+  }
+  function layout() {
+    var flow = document.getElementById("cv-flow");
+    var sideFlow = document.getElementById("cv-flow-side");
+    var host = document.getElementById("cv-pages");
+    if (!flow || !host) return;
+    var main = paginate(flow);
+    var side = sideFlow ? paginate(sideFlow) : null;
+    var count = Math.max(main.pages.count, side ? side.pages.count : 1);
     var contents = [];
-    for (var p = 0; p < pages.count; p++) {
+    var sides = [];
+    for (var p = 0; p < count; p++) {
       var page = document.createElement("div");
       page.className = "cv-page";
       var body = document.createElement("div");
       body.className = "cv-page__content";
       var foot = document.createElement("div");
       foot.className = "cv-footer";
-      foot.textContent = footer + (p + 1) + "/" + pages.count;
+      foot.textContent = footer + (p + 1) + "/" + count;
       page.appendChild(body);
+      if (side) {
+        var aside = document.createElement("div");
+        aside.className = "cv-page__side";
+        page.appendChild(aside);
+        sides.push(aside);
+      }
       page.appendChild(foot);
       host.appendChild(page);
       contents.push(body);
     }
-    atoms.forEach(function (el, i) {
-      var at = pages.pageOf[i];
-      if (i > 0 && pages.pageOf[i - 1] !== at) el.style.paddingTop = "0";
-      contents[at].appendChild(el);
-    });
-    flow.parentNode.removeChild(flow);
-    document.documentElement.setAttribute("data-pages", String(pages.count));
+    place(main, contents);
+    if (side) place(side, sides);
+    document.documentElement.setAttribute("data-pages", String(count));
     document.title = ${json(title)};
     ${autoPrint ? "setTimeout(function () { window.print(); }, 60);" : ""}
   }
@@ -259,20 +305,41 @@ export function renderCvHtml(content: CvContent, opts: RenderOptions = {}): stri
     : CV_ACCENT
   const label = documentLabel(content)
   const title = content.header.name.trim() ? `${content.header.name.trim()} · ${label}` : label
+  const template = documentTemplate(content)
+  const columns = Boolean(template.columns)
+  const atoms = cvFlow(content)
+  const sideFlow = columns
+    ? `<div class="cv-flow cv-flow--side" id="cv-flow-side">
+${atomsHtml(
+  content,
+  atoms.filter((atom) => atom.side),
+  columns
+)}
+</div>
+`
+    : ""
   return `<!DOCTYPE html>
 <html lang="${opts.lang === "en" ? "en" : "pl"}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${text(title)}</title>
-<style>${CV_CSS}${PRINT_CSS}${opts.print ? "html,body{background:#fff}" : SCREEN_CSS}</style>
+<style>${CV_CSS}${TEMPLATES_CSS}${PRINT_CSS}${
+    opts.print ? "html,body{background:#fff}" : SCREEN_CSS
+  }</style>
 </head>
 <body>
-<div class="cv-doc" style="--cv-accent:${accent}">
+<div class="cv-doc ${templateClass(
+    template
+  )}" style="--cv-accent:${accent};--cv-on-accent:${onAccent(accent)}">
 <div class="cv-flow" id="cv-flow">
-${renderCvAtoms(content)}
+${atomsHtml(
+  content,
+  atoms.filter((atom) => !atom.side),
+  columns
+)}
 </div>
-<div id="cv-pages"></div>
+${sideFlow}<div id="cv-pages"></div>
 </div>
 <script>${pageScript(content, Boolean(opts.autoPrint))}</script>
 </body>

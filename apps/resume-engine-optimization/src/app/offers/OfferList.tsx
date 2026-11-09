@@ -45,12 +45,12 @@ export function OfferList({ offers }: { offers: OfferRow[] }) {
                 {!offer.textChars ? <Badge tone="plain">{t("of.noText")}</Badge> : null}
                 {offer.closed ? <Badge tone="warning">{t("of.closed")}</Badge> : null}
               </div>
-              {offer.cvId && offer.match ? (
+              {offer.cvId ? (
                 <Link className="link offer-item__match" href={`/offers/${offer.jobId}/match`}>
                   <Gauge aria-hidden size={14} />
-                  {offer.match.score != null
+                  {offer.match?.score != null
                     ? t("mt.link.score", { n: offer.match.score })
-                    : t("mt.link.none")}
+                    : t(offer.match ? "mt.link.none" : "mt.link.check")}
                 </Link>
               ) : null}
             </div>

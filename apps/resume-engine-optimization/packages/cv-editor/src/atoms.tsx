@@ -6,11 +6,14 @@ import {
   ArrowUp,
   Check,
   Circle,
+  Columns2,
+  Columns3,
   FoldVertical,
   ImagePlus,
   Link2,
   ListPlus,
   Plus,
+  RectangleHorizontal,
   Rows3,
   Sparkles,
   Square,
@@ -44,13 +47,18 @@ import {
   updateParagraph,
   updateSection,
 } from "@newrole/cv-core/edit"
-import { atomKey, type CvAtom } from "@newrole/cv-core/flow"
+import { atomKey, sectionColumns, type CvAtom } from "@newrole/cv-core/flow"
+import { documentTemplate } from "@newrole/cv-core/templates"
 import {
+  CV_COLUMNS,
   CV_SECTION_TYPES,
+  type CvCardsSection,
+  type CvColumns,
   type CvContent,
   type CvPhotoShape,
   type CvSection,
   type CvSectionType,
+  type CvSkillsSection,
 } from "@newrole/cv-core/schema"
 import { Editable } from "./Editable"
 
@@ -109,16 +117,8 @@ export function Controls({ items, children }: { items: Control[]; children?: Rea
   )
 }
 
-/** "Add a section" with its type picker; used on the sheet and in the outline. */
-export function SectionTypeMenu({
-  ops,
-  afterId,
-  children,
-}: {
-  ops: EditorOps
-  afterId: string | null
-  children: (props: { open: boolean; toggle: () => void }) => ReactNode
-}) {
+/** A menu that opens on its first item and closes on a click outside `box` or on Escape. */
+function useMenu() {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -137,6 +137,20 @@ export function SectionTypeMenu({
       document.removeEventListener("keydown", onKey)
     }
   }, [open])
+  return { open, setOpen, box }
+}
+
+/** "Add a section" with its type picker; used on the sheet and in the outline. */
+export function SectionTypeMenu({
+  ops,
+  afterId,
+  children,
+}: {
+  ops: EditorOps
+  afterId: string | null
+  children: (props: { open: boolean; toggle: () => void }) => ReactNode
+}) {
+  const { open, setOpen, box } = useMenu()
   return (
     <span className="rel cve-typemenu" ref={box}>
       {children({ open, toggle: () => setOpen((value) => !value) })}
@@ -154,6 +168,62 @@ export function SectionTypeMenu({
               }}
             >
               {ops.t(`cv.type.${type}`)}
+            </button>
+          ))}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+const COLUMN_ICONS: Record<CvColumns, ReactNode> = {
+  1: <RectangleHorizontal />,
+  2: <Columns2 />,
+  3: <Columns3 />,
+}
+
+/** How many items a skills or cards section puts side by side. */
+function ColumnsMenu({
+  ops,
+  section,
+}: {
+  ops: EditorOps
+  section: CvSkillsSection | CvCardsSection
+}) {
+  const { t, edit } = ops
+  const { open, setOpen, box } = useMenu()
+  const columns = sectionColumns(section)
+  return (
+    <span className="rel cve-typemenu" ref={box}>
+      <button
+        type="button"
+        className="cve-ctl__btn"
+        title={t("cv.ctl.columns")}
+        aria-label={t("cv.ctl.columns")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {COLUMN_ICONS[columns]}
+      </button>
+      {open ? (
+        <span className="menu cve-typemenu__list" role="menu">
+          {CV_COLUMNS.map((count) => (
+            <button
+              key={count}
+              type="button"
+              className="menu__item"
+              role="menuitemradio"
+              aria-checked={count === columns}
+              onClick={() => {
+                setOpen(false)
+                if (count !== columns)
+                  edit((current) => updateSection(current, section.id, { columns: count }))
+              }}
+            >
+              {COLUMN_ICONS[count]}
+              {t(`cv.cols.${count}`)}
+              {count === columns ? <Check className="cve-menu__check" /> : null}
             </button>
           ))}
         </span>
@@ -194,14 +264,49 @@ function itemControls(
   ]
 }
 
-function HeaderAtom({ ops }: { ops: EditorOps }) {
+/**
+ * The header: everything ("all"), or in a two-column template the name and headline in the main
+ * column ("name") and the photo with the contact details at the top of the side one ("contact").
+ */
+function HeaderAtom({ ops, part = "all" }: { ops: EditorOps; part?: "all" | "name" | "contact" }) {
   const { t, edit, content } = ops
   const header = content.header
   const set = (key: "name" | "headline" | "location" | "email" | "phone") => (value: string) =>
     edit((current) => updateHeader(current, { [key]: value }), `header:${key}`)
   const linksButton = useRef<HTMLButtonElement>(null)
+  const photo = header.photo ? <PhotoButton ops={ops} src={header.photo} /> : null
+  const controls = (
+    <Controls
+      items={
+        header.photo
+          ? []
+          : [{ icon: <ImagePlus />, label: t("cv.photo.add"), onClick: ops.pickPhoto }]
+      }
+    >
+      <button
+        ref={linksButton}
+        type="button"
+        className="cve-ctl__btn"
+        title={t("cv.links.edit")}
+        aria-label={t("cv.links.edit")}
+        onClick={() => linksButton.current && ops.openLinks(linksButton.current)}
+      >
+        <Link2 />
+      </button>
+    </Controls>
+  )
+  const own = part === "all"
+  if (part === "contact") {
+    return (
+      <div className="cv-contact-card">
+        {photo}
+        <ContactLines ops={ops} />
+        {controls}
+      </div>
+    )
+  }
   return (
-    <div className={`cv-header${header.photo ? "" : " cv-header--nophoto"}`}>
+    <div className={`cv-header${header.photo && own ? "" : " cv-header--nophoto"}`}>
       <div className="cv-header__main">
         <Editable
           as="h1"
@@ -221,92 +326,86 @@ function HeaderAtom({ ops }: { ops: EditorOps }) {
           placeholder={t("cv.ph.headline")}
           onChange={set("headline")}
         />
-        <div className="cv-contact">
-          <span className="cv-contact__item">
-            <Editable
-              as="span"
-              field="header:location"
-              value={header.location}
-              label={t("cv.ph.location")}
-              placeholder={t("cv.ph.location")}
-              onChange={set("location")}
-            />
-          </span>
-          <span className="cv-sep">·</span>
-          <span className="cv-contact__item">
-            <a>
-              <Editable
-                as="span"
-                field="header:email"
-                value={header.email}
-                label={t("cv.ph.email")}
-                placeholder={t("cv.ph.email")}
-                onChange={set("email")}
-              />
-            </a>
-          </span>
-          <span className="cv-sep">·</span>
-          <span className="cv-contact__item">
-            <a>
-              <Editable
-                as="span"
-                field="header:phone"
-                value={header.phone}
-                label={t("cv.ph.phone")}
-                placeholder={t("cv.ph.phone")}
-                onChange={set("phone")}
-              />
-            </a>
-          </span>
-          {header.links.length ? <br /> : null}
-          {header.links.map((link, index) => (
-            <Fragment key={index}>
-              {index ? <span className="cv-sep">·</span> : null}
-              <span className="cv-contact__item">
-                <a>
-                  <Editable
-                    as="span"
-                    field={`header:link:${index}`}
-                    value={link.label}
-                    label={t("cv.ph.link")}
-                    placeholder={t("cv.ph.link")}
-                    onChange={(value) =>
-                      edit(
-                        (current) =>
-                          updateHeader(current, {
-                            links: current.header.links.map((entry, at) =>
-                              at === index ? { ...entry, label: value } : entry
-                            ),
-                          }),
-                        `header:link:${index}`
-                      )
-                    }
-                  />
-                </a>
-              </span>
-            </Fragment>
-          ))}
-        </div>
+        {own ? <ContactLines ops={ops} /> : null}
       </div>
-      {header.photo ? <PhotoButton ops={ops} src={header.photo} /> : null}
-      <Controls
-        items={
-          header.photo
-            ? []
-            : [{ icon: <ImagePlus />, label: t("cv.photo.add"), onClick: ops.pickPhoto }]
-        }
-      >
-        <button
-          ref={linksButton}
-          type="button"
-          className="cve-ctl__btn"
-          title={t("cv.links.edit")}
-          aria-label={t("cv.links.edit")}
-          onClick={() => linksButton.current && ops.openLinks(linksButton.current)}
-        >
-          <Link2 />
-        </button>
-      </Controls>
+      {own ? photo : null}
+      {own ? controls : null}
+    </div>
+  )
+}
+
+/** Location, e-mail and phone, then the links: the header's contact line, edited in place. */
+function ContactLines({ ops }: { ops: EditorOps }) {
+  const { t, edit, content } = ops
+  const header = content.header
+  const set = (key: "location" | "email" | "phone") => (value: string) =>
+    edit((current) => updateHeader(current, { [key]: value }), `header:${key}`)
+  return (
+    <div className="cv-contact">
+      <span className="cv-contact__item">
+        <Editable
+          as="span"
+          field="header:location"
+          value={header.location}
+          label={t("cv.ph.location")}
+          placeholder={t("cv.ph.location")}
+          onChange={set("location")}
+        />
+      </span>
+      <span className="cv-sep">·</span>
+      <span className="cv-contact__item">
+        <a>
+          <Editable
+            as="span"
+            field="header:email"
+            value={header.email}
+            label={t("cv.ph.email")}
+            placeholder={t("cv.ph.email")}
+            onChange={set("email")}
+          />
+        </a>
+      </span>
+      <span className="cv-sep">·</span>
+      <span className="cv-contact__item">
+        <a>
+          <Editable
+            as="span"
+            field="header:phone"
+            value={header.phone}
+            label={t("cv.ph.phone")}
+            placeholder={t("cv.ph.phone")}
+            onChange={set("phone")}
+          />
+        </a>
+      </span>
+      {header.links.length ? <br /> : null}
+      {header.links.map((link, index) => (
+        <Fragment key={index}>
+          {index ? <span className="cv-sep">·</span> : null}
+          <span className="cv-contact__item">
+            <a>
+              <Editable
+                as="span"
+                field={`header:link:${index}`}
+                value={link.label}
+                label={t("cv.ph.link")}
+                placeholder={t("cv.ph.link")}
+                onChange={(value) =>
+                  edit(
+                    (current) =>
+                      updateHeader(current, {
+                        links: current.header.links.map((entry, at) =>
+                          at === index ? { ...entry, label: value } : entry
+                        ),
+                      }),
+                    `header:link:${index}`
+                  )
+                }
+              />
+            </a>
+          </span>
+        </Fragment>
+      ))}
     </div>
   )
 }
@@ -452,6 +551,9 @@ function TitleAtom({ ops, section }: { ops: EditorOps; section: CvSection }) {
           },
         ]}
       >
+        {section.type === "skills" || section.type === "cards" ? (
+          <ColumnsMenu ops={ops} section={section} />
+        ) : null}
         <SectionTypeMenu ops={ops} afterId={section.id}>
           {({ open, toggle }) => (
             <button
@@ -709,7 +811,7 @@ function SkillsRow({
     .map((id) => section.items.find((item) => item.id === id))
     .filter(Boolean)
   return (
-    <div className="cv-skills">
+    <div className={`cv-skills cv-cols-${sectionColumns(section)}`}>
       {items.map((item) => {
         const iid = item!.id
         return (
@@ -773,7 +875,7 @@ function CardsRow({
     .map((id) => section.items.find((item) => item.id === id))
     .filter(Boolean)
   return (
-    <div className="cv-cards">
+    <div className={`cv-cards cv-cols-${sectionColumns(section)}`}>
       {items.map((item) => {
         const iid = item!.id
         return (
@@ -1021,7 +1123,9 @@ function EmptySection({ ops, section }: { ops: EditorOps; section: CvSection }) 
 /** One atom's contents. */
 export function AtomContent({ ops, atom }: { ops: EditorOps; atom: CvAtom }) {
   const { t, edit, content } = ops
-  if (atom.kind === "header") return <HeaderAtom ops={ops} />
+  if (atom.kind === "header")
+    return <HeaderAtom ops={ops} part={documentTemplate(ops.content).columns ? "name" : "all"} />
+  if (atom.kind === "contact") return <HeaderAtom ops={ops} part="contact" />
   if (atom.kind === "consent") {
     return (
       <>

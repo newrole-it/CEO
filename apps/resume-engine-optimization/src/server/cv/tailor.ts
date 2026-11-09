@@ -13,7 +13,7 @@ import {
 import { analyzeOffer, checkBullets, matchCv, type MatchOffer } from "@newrole/cv-engine/match"
 import type { LlmClient } from "@newrole/llm/common"
 import { atsReport, checkCv } from "@newrole/cv-core/ats"
-import { companyConsent, cvLocale } from "@newrole/cv-core/blank"
+import { companyConsent, consentCompanyOf, cvLocale } from "@newrole/cv-core/blank"
 import { detectLanguage } from "@newrole/cv-core/language"
 import { commentsForModel, type MatchNotes, type MatchReport } from "@newrole/cv-core/match"
 import type { StepReporter, StepUpdate, TailorStep } from "@newrole/cv-core/progress"
@@ -29,7 +29,7 @@ import {
   type TailorNotes,
 } from "@newrole/cv-core/tailor"
 import { cvPlainText } from "@newrole/cv-core/text"
-import type { TailorContext, TailorResult } from "@newrole/cv-core/views"
+import type { GeneralCvCheck, TailorContext, TailorResult } from "@newrole/cv-core/views"
 import {
   indexedOfferText,
   offerSourceSelect,
@@ -41,6 +41,7 @@ import { createWritingClient } from "src/server/llm/writing"
 import { candidateContext } from "src/server/profile/context"
 import { keepCommentsAsFacts } from "src/server/profile/facts"
 import type { HttpClient } from "src/server/security/safe-fetch"
+import { companyFree } from "./company-free"
 import { recentLetters } from "./letters"
 import {
   createCv,
@@ -172,11 +173,81 @@ function generalChoices(userId: number) {
   })
 }
 
+/** A CV for an offer, of this person, with content; null for anything else. */
+async function tailoredCvOf(userId: number, id: string) {
+  const row = await db.cvDocument.findFirst({
+    where: { id, userId, kind: "EDITABLE", docType: "CV", targetCompany: { not: null } },
+    select: { content: true, language: true, targetCompany: true, targetTitle: true },
+  })
+  const content = parseCvContent(row?.content)
+  return row && content
+    ? {
+        id,
+        content,
+        language: cvLocale(row.language),
+        company: row.targetCompany,
+        title: row.targetTitle,
+      }
+    : null
+}
+
+type TailoredCv = NonNullable<Awaited<ReturnType<typeof tailoredCvOf>>>
+
+/**
+ * The content a CV for an offer gives a general CV (./company-free.ts): `generalId` is the one it
+ * goes into, null for a new one. The person's own CV is the one it was first tailored from, as the
+ * history of the CV for the offer keeps it, else that general CV as it is now.
+ */
+async function asGeneral(tailored: TailoredCv, generalId: string | null) {
+  const [general, first] = await Promise.all([
+    generalId
+      ? db.cvDocument.findUnique({
+          where: { id: generalId },
+          select: { content: true, language: true },
+        })
+      : null,
+    db.cvVersion.findFirst({
+      where: { documentId: tailored.id, origin: "base" },
+      orderBy: { number: "asc" },
+      select: { content: true },
+    }),
+  ])
+  const current = general ? parseCvContent(general.content) : null
+  return companyFree({
+    content: tailored.content,
+    language: tailored.language,
+    company: tailored.company,
+    general: general ? { content: current, language: cvLocale(general.language) } : null,
+    own: parseCvContent(first?.content) ?? current,
+  })
+}
+
+/**
+ * What saving a CV for an offer as general (saveToGeneralCv) would carry of the offer's company,
+ * for the person to see before they save; `into` as there. Null when `id` is not a CV for an offer.
+ */
+export async function checkGeneralCv(
+  userId: number,
+  id: string,
+  into?: string
+): Promise<GeneralCvCheck | null> {
+  const tailored = await tailoredCvOf(userId, id)
+  if (!tailored) return null
+  const linked = await generalCvOf(userId, id)
+  const target =
+    linked ??
+    (into && into !== "new"
+      ? (await generalChoices(userId)).find((choice) => choice.id === into)
+      : null)
+  return (await asGeneral(tailored, target?.id ?? null)).check
+}
+
 /**
  * "Zapisz jako ogólne CV": the content of a CV for an offer, edits included, becomes the newest
  * version of the general CV it was tailored from. That CV's state before is kept in its history,
  * so it can be restored. When that CV is gone, `into` names another editable general CV, or "new"
  * makes one from this content; either way the CV for the offer is linked to it from then on.
+ * A consent clause that names the offer's company does not go over (./company-free.ts).
  * `number` is null when the general CV already had this content or was just made; the result is
  * null when `id` is not a CV for an offer, or there is no general CV to save into.
  */
@@ -185,21 +256,18 @@ export async function saveToGeneralCv(
   id: string,
   into?: string
 ): Promise<{ cvId: string; title: string; number: number | null; created: boolean } | null> {
-  const tailored = await db.cvDocument.findFirst({
-    where: { id, userId, kind: "EDITABLE", docType: "CV", targetCompany: { not: null } },
-    select: { content: true, language: true, targetCompany: true, targetTitle: true },
-  })
-  const content = parseCvContent(tailored?.content)
-  if (!tailored || !content) return null
-  const language = cvLocale(tailored.language)
+  const tailored = await tailoredCvOf(userId, id)
+  if (!tailored) return null
+  const { language } = tailored
   const linked = await generalCvOf(userId, id)
   if (!linked && into === "new") {
+    const { content } = await asGeneral(tailored, null)
     const created = await createCv({
       userId,
       from: "content",
       content,
       language,
-      title: tailored.targetTitle ?? undefined,
+      title: tailored.title ?? undefined,
     })
     await db.cvDocument.update({
       where: { id },
@@ -211,6 +279,7 @@ export async function saveToGeneralCv(
   const general =
     linked ?? (into ? (await generalChoices(userId)).find((choice) => choice.id === into) : null)
   if (!general) return null
+  const { content } = await asGeneral(tailored, general.id)
   // from now on this CV for an offer comes from the one it was saved into
   if (!linked) {
     await db.cvDocument.update({
@@ -249,7 +318,7 @@ export async function saveToGeneralCv(
       content,
       language,
       origin: "offer",
-      label: [tailored.targetCompany, tailored.targetTitle].filter(Boolean).join(" · "),
+      label: [tailored.company, tailored.title].filter(Boolean).join(" · "),
     })
     return { number: row.number }
   })
@@ -277,6 +346,7 @@ type ExistingDocument = {
   content: unknown
   language: string
   baseCvId: string | null
+  tailorNotes: unknown
 }
 
 async function findExisting(
@@ -286,7 +356,7 @@ async function findExisting(
 ): Promise<ExistingDocument | null> {
   return db.cvDocument.findUnique({
     where: { userId_jobId_docType: { userId, jobId, docType } },
-    select: { id: true, content: true, language: true, baseCvId: true },
+    select: { id: true, content: true, language: true, baseCvId: true, tailorNotes: true },
   })
 }
 
@@ -529,8 +599,16 @@ function cvLines(content: CvContent): string[] {
 type NextRound = {
   /** False only checks the CV again, as the person left it */
   rewrite: boolean
-  /** What the round before found: its analysis of the offer is kept, so rounds compare */
-  notes: TailorNotes
+  /**
+   * With `rewrite`, the model writes from the person's own CV, as tailoring did the first time,
+   * not from the CV for the offer as it is now
+   */
+  fresh?: boolean
+  /**
+   * What the round before found: its analysis of the offer is kept, so rounds compare. For a CV
+   * tailored before matches were scored, the notes its tailoring left, which have no analysis.
+   */
+  notes: TailorNotes | null
   /** The person's comments on it, for the model (commentsForModel) */
   comments: string
 }
@@ -576,9 +654,10 @@ export async function tailorCvForJob(input: {
   if (round && (!existing || !current)) throw new CvError("not-found", "CV not found.")
   // the person's own CV: what the match reads and every claim is checked against
   const origin = await baseForTailoring(userId, existing, input.baseCvId)
-  // the CV the model works on: in a next round, the one written for the offer
+  // the CV the model works on: in a next round, the one written for the offer, unless it starts
+  // again from the person's own
   const base =
-    current && existing
+    current && existing && !round?.fresh
       ? { id: null, content: current, language: cvLocale(existing.language) }
       : origin
   const language = tailoredCvLanguage({
@@ -595,11 +674,11 @@ export async function tailorCvForJob(input: {
   const offer: MatchOffer = { company: job.company, title: job.title, text: job.text }
   const steps = stepLog(input.onStep)
 
-  const kept = round?.notes.match?.analysis ?? null
+  const kept = round?.notes?.match?.analysis ?? null
   const analysis = await steps.run(
     "offer",
-    round
-      ? kept && (() => kept)
+    kept
+      ? () => kept
       : job.text || note?.trim()
       ? () => analyzeOffer({ llm, offer, note, locale, userId })
       : null,
@@ -609,7 +688,7 @@ export async function tailorCvForJob(input: {
       soft: result.requirements.filter((item) => item.importance === "soft").length,
       keywords: result.keywords.length,
       redFlags: result.redFlags.length,
-      ...(round ? { kept: 1 } : {}),
+      ...(kept ? { kept: 1 } : {}),
     })
   )
 
@@ -720,8 +799,19 @@ export async function tailorCvForJob(input: {
   // only a rewritten CV is stored, so only a rewrite takes the clause
   const company = generated ? input.consentCompany?.trim() : ""
   const content = company ? { ...drafted, consent: companyConsent(language, company) } : drafted
-  // what the model wrote now, else what the round before wrote when this one only checks
-  const written = generated?.notes ?? round?.notes
+  // what the model wrote now, else what the round before wrote when this one only checks; a CV
+  // whose notes no longer read keeps none of that
+  const written =
+    generated?.notes ??
+    (round
+      ? round.notes ?? {
+          changes: [],
+          gaps: [],
+          unverified: [],
+          reverted: 0,
+          usedJobText: Boolean(analysis),
+        }
+      : null)
   if (!written) throw new CvError("llm-failed", "The model did not return a usable CV.")
 
   // the offer's keywords when it was analysed, else the ones tailoring listed
@@ -803,24 +893,30 @@ export async function tailorCvForJob(input: {
  * "Popraw CV i sprawdź ponownie" on the match dashboard: the newest round's comments become the
  * person's facts (src/server/profile/facts.ts), then the next round runs on the CV written for
  * the offer. `rewrite` false checks it again without rewriting it, after the person edited it.
+ * `fresh` ("Stwórz nowe CV pod tę ofertę") writes it anew from the general CV it was tailored
+ * from, as that CV is now, and keeps the company its consent clause names.
+ * A CV tailored before matches were scored gets its first round this way.
  */
 export async function nextMatchRound(input: {
   userId: number
   jobId: string
   rewrite: boolean
+  fresh?: boolean
   locale?: CvLanguage
   llm?: LlmClient | null
   http?: HttpClient
   onStep?: StepReporter
 }): Promise<TailorResult & { round: number }> {
-  const { userId, jobId, rewrite } = input
+  const { userId, jobId } = input
+  const fresh = Boolean(input.fresh)
+  const rewrite = input.rewrite || fresh
   const existing = await findExisting(userId, jobId, "CV")
   if (!existing) throw new CvError("not-found", "CV not found.")
   // a CV tailored before rounds were kept gets its first one now
   await listRounds(userId, existing.id)
   const last = await getRound(userId, existing.id)
-  if (!last?.notes.match) throw new CvError("no-content", "This CV has no match to go on from.")
-  await keepCommentsAsFacts(userId, jobId, last.comments)
+  if (last) await keepCommentsAsFacts(userId, jobId, last.comments)
+  // a CV tailored before matches were scored has no round: this one is its first
   const result = await tailorCvForJob({
     userId,
     jobId,
@@ -828,13 +924,18 @@ export async function nextMatchRound(input: {
     llm: input.llm,
     http: input.http,
     onStep: input.onStep,
+    // the general CV has its own clause; a company the CV for the offer named stays named
+    consentCompany: fresh
+      ? consentCompanyOf(parseCvContent(existing.content)?.consent) ?? undefined
+      : undefined,
     round: {
       rewrite,
-      notes: last.notes,
-      comments: commentsForModel(last.comments, last.notes.match),
+      fresh,
+      notes: last?.notes ?? parseTailorNotes(existing.tailorNotes),
+      comments: last ? commentsForModel(last.comments, last.notes.match ?? null) : "",
     },
   })
-  return { ...result, round: last.number + 1 }
+  return { ...result, round: (last?.number ?? 0) + 1 }
 }
 
 /** The match with the offer kept with a tailored CV, for the letter that goes with it. */

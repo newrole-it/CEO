@@ -1,15 +1,20 @@
 "use client"
 
-import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, ShieldCheck, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Eye, EyeOff, PanelLeft, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { defaultConsent } from "@newrole/cv-core/blank"
 import { moveSection, updateSection } from "@newrole/cv-core/edit"
 import { atomKey } from "@newrole/cv-core/flow"
+import { documentTemplate, sectionOnSide } from "@newrole/cv-core/templates"
 import { SectionTypeMenu, type EditorOps } from "./atoms"
 
-/** The left panel: sections in order, with rename, reorder, hide, delete and add. */
+/**
+ * The left panel: sections in order, with rename, reorder, hide, delete and add, and in a
+ * two-column template the column each section sits in.
+ */
 export function Outline({ ops }: { ops: EditorOps }) {
   const { t, edit, content, locale } = ops
+  const columns = Boolean(documentTemplate(content).columns)
 
   function showOnSheet(sectionId: string) {
     const element = document.querySelector<HTMLElement>(
@@ -75,6 +80,24 @@ export function Outline({ ops }: { ops: EditorOps }) {
                 >
                   {section.hidden ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
                 </button>
+                {columns ? (
+                  <button
+                    type="button"
+                    className="cve-out__btn"
+                    aria-label={t(sectionOnSide(section) ? "look.out.toMain" : "look.out.toSide", {
+                      title: name,
+                    })}
+                    title={t("look.out.side")}
+                    aria-pressed={sectionOnSide(section)}
+                    onClick={() =>
+                      edit((current) =>
+                        updateSection(current, section.id, { side: !sectionOnSide(section) })
+                      )
+                    }
+                  >
+                    <PanelLeft aria-hidden />
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="cve-out__btn cve-out__btn--danger"

@@ -260,6 +260,7 @@ export const applicationsPl = {
   "sheet.lastSync": "Ostatnia synchronizacja: {when}, wiersze: {n}",
   "sheet.never": "Jeszcze nie synchronizowano.",
   "sheet.lastError": "Ostatni błąd: {error}",
+  "sheet.lastErrorDetail": "Szczegóły: {detail}",
   "sheet.queued":
     "Synchronizacja czeka w kolejce od {when}. Jeśli to trwa, uruchom aplikację ponownie: Ctrl+C, a potem npm run go.",
   "sheet.open": "Otwórz arkusz",
@@ -306,7 +307,8 @@ export const applicationsPl = {
   "sheet.err.auth":
     "Google odesłał stronę zamiast odpowiedzi skryptu: wdrożenie wymaga logowania albo starsza wersja skryptu przerwała się błędem. Wdróż najnowszy skrypt z dostępem „Każdy”.",
   "sheet.err.secret": "Skrypt odrzucił sekret. Skopiuj skrypt jeszcze raz i wdróż nową wersję.",
-  "sheet.err.script": "Skrypt zgłosił błąd. Wdróż najnowszą wersję skryptu.",
+  "sheet.err.script":
+    "Skrypt w arkuszu zgłosił błąd. Jeśli Twój skrypt jest starszy niż ten w ustawieniach, skopiuj go i wdróż nową wersję.",
   "sheet.err.response": "Nieoczekiwana odpowiedź skryptu. Wdróż najnowszą wersję skryptu.",
   "sheet.err.outdated":
     "Skrypt w arkuszu jest w starej wersji i umie tylko zapisywać. Skopiuj nowy skrypt, wklej go w Apps Script i wdróż nową wersję.",
@@ -574,6 +576,7 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "sheet.lastSync": "Last sync: {when}, rows: {n}",
   "sheet.never": "Not synced yet.",
   "sheet.lastError": "Last error: {error}",
+  "sheet.lastErrorDetail": "Details: {detail}",
   "sheet.queued":
     "A sync has been queued since {when}. If it stays there, restart the app: Ctrl+C, then npm run go.",
   "sheet.open": "Open sheet",
@@ -621,7 +624,8 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
     "Google sent a page instead of the script's answer: the deployment needs a sign-in, or an older script stopped on an error. Deploy the latest script with access “Anyone”.",
   "sheet.err.secret":
     "The script rejected the secret. Copy the script again and deploy a new version.",
-  "sheet.err.script": "The script reported an error. Deploy the latest version of the script.",
+  "sheet.err.script":
+    "The script in your sheet reported an error. If your script is older than the one in these settings, copy it and deploy a new version.",
   "sheet.err.response":
     "Unexpected answer from the script. Deploy the latest version of the script.",
   "sheet.err.outdated":

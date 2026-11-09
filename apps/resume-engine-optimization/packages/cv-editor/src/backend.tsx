@@ -8,6 +8,7 @@ import type { TailorProgress } from "@newrole/cv-core/progress"
 import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
 import type {
   CvVersionView,
+  GeneralCvCheck,
   ImproveMode,
   ImprovedSection,
   TailorResult,
@@ -55,6 +56,11 @@ export type CvEditorBackend = {
       /** A general CV's id, or "new", when the one it came from is gone (TailorContext.choices) */
       into?: string
     ) => Promise<{ cvId: string; title: string; number: number | null; created: boolean }>
+    /**
+     * What `toGeneral` would carry of the offer's company, read from what is stored; without it
+     * the dialog shows no check.
+     */
+    checkGeneral?: (id: string, into?: string) => Promise<GeneralCvCheck>
   }
   /** Writing for an offer; `jobId` is TailorContext.job.id. */
   tailor: {

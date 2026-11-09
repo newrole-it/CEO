@@ -42,6 +42,8 @@ type Props = {
   locale: Locale
   job: { id: string; company: string; title: string }
   cvId: string
+  /** The title of the general CV the CV was tailored from; null when that CV is gone */
+  general: string | null
   letterId: string | null
   notes: TailorNotes
   match: MatchNotes
@@ -79,6 +81,7 @@ export function MatchDashboard({
   locale,
   job,
   cvId,
+  general,
   letterId,
   notes,
   match,
@@ -91,7 +94,7 @@ export function MatchDashboard({
   return (
     <RoundComments
       key={round.number}
-      round={{ cvId, jobId: job.id, number: round.number, editable }}
+      round={{ cvId, jobId: job.id, number: round.number, editable, general }}
       initial={round.comments}
       previous={round.previous}
     >

@@ -21,7 +21,7 @@ export default async function CvEditorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ audit?: string }>
+  searchParams: Promise<{ audit?: string; look?: string }>
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams])
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
@@ -44,6 +44,7 @@ export default async function CvEditorPage({
           loadedAt={cv.updatedAt.toISOString()}
           initialAudit={audit}
           startAudit={startAudit}
+          startLook={!startAudit && query.look === "1"}
           isLetter={cv.docType === "LETTER"}
           tailor={tailor}
           pair={pair}

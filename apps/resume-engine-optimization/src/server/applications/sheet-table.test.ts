@@ -1,3 +1,4 @@
+import { runInNewContext } from "node:vm"
 import { describe, expect, it } from "vitest"
 import { appsScriptSource, statusColors } from "./apps-script"
 import {
@@ -15,7 +16,56 @@ import {
   writtenFields,
 } from "./sheet-table"
 import { app } from "./sheet-fixtures"
-import { isWebhookUrl, parseSyncError, readSheetResponse, readSyncResponse } from "./sheet"
+import {
+  isWebhookUrl,
+  parseSyncError,
+  readSheetResponse,
+  readSyncResponse,
+  syncErrorDetail,
+  syncErrorText,
+} from "./sheet"
+
+/** One function of the Apps Script, run on the fakes below. */
+function scriptFunction(name: string): (...args: unknown[]) => unknown {
+  const context: Record<string, unknown> = {}
+  runInNewContext(appsScriptSource("x"), context)
+  return context[name] as (...args: unknown[]) => unknown
+}
+
+type FakeSheet = {
+  name: string
+  values: string[][]
+  getDataRange(): { getDisplayValues(): string[][] }
+  copyTo(book: FakeBook): FakeSheet
+  setName(name: string): FakeSheet
+}
+type FakeBook = { getSheetByName(name: string): FakeSheet | null; names(): string[] }
+
+/** A spreadsheet as SpreadsheetApp shows it: copyTo adds "Kopia arkusza …", names are unique. */
+function fakeBook(tabs: Record<string, string[][]>): FakeBook {
+  const sheets: FakeSheet[] = []
+  const add = (name: string, values: string[][]): FakeSheet => {
+    const sheet: FakeSheet = {
+      name,
+      values,
+      getDataRange: () => ({ getDisplayValues: () => sheet.values.map((row) => [...row]) }),
+      copyTo: () => add(`Kopia arkusza ${sheet.name}`, sheet.values),
+      setName(next) {
+        if (sheets.some((other) => other !== sheet && other.name === next))
+          throw new Error(`Arkusz o nazwie „${next}” już istnieje. Wpisz inną nazwę.`)
+        sheet.name = next
+        return sheet
+      },
+    }
+    sheets.push(sheet)
+    return sheet
+  }
+  for (const [name, values] of Object.entries(tabs)) add(name, values)
+  return {
+    getSheetByName: (name) => sheets.find((sheet) => sheet.name === name) ?? null,
+    names: () => sheets.map((sheet) => sheet.name),
+  }
+}
 
 describe("sheet table", () => {
   it("has the person's own columns, the two salaries and the hidden ID columns", () => {
@@ -318,6 +368,45 @@ describe("webhook", () => {
     expect(parseSyncError("something")).toEqual({ code: null, detail: "something" })
   })
 
+  it("keeps what the script said next to the stored failure", () => {
+    const said = "exception: Arkusz o nazwie „Aplikacje (kopia 2026-11-07)” już istnieje."
+    expect(syncErrorDetail(syncErrorText("script", said))).toBe(
+      "Arkusz o nazwie „Aplikacje (kopia 2026-11-07)” już istnieje."
+    )
+    expect(syncErrorDetail(syncErrorText("http", "HTTP 500"))).toBe("HTTP 500")
+    expect(syncErrorDetail(syncErrorText("timeout", ""))).toBeNull()
+    expect(syncErrorDetail("something")).toBeNull()
+    expect(syncErrorDetail(null)).toBeNull()
+  })
+
+  it("keeps one copy of someone else's tab, under a name no other tab has", () => {
+    const backup = scriptFunction("backup_")
+    const book = fakeBook({
+      Aplikacje: [
+        ["Lp.", "Firma"],
+        ["1", "Booksy"],
+      ],
+      "Aplikacje (kopia 2026-11-07)": [
+        ["Lp.", "Firma"],
+        ["1", "OLX"],
+      ],
+    })
+    const tab = book.getSheetByName("Aplikacje")!
+    backup(book, tab, "Aplikacje (kopia 2026-11-07)")
+    expect(book.names()).toEqual([
+      "Aplikacje",
+      "Aplikacje (kopia 2026-11-07)",
+      "Aplikacje (kopia 2026-11-07) 2",
+    ])
+    // A sync that failed after the copy left it: the next one does not copy the same rows again.
+    backup(book, tab, "Aplikacje (kopia 2026-11-07)")
+    expect(book.names()).toHaveLength(3)
+    // Rows edited since then get a copy of their own.
+    tab.values = [...tab.values, ["2", "Google"]]
+    backup(book, tab, "Aplikacje (kopia 2026-11-07)")
+    expect(book.names().at(-1)).toBe("Aplikacje (kopia 2026-11-07) 3")
+  })
+
   it("embeds the secret and colours every status label", () => {
     const script = appsScriptSource("abc123")
     expect(script).toContain('var SECRET = "abc123";')
@@ -326,6 +415,7 @@ describe("webhook", () => {
     expect(script).toContain("function onEdit(e)")
     expect(script).toContain("whenTextStartsWith(label)")
     expect(script).toContain('error: "foreign-tab"')
+    expect(script).toContain("backup_(book, sheet, body.backupName")
     // A table with Status as a dropdown, or a plain dropdown without the Sheets service.
     expect(script).toContain("addTable")
     expect(script).toContain('fields: "range,columnProperties"')

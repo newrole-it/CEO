@@ -11,8 +11,9 @@ import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { getRound, listRounds } from "src/server/cv/match-rounds"
 import { getCv } from "src/server/cv/service"
-import { documentsForJob } from "src/server/cv/tailor"
+import { documentsForJob, tailorContext } from "src/server/cv/tailor"
 import { MatchDashboard } from "./MatchDashboard"
+import { FirstRound } from "./MatchRun"
 
 export const dynamic = "force-dynamic"
 
@@ -24,7 +25,7 @@ export async function generateMetadata() {
 /**
  * The match dashboard of one offer: what the steps of "Dostosuj CV" found, kept with the CV
  * written for it, one round at a time (?round=2; the newest by default). An offer with no CV yet
- * goes to the start of tailoring.
+ * goes to the start of tailoring; a CV tailored before matches were scored gets its first round.
  */
 export default async function MatchPage({
   params,
@@ -51,6 +52,7 @@ export default async function MatchPage({
     round && round.number > 1 ? await getRound(user.id, cv.id, round.number - 1) : null
   // a CV tailored before rounds were kept, whose notes had no match, has no round
   const notes = round?.notes ?? parseTailorNotes(cv.tailorNotes)
+  const context = notes?.match ? await tailorContext(user.id, cv) : null
   return (
     <SiteFrame user={user} locale={locale}>
       {notes?.match ? (
@@ -59,6 +61,7 @@ export default async function MatchPage({
           locale={locale}
           job={{ id: jobId, company: cv.target?.company ?? "", title: cv.target?.title ?? "" }}
           cvId={cv.id}
+          general={context?.general?.title ?? null}
           letterId={documents.letterId}
           notes={notes}
           match={notes.match}
@@ -72,7 +75,8 @@ export default async function MatchPage({
         />
       ) : (
         <EmptyState icon={<Gauge />} title={t("mt.none.title")} body={t("mt.none.body")}>
-          <ButtonLink href={`/cv/${cv.id}`} variant="primary">
+          <FirstRound jobId={jobId} />
+          <ButtonLink href={`/cv/${cv.id}`} variant="ghost">
             {t("mt.openCv")}
           </ButtonLink>
         </EmptyState>

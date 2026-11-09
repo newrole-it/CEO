@@ -176,7 +176,8 @@ export function CvList({
     setBusy(true)
     try {
       const cv = await invoke(createCvDocument, { from, language: locale })
-      if (cv) router.push(`/cv/${cv.id}`)
+      // a new CV opens with the look panel: the template and the colour come first
+      if (cv) router.push(`/cv/${cv.id}?look=1`)
     } catch {
       toast.show({ message: t("cv.err.create"), tone: "danger" })
       setBusy(false)
@@ -302,7 +303,7 @@ export function CvList({
       const result = await invoke(createEditableCvDocument, { id: row.id })
       if (!result) throw new Error("no result")
       if (result.reader === "text") toast.show({ message: t("cv.up.textOnly"), duration: 10_000 })
-      router.push(`/cv/${result.id}`)
+      router.push(`/cv/${result.id}?look=1`)
     } catch {
       toast.show({ message: t("cv.up.err"), tone: "danger" })
       setMaking(null)
