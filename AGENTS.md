@@ -86,4 +86,4 @@ These still hold text that cannot be translated. Do not copy their pattern. When
 - raw server text shown to a person: `error.message` in `src/app/settings/SettingsScreen.tsx` and `src/app/(auth)/components/LoginForm.tsx`, English API messages matched by text in `errorFor` in `src/app/start/Onboarding.tsx`, and `result.error` in the extension popup;
 - the web app manifest, `src/app/manifest.ts` (Polish only);
 - `formatSalary` in `src/server/applications/logic.ts` (always `pl-PL`, and stored);
-- dictionaries written next to the code instead of in a copy file: `packages/cv-engine/src/audit.ts`, `packages/profile/src/audit.ts`, `demand.ts`, `linkedin-audit.ts`, `packages/cv-core/src/letter.ts`, `blank.ts`, `src/shared/applications.ts`, `src/server/applications/sheet-table.ts`, `src/app/features/content.ts`.
+- dictionaries written next to the code instead of in a copy file: `packages/cv-engine/src/audit.ts`, `packages/profile/src/audit.ts`, `demand.ts`, `linkedin-audit.ts`, `packages/cv-core/src/letter.ts`, `blank.ts`, `src/shared/applications.ts`, `src/server/applications/sheet-table.ts`.

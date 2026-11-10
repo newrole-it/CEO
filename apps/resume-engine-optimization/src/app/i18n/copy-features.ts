@@ -1,9 +1,9 @@
-import type { Locale } from "src/app/i18n/copy"
+import type { Locale } from "./copy"
 
 /**
  * /features: every screen of newrole.it and its Chrome extension, and what each button and switch
  * does. Each sentence rests on the code or copy it describes; when a screen changes, change this
- * too. Polish and English have the same sections, groups and item ids (content.test.ts).
+ * too. Polish and English have the same sections, groups and item ids (copy-features.test.ts).
  */
 
 export type FeatureItem = {
@@ -70,7 +70,7 @@ const startPl: FeatureSection = {
           id: "first-steps",
           label: "Karta „Pierwsze kroki”",
           state: "Oferty i Moje CV",
-          body: "Cztery kroki pracy w newrole.it: profil, pierwsza oferta, CV dopasowane do niej i zapisana aplikacja. Aktualny krok ma opis i przycisk, zrobione prowadzą do tego, co powstało. Znika, gdy zrobisz wszystkie cztery.",
+          body: "Pięć kroków pracy w newrole.it: profil, CV ogólne, pierwsza oferta, CV dopasowane do niej i zapisana aplikacja. Aktualny krok ma opis i przycisk, zrobione prowadzą do tego, co powstało. Znika, gdy zrobisz wszystkie pięć.",
         },
         {
           label: "Ukryj",
@@ -132,6 +132,11 @@ const cvEditorPl: FeatureSection = {
         {
           label: "Tytuł i język CV",
           body: "Tytuł widzisz na liście Moich CV. Język CV (polski albo angielski) ustawia język wydruku i PDF, nazwy nowych sekcji i domyślną klauzulę RODO; istniejącego tekstu nie tłumaczy.",
+        },
+        {
+          id: "cv-look",
+          label: "Wygląd",
+          body: "Szablon i kolor: Klasyczny, Pas w kolorze albo Dwie kolumny, jeden z pięciu kolorów albo „Własny kolor”. Zmiana szablonu nie rusza treści, a arkusz, wydruk i PDF wyglądają tak samo. Nowe CV z profilu, z opisu albo puste i PDF zamieniony na wersję do edycji otwierają się z tym panelem. W Dwóch kolumnach pasek po lewej ma zdjęcie, kontakt, umiejętności i języki; ikona kolumny przy sekcji w konspekcie przenosi ją do paska albo z powrotem. List motywacyjny ma tylko szablony w jednej kolumnie.",
         },
         {
           label: "Audyt",
@@ -476,6 +481,10 @@ const cvListPl: FeatureSection = {
           body: "Edytowalne CV złożone bez modelu z konta, danych do formularzy, profilu i sekcji odczytanych z CV.",
         },
         {
+          label: "Opisz swoje doświadczenie",
+          body: "Dla kogoś bez CV: opisujesz własnymi słowami pracę, naukę i umiejętności, a model pisze z tego CV w języku opisu. Ma polecenie, żeby nie dodawać firm, dat, liczb, umiejętności ani języków, których w opisie nie ma. Imię, e-mail, telefon i miasto, których nie podasz, bierze z konta i danych do formularzy. Bez modelu cały opis trafia do jednej sekcji. Najwyżej 20 CV z opisu na godzinę.",
+        },
+        {
           label: "Puste",
           body: "Pusty szablon do wypełnienia w edytorze.",
         },
@@ -748,7 +757,7 @@ const startEn: FeatureSection = {
           id: "first-steps",
           label: "The “First steps” card",
           state: "Offers and My CV",
-          body: "The four steps of working in newrole.it: a profile, a first offer, a CV tailored to it and a recorded application. The current step has a description and a button; done ones link to what was made. It goes away once all four are done.",
+          body: "The five steps of working in newrole.it: a profile, a general CV, a first offer, a CV tailored to it and a recorded application. The current step has a description and a button; done ones link to what was made. It goes away once all five are done.",
         },
         {
           label: "Hide",
@@ -810,6 +819,11 @@ const cvEditorEn: FeatureSection = {
         {
           label: "CV title and language",
           body: "The title is what My CV lists. The CV's language (Polish or English) sets the language of the print view and PDF, the names of new sections and the default GDPR clause; it does not translate existing text.",
+        },
+        {
+          id: "cv-look",
+          label: "Design",
+          body: "Template and colour: Classic, Colour band or Two columns, one of five colours or “Custom colour”. Switching templates leaves the content as it is, and the sheet, the print view and the PDF look the same. A new CV from your profile, from a description or blank, and a PDF made editable, open with this panel. In Two columns the strip on the left holds the photo, contact details, skills and languages; the column icon by a section in the outline moves it to the strip and back. A cover letter has only one-column templates.",
         },
         {
           label: "Audit",
@@ -1152,6 +1166,10 @@ const cvListEn: FeatureSection = {
         {
           label: "From profile",
           body: "An editable CV put together without a model from your account, form details, profile and the sections read from your CV.",
+        },
+        {
+          label: "Describe your experience",
+          body: "For someone without a CV: you describe your work, studies and skills in your own words, and the model writes a CV from it in the description's language. It is told not to add employers, dates, numbers, skills or languages the description does not have. A name, email, phone or city you leave out comes from your account and form details. Without a model, the whole description goes into one section. At most 20 CVs from a description an hour.",
         },
         {
           label: "Blank",

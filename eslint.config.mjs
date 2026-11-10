@@ -30,5 +30,7 @@ export default defineConfig([
     "apps/*/node_modules/**",
     "apps/*/.next/**",
     "apps/*/.data/**",
+    // The mobile app is a project of its own, with its own checks (mobile/README.md).
+    "mobile/**",
   ]),
 ])

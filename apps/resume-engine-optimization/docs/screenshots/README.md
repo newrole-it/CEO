@@ -8,13 +8,14 @@ Screenshots for the root README and the docs. The older ones below come from a l
 | `reo-editor-help.png` | `/cv/[id]` — the CV editor with How to edit open (English UI) |
 | `reo-features.png` | `/features#extension` — what each button and switch of the Chrome extension does (English UI) |
 
-The three `reo-*.png` files are the ones the root README shows. They come from a fresh clone (`npm run go`) with a fictional profile (Anna Przykładowa) and a fictional offer on example.com, 1440×900 at 2×, light theme, without the Next.js dev badge.
+The root README shows `reo-editor-help.png` and `reo-features.png`. The three `reo-*.png` files come from a fresh clone (`npm run go`) with a fictional profile (Anna Przykładowa) and a fictional offer on example.com, 1440×900 at 2×, light theme, without the Next.js dev badge.
+
+`demo.webp` and `demo.mp4` are the 48-second tour at the top of the root README: the animated WebP plays inline and links to the MP4. It shows a fictional person and a fictional offer on a fresh clone. [demo/scenario.md](demo/scenario.md) has the scenario, and the captions; the scripts that record and cut it are in `scripts/demo/` in the repository root.
 
 The files below come from before newrole.it became the CV app, and the root README does not use them. Some show the feed, saved offers, companies and sources, which newrole.it no longer has.
 
 | File | Page |
 |---|---|
-| `demo.webp`, `demo.mp4` | The 13-second tour at the top of the root README: the animated WebP is shown inline and links to the MP4 |
 | `feed.png` | `/jobs?where=pl` — "Dla Ciebie", ranked offers with the match score and reasons |
 | `offer.png` | `/jobs/[id]` — one offer with the score breakdown |
 | `applications.png` | `/applications` — the tracker |

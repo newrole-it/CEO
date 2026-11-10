@@ -18,6 +18,7 @@ import {
   Mail,
   MoreHorizontal,
   Pencil,
+  PenLine,
   Plus,
   Search,
   Star,
@@ -38,6 +39,8 @@ import { cvPdfUrl, cvPrintUrl, cvVersionPdfUrl } from "./urls"
 import createCvDocument from "./mutations/createCvDocument"
 import createEditableCvDocument from "./mutations/createEditableCvDocument"
 import createGeneralLetter from "./mutations/createGeneralLetter"
+import { DescribeCv } from "./DescribeCv"
+import { NEW_CV_ANCHOR } from "src/app/components/onboarding/FirstSteps"
 import deleteCvDocument from "./mutations/deleteCvDocument"
 import duplicateCvDocument from "./mutations/duplicateCvDocument"
 import setDefaultCvDocument from "./mutations/setDefaultCvDocument"
@@ -160,6 +163,8 @@ export function CvList({
   const [making, setMaking] = useState<string | null>(null)
   const newMenu = useMenu()
   const htmlInput = useRef<HTMLInputElement>(null)
+  /** "Opisz swoje doświadczenie" is open */
+  const [describing, setDescribing] = useState(false)
 
   if (!signedIn) {
     return (
@@ -339,6 +344,7 @@ export function CvList({
               <div className="cvl-actions">
                 <div className="rel">
                   <Button
+                    id={NEW_CV_ANCHOR}
                     variant="primary"
                     icon={<FilePlus2 />}
                     iconRight={<ChevronDown />}
@@ -359,6 +365,18 @@ export function CvList({
                       >
                         <UserRound aria-hidden />
                         {t("cv.new.profile")}
+                      </button>
+                      <button
+                        type="button"
+                        className="menu__item"
+                        role="menuitem"
+                        onClick={() => {
+                          newMenu.setOpen(false)
+                          setDescribing(true)
+                        }}
+                      >
+                        <PenLine aria-hidden />
+                        {t("cv.new.describe")}
                       </button>
                       <button
                         type="button"
@@ -425,6 +443,9 @@ export function CvList({
                     loading={busy}
                   >
                     {t("cv.new.profile")}
+                  </Button>
+                  <Button variant="outline" icon={<PenLine />} onClick={() => setDescribing(true)}>
+                    {t("cv.new.describe")}
                   </Button>
                   <Button variant="outline" icon={<FileUp />} onClick={() => openPdfPicker()}>
                     {t("cv.new.pdf")}
@@ -523,6 +544,7 @@ export function CvList({
               </Button>
             </div>
           </Modal>
+          <DescribeCv open={describing} onClose={() => setDescribing(false)} />
         </div>
       )}
     </Dropzone>

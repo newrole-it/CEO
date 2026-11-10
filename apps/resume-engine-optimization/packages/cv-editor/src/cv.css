@@ -21,6 +21,15 @@
   right: auto;
   left: 0;
 }
+.cvl-describe__text {
+  width: 100%;
+  min-height: 240px;
+  resize: vertical;
+}
+.cvl-describe__status {
+  margin-right: auto;
+  align-self: center;
+}
 
 /* ---------------------------------------------------------------- toolbar */
 

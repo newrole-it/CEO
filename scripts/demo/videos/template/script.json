@@ -1,0 +1,58 @@
+{
+  "name": "template",
+  "fps": 25,
+  "slow": 1,
+  "webp": {
+    "fps": 12.5,
+    "width": 900,
+    "quality": 70
+  },
+  "cards": {
+    "intro": {
+      "lines": [
+        {
+          "kind": "brand",
+          "text": "newrole.it"
+        },
+        {
+          "kind": "big",
+          "text": "Every feature, explained in the app"
+        }
+      ]
+    }
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "caption": "One page explains every button.",
+      "clips": [
+        {
+          "card": "intro",
+          "dur": 2
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "caption": "Open Features and scroll to what you need.",
+      "clips": [
+        {
+          "from": "start",
+          "to": "extension",
+          "dur": 3
+        }
+      ]
+    },
+    {
+      "id": "setup",
+      "caption": "Setup shows what is left to do.",
+      "clips": [
+        {
+          "from": "extension",
+          "to": "end",
+          "dur": 2.5
+        }
+      ]
+    }
+  ]
+}

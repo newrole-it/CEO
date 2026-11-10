@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { firstSteps, nextFirstStep, type FirstStepFacts } from "./first-steps"
 
-/** Right after /setup: a profile, nothing else. */
+/** A profile and a general CV, nothing else. */
 function fresh(overrides: Partial<FirstStepFacts> = {}): FirstStepFacts {
-  return { profile: true, offers: [], applications: 0, ...overrides }
+  return { profile: true, cv: true, offers: [], applications: 0, ...overrides }
 }
 
 const offer = (jobId: string, cvId: string | null = null, application: string | null = null) => ({
@@ -16,6 +16,7 @@ describe("firstSteps", () => {
   it("lists the loop in the order a person does it", () => {
     expect(firstSteps(fresh()).map((step) => step.id)).toEqual([
       "profile",
+      "cv",
       "offer",
       "tailor",
       "apply",
@@ -27,7 +28,13 @@ describe("firstSteps", () => {
     expect(nextFirstStep(steps)).toMatchObject({ id: "profile", href: "/start" })
   })
 
-  it("sends a person with a profile to add an offer", () => {
+  it("asks for a CV after the profile when there is none", () => {
+    const steps = firstSteps(fresh({ cv: false }))
+    expect(nextFirstStep(steps)).toMatchObject({ id: "cv", href: "/cv" })
+    expect(nextFirstStep(firstSteps(fresh({ profile: false, cv: false })))?.id).toBe("profile")
+  })
+
+  it("sends a person with a profile and a CV to add an offer", () => {
     const steps = firstSteps(fresh())
     expect(nextFirstStep(steps)).toMatchObject({ id: "offer", href: "/offers" })
     expect(steps.find((step) => step.id === "tailor")?.href).toBe("/offers")

@@ -65,6 +65,8 @@ export type CvErrorCode =
   | "not-general"
   /** Saved from a stale copy: the stored CV changed after the editor loaded it */
   | "conflict"
+  /** Too many model calls of one kind in the last hour */
+  | "limited"
 
 export class CvError extends Error {
   constructor(readonly code: CvErrorCode, message: string) {

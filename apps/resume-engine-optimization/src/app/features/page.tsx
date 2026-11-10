@@ -3,7 +3,7 @@ import { invoke } from "src/app/blitz-server"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { featuresContent } from "./content"
+import { featuresContent } from "src/app/i18n/copy-features"
 
 export async function generateMetadata() {
   const page = featuresContent(await getLocale())
@@ -12,7 +12,7 @@ export async function generateMetadata() {
 
 /**
  * Every feature of newrole.it and its Chrome extension, and what each button and switch does.
- * Public: it is the page to read before installing, too. Text lives in ./content.ts.
+ * Public: it is the page to read before installing, too. Text lives in src/app/i18n/copy-features.ts.
  */
 export default async function FeaturesPage() {
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])

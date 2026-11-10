@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { featuresContent } from "./content"
+import { featuresContent } from "./copy-features"
 
 const shape = (locale: "pl" | "en") =>
   featuresContent(locale).sections.map((section) => ({

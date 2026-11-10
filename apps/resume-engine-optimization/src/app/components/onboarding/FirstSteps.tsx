@@ -15,9 +15,18 @@ import {
 
 /** The add-offer form on /offers; its id is set in src/app/offers/AddOffer.tsx. */
 export const ADD_OFFER_ANCHOR = "add-offer"
+/** The "Nowe CV" button on /cv; its id is set in src/app/cv/CvList.tsx. */
+export const NEW_CV_ANCHOR = "new-cv"
+
+/** Each step's button: its own page, or the form on it when the card is already there. */
+function ctaHref(step: FirstStep): string {
+  if (step.id === "offer") return `/offers#${ADD_OFFER_ANCHOR}`
+  if (step.id === "cv") return `/cv#${NEW_CV_ANCHOR}`
+  return step.href
+}
 
 /**
- * "First steps" at the top of /offers and /cv: profile, offer, tailored CV, application. The next
+ * "First steps" at the top of /offers and /cv: profile, CV, offer, tailored CV, application. The next
  * step is open with its button; done ones are links to what was made. Hidden for this browser by
  * "Hide", and brought back from the account menu.
  */
@@ -35,10 +44,18 @@ export function FirstSteps({ steps }: { steps: FirstStep[] }) {
     router.refresh()
   }
 
-  /** On /offers the form is right below: focus its link field instead of reloading the page. */
+  /**
+   * On /offers the form is right below, and on /cv the "Nowe CV" button: focus it instead of
+   * reloading the page.
+   */
   function onCta(event: React.MouseEvent, step: FirstStep) {
-    if (step.id !== "offer" || pathname !== "/offers") return
-    const field = document.querySelector<HTMLInputElement>(`#${ADD_OFFER_ANCHOR} input`)
+    const target =
+      step.id === "offer" && pathname === "/offers"
+        ? `#${ADD_OFFER_ANCHOR} input`
+        : step.id === "cv" && pathname === "/cv"
+        ? `#${NEW_CV_ANCHOR}`
+        : null
+    const field = target ? document.querySelector<HTMLElement>(target) : null
     if (!field) return
     event.preventDefault()
     field.scrollIntoView({ block: "center", behavior: "smooth" })
@@ -98,7 +115,7 @@ export function FirstSteps({ steps }: { steps: FirstStep[] }) {
                     <p className="t-sm muted">{t(`fs.${step.id}.body` as CopyKey)}</p>
                     <div className="first-steps__cta">
                       <ButtonLink
-                        href={step.id === "offer" ? `/offers#${ADD_OFFER_ANCHOR}` : step.href}
+                        href={ctaHref(step)}
                         variant="primary"
                         size="sm"
                         iconRight={<ArrowRight />}

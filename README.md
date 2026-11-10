@@ -9,9 +9,10 @@
 </p>
 
 <p align="center">
-  <b>Paste a link to a job offer. Get a CV and cover letter written for it, from your own facts.<br>
-  Let the Chrome extension fill the form, and it records the application when you hit Submit.</b><br>
-  Open source, runs on your machine, and works with Claude Code on your own subscription.
+  <b>A free, open-source CV builder for people in IT.<br>
+  Upload your CV or LinkedIn PDF, paste a link to a job offer, and get a CV and cover letter written for it, from your own facts.</b><br>
+  A match score shows what the offer asks for and what your CV lacks. You answer, and the next round puts it in.<br>
+  Runs on your machine and works with Claude Code on your own subscription.
 </p>
 
 <p align="center">
@@ -35,13 +36,18 @@
 </p>
 
 <p align="center">
-  <img src="apps/resume-engine-optimization/docs/screenshots/reo-offers.png" alt="Offers in newrole.it with the First steps card: the profile and the first offer are done, tailoring the CV is next" width="900">
+  <a href="apps/resume-engine-optimization/docs/screenshots/demo.mp4">
+    <img src="apps/resume-engine-optimization/docs/screenshots/demo.webp" alt="A 48-second tour of newrole.it: a CV is uploaded as a PDF and opens in the editor, a job offer is added by its link, the CV is tailored to it, the match score shows what is missing, the person answers two questions, and the tailored CV is downloaded as a PDF" width="900">
+  </a><br>
+  <sub>48 seconds, from a PDF to a CV for one offer. Waiting for the model is sped up. <a href="apps/resume-engine-optimization/docs/screenshots/demo.mp4">Watch the MP4</a> · <a href="apps/resume-engine-optimization/docs/screenshots/demo/scenario.md">Scenario and captions</a></sub>
 </p>
 
 ## Why newrole.it
 
 - **Tailored, never invented.** The model proposes wording and order for one offer; code decides what may change. Employers, schools, dates, contact details, your photo and the order of your roles are out of its reach, and a line that gains a number your CV and profile do not have keeps your own text. New tool names are listed for you to check, not slipped in.
+- **You stay in the loop.** Every offer gets a match score that code counts, not the model: each requirement next to the fragment of your CV that shows it, or marked as missing. Where a number or a tool is missing, newrole.it asks you. Your answer becomes a fact about you, and the next round writes it into the CV.
 - **One loop, from link to application.** Add an offer by its link, get a CV and letter for it, let the extension fill the form, and the application lands in your tracker when you submit.
+- **Free.** No sign-up with us, no paid plan, no API key needed.
 - **Your data, your machine.** Everything lives in a Postgres database on your computer. The model is Claude Code on your own subscription, an OpenAI-compatible API key, or none at all.
 - **Made for Claude Code.** An MCP server with 21 tools and 3 prompts lets Claude set up your profile, add offers, tailor CVs, draft answers and update your tracker from the terminal.
 - **Open source.** AGPL-3.0, with every screen, button and switch explained inside the app at `/features`.
@@ -50,12 +56,13 @@
 
 | Step | You | newrole.it |
 |---|---|---|
-| **1. Profile** | Upload your CV as a PDF, LinkedIn's data export, or paste text | Reads it into your profile: rules first, then one model call when you have a model |
+| **1. Profile and CV** | Upload your CV as a PDF, LinkedIn's data export, or paste text | Reads it into your profile. **From profile** makes an editable CV from it, and you pick a template and a colour |
 | **2. Offer** | Paste the link to a job posting | Reads the whole posting from the employer's ATS or the page's JobPosting data, and keeps it on the offer's own page |
-| **3. Tailor** | Click **Tailor CV and letter** | Writes a CV and cover letter for that offer. The **Tailoring** tab lists what changed, which of the offer's keywords your CV has, and what the offer asks for that your data lacks |
-| **4. Apply** | Open the form, check it, click Submit | The extension fills the form from your details, CV and answer bank, attaches the CV, and records the application in the tracker |
+| **3. Tailor** | Click **Tailor CV and letter** | Writes a CV and cover letter for that offer, step by step in front of you, and opens the **match score** |
+| **4. Answer** | Comment on what is missing, answer the questions about numbers | **Improve the CV and check again** runs the next round with your answers and scores the CV again |
+| **5. Apply** | Download the PDF, or open the form and click Submit | The extension fills the form from your details, CV and answer bank, attaches the CV, and records the application in the tracker |
 
-A **First steps** card at the top of Offers and My CV walks you through these four steps the first time, and hides itself once they are done.
+A **First steps** card at the top of Offers and My CV walks you through this the first time, and hides itself once it is done.
 
 ## Quick start
 
@@ -79,9 +86,11 @@ That is the whole install. `npm run go` creates `.env` with fresh secrets, insta
 ### Your CV
 
 - **A real A4 editor.** Type on the page, paste a photo, move entries and sections around, add links. Versions save themselves, and you can compare and restore any of them. The PDF is printed from the same HTML in Chrome.
+- **Templates and colour.** The **Design** button switches between Classic, Colour band and Two columns, with a set of accent colours or your own.
+- **Improve with AI.** Point at a section and choose Polish, Shorten or Strengthen. The model rewrites only that section, adds no new facts, and you see the changes before you apply them.
 - **An audit on the text.** Notes appear right on your CV: missing keywords, vague phrases, level and scope, gaps and inconsistencies, form and length, with a score out of 100 compared with the last audit. Without a model, the notes come from rules.
 - **General CVs and CVs for offers.** Each general CV can have its own cover letter, written by the model, pasted or typed. CVs and letters for offers are grouped by offer, with the application's status. **Save as general** makes a tailored CV, with your edits, the new version of the general CV it came from.
-- **Start from what you have.** Your profile, a blank page, a PDF or an HTML file. An uploaded PDF becomes editable in place and stays in the history as the original, and every PDF that leaves the app is kept with the version it was made from.
+- **Start from what you have.** Your profile, a blank page, a PDF, an HTML file, or a description of your experience in your own words. An uploaded PDF becomes editable in place and stays in the history as the original, and every PDF that leaves the app is kept with the version it was made from.
 
 <p align="center">
   <img src="apps/resume-engine-optimization/docs/screenshots/reo-editor-help.png" alt="The CV editor with How to edit open: typing on the page, photo, buttons next to entries, links, outline, shortcuts and the toolbar" width="900">
@@ -90,7 +99,10 @@ That is the whole install. `npm run go` creates `.env` with fresh secrets, insta
 ### Offers and tailoring
 
 - **Offers by their link.** Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, Personio, Traffit, Pinpoint and other ATSes are read through their APIs, other pages through their schema.org JobPosting data. A page with neither comes back as a form for you to check. The whole text is kept for you to read, edit or paste yourself.
-- **A CV and a letter for every offer.** In the offer's language, from the general CV you pick, with optional notes for the model. The letter starts from your general letter, keeping its voice and, in the same language, your greeting and sign-off, and follows your last three letters. **Generate again** always starts from your base CV, not from the last result.
+- **Tailoring you can watch.** After **Tailor CV** each step shows what it found: reading the offer, checking your CV, the match score, tailoring, rewriting bullets, the ATS check, checking numbers and names, the cover letter. A step that fails does not stop the rest.
+- **A match score for every offer.** Required items weigh 70% and nice-to-haves 30%, and a requirement counts as met only when code found a fragment of your CV or profile that shows it. The page also lists the offer's keywords and how often your CV uses them, an ATS checklist, your strengths for this offer, and the offer's warning signs.
+- **Rounds with your comments.** Comment on a requirement, a keyword or a name to check, and answer the questions about numbers: the model does not guess them. The next round rewrites the CV with what you said and scores it again; every round stays in the history. Your comments are kept in your profile as **Facts about you**, used for every later offer, and you can remove any of them.
+- **A CV and a letter for every offer.** In the offer's language, from the general CV you pick, with optional notes for the model. The GDPR clause can name the company. The letter starts from your general letter, keeping its voice and, in the same language, your greeting and sign-off, and follows your last three letters. **Generate again** always starts from your base CV, not from the last result.
 
 ### Applications and answers
 
@@ -104,6 +116,7 @@ That is the whole install. `npm run go` creates `.env` with fresh secrets, insta
 
 - **No LinkedIn app needed.** Build your profile from a CV PDF, LinkedIn's data export ZIP, pasted text, or let Claude read your own LinkedIn profile in your own Chrome.
 - **Your LinkedIn profile, scored.** On your own profile, the extension shows a score from 0 to 100, the change since the last score and the main fixes, with text ready to copy.
+- **LinkedIn and CV, side by side.** Profile → **LinkedIn and CV** compares your default CV with your LinkedIn profile (roles, dates, skills, headline) and writes a headline, an About section, role descriptions and skills from the CV, each ready to copy.
 
 <p align="center">
   <img src="apps/resume-engine-optimization/docs/screenshots/reo-features.png" alt="The Features page at the Chrome extension: what each popup button and switch does" width="900">
@@ -169,7 +182,7 @@ newrole.it picks a model by itself; `LLM_PROVIDER` in `.env` overrides it.
 
 | Model | When | Notes |
 |---|---|---|
-| Claude Code (`claude -p`) | The `claude` binary is found | Your own subscription, no API keys. `haiku` by default, `sonnet` for answer drafts and application forms |
+| Claude Code (`claude -p`) | The `claude` binary is found | Your own subscription, no API keys. `haiku` by default, `sonnet` for writing: tailoring, Improve with AI, answer drafts and application forms |
 | An OpenAI-compatible API | `LLM_API_KEY` is set and Claude Code is not found | `gpt-4o-mini` by default; an xAI base URL works the same way. Mainly for Docker |
 | None | Neither | Rules only: CV reading, the editor, the audit and the PDF |
 
@@ -182,6 +195,12 @@ No, but your CV gets the title. CEO stands for CV Engine Optimisation: newrole.i
 
 **Does it send applications for me?**
 No. The extension fills the form and records what you sent, but you always click Submit yourself.
+
+**Is it really free?**
+Yes. The code is open source under AGPL-3.0 and runs on your computer. The only thing that can cost money is the model: Claude Code uses the subscription you already have, an API key is billed by its provider, and without a model the rule-based parts still work.
+
+**Does it make things up to fit the offer?**
+No. Employers, schools, dates and contact details are out of the model's reach, and it does not guess numbers. What the offer asks for and your data does not show is listed as a gap. If you have it, say so in a comment and the next round uses it.
 
 **Will it find job offers for me?**
 No. newrole.it works on the offers you bring, by their link. The engine that finds offers on its own (crawling ATS boards, watched companies, a ranked feed) is not part of newrole.it; it is meant for a separate deployment.

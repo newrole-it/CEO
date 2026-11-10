@@ -1,11 +1,12 @@
 /**
  * "First steps" on /offers and /cv: the loop newrole.it is for, as pure rules. Facts from the
- * database go in, four steps come out, in the order a person does them: a profile, an offer added
- * by its link, a CV tailored to it, an application. Text lives in src/app/i18n/copy-guide.ts under
+ * database go in, five steps come out, in the order a person does them: a profile, a general CV
+ * (for a person without one: written from their description, then a template), an offer added by
+ * its link, a CV tailored to it, an application. Text lives in src/app/i18n/copy-guide.ts under
  * fs.<id>.title, fs.<id>.body and fs.<id>.cta.
  */
 
-export type FirstStepId = "profile" | "offer" | "tailor" | "apply"
+export type FirstStepId = "profile" | "cv" | "offer" | "tailor" | "apply"
 
 export type FirstStep = {
   id: FirstStepId
@@ -16,6 +17,8 @@ export type FirstStep = {
 
 export type FirstStepFacts = {
   profile: boolean
+  /** A general CV of any kind: editable or an uploaded PDF */
+  cv: boolean
   /** The person's offers, newest first (listOffers) */
   offers: { jobId: string; cvId: string | null; application: { id: string } | null }[]
   /** Applications of any kind: from an offer, the extension, a CSV or added by hand */
@@ -35,6 +38,11 @@ export function firstSteps(facts: FirstStepFacts): FirstStep[] {
       id: "profile",
       done: facts.profile,
       href: facts.profile ? "/profile" : "/start",
+    },
+    {
+      id: "cv",
+      done: facts.cv,
+      href: "/cv",
     },
     {
       id: "offer",

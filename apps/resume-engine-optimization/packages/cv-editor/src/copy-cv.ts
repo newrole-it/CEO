@@ -16,7 +16,8 @@ export const cvPl = {
   "cv.new.html": "Importuj HTML",
   "cv.new.pdf": "Wgraj PDF",
   "cv.empty.title": "Nie masz jeszcze CV.",
-  "cv.empty.body": "Utwórz je z profilu, wgraj PDF albo zaimportuj HTML.",
+  "cv.empty.body":
+    "Opisz swoje doświadczenie, utwórz je z profilu, wgraj PDF albo zaimportuj HTML.",
   "cv.signin.title": "Zaloguj się, żeby trzymać tu swoje CV.",
   "cv.signin.body": "CV zapisuje się na Twoim koncie, w lokalnej bazie.",
   "cv.signin.cta": "Zaloguj się",
@@ -282,7 +283,8 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.new.html": "Import HTML",
   "cv.new.pdf": "Upload PDF",
   "cv.empty.title": "You don't have a CV yet.",
-  "cv.empty.body": "Create one from your profile, upload a PDF or import HTML.",
+  "cv.empty.body":
+    "Describe your experience, create one from your profile, upload a PDF or import HTML.",
   "cv.signin.title": "Sign in to keep your CVs here.",
   "cv.signin.body": "Your CV is saved to your account, in the local database.",
   "cv.signin.cta": "Sign in",

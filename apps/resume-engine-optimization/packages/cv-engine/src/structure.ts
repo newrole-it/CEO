@@ -4,7 +4,10 @@ import { defaultConsent, emptyCv, SECTION_TITLES, type CvLocale } from "@newrole
 import { textToInline } from "@newrole/cv-core/sanitize"
 import { cvId, parseCvContent, type CvContent, type CvSection } from "@newrole/cv-core/schema"
 
-/** CV text (from a PDF, pdf.ts) → editable CV: the model structures it; plain text is the fallback. */
+/**
+ * CV text (from a PDF, pdf.ts) → editable CV: the model structures it; plain text is the fallback.
+ * A description of one's experience → a new CV the model writes from it (describeCvText).
+ */
 
 const MAX_TEXT = 14_000
 
@@ -64,6 +67,31 @@ Reply with this shape:
  {"type":"text","title":"Languages","body":"Polish · English"}
 ]}
 Keep the sections in the order of the CV and use the CV's own section titles. Text fields are plain text.`
+
+const LANGUAGE_NAME: Record<CvLocale, string> = { pl: "Polish", en: "English" }
+
+/**
+ * The person has no CV yet and describes their work in their own words: the model writes the CV
+ * from that description and adds no fact of its own. Same reply shape as SYSTEM.
+ */
+function describeSystem(locale: CvLocale): string {
+  const titles = SECTION_TITLES[locale]
+  return `You write a CV from a person's own description of their work, studies and skills. The description is the only source of facts. Never add an employer, a role, a date, a number, a technology, a result, a school, a skill or a language it does not state, and never make a claim stronger than the description makes it. Leave a field empty when the description does not say it.
+
+Write the CV in ${LANGUAGE_NAME[locale]}. Turn what the person says into CV entries: one experience item per job, with the company, the role and the dates as they gave them. A role's "summary" is at most two sentences that set the scene (the product, the team, the scope). Each responsibility, result or project they mention becomes its own short bullet that starts with what they did. Keep their names, numbers and technologies exactly as written, and put the tools they name for a job in its "tech". Skills they name go in a "skills" section; the languages they speak go in a "text" section titled "${titles.languages}". Add a short "text" section titled "${titles.profile}" only from what they say about themselves.
+
+Reply with this shape:
+{"name":"","headline":"","location":"","email":"","phone":"","links":[{"label":"linkedin.com/in/x","url":"https://..."}],
+"sections":[
+ {"type":"text","title":"${titles.profile}","body":"paragraph"},
+ {"type":"experience","title":"${titles.experience}","items":[{"company":"","role":"","dates":"","summary":"","bullets":["..."],"tech":"comma list without a label"}]},
+ {"type":"cards","title":"${titles.projects}","items":[{"title":"","body":""}]},
+ {"type":"education","title":"${titles.education}","items":[{"school":"","degree":"","dates":""}]},
+ {"type":"skills","title":"${titles.skills}","items":[{"label":"Area","text":"what"}]},
+ {"type":"text","title":"${titles.languages}","body":"Polish · English"}
+]}
+Leave out a section the description gives nothing for. Text fields are plain text.`
+}
 
 /** "AdVantage: I co-built…" → the project's name in bold, as in the reference layout. */
 export function boldLead(html: string): string {
@@ -175,25 +203,22 @@ export function cvFromRawText(text: string, locale: CvLocale): CvContent {
   }
 }
 
-function wrapCvText(text: string): string {
+function wrapCvText(text: string, label = "cv"): string {
   const safe = text.replace(/<\/?untrusted_[a-z0-9_]+>/gi, "").slice(0, MAX_TEXT)
-  return `<untrusted_cv>\n${safe}\n</untrusted_cv>`
+  return `<untrusted_${label}>\n${safe}\n</untrusted_${label}>`
 }
 
-/** Structures CV text with the given model; null means rules only (the fallback). */
-export async function structureCvText(input: {
-  text: string
-  locale: CvLocale
-  userId?: number
-  llm: LlmClient | null
-}): Promise<{ content: CvContent; reader: "llm" | "text" }> {
+type ReadInput = { text: string; locale: CvLocale; userId?: number; llm: LlmClient | null }
+
+async function readWithModel(
+  input: ReadInput,
+  prompt: { purpose: string; system: string; user: string }
+): Promise<{ content: CvContent; reader: "llm" | "text" }> {
   const { llm } = input
   if (llm) {
     try {
       const result = await llm.completeJson({
-        purpose: "cv-structure",
-        system: SYSTEM,
-        user: wrapCvText(input.text),
+        ...prompt,
         // .catch() widens the schema's input type; its output is what the client returns
         schema: llmSchema as unknown as z.ZodType<LlmCv>,
         maxTokens: 6000,
@@ -202,8 +227,33 @@ export async function structureCvText(input: {
       const content = result?.data ? cvFromStructured(result.data, input.locale) : null
       if (content) return { content, reader: "llm" }
     } catch (error) {
-      console.error("cv-structure failed", error instanceof Error ? error.message : error)
+      console.error(`${prompt.purpose} failed`, error instanceof Error ? error.message : error)
     }
   }
   return { content: cvFromRawText(input.text, input.locale), reader: "text" }
+}
+
+/** Structures CV text with the given model; null means rules only (the fallback). */
+export function structureCvText(
+  input: ReadInput
+): Promise<{ content: CvContent; reader: "llm" | "text" }> {
+  return readWithModel(input, {
+    purpose: "cv-structure",
+    system: SYSTEM,
+    user: wrapCvText(input.text),
+  })
+}
+
+/**
+ * A CV written from the person's description of their experience (describeSystem). Without a
+ * model, or when it fails, the description itself is the CV's one section, as for a PDF.
+ */
+export function describeCvText(
+  input: ReadInput
+): Promise<{ content: CvContent; reader: "llm" | "text" }> {
+  return readWithModel(input, {
+    purpose: "cv-describe",
+    system: describeSystem(input.locale),
+    user: wrapCvText(input.text, "description"),
+  })
 }

@@ -42,6 +42,7 @@ export const PERSONAL_LLM_PURPOSES = [
   "answer-draft",
   "form-fill",
   "cv-structure",
+  "cv-describe",
   "cv-tailor",
   "cv-improve",
   "cover-letter",

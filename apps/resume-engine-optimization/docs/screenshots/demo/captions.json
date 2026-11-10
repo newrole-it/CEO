@@ -1,0 +1,402 @@
+[
+  {
+    "id": "intro",
+    "start": 0,
+    "end": 2.88,
+    "caption": "A free CV builder for people in IT.",
+    "words": [
+      {
+        "word": "A",
+        "at": 0.15
+      },
+      {
+        "word": "free",
+        "at": 0.27
+      },
+      {
+        "word": "CV",
+        "at": 0.57
+      },
+      {
+        "word": "builder",
+        "at": 0.76
+      },
+      {
+        "word": "for",
+        "at": 1.24
+      },
+      {
+        "word": "people",
+        "at": 1.48
+      },
+      {
+        "word": "in",
+        "at": 1.91
+      },
+      {
+        "word": "IT.",
+        "at": 2.09
+      }
+    ]
+  },
+  {
+    "id": "upload",
+    "start": 2.88,
+    "end": 7.28,
+    "caption": "Upload your CV or your LinkedIn PDF.",
+    "words": [
+      {
+        "word": "Upload",
+        "at": 3.03
+      },
+      {
+        "word": "your",
+        "at": 3.73
+      },
+      {
+        "word": "CV",
+        "at": 4.23
+      },
+      {
+        "word": "or",
+        "at": 4.53
+      },
+      {
+        "word": "your",
+        "at": 4.83
+      },
+      {
+        "word": "LinkedIn",
+        "at": 5.33
+      },
+      {
+        "word": "PDF.",
+        "at": 6.23
+      }
+    ]
+  },
+  {
+    "id": "cv",
+    "start": 7.28,
+    "end": 12.28,
+    "caption": "Your CV is ready to edit. Pick a template.",
+    "words": [
+      {
+        "word": "Your",
+        "at": 7.43
+      },
+      {
+        "word": "CV",
+        "at": 7.93
+      },
+      {
+        "word": "is",
+        "at": 8.23
+      },
+      {
+        "word": "ready",
+        "at": 8.53
+      },
+      {
+        "word": "to",
+        "at": 9.13
+      },
+      {
+        "word": "edit.",
+        "at": 9.43
+      },
+      {
+        "word": "Pick",
+        "at": 10.03
+      },
+      {
+        "word": "a",
+        "at": 10.53
+      },
+      {
+        "word": "template.",
+        "at": 10.73
+      }
+    ]
+  },
+  {
+    "id": "offer",
+    "start": 12.28,
+    "end": 17.08,
+    "caption": "Paste the link to a job offer.",
+    "words": [
+      {
+        "word": "Paste",
+        "at": 12.43
+      },
+      {
+        "word": "the",
+        "at": 13.22
+      },
+      {
+        "word": "link",
+        "at": 13.75
+      },
+      {
+        "word": "to",
+        "at": 14.41
+      },
+      {
+        "word": "a",
+        "at": 14.81
+      },
+      {
+        "word": "job",
+        "at": 15.08
+      },
+      {
+        "word": "offer.",
+        "at": 15.6
+      }
+    ]
+  },
+  {
+    "id": "tailor",
+    "start": 17.08,
+    "end": 22.84,
+    "caption": "It tailors your CV and checks every step.",
+    "words": [
+      {
+        "word": "It",
+        "at": 17.23
+      },
+      {
+        "word": "tailors",
+        "at": 17.59
+      },
+      {
+        "word": "your",
+        "at": 18.56
+      },
+      {
+        "word": "CV",
+        "at": 19.16
+      },
+      {
+        "word": "and",
+        "at": 19.52
+      },
+      {
+        "word": "checks",
+        "at": 20
+      },
+      {
+        "word": "every",
+        "at": 20.84
+      },
+      {
+        "word": "step.",
+        "at": 21.57
+      }
+    ]
+  },
+  {
+    "id": "match",
+    "start": 22.84,
+    "end": 28.24,
+    "caption": "See what matches the offer and what is missing.",
+    "words": [
+      {
+        "word": "See",
+        "at": 22.99
+      },
+      {
+        "word": "what",
+        "at": 23.38
+      },
+      {
+        "word": "matches",
+        "at": 23.87
+      },
+      {
+        "word": "the",
+        "at": 24.65
+      },
+      {
+        "word": "offer",
+        "at": 25.05
+      },
+      {
+        "word": "and",
+        "at": 25.63
+      },
+      {
+        "word": "what",
+        "at": 26.03
+      },
+      {
+        "word": "is",
+        "at": 26.51
+      },
+      {
+        "word": "missing.",
+        "at": 26.81
+      }
+    ]
+  },
+  {
+    "id": "human",
+    "start": 28.24,
+    "end": 35,
+    "caption": "It never invents facts. It asks you.",
+    "words": [
+      {
+        "word": "It",
+        "at": 28.39
+      },
+      {
+        "word": "never",
+        "at": 28.88
+      },
+      {
+        "word": "invents",
+        "at": 29.86
+      },
+      {
+        "word": "facts.",
+        "at": 31.17
+      },
+      {
+        "word": "It",
+        "at": 32.32
+      },
+      {
+        "word": "asks",
+        "at": 32.81
+      },
+      {
+        "word": "you.",
+        "at": 33.63
+      }
+    ]
+  },
+  {
+    "id": "round2",
+    "start": 35,
+    "end": 40.16,
+    "caption": "Your answers go in. The match goes from 73% to 86%.",
+    "words": [
+      {
+        "word": "Your",
+        "at": 35.15
+      },
+      {
+        "word": "answers",
+        "at": 35.58
+      },
+      {
+        "word": "go",
+        "at": 36.26
+      },
+      {
+        "word": "in.",
+        "at": 36.52
+      },
+      {
+        "word": "The",
+        "at": 36.87
+      },
+      {
+        "word": "match",
+        "at": 37.21
+      },
+      {
+        "word": "goes",
+        "at": 37.72
+      },
+      {
+        "word": "from",
+        "at": 38.15
+      },
+      {
+        "word": "73%",
+        "at": 38.58
+      },
+      {
+        "word": "to",
+        "at": 38.92
+      },
+      {
+        "word": "86%.",
+        "at": 39.18
+      }
+    ]
+  },
+  {
+    "id": "done",
+    "start": 40.16,
+    "end": 44.4,
+    "caption": "Download the PDF and apply.",
+    "words": [
+      {
+        "word": "Download",
+        "at": 40.31
+      },
+      {
+        "word": "the",
+        "at": 41.45
+      },
+      {
+        "word": "PDF",
+        "at": 41.95
+      },
+      {
+        "word": "and",
+        "at": 42.46
+      },
+      {
+        "word": "apply.",
+        "at": 42.96
+      }
+    ]
+  },
+  {
+    "id": "end",
+    "start": 44.4,
+    "end": 48.16,
+    "caption": "One command to start. Your data stays with you.",
+    "words": [
+      {
+        "word": "One",
+        "at": 44.55
+      },
+      {
+        "word": "command",
+        "at": 44.8
+      },
+      {
+        "word": "to",
+        "at": 45.31
+      },
+      {
+        "word": "start.",
+        "at": 45.51
+      },
+      {
+        "word": "Your",
+        "at": 45.95
+      },
+      {
+        "word": "data",
+        "at": 46.27
+      },
+      {
+        "word": "stays",
+        "at": 46.59
+      },
+      {
+        "word": "with",
+        "at": 46.97
+      },
+      {
+        "word": "you.",
+        "at": 47.29
+      }
+    ]
+  }
+]

@@ -22,6 +22,10 @@ export const guidePl = {
   "fs.profile.body":
     "Z profilu powstaje CV, a model czyta go, gdy pisze CV i list pod ofertę. Wgranie PDF zajmuje około minuty.",
   "fs.profile.cta": "Utwórz profil",
+  "fs.cv.title": "Twoje CV i jego wygląd",
+  "fs.cv.body":
+    "Nie masz CV? Opisz swoje doświadczenie własnymi słowami, a model ułoży z tego CV. Możesz też złożyć je z profilu albo wgrać PDF. Potem wybierzesz szablon i kolor.",
+  "fs.cv.cta": "Utwórz CV",
   "fs.offer.title": "Dodaj pierwszą ofertę",
   "fs.offer.body":
     "Wklej link do ogłoszenia ze strony firmy albo jej systemu rekrutacji. newrole.it pobierze całe ogłoszenie i zapisze je przy ofercie. Z LinkedIn zapisze tylko link, a treść ogłoszenia wkleisz.",
@@ -56,6 +60,10 @@ export const guideEn: Record<keyof typeof guidePl, string> = {
   "fs.profile.body":
     "Your CV is made from your profile, and the model reads it when it writes a CV and letter for an offer. Uploading a PDF takes about a minute.",
   "fs.profile.cta": "Create a profile",
+  "fs.cv.title": "Your CV and its look",
+  "fs.cv.body":
+    "No CV yet? Describe your experience in your own words and the model turns it into a CV. You can also build it from your profile or upload a PDF. Then you pick a template and a colour.",
+  "fs.cv.cta": "Create a CV",
   "fs.offer.title": "Add your first offer",
   "fs.offer.body":
     "Paste a link to a posting on the company's site or its recruitment system. newrole.it reads the whole posting and keeps it with the offer. From LinkedIn it keeps only the link, and you paste the posting's text.",

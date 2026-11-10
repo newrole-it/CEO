@@ -1,0 +1,212 @@
+{
+  "name": "demo",
+  "fps": 25,
+  "slow": 1.25,
+  "webp": {
+    "fps": 12.5,
+    "width": 900,
+    "quality": 70
+  },
+  "cards": {
+    "intro": {
+      "lines": [
+        {
+          "kind": "brand",
+          "text": "newrole.it"
+        },
+        {
+          "kind": "big",
+          "text": "Your CV, tailored to every job offer"
+        },
+        {
+          "kind": "accent",
+          "text": "No hallucinations. Facts only."
+        },
+        {
+          "kind": "sub",
+          "text": "Free and open source. Runs on your machine."
+        }
+      ]
+    },
+    "end": {
+      "lines": [
+        {
+          "kind": "brand",
+          "text": "newrole.it"
+        },
+        {
+          "kind": "big",
+          "text": "Try it on your own CV"
+        },
+        {
+          "kind": "code",
+          "text": "git clone https://github.com/newrole-it/newrole.it.git && cd newrole.it && npm run go"
+        },
+        {
+          "kind": "sub",
+          "text": "Free and open source."
+        }
+      ]
+    }
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "caption": "A free CV builder for people in IT.",
+      "clips": [
+        {
+          "card": "intro",
+          "dur": 2.3
+        }
+      ]
+    },
+    {
+      "id": "upload",
+      "caption": "Upload your CV or your LinkedIn PDF.",
+      "clips": [
+        {
+          "from": "start",
+          "to": "uploaded",
+          "dur": 1.5
+        },
+        {
+          "from": "uploaded",
+          "to": "review",
+          "dur": 0.8
+        },
+        {
+          "from": "review",
+          "to": "reviewShown",
+          "dur": 1.2
+        }
+      ]
+    },
+    {
+      "id": "cv",
+      "caption": "Your CV is ready to edit. Pick a template.",
+      "clips": [
+        {
+          "from": "cvList",
+          "to": "cvClicked",
+          "dur": 0.9
+        },
+        {
+          "from": "editor",
+          "to": "editorDone",
+          "dur": 3.1
+        }
+      ]
+    },
+    {
+      "id": "offer",
+      "caption": "Paste the link to a job offer.",
+      "clips": [
+        {
+          "from": "offers",
+          "to": "offerReading",
+          "dur": 2.0
+        },
+        {
+          "from": "offerReading",
+          "to": "offerRead",
+          "dur": 0.5
+        },
+        {
+          "from": "offerRead",
+          "to": "offerShown",
+          "dur": 1.3
+        }
+      ]
+    },
+    {
+      "id": "tailor",
+      "caption": "It tailors your CV and checks every step.",
+      "clips": [
+        {
+          "from": "tailorStart",
+          "to": "tailorRunning",
+          "dur": 1.0
+        },
+        {
+          "from": "tailorRunning",
+          "to": "match",
+          "dur": 3.6
+        }
+      ]
+    },
+    {
+      "id": "match",
+      "caption": "See what matches the offer and what is missing.",
+      "clips": [
+        {
+          "from": "match",
+          "to": "matchShown",
+          "dur": 1.3
+        },
+        {
+          "from": "matchShown",
+          "to": "requirements",
+          "dur": 3.0
+        }
+      ]
+    },
+    {
+      "id": "human",
+      "caption": "It never invents facts. It asks you.",
+      "clips": [
+        {
+          "from": "requirements",
+          "to": "commented",
+          "dur": 2.8
+        },
+        {
+          "from": "commented",
+          "to": "answered",
+          "dur": 2.6
+        }
+      ]
+    },
+    {
+      "id": "round2",
+      "caption": "Your answers go in. The match goes from 73% to 86%.",
+      "clips": [
+        {
+          "from": "answered",
+          "to": "round2Running",
+          "dur": 0.9
+        },
+        {
+          "from": "round2Running",
+          "to": "round2",
+          "dur": 1.2
+        },
+        {
+          "from": "round2",
+          "to": "round2Shown",
+          "dur": 2.0
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "caption": "Download the PDF and apply.",
+      "clips": [
+        {
+          "from": "tailoredCv",
+          "to": "end",
+          "dur": 3.4
+        }
+      ]
+    },
+    {
+      "id": "end",
+      "caption": "One command to start. Your data stays with you.",
+      "clips": [
+        {
+          "card": "end",
+          "dur": 3.0
+        }
+      ]
+    }
+  ]
+}
