@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/resume-engine-optimization/docs/screenshots/banner.svg" alt="newrole.it: your CV, tailored to every job offer, on your machine" width="900">
+  <img src="apps/resume-engine-optimization/docs/screenshots/banner.png" alt="newrole.it: your CV, tailored to every job offer, on your machine" width="900">
 </p>
 
 <h3 align="center">CEO ~ CV Engine Optimisation</h3>
