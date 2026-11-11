@@ -261,8 +261,9 @@ describe("lib/content.js", () => {
     expect(el("gender").value).toBe("")
     expect(el("consent").checked).toBe(false)
 
-    expect(el("first_name").style.outline).toContain("#5b3df5")
-    expect(el("q1").style.outline).toContain("#e6a700")
+    // The style reads a colour back as rgb(), as Chrome does: #5b3df5 and #e6a700.
+    expect(el("first_name").style.outline).toContain("rgb(91, 61, 245)")
+    expect(el("q1").style.outline).toContain("rgb(230, 167, 0)")
     expect(el("q1").title).toContain("sprawdź")
     expect(panelText()).toContain("Uzupełniono: 2")
     expect(panelText()).toContain("szkice AI do sprawdzenia: 1")
@@ -399,7 +400,7 @@ describe("lib/content.js", () => {
       await afterFirstPoll()
       expect(asked).toEqual(["L1"])
       expect(letter.value).toBe("Szanowni Państwo,\n\nList.")
-      expect(letter.style.outline).toContain("#e6a700")
+      expect(letter.style.outline).toContain("rgb(230, 167, 0)")
       expect(panelText()).toContain("nowy, pod tę ofertę, na wzór 3 ostatnich listów")
       expect(panelText()).toContain("Cover Letter")
       const link = shadow!.querySelector("a[href='http://127.0.0.1:43123/cv/doc1']")

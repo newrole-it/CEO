@@ -189,6 +189,7 @@ describe("fields the person cannot see", () => {
         <label>Clipped to a pixel <input name="d" style="position:absolute; clip: rect(1px, 1px, 1px, 1px)"></label>
         <label>Clip path <input name="e" style="clip-path: inset(50%)"></label>
         <div style="clip-path: inset(0 100% 0 0)"><label>In a clipped box <input name="f"></label></div>
+        <label>Clipped in pixels <input name="i" style="clip-path: inset(0px 0px 0px 100%)"></label>
         <label>Half clipped <input name="g" style="clip-path: inset(0 0 50% 0)"></label>
         <label>Faint <input name="h" style="opacity: 0.4"></label>
       </form>
