@@ -60,7 +60,7 @@
     "prettier": "3.9.10",
     "prettier-plugin-prisma": "5.0.0",
     "pretty-quick": "4.2.2",
-    "typescript": "5.6.3"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "blitz": {
