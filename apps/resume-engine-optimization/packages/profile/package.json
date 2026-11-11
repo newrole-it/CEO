@@ -15,7 +15,7 @@
   "dependencies": {
     "@newrole/llm": "0.1.0",
     "@newrole/matching": "0.1.0",
-    "unpdf": "1.4.0",
+    "unpdf": "2.1.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
