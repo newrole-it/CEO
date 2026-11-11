@@ -27,7 +27,7 @@ export const StepUpdate = z.object({
   step: TailorStep,
   state: StepState,
   /** What the step found, as numbers the interface puts into words */
-  detail: z.record(z.number()).optional(),
+  detail: z.record(z.string(), z.number()).optional(),
 })
 export type StepUpdate = z.infer<typeof StepUpdate>
 

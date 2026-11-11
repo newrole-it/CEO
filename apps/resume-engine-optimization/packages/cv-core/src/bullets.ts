@@ -55,7 +55,7 @@ export const BulletReport = z.object({
   /** Rewrites refused because they added a number the data does not have */
   reverted: z.number(),
   /** How many bullets had each issue */
-  issues: z.record(z.number()),
+  issues: z.record(z.string(), z.number()),
   questions: z.array(BulletQuestion),
 })
 export type BulletReport = z.infer<typeof BulletReport>

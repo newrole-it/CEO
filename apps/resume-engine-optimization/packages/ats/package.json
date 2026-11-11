@@ -15,7 +15,7 @@
   "dependencies": {
     "@newrole/matching": "0.1.0",
     "@newrole/offers": "0.1.0",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

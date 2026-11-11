@@ -214,7 +214,7 @@ export function cvTooLongLimit(value: unknown): number | null {
   const parsed = CvContent.safeParse(value)
   if (parsed.success) return null
   for (const issue of parsed.error.issues) {
-    if (issue.code === "too_big" && issue.type === "string") return Number(issue.maximum)
+    if (issue.code === "too_big" && issue.origin === "string") return Number(issue.maximum)
   }
   return null
 }
