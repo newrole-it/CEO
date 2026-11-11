@@ -16,6 +16,14 @@ updates:
       # zod 4 breaks the MCP server's tool schemas; moving to it is a change of its own.
       - dependency-name: zod
         update-types: [version-update:semver-major]
+      # eslint-plugin-react, -import and -jsx-a11y (from eslint-config-next) declare ESLint 9 at most.
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      # The Prisma CLI and client move together, and a new major is a migration of its own.
+      - dependency-name: prisma
+        update-types: [version-update:semver-major]
+      - dependency-name: "@prisma/client"
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
