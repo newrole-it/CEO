@@ -6,6 +6,10 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ## Unreleased
 
+### Fixed
+
+- The extension now leaves out a form field hidden by a clip-path such as inset(0 100% 0 0). Chrome reports those zeros as 0px, which the extension did not read as zero, so it could fill such a hidden field and send what was in it.
+
 ### Changed
 
 - The repository is now github.com/newrole-it/CEO. Clone it with git clone https://github.com/newrole-it/CEO.git newrole.it. Security problems are reported privately on its Security → Advisories page.

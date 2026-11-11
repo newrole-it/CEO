@@ -286,7 +286,10 @@ function hasLayout(doc) {
   return Boolean(html && html.getBoundingClientRect && html.getBoundingClientRect().width > 0)
 }
 
-/** Percentages of an inset() clip-path as [top, right, bottom, left], or null for other units. */
+/**
+ * Percentages of an inset() clip-path as [top, right, bottom, left], or null for other units.
+ * A zero counts in any unit: Chrome's computed style writes inset(0 100% 0 0) as inset(0px 100% 0px 0px).
+ */
 function insetPercents(path) {
   const found = /inset\(([^)]*)\)/.exec(path)
   if (!found) return null
@@ -295,7 +298,7 @@ function insetPercents(path) {
     .trim()
     .split(/\s+/)
   const values = parts.map((part) =>
-    /^-?\d*\.?\d+%$/.test(part) ? parseFloat(part) : part === "0" ? 0 : NaN
+    /^-?\d*\.?\d+%$/.test(part) ? parseFloat(part) : /^-?0*\.?0+[a-z]*$/i.test(part) ? 0 : NaN
   )
   if (!values.length || values.some(Number.isNaN)) return null
   const [top, right = top, bottom = top, left = right] = values
