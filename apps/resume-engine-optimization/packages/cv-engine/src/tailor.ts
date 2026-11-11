@@ -40,6 +40,7 @@ What you may do:
 - Rewrite "body" of text sections, "summary", "bullets" and "tech" of roles, "text" of skills and "body" of cards, so that what this offer asks for comes first. Keep the candidate's voice and grammatical person. In Polish keep the grammatical gender the CV uses.
 - Order sections by relevance. Within a role order bullets by relevance. Order skills and cards by relevance, and leave out those that do not help with this offer.
 - "hide": true on a text, skills or cards section that adds nothing for this offer.
+- Add a card to a cards section only for a project the candidate context names and the CV does not show, when it matters for this offer: an item with "id":"new", "title" as "<the project's name as the context writes it> · <the candidate's role in it>" and "body". Code drops a new card whose project the candidate's data does not name. Nothing else can be added: no new roles, skills groups or sections.
 - Keep the CV no longer than it is. Tighten rather than add.
 
 Keywords: a recruiter and an ATS search the CV for the offer's own words. Work in this order:
@@ -81,7 +82,7 @@ Return JSON, "keywords" first:
  {"id":"<id>","hide":true},
  {"id":"<id>","items":[{"id":"<id>","label":"...","text":"..."}]},
  {"id":"<id>","items":[{"id":"<id>","summary":"...","bullets":["..."],"tech":"..."}]},
- {"id":"<id>","items":[{"id":"<id>","body":"..."}]}
+ {"id":"<id>","items":[{"id":"<id>","body":"..."},{"id":"new","title":"... · ...","body":"..."}]}
 ],"changes":["..."],"gaps":["..."]}
 List sections in the order they should appear.`
 

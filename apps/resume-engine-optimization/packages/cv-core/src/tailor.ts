@@ -2,7 +2,7 @@ import { z } from "zod"
 import { defaultConsent, type CvLocale } from "./blank"
 import { MatchNotes } from "./match"
 import { inlineToText, sanitizeInline } from "./sanitize"
-import { parseCvContent, type CvContent, type CvSection } from "./schema"
+import { cvId, parseCvContent, type CvContent, type CvSection } from "./schema"
 import { hasTerm, matchable, TECH_SHAPED } from "./terms"
 import { cvPlainText } from "./text"
 
@@ -256,10 +256,13 @@ export function refreshKeywordNotes(
 
 /** The schema's limits for the fields the model may write. */
 const MAX = { body: 12000, summary: 4000, bullet: 2000, tech: 2000, skill: 2000, card: 4000 }
+/** The schema's limit on cards in one section */
+const MAX_CARDS = 30
 
 /** Reads the model's proposals against the old values and keeps count of what it refused. */
 function createWriter(base: CvContent, evidence: string) {
   const known = knownNumbers(evidence)
+  const words = matchable(evidence)
   const links = linksIn(base)
   const written: string[] = []
   let reverted = 0
@@ -301,28 +304,39 @@ function createWriter(base: CvContent, evidence: string) {
     return clean && clean.length <= 100 && digits(clean) === digits(current) ? clean : current
   }
 
-  return { rich, plain, dates, written, reverted: () => reverted }
+  /** The person's data names it: a new card may only be about something they have said. */
+  const backs = (name: string) => hasTerm(words, name)
+
+  return { rich, plain, dates, backs, written, reverted: () => reverted }
 }
 
 type Writer = ReturnType<typeof createWriter>
 type ProposedSection = TailorReply["sections"][number]
 type ProposedItem = NonNullable<ProposedSection["items"]>[number]
 
-/** Items in the proposed order, without those it left out; all of them when it names none. */
+/**
+ * Items in the proposed order, without those it left out; all of them when it names none. An id
+ * the section does not have becomes a new item only through `create`, which may refuse it.
+ */
 function picked<T extends { id: string }>(
   items: T[],
   proposals: ProposedItem[] | undefined,
-  merge: (item: T, proposal: ProposedItem) => T
+  merge: (item: T, proposal: ProposedItem) => T,
+  create?: (proposal: ProposedItem) => T | undefined
 ): T[] {
   const seen = new Set<string>()
   const out: T[] = []
+  let named = 0
   for (const proposal of proposals ?? []) {
     const item = items.find((entry) => entry.id === proposal.id)
-    if (!item || seen.has(item.id)) continue
-    seen.add(item.id)
-    out.push(merge(item, proposal))
+    if (item && seen.has(item.id)) continue
+    if (item) seen.add(item.id)
+    const next = item ? merge(item, proposal) : create?.(proposal)
+    if (!next) continue
+    if (item) named += 1
+    out.push(next)
   }
-  return out.length ? out : items
+  return named ? out : [...items, ...out]
 }
 
 function mergeSection(
@@ -349,11 +363,25 @@ function mergeSection(
   }
   if (section.type === "cards") {
     if (proposal.hide) return { ...section, hidden: true }
-    const items = picked(section.items, proposal.items, (item, next) => ({
-      ...item,
-      title: translate ? writer.plain(next.title, 240) ?? item.title : item.title,
-      body: writer.rich(next.body, MAX.card) ?? item.body,
-    }))
+    const items = picked(
+      section.items,
+      proposal.items,
+      (item, next) => ({
+        ...item,
+        title: translate ? writer.plain(next.title, 240) ?? item.title : item.title,
+        body: writer.rich(next.body, MAX.card) ?? item.body,
+      }),
+      // a project the person's data names but this CV does not show yet
+      (next) => {
+        const name = inlineToText(next.title ?? "")
+          .split("·")[0]
+          .trim()
+        if (!name || !writer.backs(name)) return undefined
+        const cardTitle = writer.plain(next.title, 240)
+        const body = writer.rich(next.body, MAX.card)
+        return cardTitle && body ? { id: cvId("i"), title: cardTitle, body } : undefined
+      }
+    ).slice(0, MAX_CARDS)
     return { ...section, title, items }
   }
   if (section.type === "experience") {

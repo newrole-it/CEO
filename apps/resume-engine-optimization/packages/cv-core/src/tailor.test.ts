@@ -135,6 +135,45 @@ describe("applyTailoring", () => {
     expect(cards.type === "cards" && cards.items.length).toBe(2)
   })
 
+  it("adds a card for a project the person's data names, in the proposed place", () => {
+    const content = base()
+    const result = applyTailoring(
+      content,
+      reply({
+        sections: [
+          {
+            id: "projects",
+            items: [
+              { id: "new", title: "Tarcza Miejska · Co-Founder", body: "Aplikacja mobilna." },
+              { id: "c1" },
+            ],
+          },
+        ],
+      }),
+      { evidence: `${evidence(content)}\nTarcza Miejska: aplikacja mobilna, którą współtworzę.` }
+    )
+    const cards = result && section(result.content, "projects")
+    expect(cards?.type === "cards" && cards.items.map((item) => item.title)).toEqual([
+      "Tarcza Miejska · Co-Founder",
+      "Projekt A · Co-Founder",
+    ])
+    expect(cards?.type === "cards" && cards.items[0].id).not.toBe("new")
+  })
+
+  it("drops a new card whose project the person's data does not name", () => {
+    const content = base()
+    const { content: result } = tailor(content, {
+      sections: [
+        {
+          id: "projects",
+          items: [{ id: "new", title: "Wymyślony Projekt · CTO", body: "Nie istnieje." }],
+        },
+      ],
+    })
+    const cards = section(result, "projects")
+    expect(cards.type === "cards" && cards.items.map((item) => item.id)).toEqual(["c1", "c2"])
+  })
+
   it("keeps the old text of a field that gains a number the person's data does not have", () => {
     const content = base()
     const before = section(content, "profile")
