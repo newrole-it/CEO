@@ -27,6 +27,9 @@ updates:
       # tailwind.config.js into CSS: a change to how every page looks, made on its own (#9).
       - dependency-name: tailwindcss
         update-types: [version-update:semver-major]
+      # unpdf 2 declares node >=24; the project runs on Node 22 (.nvmrc, CI).
+      - dependency-name: unpdf
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
