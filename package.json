@@ -56,7 +56,7 @@
     "eslint-config-next": "16.4.5",
     "eslint-config-prettier": "10.1.8",
     "husky": "8.0.2",
-    "lint-staged": "13.0.3",
+    "lint-staged": "17.6.0",
     "prettier": "3.9.10",
     "prettier-plugin-prisma": "5.0.0",
     "pretty-quick": "4.2.2",
