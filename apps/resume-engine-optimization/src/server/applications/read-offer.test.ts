@@ -262,6 +262,6 @@ describe("readOffer", () => {
       }),
     })
     expect(reading.outcome).toBe("unreadable")
-    expect(reading.facts?.title ?? null).not.toMatch(/sign in/i)
+    expect(reading.facts?.title ?? "").not.toMatch(/sign in/i)
   })
 })
