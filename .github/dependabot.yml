@@ -23,6 +23,10 @@ updates:
       # The types follow the Node major the project runs on (.nvmrc, CI): 22.
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
+      # Tailwind 4 moves its PostCSS plugin to @tailwindcss/postcss and its config from
+      # tailwind.config.js into CSS: a change to how every page looks, made on its own (#9).
+      - dependency-name: tailwindcss
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
