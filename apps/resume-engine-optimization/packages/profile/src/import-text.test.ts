@@ -5,7 +5,7 @@ import { zip } from "./test-zip"
 const CV = "Jan Kowalski\nSenior Backend Engineer\nAcme 2020–2024: Go, Kubernetes, PostgreSQL."
 
 function file(name: string, type: string, content: Buffer | string): File {
-  return new File([content], name, { type })
+  return new File([typeof content === "string" ? content : new Uint8Array(content)], name, { type })
 }
 
 describe("importText", () => {
