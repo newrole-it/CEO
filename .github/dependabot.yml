@@ -21,6 +21,13 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: "@prisma/client"
         update-types: [version-update:semver-major]
+      # Node's built-in fetch rejects an undici 8 Agent ("invalid onRequestStart method", on Node 22
+      # and 25), and packages/offers/src/http.ts passes one to it as the dispatcher.
+      - dependency-name: undici
+        update-types: [version-update:semver-major]
+      # The types follow the Node major the project runs on (.nvmrc, CI): 22.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -8,7 +8,7 @@ Bug reports and pull requests are welcome. For anything larger, open an issue fi
 
 ## Set up
 
-You need [Node 22.12 or newer](https://nodejs.org) (the Vite that runs the tests needs it) and [Docker Desktop](https://www.docker.com/products/docker-desktop) running, on macOS or Linux. On Windows, use WSL. [Claude Code](https://claude.com/claude-code) is optional.
+You need [Node 22.22.1 or newer](https://nodejs.org) (lint-staged in the commit hook needs it) and [Docker Desktop](https://www.docker.com/products/docker-desktop) running, on macOS or Linux. On Windows, use WSL. [Claude Code](https://claude.com/claude-code) is optional.
 
 Clone the repository, then run this in its folder:
 
