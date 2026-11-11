@@ -147,10 +147,7 @@ class BodyError extends Error {
   }
 }
 
-export async function readJson<T>(
-  request: Request,
-  schema: z.ZodType<T, z.ZodTypeDef, unknown>
-): Promise<T> {
+export async function readJson<T>(request: Request, schema: z.ZodType<T, unknown>): Promise<T> {
   const declared = Number(request.headers.get("content-length") ?? 0)
   if (declared > LIMITS.body) throw new BodyError("Request body too large.", 413)
   const raw = await request.text()

@@ -1,5 +1,5 @@
-import { readFileSync } from "fs"
-import { join } from "path"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import type { LlmClient } from "@newrole/llm/common"
 import { buildProfileAudit, progressCopy } from "./audit"

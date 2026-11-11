@@ -191,7 +191,7 @@ export function registerCvTools(server: McpServer) {
         language: z.enum(["pl", "en"]).optional(),
         copyAs: z.string().max(160).optional().describe("Save as a new copy with this title"),
         content: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe("The whole CV content, same shape as cv_get"),
         section: z

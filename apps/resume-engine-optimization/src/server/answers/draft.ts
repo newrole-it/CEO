@@ -155,6 +155,7 @@ export function pickReuse(
 
 export const DraftOutputSchema = z.object({
   answers: z.record(
+    z.string(),
     z.object({
       text: z.string().max(40_000),
       basedOn: z.array(z.string().max(64)).max(20).optional(),
