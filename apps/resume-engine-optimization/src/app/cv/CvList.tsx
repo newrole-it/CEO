@@ -234,8 +234,8 @@ export function CvList({
           data.code === "not-pdf"
             ? "cv.err.notPdf"
             : data.code === "too-large"
-            ? "cv.err.tooLarge"
-            : "cv.err.upload"
+              ? "cv.err.tooLarge"
+              : "cv.err.upload"
         toast.show({ message: t(key), tone: "danger" })
         return
       }
@@ -538,8 +538,8 @@ export function CvList({
                   confirm?.docType === "LETTER"
                     ? "cvt.delete.letterConfirm"
                     : confirm && letterOf(confirm) && withLetter
-                    ? "cvt.delete.pairConfirm"
-                    : "cv.delete.confirm"
+                      ? "cvt.delete.pairConfirm"
+                      : "cv.delete.confirm"
                 )}
               </Button>
             </div>

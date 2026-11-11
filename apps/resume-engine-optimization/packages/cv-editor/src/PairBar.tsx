@@ -25,7 +25,7 @@ export function PairBar({
   const backend = useCvBackend()
   const { cvId, letterId, notes } = pair
   const letters = backend.letters
-  const toCheck = letterId === id ? notes?.unverified ?? [] : []
+  const toCheck = letterId === id ? (notes?.unverified ?? []) : []
   return (
     <>
       <div className="cvt-bar">

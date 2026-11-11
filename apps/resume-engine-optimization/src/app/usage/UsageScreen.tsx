@@ -270,8 +270,8 @@ function RecentTable({ calls, locale, t }: { calls: UsageCall[]; locale: Locale;
                   {!call.usageKnown
                     ? "—"
                     : call.usd == null
-                    ? t("usage.noPrice")
-                    : money(call.usd, "USD", locale)}
+                      ? t("usage.noPrice")
+                      : money(call.usd, "USD", locale)}
                 </td>
               </tr>
             ))}

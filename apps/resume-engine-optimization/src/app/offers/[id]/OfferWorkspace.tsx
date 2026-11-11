@@ -77,8 +77,8 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
           result === "kept"
             ? t("ow.text.refreshed")
             : result === "board"
-            ? t("ow.text.board")
-            : t("ow.text.refreshFail"),
+              ? t("ow.text.board")
+              : t("ow.text.refreshFail"),
         tone: result === "failed" ? "danger" : undefined,
         ...(result === "board" ? { duration: 10_000 } : {}),
       })

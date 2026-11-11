@@ -55,8 +55,8 @@ export function firstSteps(facts: FirstStepFacts): FirstStep[] {
       href: tailored
         ? `/cv/${tailored.cvId}`
         : untailored
-        ? `/offers/${untailored.jobId}/cv`
-        : "/offers",
+          ? `/offers/${untailored.jobId}/cv`
+          : "/offers",
     },
     {
       id: "apply",

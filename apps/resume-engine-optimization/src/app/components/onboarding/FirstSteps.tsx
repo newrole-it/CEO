@@ -53,8 +53,8 @@ export function FirstSteps({ steps }: { steps: FirstStep[] }) {
       step.id === "offer" && pathname === "/offers"
         ? `#${ADD_OFFER_ANCHOR} input`
         : step.id === "cv" && pathname === "/cv"
-        ? `#${NEW_CV_ANCHOR}`
-        : null
+          ? `#${NEW_CV_ANCHOR}`
+          : null
     const field = target ? document.querySelector<HTMLElement>(target) : null
     if (!field) return
     event.preventDefault()

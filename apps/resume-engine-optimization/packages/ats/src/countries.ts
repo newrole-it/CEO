@@ -125,8 +125,8 @@ export function resolveJobCountries(input: {
   const source: CountrySource | null = structured.some((code) => !blockedSet.has(code))
     ? "structured"
     : countries.length
-    ? "location"
-    : null
+      ? "location"
+      : null
   return { countries, remoteRegions, source, blocked }
 }
 

@@ -313,7 +313,9 @@ export function buildMatchReport(
     let status: MatchStatus = answer?.status ?? "missing"
     if (!quote) status = status === "met" ? "partial" : "missing"
     const gap =
-      status === "met" ? null : answer?.gap ?? (item.importance === "required" ? "major" : "minor")
+      status === "met"
+        ? null
+        : (answer?.gap ?? (item.importance === "required" ? "major" : "minor"))
     return {
       ...item,
       status,
@@ -425,10 +427,10 @@ export function commentsForModel(comments: MatchComment[], notes: MatchNotes | n
       const state = requirement
         ? ` (${requirement.importance}; ${requirement.status})`
         : comment.kind === "keyword" && found.has(comment.key)
-        ? found.get(comment.key)
-          ? ` (in the CV ${found.get(comment.key)}×)`
-          : " (not in the CV)"
-        : ""
+          ? found.get(comment.key)
+            ? ` (in the CV ${found.get(comment.key)}×)`
+            : " (not in the CV)"
+          : ""
       const subject = line(comment.subject || comment.key, 300)
       return `- ${COMMENT_LABEL[comment.kind]}${state}: ${subject}\n  Comment: ${line(
         comment.text,

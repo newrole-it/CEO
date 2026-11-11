@@ -117,8 +117,8 @@ export function PairExtension() {
           {state === "working"
             ? t("ext.pair.working")
             : state === "idle"
-            ? t("ext.pair.cta")
-            : t("ext.pair.again")}
+              ? t("ext.pair.cta")
+              : t("ext.pair.again")}
         </Button>
       </div>
 

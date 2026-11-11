@@ -190,8 +190,8 @@ export function registerAnswerTools(server: McpServer) {
         const text = args.id
           ? `Zaktualizowano odpowiedź ${answer.id}.`
           : created
-          ? `Zapisano nową odpowiedź ${answer.id}.`
-          : `Ta odpowiedź już była w bazie (${answer.id}). Użyto jej ${answer.useCount}×.`
+            ? `Zapisano nową odpowiedź ${answer.id}.`
+            : `Ta odpowiedź już była w bazie (${answer.id}). Użyto jej ${answer.useCount}×.`
         return reply(text, { answer: brief(answer), created })
       }
     )

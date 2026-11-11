@@ -42,8 +42,8 @@ export function companyFree(input: {
   const consent = !named
     ? content.consent
     : general?.content && general.language === language && !consentCompanyOf(kept)
-    ? kept ?? null
-    : defaultConsent(language)
+      ? (kept ?? null)
+      : defaultConsent(language)
   const clean = { ...content, consent }
 
   const ownText = input.own ? fold(cvPlainText(input.own)) : ""

@@ -39,7 +39,7 @@ function layoutValue(html: string, label: string): string | undefined {
   const chunk = html.match(pattern)?.[1]
   if (!chunk) return undefined
   const trimmed = chunk.replace(/^\s+/, "")
-  const raw = trimmed.startsWith("<") ? elementInner(trimmed) : trimmed.split("<")[0] ?? ""
+  const raw = trimmed.startsWith("<") ? elementInner(trimmed) : (trimmed.split("<")[0] ?? "")
   const value = raw
     .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")

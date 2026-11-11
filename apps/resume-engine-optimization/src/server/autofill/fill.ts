@@ -236,7 +236,7 @@ export async function fillForm(input: {
       })
       continue
     }
-    const value = question.options ? pickOption(text, question.options) ?? text : text
+    const value = question.options ? (pickOption(text, question.options) ?? text) : text
     const source: FillSource = draft.reader === "reuse" ? "answers" : "ai"
     plan.values.set(question.key, {
       key: question.key,

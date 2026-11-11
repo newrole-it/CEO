@@ -58,8 +58,7 @@ export type OfferStatus = {
    * is the same or, with companyMatch "similar", only has a similar name.
    */
   applied:
-    | (OfferApplication & { match: "url" | "role"; companyMatch: "same" | "similar" | null })
-    | null
+    (OfferApplication & { match: "url" | "role"; companyMatch: "same" | "similar" | null }) | null
   /** Other applications at this company, newest first */
   sameCompany: OfferApplication[]
 }
@@ -187,7 +186,7 @@ export function matchOffer<Row extends Comparable>(
       ? {
           row: found,
           match: exact ? "url" : "role",
-          companyMatch: exact ? null : role?.verdict ?? null,
+          companyMatch: exact ? null : (role?.verdict ?? null),
         }
       : null,
     sameCompany: compared

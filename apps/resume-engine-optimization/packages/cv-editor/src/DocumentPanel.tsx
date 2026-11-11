@@ -284,10 +284,10 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
                 <span className="cvt-version__label">
                   {version.origin === "offer" && version.label
                     ? t("tl.v.origin.offerFor", { offer: version.label })
-                    : version.label ??
+                    : (version.label ??
                       (version.origin === "restored"
                         ? t("tl.v.origin.restored", { n: version.sourceNumber ?? "?" })
-                        : t(`tl.v.origin.${version.origin}`))}
+                        : t(`tl.v.origin.${version.origin}`)))}
                 </span>
                 <span className="t-caption muted">{relativeTime(version.createdAt, t)}</span>
                 <div className="cvt-version__actions">
@@ -495,8 +495,8 @@ function Proposals({
           proposal.kind === "card"
             ? [proposal.card]
             : proposal.section.type === "cards"
-            ? proposal.section.items
-            : []
+              ? proposal.section.items
+              : []
         return (
           <article key={proposal.id} className="cvt-proposal">
             <p className="t-sm muted">

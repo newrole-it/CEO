@@ -12,8 +12,7 @@ import { decideFetch, type Reader } from "./source-policies"
 export type { Reader }
 
 export type PoliteResult =
-  | { ok: true; response: HttpResponse }
-  | { ok: false; reason: string; linkOnly: boolean }
+  { ok: true; response: HttpResponse } | { ok: false; reason: string; linkOnly: boolean }
 
 export type RobotsCache = Map<string, { rules: RobotsRules; wall: string | null }>
 

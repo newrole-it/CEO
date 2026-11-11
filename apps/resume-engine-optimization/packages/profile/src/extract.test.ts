@@ -96,7 +96,7 @@ Engineering Manager at Allegro`
         async completeText() {
           return null
         },
-      } as LlmClient)
+      }) as LlmClient
     const text = "Staff Engineer at Acme\nI would like to earn 180000 annually"
     const invented = await extractProfileFromText(text, reply({ salaryMin: 250000 }))
     expect(invented.salaryFloor).toBeNull()

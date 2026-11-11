@@ -24,7 +24,7 @@ export function parseGreenhouseJobs(payload: unknown, boardId: string): ListedJo
     .object({ jobs: z.array(z.unknown()).optional() })
     .passthrough()
     .safeParse(payload)
-  const list = root.success ? root.data.jobs ?? [] : Array.isArray(payload) ? payload : []
+  const list = root.success ? (root.data.jobs ?? []) : Array.isArray(payload) ? payload : []
   return itemsFrom(list, jobSchema).flatMap((job) => {
     const listed = buildListedJob({
       externalId: String(job.id),

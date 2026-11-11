@@ -275,8 +275,8 @@ export function keywordNotes(
         ? "kept"
         : "added"
       : backed
-      ? "unplaced"
-      : "missing"
+        ? "unplaced"
+        : "missing"
     if (inCv && !backed) unsupported.push(term)
     notes.push({ term, status })
     if (notes.length === MAX_KEYWORDS) break
@@ -382,7 +382,7 @@ function mergeSection(
   writer: Writer,
   translate: boolean
 ): CvSection {
-  const title = translate ? writer.plain(proposal.title, 120) ?? section.title : section.title
+  const title = translate ? (writer.plain(proposal.title, 120) ?? section.title) : section.title
   const byId = new Map((proposal.items ?? []).map((item) => [item.id, item]))
 
   if (section.type === "text") {
@@ -402,7 +402,7 @@ function mergeSection(
     if (proposal.hide) return { ...section, hidden: true }
     const items = picked(section.items, proposal.items, (item, next) => ({
       ...item,
-      title: translate ? writer.plain(next.title, 240) ?? item.title : item.title,
+      title: translate ? (writer.plain(next.title, 240) ?? item.title) : item.title,
       body: writer.rich(next.body, MAX.card) ?? item.body,
     }))
     return { ...section, title, items }
@@ -421,7 +421,7 @@ function mergeSection(
       const split = !item.bullets.length && Boolean(next.bullets?.length)
       return {
         ...item,
-        role: translate ? writer.plain(next.role, 240) ?? item.role : item.role,
+        role: translate ? (writer.plain(next.role, 240) ?? item.role) : item.role,
         dates: translate ? writer.dates(next.dates, item.dates) : item.dates,
         summary: split && !bullets.length ? item.summary : summary,
         bullets: bullets.length ? bullets : item.bullets,

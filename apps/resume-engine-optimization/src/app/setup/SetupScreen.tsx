@@ -105,11 +105,10 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
   // The extension knows it is paired before the server has seen it use the token.
   const steps = useMemo(
     () =>
-      status.steps.map(
-        (step): SetupStep =>
-          step.id === "extension" && hello?.connected
-            ? { ...step, state: "done", note: "ok", path: undefined, command: undefined }
-            : step
+      status.steps.map((step): SetupStep =>
+        step.id === "extension" && hello?.connected
+          ? { ...step, state: "done", note: "ok", path: undefined, command: undefined }
+          : step
       ),
     [status.steps, hello]
   )

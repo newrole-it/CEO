@@ -62,7 +62,7 @@ async function showApplied(tab) {
   const fromPage = await chrome.tabs.sendMessage(tab.id, { type: "nr:offer" }).catch(() => null)
   const byAddress = await ask({ type: "status", url: tab.url })
   const direct = byAddress?.ok ? byAddress.data : null
-  const line = statusLine(direct?.applied ? direct : fromPage?.data ?? direct)
+  const line = statusLine(direct?.applied ? direct : (fromPage?.data ?? direct))
   if (!line) return
   $("applied").textContent = line
   show("applied", true)

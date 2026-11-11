@@ -178,7 +178,7 @@ export async function collectFacts(userId: number | null): Promise<SetupFacts> {
     sheet: {
       connected: Boolean(sheet?.webhookUrl),
       lastSyncedAt: sheet?.lastSyncedAt ?? null,
-      lastError: sheet?.webhookUrl ? sheet.lastError ?? null : null,
+      lastError: sheet?.webhookUrl ? (sheet.lastError ?? null) : null,
     },
   }
 }

@@ -634,8 +634,8 @@ function AtsChecks({
           {words == null
             ? t("mt.ats.profileNone")
             : words > PROFILE_WORDS
-            ? t(`mt.ats.profileBad.${pluralKind(words, locale)}` as CopyKey, { n: words })
-            : t("mt.ats.profile")}
+              ? t(`mt.ats.profileBad.${pluralKind(words, locale)}` as CopyKey, { n: words })
+              : t("mt.ats.profile")}
         </CheckRow>
         <CheckRow t={t} ok>
           {t("mt.ats.file", { file: fileName })}

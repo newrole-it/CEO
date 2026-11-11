@@ -266,7 +266,7 @@ export function registerCvTools(server: McpServer) {
         const saved = await updateCv(user.id, target.id, {
           title: args.copyAs ?? args.title,
           language: args.language,
-          content: next === undefined ? undefined : parseCvContent(next) ?? undefined,
+          content: next === undefined ? undefined : (parseCvContent(next) ?? undefined),
         })
         const where = args.copyAs ? `Utworzono kopię „${saved.title}”` : `Zapisano „${saved.title}”`
         return reply(

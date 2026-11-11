@@ -582,10 +582,10 @@ function serverSummary(
   const lead = qualifying.length
     ? `${copy.gaps(qualifying.length)} ${factSentence(qualifying[0], locale)}`
     : facts.length
-    ? copy.noGaps
-    : noIndex
-    ? copy.noIndex
-    : copy.noFacts
+      ? copy.noGaps
+      : noIndex
+        ? copy.noIndex
+        : copy.noFacts
   return `${copy.notes(notes.length)} ${lead}`
 }
 

@@ -111,7 +111,7 @@ function ruleDraft(source: string): ProfileDraft {
   const titleLine = lines.find(
     (line) => TITLE_HINT.test(line) || (seniority && fold(line).includes(seniority))
   )
-  draft.currentTitle = titleLine ? titleLine.slice(0, 120) : lines[0]?.slice(0, 120) ?? null
+  draft.currentTitle = titleLine ? titleLine.slice(0, 120) : (lines[0]?.slice(0, 120) ?? null)
   draft.headline = draft.currentTitle
   // A long line that mentions "Engineer" is a sentence about the work, not a title.
   draft.pastTitles = lines

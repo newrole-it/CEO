@@ -255,7 +255,9 @@
 .cv-doc .cv-page.cve-sheet {
   position: absolute;
   left: 0;
-  box-shadow: 0 1px 3px rgb(18 35 51 / 0.14), 0 8px 24px rgb(18 35 51 / 0.1);
+  box-shadow:
+    0 1px 3px rgb(18 35 51 / 0.14),
+    0 8px 24px rgb(18 35 51 / 0.1);
 }
 .cv-doc .cve-flow {
   position: absolute;
@@ -621,7 +623,8 @@
   width: 16px;
   height: 6px;
   /* a short squiggle, so the legend looks like what it explains */
-  background: radial-gradient(
+  background:
+    radial-gradient(
         circle at 50% 120%,
         transparent 38%,
         var(--cva-c) 40%,
@@ -748,7 +751,9 @@
   font-size: 14px;
   line-height: 1.45;
   cursor: pointer;
-  transition: top var(--t-fast), box-shadow var(--t-fast);
+  transition:
+    top var(--t-fast),
+    box-shadow var(--t-fast);
 }
 .cva-note:hover {
   border-color: var(--border-strong);

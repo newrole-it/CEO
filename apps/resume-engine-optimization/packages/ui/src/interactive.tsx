@@ -563,7 +563,7 @@ export function CopyButton({
       size={size}
       variant={variant}
       iconOnly={iconOnly}
-      aria-label={iconOnly ? (done ? t("common.copied") : label ?? t("common.copy")) : undefined}
+      aria-label={iconOnly ? (done ? t("common.copied") : (label ?? t("common.copy"))) : undefined}
       icon={done ? <Check /> : <Copy />}
       onClick={() => {
         void navigator.clipboard?.writeText(text).then(
@@ -573,7 +573,7 @@ export function CopyButton({
       }}
     >
       {iconOnly ? null : (
-        <span aria-live="polite">{done ? t("common.copied") : label ?? t("common.copy")}</span>
+        <span aria-live="polite">{done ? t("common.copied") : (label ?? t("common.copy"))}</span>
       )}
     </Button>
   )

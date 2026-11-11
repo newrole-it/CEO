@@ -680,8 +680,8 @@ export async function tailorCvForJob(input: {
     kept
       ? () => kept
       : job.text || note?.trim()
-      ? () => analyzeOffer({ llm, offer, note, locale, userId })
-      : null,
+        ? () => analyzeOffer({ llm, offer, note, locale, userId })
+        : null,
     (result) => ({
       required: result.requirements.filter((item) => item.importance === "required").length,
       preferred: result.requirements.filter((item) => item.importance === "preferred").length,
@@ -804,13 +804,13 @@ export async function tailorCvForJob(input: {
   const written =
     generated?.notes ??
     (round
-      ? round.notes ?? {
+      ? (round.notes ?? {
           changes: [],
           gaps: [],
           unverified: [],
           reverted: 0,
           usedJobText: Boolean(analysis),
-        }
+        })
       : null)
   if (!written) throw new CvError("llm-failed", "The model did not return a usable CV.")
 
@@ -926,7 +926,7 @@ export async function nextMatchRound(input: {
     onStep: input.onStep,
     // the general CV has its own clause; a company the CV for the offer named stays named
     consentCompany: fresh
-      ? consentCompanyOf(parseCvContent(existing.content)?.consent) ?? undefined
+      ? (consentCompanyOf(parseCvContent(existing.content)?.consent) ?? undefined)
       : undefined,
     round: {
       rewrite,

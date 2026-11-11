@@ -26,8 +26,7 @@ export type Posting = {
 }
 
 export type PostingResult =
-  | { ok: true; posting: Posting }
-  | { ok: false; reason: string; linkOnly: boolean }
+  { ok: true; posting: Posting } | { ok: false; reason: string; linkOnly: boolean }
 
 const MAX_TEXT = 40_000
 

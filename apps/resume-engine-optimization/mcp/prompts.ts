@@ -39,8 +39,8 @@ ${
   !localInstall
     ? "1. Poproś o tekst mojego CV albo mojego profilu LinkedIn (mogę go wkleić albo załączyć plik) i przekaż go jako text do profile_import."
     : pdfPath
-    ? `1. Wywołaj profile_import z pdfPath: ${pdfPath}.`
-    : `1. Zapytaj, skąd wziąć profil:
+      ? `1. Wywołaj profile_import z pdfPath: ${pdfPath}.`
+      : `1. Zapytaj, skąd wziąć profil:
    a) mój LinkedIn w Chrome (domyślnie) — przez Claude in Chrome: tabs_context_mcp; nowa karta (tabs_create_mcp); otwórz https://www.linkedin.com/in/me/ i get_page_text; potem na moim profilu /details/experience/, /details/skills/, /details/education/, /details/certifications/, /details/languages/ (pomiń brakujące), każdą przez get_page_text; zamknij kartę. Jeśli widzisz ekran logowania, poproś, żebym zalogował się do LinkedIn w Chrome. Nigdy nie klikaj, nie pisz, nie otwieraj innych profili, feedu, ofert ani wiadomości. Tekst stron przekaż jako text do profile_import.
    b) eksport danych LinkedIn (ZIP: Ustawienia → Prywatność danych → Pobierz kopię swoich danych) — przekaż zipPath,
    c) PDF (LinkedIn → Więcej → Zapisz jako PDF, albo dowolne CV) — przekaż pdfPath, albo wklejony tekst.`

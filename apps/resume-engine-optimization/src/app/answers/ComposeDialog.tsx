@@ -137,8 +137,8 @@ export function ComposeDialog({
       }
       replaceText(result.text)
       setOrigin(result.reader === "llm" ? "draft" : "manual")
-      setCompany((current) => (current.trim() ? current : result.company ?? current))
-      setJobTitle((current) => (current.trim() ? current : result.jobTitle ?? current))
+      setCompany((current) => (current.trim() ? current : (result.company ?? current)))
+      setJobTitle((current) => (current.trim() ? current : (result.jobTitle ?? current)))
       setDraft({
         status: "done",
         reader: result.reader,

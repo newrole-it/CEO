@@ -102,10 +102,10 @@ function Comparison({ t, comparison }: { t: T; comparison: LinkedInComparison })
                     {!role.linkedIn
                       ? t("li.cmp.missing")
                       : !role.titleSame
-                      ? t("li.cmp.titleDiff", { title: role.linkedIn.title })
-                      : !role.yearsSame
-                      ? t("li.cmp.yearsDiff", { subtitle: role.linkedIn.subtitle })
-                      : t("li.cmp.same")}
+                        ? t("li.cmp.titleDiff", { title: role.linkedIn.title })
+                        : !role.yearsSame
+                          ? t("li.cmp.yearsDiff", { subtitle: role.linkedIn.subtitle })
+                          : t("li.cmp.same")}
                   </span>
                 </span>
               </li>

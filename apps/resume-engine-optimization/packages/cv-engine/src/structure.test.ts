@@ -117,7 +117,7 @@ describe("structureCvText", () => {
     })
     expect(result.reader).toBe("llm")
     const call = client.completeJson.mock.calls[0] as unknown as [
-      { purpose: string; user: string; userId: number }
+      { purpose: string; user: string; userId: number },
     ]
     expect(call[0].purpose).toBe("cv-structure")
     expect(call[0].userId).toBe(7)
@@ -154,7 +154,7 @@ describe("describeCvText", () => {
     expect(result.reader).toBe("llm")
     expect(CvContent.safeParse(result.content).success).toBe(true)
     const call = client.completeJson.mock.calls[0] as unknown as [
-      { purpose: string; system: string; user: string; userId: number }
+      { purpose: string; system: string; user: string; userId: number },
     ]
     expect(call[0].purpose).toBe("cv-describe")
     expect(call[0].userId).toBe(7)

@@ -79,7 +79,7 @@ export function stripFences(text: string): string {
 export function wrapUntrusted(label: string, value: string): string {
   // In a loop: taking out one tag must not close up into another, as in </untrusted_</untrusted_a>x>.
   let safe = value
-  for (let previous = ""; previous !== safe; ) {
+  for (let previous = ""; previous !== safe;) {
     previous = safe
     safe = safe.replace(/<\/?untrusted_[a-z0-9_]+>/gi, "")
   }

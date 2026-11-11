@@ -726,10 +726,10 @@ function serverSummary(
   const lead = qualifying.length
     ? copy.gaps(qualifying.length, factSentence(qualifying[0], locale, "profile"))
     : facts.length
-    ? copy.noGaps
-    : noIndex
-    ? copy.noIndex
-    : copy.noFacts
+      ? copy.noGaps
+      : noIndex
+        ? copy.noIndex
+        : copy.noFacts
   return `${copy.lead(score, notes.length)} ${lead}`
 }
 

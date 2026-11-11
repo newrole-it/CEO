@@ -12,14 +12,7 @@ import type { TailorNotes } from "./tailor"
  * `upload`: version 0, the PDF the CV was uploaded as. `pdf`: a PDF made from it that left the app.
  */
 export type CvVersionOrigin =
-  | "auto"
-  | "manual"
-  | "base"
-  | "generated"
-  | "restored"
-  | "offer"
-  | "upload"
-  | "pdf"
+  "auto" | "manual" | "base" | "generated" | "restored" | "offer" | "upload" | "pdf"
 
 export type CvVersionView = {
   id: string

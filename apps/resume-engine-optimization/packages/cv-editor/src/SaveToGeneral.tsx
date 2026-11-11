@@ -88,8 +88,8 @@ export function SaveToGeneral({
         message: result.created
           ? t("tl.tg.created", { title: result.title })
           : result.number === null
-          ? t("tl.tg.same", { title: result.title })
-          : t("tl.tg.saved", { title: result.title, n: result.number }),
+            ? t("tl.tg.same", { title: result.title })
+            : t("tl.tg.saved", { title: result.title, n: result.number }),
         action: {
           label: t("tl.tg.open"),
           onClick: () => router.push(backend.routes.document(result.cvId)),

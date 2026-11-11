@@ -558,14 +558,15 @@ Title ">\_ newrole.it w Twoim Claude Code / newrole.it in your Claude Code". Sub
 - Prereq line: "Potrzebujesz Claude Code (`npm i -g @anthropic-ai/claude-code`) i aplikacji uruchomionej lokalnie."
 
 **Step 2 — what it can do** (grid of 6 small tiles, icon + name + one line). Render from the tool list of the MCP server; the labels below are the UX names and should map 1:1 to the MCP tools that exist:
-| Icon | PL | EN |
-|---|---|---|
-| `Search` | Szuka ofert w indeksie i w sieci | Searches the index and the web |
+
+| Icon        | PL                                           | EN                                                  |
+| ----------- | -------------------------------------------- | --------------------------------------------------- |
+| `Search`    | Szuka ofert w indeksie i w sieci             | Searches the index and the web                      |
 | `UserRound` | Importuje profil (także z LinkedIn w Chrome) | Imports your profile (also from LinkedIn in Chrome) |
-| `Heart` | Zapisuje, co Ci się podoba | Records what you like |
-| `Shuffle` | Znajduje podobne oferty | Finds similar offers |
-| `Building2` | Obserwuje firmy i znajduje podobne | Watches companies and finds similar ones |
-| `Link` | Dodaje ofertę z dowolnego linku | Adds an offer from any link |
+| `Heart`     | Zapisuje, co Ci się podoba                   | Records what you like                               |
+| `Shuffle`   | Znajduje podobne oferty                      | Finds similar offers                                |
+| `Building2` | Obserwuje firmy i znajduje podobne           | Watches companies and finds similar ones            |
+| `Link`      | Dodaje ofertę z dowolnego linku              | Adds an offer from any link                         |
 
 **Step 3 — try these prompts** (each a card with a Copy button; text in Polish in both locales, with an English line underneath in EN locale):
 

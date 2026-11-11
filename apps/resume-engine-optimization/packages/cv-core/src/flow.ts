@@ -212,8 +212,8 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
           previousCompact === null
             ? LEAD.afterTitle
             : previousCompact
-            ? LEAD.jobAfterCompact
-            : LEAD.jobAfterFull,
+              ? LEAD.jobAfterCompact
+              : LEAD.jobAfterFull,
         keepWithNext: true,
       })
       if (hasSummary) {
@@ -237,8 +237,8 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
             position > 0
               ? LEAD.bullet
               : hasSummary
-              ? LEAD.bulletAfterSummary
-              : LEAD.bulletAfterHead,
+                ? LEAD.bulletAfterSummary
+                : LEAD.bulletAfterHead,
           keepWithNext: false,
         })
       })
@@ -248,8 +248,8 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
           last.kind === "bullet"
             ? LEAD.techAfterBullet
             : last.kind === "job-summary"
-            ? LEAD.techAfterSummary
-            : LEAD.techAfterHead
+              ? LEAD.techAfterSummary
+              : LEAD.techAfterHead
         // the tech line never starts a page alone
         last.keepWithNext = true
         entry.push({

@@ -837,8 +837,8 @@ function SaveStatus({
           {limit
             ? t("cv.ed.tooLong", { max: limit })
             : error
-            ? t("cv.ed.invalid", { reason: error })
-            : t("cv.ed.unsaved")}
+              ? t("cv.ed.invalid", { reason: error })
+              : t("cv.ed.unsaved")}
         </span>
         <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={onRetry}>
           {t("common.retry")}

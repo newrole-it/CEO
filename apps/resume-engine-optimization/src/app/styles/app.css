@@ -60,7 +60,9 @@
   color: var(--text-muted);
   font-size: 15px;
   font-weight: 500;
-  transition: color var(--t-fast), background-color var(--t-fast);
+  transition:
+    color var(--t-fast),
+    background-color var(--t-fast);
 }
 .nav a:hover {
   color: var(--text);
@@ -98,7 +100,9 @@
   }
 }
 .header-cta {
-  transition: opacity var(--t-base), visibility var(--t-base);
+  transition:
+    opacity var(--t-base),
+    visibility var(--t-base);
 }
 html[data-hero-visible] .header-cta {
   opacity: 0;

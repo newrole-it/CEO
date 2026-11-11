@@ -165,8 +165,8 @@ function describe(detail: ApplicationDetail): string {
             event.type === "status"
               ? `${statusLabel(event.fromStatus ?? "")} → ${statusLabel(event.toStatus ?? "")}`
               : event.type === "created"
-              ? `dodano (${statusLabel(event.toStatus ?? "APPLIED")})`
-              : event.type
+                ? `dodano (${statusLabel(event.toStatus ?? "APPLIED")})`
+                : event.type
           const note = timelineNote(event)
           return `- ${sheetDate(event.at)} ${what}${note ? `: ${note}` : ""} [${event.channel}]`
         })
@@ -279,10 +279,10 @@ export function registerApplicationTools(server: McpServer) {
             ...rows.map((app, i) => applicationLine(app, i)),
           ].join("\n")
         : all.length
-        ? `Brak aplikacji w grupie „${GROUP_LABEL[group]}”${
-            args.q ? ` dla „${args.q}”` : ""
-          }. ${summary}`
-        : "Tracker jest pusty. Oznacz ofertę jako aplikowaną (job_feedback z verdict APPLIED) albo dodaj aplikację przez application_add."
+          ? `Brak aplikacji w grupie „${GROUP_LABEL[group]}”${
+              args.q ? ` dla „${args.q}”` : ""
+            }. ${summary}`
+          : "Tracker jest pusty. Oznacz ofertę jako aplikowaną (job_feedback z verdict APPLIED) albo dodaj aplikację przez application_add."
       return reply(text, { group, applications: rows.map(applicationJson), stats })
     })
   )

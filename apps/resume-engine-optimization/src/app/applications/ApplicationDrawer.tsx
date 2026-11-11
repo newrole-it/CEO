@@ -394,10 +394,10 @@ function DrawerBody({
                 {saveState === "saving"
                   ? t("app.d.saving")
                   : saveState === "saved"
-                  ? t("app.d.saved")
-                  : saveState === "error"
-                  ? t("app.err.save")
-                  : ""}
+                    ? t("app.d.saved")
+                    : saveState === "error"
+                      ? t("app.err.save")
+                      : ""}
               </p>
             </section>
 

@@ -129,8 +129,8 @@ export function sectionsFromUnknown(value: unknown): LinkedInSections {
         typeof item === "string"
           ? fromText(item)
           : item && typeof item === "object"
-          ? (item as T)
-          : null
+            ? (item as T)
+            : null
       )
       .filter((item): item is NonNullable<typeof item> => item != null) as T[]
   }
@@ -138,14 +138,14 @@ export function sectionsFromUnknown(value: unknown): LinkedInSections {
     typeof raw === "string"
       ? raw.split(/\n|,|·|•/).map((item) => item.trim())
       : Array.isArray(raw)
-      ? raw.map((item) =>
-          typeof item === "string"
-            ? item
-            : item && typeof item === "object"
-            ? String((item as Record<string, unknown>).name ?? "")
-            : ""
-        )
-      : []
+        ? raw.map((item) =>
+            typeof item === "string"
+              ? item
+              : item && typeof item === "object"
+                ? String((item as Record<string, unknown>).name ?? "")
+                : ""
+          )
+        : []
   return {
     name: typeof record.name === "string" ? record.name : null,
     headline: typeof record.headline === "string" ? record.headline : null,
