@@ -211,8 +211,8 @@ export function SettingsScreen({
             {pending
               ? t("st.deleting")
               : confirm === "profile"
-              ? t("st.delProfile")
-              : t("st.delAccount")}
+                ? t("st.delProfile")
+                : t("st.delAccount")}
           </Button>
         </div>
       </Modal>

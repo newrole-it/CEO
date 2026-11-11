@@ -69,7 +69,7 @@ export function parseBambooOpenings(
     .object({ result: z.array(z.unknown()).optional() })
     .passthrough()
     .safeParse(payload)
-  const list = root.success ? root.data.result ?? [] : []
+  const list = root.success ? (root.data.result ?? []) : []
   const host = bambooHost(boardId)
   return itemsFrom(list, openingSchema).flatMap((opening) => {
     const city = opening.location?.city || opening.atsLocation?.city
@@ -78,8 +78,8 @@ export function parseBambooOpenings(
     const remoteHint = opening.isRemote
       ? "remote"
       : typeof opening.locationType === "string"
-      ? opening.locationType
-      : undefined
+        ? opening.locationType
+        : undefined
     const listed = buildListedJob({
       externalId: String(opening.id),
       title: opening.jobOpeningName,

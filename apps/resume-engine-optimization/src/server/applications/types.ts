@@ -3,13 +3,7 @@ import type { ApplicationSource, ApplicationStatus, Channel } from "src/shared/a
 export type { ApplicationSource, ApplicationStatus, Channel }
 
 export type ApplicationEventType =
-  | "created"
-  | "status"
-  | "note"
-  | "next-step"
-  | "answers"
-  | "edit"
-  | "mail"
+  "created" | "status" | "note" | "next-step" | "answers" | "edit" | "mail"
 
 /** One application as every surface sees it: tracker, sheet, MCP and the Chrome extension. */
 export type ApplicationView = {

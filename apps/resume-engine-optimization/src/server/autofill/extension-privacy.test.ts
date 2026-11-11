@@ -229,7 +229,7 @@ describe("fields the person cannot see", () => {
       </form>
     `
     const rect = (left: number, top: number) => () =>
-      ({ left, top, right: left + 200, bottom: top + 30, width: 200, height: 30 } as DOMRect)
+      ({ left, top, right: left + 200, bottom: top + 30, width: 200, height: 30 }) as DOMRect
     ;(document.documentElement as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect =
       rect(0, 0)
     const place = (name: string, left: number, top: number) => {

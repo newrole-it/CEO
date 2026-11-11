@@ -329,8 +329,8 @@ export function coverLetterLanguage(input: {
     (letter?.language === "en" || (!letter && cv?.language === "en")
       ? "en"
       : letter || cv
-      ? "pl"
-      : offer)
+        ? "pl"
+        : offer)
   )
 }
 

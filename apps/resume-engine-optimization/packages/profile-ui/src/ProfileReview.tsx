@@ -297,8 +297,8 @@ export function ProfileReview({
                     contracts: on
                       ? rest
                       : value === "any"
-                      ? ["any"]
-                      : [...rest.filter((item) => item !== "any"), value],
+                        ? ["any"]
+                        : [...rest.filter((item) => item !== "any"), value],
                   })
                 }}
               >
@@ -326,7 +326,7 @@ export function ProfileReview({
           values={cities}
           onChange={(next) => {
             const home =
-              draft.homeCity && next.includes(draft.homeCity) ? draft.homeCity : next[0] ?? null
+              draft.homeCity && next.includes(draft.homeCity) ? draft.homeCity : (next[0] ?? null)
             patch({ locations: next.slice(0, 8), homeCity: home })
           }}
           max={8}

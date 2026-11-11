@@ -428,12 +428,12 @@ export function startContent() {
     const how = !letter.created
       ? "ten, który masz już dla tej oferty"
       : letter.general
-      ? "nowy, pod tę ofertę, z Twojego listu ogólnego"
-      : many > 1
-      ? `nowy, pod tę ofertę, na wzór ${many} ostatnich listów`
-      : many === 1
-      ? "nowy, pod tę ofertę, na wzór Twojego ostatniego listu"
-      : "nowy, pod tę ofertę"
+        ? "nowy, pod tę ofertę, z Twojego listu ogólnego"
+        : many > 1
+          ? `nowy, pod tę ofertę, na wzór ${many} ostatnich listów`
+          : many === 1
+            ? "nowy, pod tę ofertę, na wzór Twojego ostatniego listu"
+            : "nowy, pod tę ofertę"
     const where = outcome.attached && !outcome.filled ? " (dołączony jako PDF)" : ""
     return `List motywacyjny: ${how}${where}. Przeczytaj go przed wysłaniem.`
   }

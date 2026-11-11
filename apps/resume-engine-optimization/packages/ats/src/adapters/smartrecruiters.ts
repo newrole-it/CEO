@@ -47,7 +47,7 @@ export function parseSmartRecruiters(payload: unknown, boardId: string): ListedJ
     .object({ content: z.array(z.unknown()).optional() })
     .passthrough()
     .safeParse(payload)
-  const list = root.success ? root.data.content ?? (Array.isArray(payload) ? payload : []) : []
+  const list = root.success ? (root.data.content ?? (Array.isArray(payload) ? payload : [])) : []
   return itemsFrom(list, postingSchema).flatMap((job) => {
     const location =
       job.location?.fullLocation ||

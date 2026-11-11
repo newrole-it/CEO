@@ -42,8 +42,8 @@ export function candidateContextText(input: {
       const text = Array.isArray(value)
         ? asStringList(value).join(", ")
         : value == null
-        ? ""
-        : String(value)
+          ? ""
+          : String(value)
       if (text.trim()) parts.push(`${label}: ${text.trim()}`)
     }
     line("Headline", profile.headline)

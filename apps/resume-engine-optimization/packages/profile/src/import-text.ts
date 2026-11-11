@@ -17,8 +17,7 @@ export const MAX_IMPORT_TEXT_CHARS = 60_000
 export const MAX_IMPORT_BODY_BYTES = MAX_ZIP_BYTES + 1_000_000
 
 export type ImportText =
-  | { ok: true; text: string }
-  | { ok: false; status: number; error: string; code?: string }
+  { ok: true; text: string } | { ok: false; status: number; error: string; code?: string }
 
 function isZipFile(file: File): boolean {
   return /zip/.test(file.type) || file.name.toLowerCase().endsWith(".zip")

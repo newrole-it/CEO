@@ -18,14 +18,7 @@ import { StatusSelect } from "./StatusSelect"
 import type { MatchScore } from "src/server/cv/match-rounds"
 
 export type SortKey =
-  | "company"
-  | "title"
-  | "status"
-  | "inStage"
-  | "applied"
-  | "stated"
-  | "next"
-  | "source"
+  "company" | "title" | "status" | "inStage" | "applied" | "stated" | "next" | "source"
 export type Sort = { key: SortKey; dir: "asc" | "desc" }
 
 const rank = (status: string) => (APPLICATION_STATUSES as readonly string[]).indexOf(status)

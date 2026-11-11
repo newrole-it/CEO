@@ -194,9 +194,9 @@ async function readBoard(
   const { posting } = read
   if (posting.source !== "jsonld" || signInPage(url, posting.url)) return link
   const company = boardsOwnName(posting.company, posting.url)
-    ? link.facts?.company ?? null
+    ? (link.facts?.company ?? null)
     : posting.company
-  const title = GENERIC_TITLE.test(posting.title) ? link.facts?.title ?? null : posting.title
+  const title = GENERIC_TITLE.test(posting.title) ? (link.facts?.title ?? null) : posting.title
   return {
     url,
     outcome: company && title ? "read" : "partial",

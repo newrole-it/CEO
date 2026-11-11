@@ -3,13 +3,7 @@ import { toMonthlyPlnB2b } from "@newrole/matching/normalization"
 import type { ContractType, Currency, SalaryBasis, SalaryPeriod } from "@newrole/matching/types"
 
 export type SalaryKind =
-  | "undisclosed"
-  | "far_below"
-  | "below"
-  | "straddle"
-  | "meets"
-  | "target"
-  | "neutral"
+  "undisclosed" | "far_below" | "below" | "straddle" | "meets" | "target" | "neutral"
 
 export type MonthlyRange = { min: number | null; max: number | null }
 

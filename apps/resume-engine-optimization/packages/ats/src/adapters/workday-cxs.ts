@@ -246,7 +246,7 @@ export async function listWorkdayCxs(
         continue
       }
       const sliceCountry =
-        split.parameter === "locationCountry" ? value.descriptor ?? country : country
+        split.parameter === "locationCountry" ? (value.descriptor ?? country) : country
       await read(facets, page, value.count, [...used, split.parameter], sliceCountry)
     }
   }

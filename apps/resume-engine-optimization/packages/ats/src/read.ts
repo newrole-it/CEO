@@ -290,7 +290,7 @@ async function readPage(source: OfferSource, http: HttpClient): Promise<LiveText
   const board = source.sourceBoardId ?? undefined
   const job =
     source.sourceType === "SUCCESSFACTORS"
-      ? parseSuccessFactorsJob(body, url, source.company, board, { fullText: true }) ?? undefined
+      ? (parseSuccessFactorsJob(body, url, source.company, board, { fullText: true }) ?? undefined)
       : parseJsonLdJobs(body, url, source.company, {
           sourceType: source.sourceType,
           boardId: board,
@@ -313,7 +313,7 @@ export async function readOfferSource(
   const live = detailApi
     ? await readDetailApi(source, detailApi, http)
     : LISTED_WITH_TEXT.has(source.sourceType)
-    ? await readFromList(source, http)
-    : await readPage(source, http)
+      ? await readFromList(source, http)
+      : await readPage(source, http)
   return live ? { ...live, text: stripPersonalData(live.text) } : null
 }

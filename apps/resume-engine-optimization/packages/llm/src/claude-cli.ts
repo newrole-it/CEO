@@ -189,8 +189,8 @@ export function readStreamLine(line: string): { events: ClaudeStreamEvent[]; res
             .filter((part): part is string => typeof part === "string")
             .join("\n")
         : typeof content === "string"
-        ? content
-        : ""
+          ? content
+          : ""
       events.push({ kind: "tool_result", text, isError: item.is_error === true })
     }
   }
@@ -248,7 +248,7 @@ function runOnce(
     const consume = (chunk: string, flush = false) => {
       pending += chunk
       const lines = pending.split("\n")
-      pending = flush ? "" : lines.pop() ?? ""
+      pending = flush ? "" : (lines.pop() ?? "")
       for (const line of lines) {
         if (!line.trim()) continue
         const read = readStreamLine(line)

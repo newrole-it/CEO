@@ -135,7 +135,7 @@ export function formAnswers(
     const theirs = asKind(field.kind)
     const kinds = [ours, theirs].filter(Boolean) as FieldKind[]
     if (!kinds.every((item) => JOB_KINDS.includes(item))) continue
-    const kind = kinds.includes("salary") ? "salary" : theirs ?? ours
+    const kind = kinds.includes("salary") ? "salary" : (theirs ?? ours)
     const value = jobAnswer(question, answer, kind, privacy)
     if (!value) continue
     const key = answerKey(question)

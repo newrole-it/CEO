@@ -64,14 +64,14 @@ export function parseAshbyJobs(
     .object({ jobs: z.array(z.unknown()).optional() })
     .passthrough()
     .safeParse(payload)
-  const list = root.success ? root.data.jobs ?? [] : []
+  const list = root.success ? (root.data.jobs ?? []) : []
   return itemsFrom(list, jobSchema).flatMap((job) => {
     const location = job.location ?? undefined
     const workplace = job.workplaceType
       ? mapWorkplace(job.workplaceType, location)
       : job.isRemote || REMOTE_TITLE.test(job.title)
-      ? mapWorkplace("remote", location)
-      : mapWorkplace(undefined, location)
+        ? mapWorkplace("remote", location)
+        : mapWorkplace(undefined, location)
     const listed = buildListedJob({
       externalId: job.id,
       title: job.title,
@@ -86,7 +86,7 @@ export function parseAshbyJobs(
       employmentType: job.employmentType ?? undefined,
       workplaceType: workplace,
       descriptionText: job.descriptionPlain ?? undefined,
-      descriptionHtml: job.descriptionPlain ? undefined : job.descriptionHtml ?? undefined,
+      descriptionHtml: job.descriptionPlain ? undefined : (job.descriptionHtml ?? undefined),
       salaryText: job.compensation?.scrapeableCompensationSalarySummary ?? undefined,
       publishedAt: asDate(job.publishedAt ?? undefined),
       originalUrl: job.jobUrl,

@@ -96,7 +96,7 @@ export function parseRecruiteeOffers(
     .object({ offers: z.array(z.unknown()).optional() })
     .passthrough()
     .safeParse(payload)
-  const list = root.success ? root.data.offers ?? [] : []
+  const list = root.success ? (root.data.offers ?? []) : []
   return itemsFrom(list, offerSchema).flatMap((offer) => {
     const url = offer.careers_url || offer.careers_apply_url
     if (!url) return []

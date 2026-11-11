@@ -5,15 +5,7 @@
  */
 
 export type StepId =
-  | "db"
-  | "claude"
-  | "account"
-  | "profile"
-  | "details"
-  | "cv"
-  | "extension"
-  | "mcp"
-  | "sheet"
+  "db" | "claude" | "account" | "profile" | "details" | "cv" | "extension" | "mcp" | "sheet"
 
 export type StepGroup = "run" | "you" | "connect"
 export type StepState = "done" | "todo" | "wait" | "error"

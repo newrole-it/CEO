@@ -69,7 +69,10 @@ export type CvErrorCode =
   | "limited"
 
 export class CvError extends Error {
-  constructor(readonly code: CvErrorCode, message: string) {
+  constructor(
+    readonly code: CvErrorCode,
+    message: string
+  ) {
     super(message)
     this.name = "CvError"
   }

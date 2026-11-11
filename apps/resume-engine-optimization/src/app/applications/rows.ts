@@ -61,8 +61,8 @@ export function daysSince(iso: string, now = Date.now()): number {
 export function isOverdue(row: Pick<AppRow, "status" | "nextStepAt">, now = Date.now()): boolean {
   return Boolean(
     row.nextStepAt &&
-      isActiveStatus(row.status) &&
-      new Date(row.nextStepAt).getTime() < startOfToday(now)
+    isActiveStatus(row.status) &&
+    new Date(row.nextStepAt).getTime() < startOfToday(now)
   )
 }
 

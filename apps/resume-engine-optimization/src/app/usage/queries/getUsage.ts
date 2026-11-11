@@ -124,8 +124,8 @@ export default resolver.pipe(
         ...(Number(process.env.FX_USD_PLN) > 0
           ? { source: "env" as const, date: null }
           : table?.rates.USD
-          ? { source: "nbp" as const, date: table.effectiveDate }
-          : { source: "default" as const, date: DEFAULT_CONFIG.fx.asOf }),
+            ? { source: "nbp" as const, date: table.effectiveDate }
+            : { source: "default" as const, date: DEFAULT_CONFIG.fx.asOf }),
       },
     }
   }

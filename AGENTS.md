@@ -56,7 +56,7 @@ newrole.it is built to be used in any language. Today the interface comes in Pol
 
 ### From the server to the interface: codes, not sentences
 
-- A server function, API route or mutation returns a code (`{ code: "too-large" }`, `error.name = code`), and the interface translates it (`` t(`sheet.err.${code}`) ``). A message in the response is a fallback for logs, not what the person reads.
+- A server function, API route or mutation returns a code (`{ code: "too-large" }`, `error.name = code`), and the interface translates it (``t(`sheet.err.${code}`)``). A message in the response is a fallback for logs, not what the person reads.
 - Never decide what to show by matching the text of an English message (`message.includes("50 mb")`). Add a code instead.
 - Never show `error.message` from the server to a person; show a translated key.
 

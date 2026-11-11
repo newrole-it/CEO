@@ -85,7 +85,7 @@ function leaves(node) {
 const literalText = (node, sf) =>
   ts.isTemplateExpression(node)
     ? [node.head.text, ...node.templateSpans.map((span) => span.literal.text)].join(" ")
-    : node.text ?? node.getText(sf)
+    : (node.text ?? node.getText(sf))
 
 function insideCode(node) {
   for (let p = node.parent; p; p = p.parent) {
@@ -124,8 +124,8 @@ for (const file of tsxFiles(join(ROOT, "apps"))) {
       const found = ts.isStringLiteral(init)
         ? [init]
         : ts.isJsxExpression(init) && init.expression
-        ? leaves(init.expression)
-        : []
+          ? leaves(init.expression)
+          : []
       for (const leaf of found) {
         const text = literalText(leaf, sf)
         if (isText(text)) report(leaf, `${node.name.getText(sf)}=`, text)

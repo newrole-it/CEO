@@ -40,9 +40,7 @@ export type BrowserImport = {
 }
 type Failure = "not-connected" | "signed-out" | "no-claude" | "failed"
 type State =
-  | { kind: "idle" }
-  | { kind: "running"; stage: Stage }
-  | { kind: "error"; status: Failure }
+  { kind: "idle" } | { kind: "running"; stage: Stage } | { kind: "error"; status: Failure }
 
 const POLL_MS = 1500
 const CLIENT_TIMEOUT_MS = 5 * 60 * 1000
@@ -193,8 +191,8 @@ export function LinkedInImport({
                     state.status === "signed-out"
                       ? "lix.err.signedOut"
                       : state.status === "no-claude"
-                      ? "lix.err.noClaude"
-                      : "lix.err.failed"
+                        ? "lix.err.noClaude"
+                        : "lix.err.failed"
                   )}
                 </p>
               )}

@@ -540,8 +540,8 @@ function nativeSetter(el) {
     el.tagName === "TEXTAREA"
       ? view.HTMLTextAreaElement.prototype
       : el.tagName === "SELECT"
-      ? view.HTMLSelectElement.prototype
-      : view.HTMLInputElement.prototype
+        ? view.HTMLSelectElement.prototype
+        : view.HTMLInputElement.prototype
   const found = Object.getOwnPropertyDescriptor(proto, "value")
   return found && found.set ? found.set : null
 }

@@ -100,7 +100,7 @@ export function parsePinpointPostings(
     .object({ data: z.array(z.unknown()).optional() })
     .passthrough()
     .safeParse(payload)
-  const list = root.success ? root.data.data ?? [] : []
+  const list = root.success ? (root.data.data ?? []) : []
   const postings = itemsFrom(list, postingSchema)
   const divisionName =
     postings.find((posting) => posting.job?.division?.name)?.job?.division?.name ?? undefined

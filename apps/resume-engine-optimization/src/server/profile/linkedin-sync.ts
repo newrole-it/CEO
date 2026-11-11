@@ -48,9 +48,9 @@ async function linkedInOf(userId: number) {
   const source: LinkedInSyncView["source"] = !document
     ? null
     : audit?.documentHash === documentHash(document)
-    ? "extension"
-    : "import"
-  return { document, source, readAt: document ? profile?.linkedinImportedAt ?? null : null }
+      ? "extension"
+      : "import"
+  return { document, source, readAt: document ? (profile?.linkedinImportedAt ?? null) : null }
 }
 
 export async function linkedInSyncView(userId: number): Promise<LinkedInSyncView> {
@@ -58,7 +58,7 @@ export async function linkedInSyncView(userId: number): Promise<LinkedInSyncView
   const content = cv?.content ?? null
   const language = linkedIn.document
     ? detectLanguage(profileText(linkedIn.document))
-    : cv?.language ?? "pl"
+    : (cv?.language ?? "pl")
   return {
     cv: cv && content ? { id: cv.id, title: cv.title, language: cv.language } : null,
     readAt: linkedIn.readAt,

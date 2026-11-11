@@ -178,20 +178,23 @@ export function AddApplicationDialog({
     busy === "page"
       ? t("app.add.reading")
       : busy === "index"
-      ? t("app.add.checking")
-      : check && !check.valid
-      ? t("app.add.badUrl")
-      : check?.existing
-      ? t("app.add.existing", { company: check.existing.company, title: check.existing.title })
-      : check?.outcome === "read" && job?.company && job.title
-      ? t("app.add.found", { company: job.company, title: job.title })
-      : check?.outcome === "partial"
-      ? t("app.add.partial")
-      : check?.outcome === "link-only"
-      ? t("app.add.linkOnly")
-      : check?.outcome === "unreadable"
-      ? t("app.add.unreadable")
-      : t("app.add.urlHint")
+        ? t("app.add.checking")
+        : check && !check.valid
+          ? t("app.add.badUrl")
+          : check?.existing
+            ? t("app.add.existing", {
+                company: check.existing.company,
+                title: check.existing.title,
+              })
+            : check?.outcome === "read" && job?.company && job.title
+              ? t("app.add.found", { company: job.company, title: job.title })
+              : check?.outcome === "partial"
+                ? t("app.add.partial")
+                : check?.outcome === "link-only"
+                  ? t("app.add.linkOnly")
+                  : check?.outcome === "unreadable"
+                    ? t("app.add.unreadable")
+                    : t("app.add.urlHint")
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="app-add-title" className="modal--wide">

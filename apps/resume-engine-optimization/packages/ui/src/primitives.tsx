@@ -228,8 +228,8 @@ export function Segmented<V extends string>({
                 event.key === "ArrowRight" || event.key === "ArrowDown"
                   ? 1
                   : event.key === "ArrowLeft" || event.key === "ArrowUp"
-                  ? -1
-                  : 0
+                    ? -1
+                    : 0
               if (!step) return
               event.preventDefault()
               const next = options[(index + step + options.length) % options.length]

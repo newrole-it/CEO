@@ -4,13 +4,7 @@ import { LoaderCircle } from "lucide-react"
 import { cx } from "./cx"
 
 export type ButtonVariant =
-  | "primary"
-  | "secondary"
-  | "outline"
-  | "ghost"
-  | "soft"
-  | "danger"
-  | "danger-ghost"
+  "primary" | "secondary" | "outline" | "ghost" | "soft" | "danger" | "danger-ghost"
 export type ButtonSize = "sm" | "md" | "lg"
 
 type Common = {

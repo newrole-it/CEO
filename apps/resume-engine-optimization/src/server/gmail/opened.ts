@@ -234,8 +234,7 @@ export async function previewOpenedMail(
 }
 
 export type ApplyMailResult =
-  | { status: "saved"; application: ApplicationView; changed: boolean }
-  | { status: "used" }
+  { status: "saved"; application: ApplicationView; changed: boolean } | { status: "used" }
 
 /**
  * The person's choice from the popup: the message goes on the timeline of the application they
