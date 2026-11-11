@@ -119,7 +119,7 @@ Every screen and option is explained inside the app at `/features`.
 You need [Node 22+](https://nodejs.org) and [Docker Desktop](https://www.docker.com/products/docker-desktop) running, on macOS or Linux (on Windows, use WSL). [Claude Code](https://claude.com/claude-code) is optional and recommended: it is the AI engine, on your own subscription.
 
 ```bash
-git clone https://github.com/newrole-it/newrole.it.git
+git clone https://github.com/newrole-it/CEO.git newrole.it
 cd newrole.it
 npm run go
 ```

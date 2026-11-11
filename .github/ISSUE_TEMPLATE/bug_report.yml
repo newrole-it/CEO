@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for reporting it. Please do not paste CV contents, tokens, passwords or anything from your `.env` (secrets, API keys, `DATABASE_URL`). Replace personal data with made-up data.
 
-        A security problem goes through [SECURITY.md](https://github.com/newrole-it/newrole.it/blob/main/SECURITY.md), not an issue.
+        A security problem goes through [SECURITY.md](https://github.com/newrole-it/CEO/blob/main/SECURITY.md), not an issue.
   - type: dropdown
     id: part
     attributes:

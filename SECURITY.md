@@ -8,10 +8,7 @@ newrole.it has no tagged releases yet. Only the `main` branch is supported, and 
 
 Do not report a vulnerability in a public issue, pull request or comment.
 
-- If the repository offers **Report a vulnerability** on its Security → Advisories page, use it. That is GitHub's private vulnerability reporting.
-- If it does not, open an issue that asks for a private contact. Name only the part that is affected (the web app, the Chrome extension, the MCP server, `npm run go` or Docker Compose) and leave out every detail of the problem until you have a private channel.
-
-> **TODO for the maintainer:** add a private contact for security reports that is meant to be public, or turn on private vulnerability reporting for the repository. Then remove the issue route above.
+Report it privately with **Report a vulnerability** on the [Security → Advisories](https://github.com/newrole-it/CEO/security/advisories/new) page. That is GitHub's private vulnerability reporting: only you and the maintainer see the report.
 
 A good report says:
 

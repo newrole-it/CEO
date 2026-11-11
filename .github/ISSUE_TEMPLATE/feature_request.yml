@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        For anything larger, this issue comes before a pull request, so we agree on the change first. See [CONTRIBUTING.md](https://github.com/newrole-it/newrole.it/blob/main/CONTRIBUTING.md).
+        For anything larger, this issue comes before a pull request, so we agree on the change first. See [CONTRIBUTING.md](https://github.com/newrole-it/CEO/blob/main/CONTRIBUTING.md).
   - type: dropdown
     id: part
     attributes:

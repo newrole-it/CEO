@@ -6,6 +6,10 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ## Unreleased
 
+### Changed
+
+- The repository is now github.com/newrole-it/CEO. Clone it with git clone https://github.com/newrole-it/CEO.git newrole.it. Security problems are reported privately on its Security → Advisories page.
+
 ### Added
 
 - Tailoring a CV to an offer runs in steps you can watch: reading the offer, checking your CV, the match score, tailoring, checking and rewriting bullets, an ATS check and a check of numbers and names, then the cover letter and its check. Each step shows what it found; one that fails is marked and the rest go on without it.
