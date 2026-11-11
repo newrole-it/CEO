@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { buildListedJob } from "@newrole/ats/adapters/parse"
 import { loadTailorJob } from "../src/server/cv/tailor"
 import { ingestOfferPayload } from "../src/server/offers/ingest"
@@ -17,7 +18,7 @@ import { storeOffer } from "../src/server/offers/store"
 import { eraseAccount } from "../src/server/privacy/erase"
 import { exportAccount } from "../src/server/privacy/export"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `offers-${Date.now()}`
 
 after(async () => {

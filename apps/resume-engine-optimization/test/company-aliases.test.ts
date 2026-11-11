@@ -2,10 +2,11 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { offerStatus } from "../src/server/applications/offer-status"
 import { companyMapFor, syncCompanyAliases } from "../src/server/companies/aliases"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `aliases${Date.now()}`
 const Acme = `Acme${stamp}`
 

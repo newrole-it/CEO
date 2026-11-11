@@ -2,9 +2,10 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { importCsv } from "../src/server/applications/sheet"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `sheetimp${Date.now()}`
 
 after(async () => {

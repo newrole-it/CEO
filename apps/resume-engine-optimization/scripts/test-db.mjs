@@ -58,11 +58,13 @@ function prepare(url) {
   }
   admin.pathname = "/postgres"
   // CREATE DATABASE has no IF NOT EXISTS in Postgres; an "already exists" error is fine here.
-  const created = spawnSync(
-    "npx",
-    ["prisma", "db", "execute", "--url", admin.toString(), "--stdin"],
-    { cwd: APP, input: `CREATE DATABASE "${name}";`, encoding: "utf8" }
-  )
+  // prisma.config.ts reads DATABASE_URL: Prisma 7 dropped `db execute --url`.
+  const created = spawnSync("npx", ["prisma", "db", "execute", "--stdin"], {
+    cwd: APP,
+    env: { ...process.env, DATABASE_URL: admin.toString() },
+    input: `CREATE DATABASE "${name}";`,
+    encoding: "utf8",
+  })
   if (created.status !== 0 && !/already exists/i.test(`${created.stdout}${created.stderr}`)) {
     process.stderr.write(created.stderr || created.stdout)
     return created.status ?? 1

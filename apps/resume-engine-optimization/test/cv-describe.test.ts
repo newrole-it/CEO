@@ -2,11 +2,12 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import type { LlmClient } from "@newrole/llm/common"
 import { createCvFromDescription } from "../src/server/cv/describe"
 import { CvError, listCvs } from "../src/server/cv/service"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `describe-${Date.now()}`
 const users: number[] = []
 

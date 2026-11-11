@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import {
   enqueueStaleSheetSyncs,
   SHEET_PULL_MS,
@@ -9,7 +10,7 @@ import {
 } from "../src/server/applications/sheet"
 import { SHEET_SYNC } from "../src/server/queue/enqueue"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `sheetpull${Date.now()}`
 const users: number[] = []
 

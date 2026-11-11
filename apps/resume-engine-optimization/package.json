@@ -18,10 +18,6 @@
     "test:db": "node scripts/test-db.mjs prepare",
     "test:flow": "node scripts/test-db.mjs run tsx --test --test-concurrency=1 \"test/*.test.ts\""
   },
-  "prisma": {
-    "schema": "db/schema.prisma",
-    "seed": "tsx db/seed.ts"
-  },
   "dependencies": {
     "@blitzjs/auth": "3.0.2",
     "@blitzjs/next": "3.0.2",
@@ -39,13 +35,14 @@
     "@newrole/profile-ui": "0.1.0",
     "@newrole/ui": "0.1.0",
     "@next/env": "16.4.5",
-    "@prisma/client": "5.22.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "ajv": "8.20.0",
     "blitz": "3.0.2",
     "concurrently": "10.0.7",
     "lucide-react": "1.70.0",
     "next": "16.4.3",
-    "prisma": "5.22.0",
+    "prisma": "7.10.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "secure-password": "4.0.0",
