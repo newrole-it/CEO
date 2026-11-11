@@ -13,7 +13,7 @@
   "scripts": {
     "go": "node scripts/go.mjs",
     "setup": "node scripts/go.mjs --prepare",
-    "prepare": "husky install",
+    "prepare": "husky",
     "dev": "npm run dev -w @newrole/app",
     "mcp": "npm run --silent mcp -w @newrole/app",
     "build": "npm run build -w @newrole/app",
@@ -55,7 +55,7 @@
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.5",
     "eslint-config-prettier": "10.1.8",
-    "husky": "8.0.2",
+    "husky": "9.1.7",
     "lint-staged": "17.6.0",
     "prettier": "3.9.10",
     "prettier-plugin-prisma": "5.0.0",
