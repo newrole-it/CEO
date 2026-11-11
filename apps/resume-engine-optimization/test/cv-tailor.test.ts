@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { createApplication } from "../src/server/applications/service"
 import {
   createCv,
@@ -52,7 +53,7 @@ import { letterSection, type CvContent } from "@newrole/cv-core/schema"
 import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
 import { companyConsent, consentCompanyOf, cvLocale, defaultConsent } from "@newrole/cv-core/blank"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `tailor-${Date.now()}`
 
 after(async () => {
@@ -290,7 +291,7 @@ async function uploaded(userId: number, title = "Moje CV") {
       title,
       kind: "UPLOADED",
       isDefault: true,
-      pdf: cvPdfFile,
+      pdf: new Uint8Array(cvPdfFile),
       pdfName: `${title}.pdf`,
       pdfUpdatedAt: new Date(),
     },

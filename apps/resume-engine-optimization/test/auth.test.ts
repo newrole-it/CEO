@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { claimGuest, revokeOtherAccess, upsertLinkedInUser } from "../src/server/auth/accounts"
 import { linkRequestValue } from "../src/server/auth/link-request"
 import {
@@ -15,7 +16,7 @@ import {
 } from "../src/server/auth/magic-link"
 import { signInWithMagicLink } from "../src/server/auth/sign-in-link"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = Date.now()
 
 before(async () => {

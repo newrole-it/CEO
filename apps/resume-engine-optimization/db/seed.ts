@@ -1,9 +1,10 @@
 import "../src/server/load-env"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "./client"
 import { SecurePassword } from "@blitzjs/auth/secure-password"
 import { assertSafeProductionEnv } from "../src/server/security/env-check"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 
 async function main() {
   // Keeps the old project name: a new default would create a second owner on existing installs.

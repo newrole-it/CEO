@@ -2,9 +2,9 @@
 // Follows the spirit of the product spec (companies, career pages, jobs,
 // observations, saved searches, matches) narrowed to one owner.
 
+// The connection URL is in prisma.config.ts (Migrate) and db/client.ts (the app).
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {

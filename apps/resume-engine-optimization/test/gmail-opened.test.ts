@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { applyOpenedMail, previewOpenedMail, type OpenedMail } from "../src/server/gmail/opened"
 import { mailInbox, resolveMailEvent } from "../src/server/gmail/service"
 
@@ -10,7 +11,7 @@ import { mailInbox, resolveMailEvent } from "../src/server/gmail/service"
  * Google: the extension sends what the page shows, and nothing changes before the person confirms.
  */
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `gmail-opened-${Date.now()}`
 const HOUR = 3_600_000
 const BODY_SECRET = "TRESC-OTWARTEGO-MAILA"

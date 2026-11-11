@@ -16,11 +16,6 @@ updates:
       # eslint-plugin-react, -import and -jsx-a11y (from eslint-config-next) declare ESLint 9 at most.
       - dependency-name: eslint
         update-types: [version-update:semver-major]
-      # The Prisma CLI and client move together, and a new major is a migration of its own.
-      - dependency-name: prisma
-        update-types: [version-update:semver-major]
-      - dependency-name: "@prisma/client"
-        update-types: [version-update:semver-major]
       # Node's built-in fetch rejects an undici 8 Agent ("invalid onRequestStart method", on Node 22
       # and 25), and packages/offers/src/http.ts passes one to it as the dispatcher.
       - dependency-name: undici

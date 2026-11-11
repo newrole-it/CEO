@@ -2,10 +2,11 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { eraseAccount, eraseProfile } from "../src/server/privacy/erase"
 import { exportAccount } from "../src/server/privacy/export"
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `privacy-${Date.now()}`
 const phrase = `Head of Privacy ${stamp}`
 

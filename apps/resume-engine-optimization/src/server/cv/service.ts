@@ -375,7 +375,7 @@ export async function uploadCvPdf(input: {
         title: cleanTitle(input.title, fileName.replace(/\.pdf$/i, "")),
         language: cvLocale(input.language),
         kind: "UPLOADED",
-        pdf: input.bytes,
+        pdf: new Uint8Array(input.bytes),
         pdfName: fileName,
         pdfUpdatedAt: new Date(),
         isDefault: existing === 0,
@@ -621,7 +621,12 @@ export async function cvPdf(
     // only if nothing changed while Chrome ran; keep updatedAt so the cache counts as current
     await db.cvDocument.updateMany({
       where: { id: row.id, userId, updatedAt: row.updatedAt },
-      data: { pdf: bytes, pdfName: name, pdfUpdatedAt: new Date(), updatedAt: row.updatedAt },
+      data: {
+        pdf: new Uint8Array(bytes),
+        pdfName: name,
+        pdfUpdatedAt: new Date(),
+        updatedAt: row.updatedAt,
+      },
     })
   }
   if (opts.leaves) {

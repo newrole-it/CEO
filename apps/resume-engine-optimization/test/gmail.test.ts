@@ -2,6 +2,7 @@ import "./only-test-db"
 import assert from "node:assert/strict"
 import { after, before, test } from "node:test"
 import { PrismaClient } from "@prisma/client"
+import { pgAdapter } from "../db/client"
 import { sealToken } from "../src/server/gmail/token-crypto"
 import {
   disconnectGmail,
@@ -18,7 +19,7 @@ import { exportAccount } from "../src/server/privacy/export"
  * are written here directly, the way the old sync left them: nothing reads the mailbox any more.
  */
 
-const db = new PrismaClient()
+const db = new PrismaClient({ adapter: pgAdapter() })
 const stamp = `gmail-${Date.now()}`
 const REFRESH = `1//refresh-${stamp}`
 const MAILBOX = `me-${stamp}@example.com`
