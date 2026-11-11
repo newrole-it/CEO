@@ -31,7 +31,7 @@ jobs:
       SESSION_SECRET_KEY: ci-only-session-secret-not-used-anywhere-else
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
