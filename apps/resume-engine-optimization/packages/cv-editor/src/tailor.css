@@ -320,6 +320,23 @@
   font-size: 13px;
   font-weight: 600;
 }
+.cvt-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cvt-proposal h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cvt-proposal__actions {
+  display: flex;
+  gap: 8px;
+}
 .cvt-kw {
   display: flex;
   flex-direction: column;

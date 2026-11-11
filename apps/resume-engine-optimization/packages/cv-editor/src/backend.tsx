@@ -5,7 +5,7 @@ import type { CvAudit } from "@newrole/cv-core/audit"
 import type { CvLocale } from "@newrole/cv-core/blank"
 import type { CvContent, CvSection } from "@newrole/cv-core/schema"
 import type { TailorProgress } from "@newrole/cv-core/progress"
-import type { OfferTextOrigin } from "@newrole/cv-core/tailor"
+import type { OfferTextOrigin, TailorNotes } from "@newrole/cv-core/tailor"
 import type {
   CvVersionView,
   GeneralCvCheck,
@@ -89,6 +89,14 @@ export type CvEditorBackend = {
      * not seen it. Without it TailorStart shows one line while it waits.
      */
     progress?: (runId: string) => Promise<TailorProgress | null>
+    /**
+     * "Dodaj" or "Pomiń" on an addition the model proposed (TailorNotes.proposals): the notes as
+     * stored after, and the CV when "add" changed it. Without it the review shows no proposals.
+     */
+    proposal?: (input: { id: string; proposalId: string; answer: "add" | "skip" }) => Promise<{
+      notes: TailorNotes
+      cv: { content: CvContent; language: CvLocale; updatedAt: Date } | null
+    }>
   }
   /**
    * "Popraw z AI" on one section of a CV; without it the editor offers none. `preview` stores

@@ -18,7 +18,13 @@ import { consentCompanyOf } from "@newrole/cv-core/blank"
 import { compactDiff, diffCv, hasChanges } from "@newrole/cv-core/diff"
 import type { CvContent } from "@newrole/cv-core/schema"
 import type { MatchNotes } from "@newrole/cv-core/match"
-import { readOnlyExcerpt, type KeywordNote, type TailorNotes } from "@newrole/cv-core/tailor"
+import { inlineToText } from "@newrole/cv-core/sanitize"
+import {
+  readOnlyExcerpt,
+  type KeywordNote,
+  type TailorNotes,
+  type TailorProposal,
+} from "@newrole/cv-core/tailor"
 import type { CvVersionView, TailorContext } from "@newrole/cv-core/views"
 import { useCvBackend } from "./backend"
 import { ConsentCompany, consentCompany, type ConsentChoice } from "./ConsentCompany"
@@ -123,6 +129,7 @@ export function DocumentPanel({
           <ImproveTab id={id} doc={doc} sectionId={improveSection} onSection={onImproveSection} />
         ) : tab === "review" && tailor ? (
           <ReviewTab
+            id={id}
             doc={doc}
             isLetter={isLetter}
             jobId={tailor.job.id}
@@ -432,7 +439,120 @@ function MatchSummary({ match, jobId }: { match: MatchNotes; jobId: string | nul
   )
 }
 
+/** Additions the model proposed, each waiting for "Dodaj" or "Pomiń". */
+function Proposals({
+  id,
+  doc,
+  notes,
+  onNotes,
+}: {
+  id: string
+  doc: PanelDoc
+  notes: TailorNotes
+  onNotes: (notes: TailorNotes) => void
+}) {
+  const { t } = useCvCopy()
+  const backend = useCvBackend()
+  const toast = useToast()
+  const [busy, setBusy] = useState<string | null>(null)
+
+  async function answer(proposal: TailorProposal, choice: "add" | "skip") {
+    const send = backend.tailor.proposal
+    if (!send) return
+    setBusy(proposal.id)
+    try {
+      // what is typed but not saved yet goes first, so adding builds on it
+      if (choice === "add" && !(await doc.flush())) throw new Error("not saved")
+      const result = await send({ id, proposalId: proposal.id, answer: choice })
+      if (result.cv) {
+        doc.replace(
+          { content: result.cv.content, language: result.cv.language },
+          result.cv.updatedAt
+        )
+        toast.show({
+          message: t("tl.p.added"),
+          action: { label: t("cv.ed.undo"), onClick: doc.undo },
+        })
+      }
+      onNotes(result.notes)
+    } catch {
+      toast.show({ message: t("tl.p.failed"), tone: "danger" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section className="cvt-note">
+      <h3>{t("tl.p.title")}</h3>
+      <p>{t("tl.p.hint")}</p>
+      {(notes.proposals ?? []).map((proposal) => {
+        const into =
+          proposal.kind === "card"
+            ? doc.content.sections.find((section) => section.id === proposal.into)
+            : undefined
+        const entries =
+          proposal.kind === "card"
+            ? [proposal.card]
+            : proposal.section.type === "cards"
+            ? proposal.section.items
+            : []
+        return (
+          <article key={proposal.id} className="cvt-proposal">
+            <p className="t-sm muted">
+              {proposal.kind === "card"
+                ? t("tl.p.card", { section: into?.title ?? "" })
+                : t("tl.p.section")}
+            </p>
+            {proposal.kind === "section" ? <h4>{proposal.section.title}</h4> : null}
+            {proposal.kind === "section" && proposal.section.type === "text" ? (
+              <p>{inlineToText(proposal.section.body)}</p>
+            ) : null}
+            {entries.map((entry) => (
+              <div key={entry.id}>
+                <strong>{entry.title}</strong>
+                <p>{inlineToText(entry.body)}</p>
+              </div>
+            ))}
+            <p className="t-sm muted">{t("tl.p.reason", { reason: proposal.reason })}</p>
+            {proposal.unverified.length ? (
+              <>
+                <p className="t-sm">{t("tl.p.unverified")}</p>
+                <ul className="cvt-terms">
+                  {proposal.unverified.map((term) => (
+                    <li key={term}>{term}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            <div className="cvt-proposal__actions">
+              <Button
+                size="sm"
+                variant="primary"
+                loading={busy === proposal.id}
+                disabled={busy !== null}
+                onClick={() => void answer(proposal, "add")}
+              >
+                {t("tl.p.add")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy !== null}
+                onClick={() => void answer(proposal, "skip")}
+              >
+                {t("tl.p.skip")}
+              </Button>
+            </div>
+          </article>
+        )
+      })}
+    </section>
+  )
+}
+
 function ReviewTab({
+  id,
   doc,
   isLetter,
   jobId,
@@ -440,6 +560,7 @@ function ReviewTab({
   notes,
   onNotes,
 }: {
+  id: string
   doc: PanelDoc
   isLetter: boolean
   jobId: string | null
@@ -488,9 +609,13 @@ function ReviewTab({
     !notes.changes.length &&
     !notes.gaps.length &&
     !notes.unverified.length &&
-    !notes.keywords?.length
+    !notes.keywords?.length &&
+    !notes.proposals?.length
   return (
     <>
+      {!isLetter && notes?.proposals?.length && backend.tailor.proposal ? (
+        <Proposals id={id} doc={doc} notes={notes} onNotes={onNotes} />
+      ) : null}
       {notes?.unverified.length ? (
         <section className="cvt-note cvt-note--warn">
           <h3>{t("tl.r.check")}</h3>

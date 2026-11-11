@@ -2,6 +2,7 @@
 
 import { invoke } from "@blitzjs/rpc"
 import type { CvEditorBackend } from "@newrole/cv-editor/backend"
+import answerTailorProposal from "./mutations/answerTailorProposal"
 import applyCvSection from "./mutations/applyCvSection"
 import createGeneralLetter from "./mutations/createGeneralLetter"
 import improveCvSection from "./mutations/improveCvSection"
@@ -38,6 +39,11 @@ export const newroleCvBackend: CvEditorBackend = {
     cv: (input) => invoke(tailorCvForJob, input),
     letter: (input) => invoke(generateCoverLetter, input),
     progress: (runId) => invoke(getTailorProgress, { runId }),
+    proposal: async (input) => {
+      const answered = await invoke(answerTailorProposal, input)
+      if (!answered) throw new Error("no result")
+      return answered
+    },
   },
   improve: {
     preview: (input) => invoke(improveCvSection, input),

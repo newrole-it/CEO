@@ -2,7 +2,15 @@ import { z } from "zod"
 import { defaultConsent, type CvLocale } from "./blank"
 import { MatchNotes } from "./match"
 import { inlineToText, sanitizeInline } from "./sanitize"
-import { cvId, parseCvContent, type CvContent, type CvSection } from "./schema"
+import {
+  CvCardItem,
+  CvCardsSection,
+  cvId,
+  CvTextSection,
+  parseCvContent,
+  type CvContent,
+  type CvSection,
+} from "./schema"
 import { hasTerm, matchable, TECH_SHAPED } from "./terms"
 import { cvPlainText } from "./text"
 
@@ -46,12 +54,29 @@ const ReplyKeyword = z.object({
   evidence: z.string().max(2000).optional(),
 })
 
+/**
+ * Something the CV has no place for yet, which the person decides on: a card for an existing
+ * cards section (`section` is its id), or a section of its own (`type` without `section`).
+ */
+const ReplyProposal = z.object({
+  section: z.string().max(64).optional(),
+  type: z.enum(["text", "cards"]).optional(),
+  title: z.string().max(600),
+  body: optional(12000),
+  items: z
+    .array(z.object({ title: z.string().max(600), body: z.string().max(6000) }))
+    .max(10)
+    .optional(),
+  reason: z.string().max(600),
+})
+
 export const TailorReply = z.object({
   headline: optional(900),
   sections: z.array(ReplySection).max(60),
   changes: z.array(z.string().max(600)).max(20).catch([]),
   gaps: z.array(z.string().max(600)).max(20).catch([]),
   keywords: z.array(ReplyKeyword).max(40).catch([]),
+  proposals: z.array(ReplyProposal).max(10).catch([]),
 })
 export type TailorReply = z.infer<typeof TailorReply>
 
@@ -70,6 +95,30 @@ export const OFFER_TEXT_LIMIT = 12_000
 export const KeywordStatus = z.enum(["kept", "added", "unplaced", "missing"])
 export type KeywordStatus = z.infer<typeof KeywordStatus>
 export type KeywordNote = { term: string; status: KeywordStatus }
+
+/**
+ * An addition the model proposed and code checked, waiting for the person: "Dodaj" puts it in the
+ * CV (applyProposal), "Pomiń" drops it. `unverified` names in it that the person's data lacks.
+ */
+export const TailorProposal = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("card"),
+    id: z.string(),
+    reason: z.string(),
+    unverified: z.array(z.string()),
+    /** The cards section it goes into */
+    into: z.string(),
+    card: CvCardItem,
+  }),
+  z.object({
+    kind: z.literal("section"),
+    id: z.string(),
+    reason: z.string(),
+    unverified: z.array(z.string()),
+    section: z.discriminatedUnion("type", [CvTextSection, CvCardsSection]),
+  }),
+])
+export type TailorProposal = z.infer<typeof TailorProposal>
 
 export const TailorNotes = z.object({
   changes: z.array(z.string()),
@@ -90,6 +139,8 @@ export const TailorNotes = z.object({
    * dropped rather than losing the other notes.
    */
   match: MatchNotes.optional().catch(undefined),
+  /** Additions waiting for the person's answer. Documents tailored before this have none. */
+  proposals: z.array(TailorProposal).optional().catch(undefined),
 })
 export type TailorNotes = z.infer<typeof TailorNotes>
 
@@ -256,13 +307,10 @@ export function refreshKeywordNotes(
 
 /** The schema's limits for the fields the model may write. */
 const MAX = { body: 12000, summary: 4000, bullet: 2000, tech: 2000, skill: 2000, card: 4000 }
-/** The schema's limit on cards in one section */
-const MAX_CARDS = 30
 
 /** Reads the model's proposals against the old values and keeps count of what it refused. */
 function createWriter(base: CvContent, evidence: string) {
   const known = knownNumbers(evidence)
-  const words = matchable(evidence)
   const links = linksIn(base)
   const written: string[] = []
   let reverted = 0
@@ -304,39 +352,28 @@ function createWriter(base: CvContent, evidence: string) {
     return clean && clean.length <= 100 && digits(clean) === digits(current) ? clean : current
   }
 
-  /** The person's data names it: a new card may only be about something they have said. */
-  const backs = (name: string) => hasTerm(words, name)
-
-  return { rich, plain, dates, backs, written, reverted: () => reverted }
+  return { rich, plain, dates, written, reverted: () => reverted }
 }
 
 type Writer = ReturnType<typeof createWriter>
 type ProposedSection = TailorReply["sections"][number]
 type ProposedItem = NonNullable<ProposedSection["items"]>[number]
 
-/**
- * Items in the proposed order, without those it left out; all of them when it names none. An id
- * the section does not have becomes a new item only through `create`, which may refuse it.
- */
+/** Items in the proposed order, without those it left out; all of them when it names none. */
 function picked<T extends { id: string }>(
   items: T[],
   proposals: ProposedItem[] | undefined,
-  merge: (item: T, proposal: ProposedItem) => T,
-  create?: (proposal: ProposedItem) => T | undefined
+  merge: (item: T, proposal: ProposedItem) => T
 ): T[] {
   const seen = new Set<string>()
   const out: T[] = []
-  let named = 0
   for (const proposal of proposals ?? []) {
     const item = items.find((entry) => entry.id === proposal.id)
-    if (item && seen.has(item.id)) continue
-    if (item) seen.add(item.id)
-    const next = item ? merge(item, proposal) : create?.(proposal)
-    if (!next) continue
-    if (item) named += 1
-    out.push(next)
+    if (!item || seen.has(item.id)) continue
+    seen.add(item.id)
+    out.push(merge(item, proposal))
   }
-  return named ? out : [...items, ...out]
+  return out.length ? out : items
 }
 
 function mergeSection(
@@ -363,25 +400,11 @@ function mergeSection(
   }
   if (section.type === "cards") {
     if (proposal.hide) return { ...section, hidden: true }
-    const items = picked(
-      section.items,
-      proposal.items,
-      (item, next) => ({
-        ...item,
-        title: translate ? writer.plain(next.title, 240) ?? item.title : item.title,
-        body: writer.rich(next.body, MAX.card) ?? item.body,
-      }),
-      // a project the person's data names but this CV does not show yet
-      (next) => {
-        const name = inlineToText(next.title ?? "")
-          .split("·")[0]
-          .trim()
-        if (!name || !writer.backs(name)) return undefined
-        const cardTitle = writer.plain(next.title, 240)
-        const body = writer.rich(next.body, MAX.card)
-        return cardTitle && body ? { id: cvId("i"), title: cardTitle, body } : undefined
-      }
-    ).slice(0, MAX_CARDS)
+    const items = picked(section.items, proposal.items, (item, next) => ({
+      ...item,
+      title: translate ? writer.plain(next.title, 240) ?? item.title : item.title,
+      body: writer.rich(next.body, MAX.card) ?? item.body,
+    }))
     return { ...section, title, items }
   }
   if (section.type === "experience") {
@@ -426,7 +449,10 @@ function mergeSection(
 
 export type Tailored = {
   content: CvContent
-  notes: Pick<TailorNotes, "changes" | "gaps" | "unverified" | "reverted" | "keywords">
+  notes: Pick<
+    TailorNotes,
+    "changes" | "gaps" | "unverified" | "reverted" | "keywords" | "proposals"
+  >
 }
 
 /**
@@ -483,8 +509,77 @@ export function applyTailoring(
       unverified: [...unverified.values()].slice(0, 12),
       reverted: writer.reverted(),
       keywords: keywords.keywords,
+      proposals: proposalsFor(content, reply.proposals, opts.evidence, translate),
     },
   }
+}
+
+/* ---------------------------------------------------------------- proposals */
+
+/**
+ * The model's proposed additions, checked as its other text is: one that adds a number the
+ * person's data does not have, a link, or nothing to read is dropped. A card goes only into a
+ * visible cards section of the tailored CV. None of it enters the CV here.
+ */
+function proposalsFor(
+  content: CvContent,
+  replies: TailorReply["proposals"],
+  evidence: string,
+  translated: boolean
+): TailorProposal[] {
+  const out: TailorProposal[] = []
+  for (const proposal of replies) {
+    const writer = createWriter(content, evidence)
+    const reason = inlineToText(proposal.reason).replace(/\s+/g, " ").trim()
+    const check = () => unverifiedTerms(writer.written, evidence, { translated }).slice(0, 6)
+    if (!reason) continue
+    if (proposal.section) {
+      const into = content.sections.find((section) => section.id === proposal.section)
+      if (into?.type !== "cards" || into.hidden) continue
+      const title = writer.plain(proposal.title, 240)
+      const body = writer.rich(proposal.body, MAX.card)
+      if (!title || !body) continue
+      const card = { id: cvId("i"), title, body }
+      out.push({ kind: "card", id: cvId("p"), reason, unverified: check(), into: into.id, card })
+      continue
+    }
+    const title = writer.plain(proposal.title, 120)
+    if (!title) continue
+    const base = { id: cvId("s"), title }
+    if (proposal.type === "text") {
+      const body = writer.rich(proposal.body, MAX.body)
+      if (!body) continue
+      const section = { ...base, type: "text" as const, body }
+      out.push({ kind: "section", id: cvId("p"), reason, unverified: check(), section })
+      continue
+    }
+    if (proposal.type !== "cards") continue
+    const items = (proposal.items ?? []).flatMap((item) => {
+      const cardTitle = writer.plain(item.title, 240)
+      const body = writer.rich(item.body, MAX.card)
+      return cardTitle && body ? [{ id: cvId("i"), title: cardTitle, body }] : []
+    })
+    if (!items.length) continue
+    const section = { ...base, type: "cards" as const, items }
+    out.push({ kind: "section", id: cvId("p"), reason, unverified: check(), section })
+  }
+  return out.slice(0, 6)
+}
+
+/**
+ * The CV with a proposal the person accepted: a card at the end of its section, a section at the
+ * end of the CV. Null when it no longer fits: its section is gone, or the CV is full.
+ */
+export function applyProposal(content: CvContent, proposal: TailorProposal): CvContent | null {
+  if (proposal.kind === "section") {
+    return parseCvContent({ ...content, sections: [...content.sections, proposal.section] })
+  }
+  const into = content.sections.find((section) => section.id === proposal.into)
+  if (into?.type !== "cards") return null
+  const sections = content.sections.map((section) =>
+    section === into ? { ...into, hidden: false, items: [...into.items, proposal.card] } : section
+  )
+  return parseCvContent({ ...content, sections })
 }
 
 /* ---------------------------------------------------------------- one section */

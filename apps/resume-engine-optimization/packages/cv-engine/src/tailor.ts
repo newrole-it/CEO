@@ -40,7 +40,7 @@ What you may do:
 - Rewrite "body" of text sections, "summary", "bullets" and "tech" of roles, "text" of skills and "body" of cards, so that what this offer asks for comes first. Keep the candidate's voice and grammatical person. In Polish keep the grammatical gender the CV uses.
 - Order sections by relevance. Within a role order bullets by relevance. Order skills and cards by relevance, and leave out those that do not help with this offer.
 - "hide": true on a text, skills or cards section that adds nothing for this offer.
-- Add a card to a cards section only for a project the candidate context names and the CV does not show, when it matters for this offer: an item with "id":"new", "title" as "<the project's name as the context writes it> · <the candidate's role in it>" and "body". Code drops a new card whose project the candidate's data does not name. Nothing else can be added: no new roles, skills groups or sections.
+- You cannot add items or sections to the CV. When the candidate wants something the CV has no place for, put it in "proposals" and the candidate decides: "Add" or "Skip". Propose only when their note asks for it, or when their context names a project, qualification or activity that matters for this offer and the CV leaves out. Propose only from their own data.
 - Keep the CV no longer than it is. Tighten rather than add.
 
 Keywords: a recruiter and an ATS search the CV for the offer's own words. Work in this order:
@@ -74,7 +74,9 @@ Fixed, code ignores any change: company, school, contact details and the order o
 
 const TAILOR_FORMAT = `Format: body fields may use <strong>, <em> and <br>, and nothing else: no other tags, links, markdown or placeholders. "tech" keeps its form: <strong>Label:</strong> a, b, c.
 
-"changes" lists up to 6 short points on what you changed and why. "gaps" lists up to 6 requirements of the offer that the candidate's data does not show. Both are for the candidate and written in the language given for notes.
+"proposals" lists up to 3 additions, each with "reason": one sentence, in the language given for notes, on why you think the candidate wants it (their note, or what in their context matters for this offer). A card for an existing cards section: {"section":"<id of that section>","title":"<name as the candidate writes it> · <their role>","body":"..."}. A section of its own: {"type":"text","title":"<heading>","body":"..."} or {"type":"cards","title":"<heading>","items":[{"title":"...","body":"..."}]}. Write them in the CV's language. "proposals" is [] when there is nothing to propose.
+
+"changes" lists up to 6 short points on what you changed and why. It never mentions proposals: they are not in the CV until the candidate adds them. "gaps" lists up to 6 requirements of the offer that the candidate's data does not show. Both are for the candidate and written in the language given for notes.
 
 Return JSON, "keywords" first:
 {"keywords":[{"term":"...","evidence":"..."}],"headline":"...","sections":[
@@ -82,8 +84,8 @@ Return JSON, "keywords" first:
  {"id":"<id>","hide":true},
  {"id":"<id>","items":[{"id":"<id>","label":"...","text":"..."}]},
  {"id":"<id>","items":[{"id":"<id>","summary":"...","bullets":["..."],"tech":"..."}]},
- {"id":"<id>","items":[{"id":"<id>","body":"..."},{"id":"new","title":"... · ...","body":"..."}]}
-],"changes":["..."],"gaps":["..."]}
+ {"id":"<id>","items":[{"id":"<id>","body":"..."}]}
+],"proposals":[{"section":"<id>","title":"... · ...","body":"...","reason":"..."}],"changes":["..."],"gaps":["..."]}
 List sections in the order they should appear.`
 
 const TRANSLATE_RULE = `

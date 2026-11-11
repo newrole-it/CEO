@@ -42,6 +42,7 @@ import {
 } from "../src/server/cv/versions"
 import { createEditableFromUpload, mergeUploadedCopies } from "../src/server/cv/structure"
 import { applyCvSection, improveCvSection } from "../src/server/cv/improve"
+import { answerTailorProposal } from "../src/server/cv/proposals"
 import type { LlmClient } from "@newrole/llm/common"
 import { eraseAccount } from "../src/server/privacy/erase"
 import { exportAccount } from "../src/server/privacy/export"
@@ -1893,4 +1894,51 @@ test("a new CV for an offer is written from the general CV as it is now, with th
     versions.some((version) => !version.isCurrent),
     "the CV as it was stays in the history"
   )
+})
+
+test("a proposed addition waits for the person: skipping drops it, adding puts it in the CV", async () => {
+  const user = await makeUser()
+  const job = await makeJob()
+  await general(user.id)
+  const result = await tailorCvForJob({
+    userId: user.id,
+    jobId: job.id,
+    llm: fakeLlm({
+      ...tailorReply(),
+      proposals: [
+        { type: "text", title: "Wolontariat", body: "Uczę dzieci programowania.", reason: "R." },
+        {
+          section: "projects",
+          title: "Projekt C · Co-Founder",
+          body: "Aplikacja mobilna.",
+          reason: "R.",
+        },
+      ],
+    }),
+  })
+  const [section, card] = result.notes.proposals ?? []
+  assert.equal(section?.kind, "section")
+  assert.equal(card?.kind, "card")
+  assert.ok(!result.content.sections.some((entry) => entry.title === "Wolontariat"))
+
+  const skipped = await answerTailorProposal(user.id, result.id, section.id, "skip")
+  assert.equal(skipped.cv, null)
+  assert.deepEqual(
+    skipped.notes.proposals?.map((entry) => entry.id),
+    [card.id]
+  )
+
+  const added = await answerTailorProposal(user.id, result.id, card.id, "add")
+  assert.deepEqual(added.notes.proposals, [])
+  const stored = await getCv(user.id, result.id)
+  const projects = (stored?.content as CvContent).sections.find((entry) => entry.id === "projects")
+  assert.ok(projects?.type === "cards")
+  assert.equal(projects.items.at(-1)?.title, "Projekt C · Co-Founder")
+  const versions = await listVersions(user.id, result.id)
+  assert.equal(versions[0].origin, "generated")
+
+  // answered once, gone; and never for someone else's CV
+  await assert.rejects(answerTailorProposal(user.id, result.id, card.id, "add"), CvError)
+  const other = await makeUser()
+  await assert.rejects(answerTailorProposal(other.id, result.id, card.id, "skip"), CvError)
 })

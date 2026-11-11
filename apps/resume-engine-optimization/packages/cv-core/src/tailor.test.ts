@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { syntheticCv } from "./fixtures"
 import type { CvContent, CvExperienceSection, CvSection } from "./schema"
 import {
+  applyProposal,
   applySectionRewrite,
   applyTailoring,
   cvForModel,
@@ -16,7 +17,7 @@ const base = (): CvContent => syntheticCv(3)
 const evidence = (content: CvContent) => cvPlainText(content)
 
 function reply(partial: Partial<TailorReply>): TailorReply {
-  return { sections: [], changes: [], gaps: [], keywords: [], ...partial }
+  return { sections: [], changes: [], gaps: [], keywords: [], proposals: [], ...partial }
 }
 
 function tailor(content: CvContent, partial: Partial<TailorReply>, translateTo?: "pl" | "en") {
@@ -135,43 +136,68 @@ describe("applyTailoring", () => {
     expect(cards.type === "cards" && cards.items.length).toBe(2)
   })
 
-  it("adds a card for a project the person's data names, in the proposed place", () => {
+  it("keeps a proposed card out of the CV until the person adds it", () => {
     const content = base()
-    const result = applyTailoring(
-      content,
-      reply({
-        sections: [
-          {
-            id: "projects",
-            items: [
-              { id: "new", title: "Tarcza Miejska · Co-Founder", body: "Aplikacja mobilna." },
-              { id: "c1" },
-            ],
-          },
-        ],
-      }),
-      { evidence: `${evidence(content)}\nTarcza Miejska: aplikacja mobilna, którą współtworzę.` }
-    )
-    const cards = result && section(result.content, "projects")
-    expect(cards?.type === "cards" && cards.items.map((item) => item.title)).toEqual([
-      "Tarcza Miejska · Co-Founder",
-      "Projekt A · Co-Founder",
-    ])
-    expect(cards?.type === "cards" && cards.items[0].id).not.toBe("new")
-  })
-
-  it("drops a new card whose project the person's data does not name", () => {
-    const content = base()
-    const { content: result } = tailor(content, {
-      sections: [
+    const { content: result, notes } = tailor(content, {
+      proposals: [
         {
-          id: "projects",
-          items: [{ id: "new", title: "Wymyślony Projekt · CTO", body: "Nie istnieje." }],
+          section: "projects",
+          title: "Projekt C · Co-Founder",
+          body: "Aplikacja mobilna.",
+          reason: "Prosisz o projekty mobilne.",
         },
       ],
     })
-    const cards = section(result, "projects")
-    expect(cards.type === "cards" && cards.items.map((item) => item.id)).toEqual(["c1", "c2"])
+    expect(result).toEqual(content)
+    const proposal = notes.proposals?.[0]
+    expect(proposal?.kind === "card" && proposal.into).toBe("projects")
+    if (!proposal) throw new Error("no proposal")
+    const added = applyProposal(result, proposal)
+    const cards = added && section(added, "projects")
+    expect(cards?.type === "cards" && cards.items.map((item) => item.title)).toEqual([
+      "Projekt A · Co-Founder",
+      "Projekt B · Co-Founder",
+      "Projekt C · Co-Founder",
+    ])
+  })
+
+  it("proposes a new section, added at the end of the CV", () => {
+    const content = base()
+    const { notes } = tailor(content, {
+      proposals: [
+        {
+          type: "text",
+          title: "Wolontariat",
+          body: "Uczę dzieci programowania.",
+          reason: "Z uwagi.",
+        },
+      ],
+    })
+    const proposal = notes.proposals?.[0]
+    if (!proposal) throw new Error("no proposal")
+    const added = applyProposal(content, proposal)
+    const last = added?.sections.at(-1)
+    expect(last?.type === "text" && [last.title, last.body]).toEqual([
+      "Wolontariat",
+      "Uczę dzieci programowania.",
+    ])
+  })
+
+  it("drops a proposal that adds a number, has no reason, or names a section that is not cards", () => {
+    const content = base()
+    const { notes } = tailor(content, {
+      proposals: [
+        {
+          section: "projects",
+          title: "X · CTO",
+          body: "Zwiększyłem przychód o 937%.",
+          reason: "R.",
+        },
+        { section: "projects", title: "Y · CTO", body: "Aplikacja.", reason: "" },
+        { section: "experience", title: "Z · CTO", body: "Aplikacja.", reason: "R." },
+      ],
+    })
+    expect(notes.proposals).toEqual([])
   })
 
   it("keeps the old text of a field that gains a number the person's data does not have", () => {
