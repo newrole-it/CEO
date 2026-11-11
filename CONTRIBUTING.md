@@ -8,7 +8,7 @@ Bug reports and pull requests are welcome. For anything larger, open an issue fi
 
 ## Set up
 
-You need [Node 22 or newer](https://nodejs.org) and [Docker Desktop](https://www.docker.com/products/docker-desktop) running, on macOS or Linux. On Windows, use WSL. [Claude Code](https://claude.com/claude-code) is optional.
+You need [Node 22.12 or newer](https://nodejs.org) (the Vite that runs the tests needs it) and [Docker Desktop](https://www.docker.com/products/docker-desktop) running, on macOS or Linux. On Windows, use WSL. [Claude Code](https://claude.com/claude-code) is optional.
 
 Clone the repository, then run this in its folder:
 
@@ -69,6 +69,14 @@ The tests use a database next to the one in `.env`, with `_test` added to its na
 8. `npm run build --workspaces --if-present`
 
 Run the same checks before you open a pull request.
+
+## Dependency overrides
+
+Blitz 3.0.2 pins exact versions of packages that have security advisories (`tar`, `nanoid`, `cookie`, `cross-spawn` and others), and no newer Blitz exists. `overrides` in the root `package.json` replaces them with patched versions, each under the package that pins it.
+
+npm applies `overrides` only to packages it reaches from the root `package.json`, not to those reached only through a workspace. So `blitz`, `@blitzjs/auth` and `@blitzjs/next` are also root `devDependencies`, at the same versions as in `apps/resume-engine-optimization/package.json`. When you change a Blitz version, change it in both places.
+
+After you change `overrides`, check the result with `npm audit` and `npm ls <package>`: npm keeps a version that is already in `package-lock.json`.
 
 ## Formatting
 
