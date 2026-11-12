@@ -10,7 +10,6 @@ export const applicationsPl = {
   "app.title": "Aplikacje",
   "app.sub":
     "Każda oferta, nad którą pracujesz, od dodania do decyzji: CV pod nią, etap, następny krok i notatki.",
-  "app.add": "Dodaj aplikację",
   "app.export": "Eksportuj CSV",
   "app.import": "Importuj CSV",
   "app.import.done":
@@ -71,7 +70,6 @@ export const applicationsPl = {
   "app.err.save": "Nie zapisano zmiany. Spróbuj jeszcze raz.",
   "app.toast.status": "{company}: {status}",
   "app.toast.added": "Dodano: {company} · {title}",
-  "app.toast.exists": "Ta aplikacja już jest w trackerze.",
   "app.toast.deleted": "Usunięto aplikację.",
   "app.signIn": "Tracker działa po pierwszej decyzji o ofercie albo po zalogowaniu.",
 
@@ -131,31 +129,6 @@ export const applicationsPl = {
   "app.field.statedSalary": "podane widełki",
   "app.field.appliedAt": "data aplikacji",
   "app.field.cvDocumentId": "CV",
-
-  // add dialog
-  "app.add.title": "Dodaj aplikację",
-  "app.add.url": "Link do oferty",
-  "app.add.urlHint": "Wklej link, a firmę, stanowisko i resztę danych uzupełnimy sami.",
-  "app.add.checking": "Sprawdzam indeks…",
-  "app.add.reading": "Czytam ofertę. To może potrwać kilkanaście sekund…",
-  "app.add.found": "Odczytano ofertę: {company} · {title}",
-  "app.add.partial": "Odczytaliśmy tylko część danych. Sprawdź je i uzupełnij resztę.",
-  "app.add.linkOnly":
-    "Tej strony nie odczytaliśmy: nie każdy serwis na to pozwala. Link zapiszemy, a firmę i stanowisko sprawdź albo wpisz sam.",
-  "app.add.unreadable":
-    "Nie udało się odczytać tej oferty. Link zapiszemy, a firmę i stanowisko sprawdź albo wpisz sam.",
-  "app.add.existing": "Już śledzisz tę aplikację: {company} · {title}",
-  "app.add.showExisting": "Pokaż",
-  "app.add.badUrl": "To nie wygląda na link do oferty (http lub https).",
-  "app.add.or": "albo wpisz ręcznie",
-  "app.add.company": "Firma",
-  "app.add.role": "Stanowisko",
-  "app.add.location": "Lokalizacja (opcjonalnie)",
-  "app.add.salary": "Wynagrodzenie (opcjonalnie)",
-  "app.add.status": "Status",
-  "app.add.appliedAt": "Data aplikacji",
-  "app.add.submit": "Dodaj",
-  "app.add.required": "Wklej link do oferty albo podaj firmę i stanowisko.",
 
   // /jobs/saved?v=applied
   "app.trackerLink": "Zobacz w trackerze aplikacji →",
@@ -334,7 +307,6 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.title": "Applications",
   "app.sub":
     "Every offer you work on, from adding it to the decision: its CV, stage, next step and notes.",
-  "app.add": "Add application",
   "app.export": "Export CSV",
   "app.import": "Import CSV",
   "app.import.done":
@@ -395,7 +367,6 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.err.save": "Change not saved. Try again.",
   "app.toast.status": "{company}: {status}",
   "app.toast.added": "Added: {company} · {title}",
-  "app.toast.exists": "This application is already in the tracker.",
   "app.toast.deleted": "Application deleted.",
   "app.signIn": "The tracker starts with your first decision on an offer, or after you sign in.",
 
@@ -453,30 +424,6 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.field.statedSalary": "stated salary",
   "app.field.appliedAt": "applied date",
   "app.field.cvDocumentId": "CV",
-
-  "app.add.title": "Add application",
-  "app.add.url": "Posting link",
-  "app.add.urlHint": "Paste the link and we fill in the company, the role and the rest.",
-  "app.add.checking": "Checking the index…",
-  "app.add.reading": "Reading the offer. This can take a dozen seconds or so…",
-  "app.add.found": "Offer read: {company} · {title}",
-  "app.add.partial": "We could read only part of it. Check it and fill in the rest.",
-  "app.add.linkOnly":
-    "We didn't read this page: not every site allows it. We'll keep the link. Check the company and role or type them in.",
-  "app.add.unreadable":
-    "We couldn't read this offer. We'll keep the link. Check the company and role or type them in.",
-  "app.add.existing": "You already track this application: {company} · {title}",
-  "app.add.showExisting": "Show",
-  "app.add.badUrl": "That doesn't look like a posting link (http or https).",
-  "app.add.or": "or enter it by hand",
-  "app.add.company": "Company",
-  "app.add.role": "Role",
-  "app.add.location": "Location (optional)",
-  "app.add.salary": "Salary (optional)",
-  "app.add.status": "Status",
-  "app.add.appliedAt": "Applied on",
-  "app.add.submit": "Add",
-  "app.add.required": "Paste a posting link, or give a company and a role.",
 
   "app.trackerLink": "See it in the application tracker →",
   "app.trackerHint": "Stages, next steps and notes live in the tracker.",

@@ -560,7 +560,7 @@ const cvListPl: FeatureSection = {
 const applicationsPl: FeatureSection = {
   id: "applications",
   title: "Aplikacje",
-  lead: "Tracker wszystkich wysłanych aplikacji: etap, następny krok, oś czasu i notatki. Aplikacje dodajesz ręcznie, ze strony oferty, z rozszerzenia, z CSV, z arkusza Google albo przez Claude Code.",
+  lead: "Tracker wszystkich wysłanych aplikacji: etap, następny krok, oś czasu i notatki. Aplikacja powstaje z oferty, gdy klikniesz przy niej „Aplikowano”. Dodają je też rozszerzenie, import CSV, arkusz Google i Claude Code.",
   where: { href: "/applications", label: "Otwórz aplikacje" },
   groups: [
     {
@@ -575,8 +575,8 @@ const applicationsPl: FeatureSection = {
           body: "Aktywne: Aplikowano, Rozmowa z rekruterem, Rozmowy, Zadanie, Rozmowa finałowa, Oferta. Zakończone: Przyjęta, Odrzucono, Wycofałem się, Brak odpowiedzi. Zmianę statusu cofniesz z powiadomienia.",
         },
         {
-          label: "Dodaj aplikację",
-          body: "Z linku do oferty albo ręcznie: firma, stanowisko, lokalizacja, wynagrodzenie, status i data. Duplikat otwiera istniejącą aplikację.",
+          label: "Od oferty do aplikacji",
+          body: "Najpierw dodajesz ofertę w grupie „Do wysłania”. Gdy wyślesz aplikację, kliknij „Aplikowano” na liście albo na stronie oferty: oferta przechodzi do aplikacji ze statusem „Aplikowano”.",
         },
         {
           label: "Importuj CSV, Eksportuj CSV",
@@ -1247,7 +1247,7 @@ const cvListEn: FeatureSection = {
 const applicationsEn: FeatureSection = {
   id: "applications",
   title: "Applications",
-  lead: "The tracker of every application you sent: stage, next step, timeline and notes. Add applications by hand, from an offer's page, from the extension, from a CSV, from your Google Sheet or through Claude Code.",
+  lead: "The tracker of every application you sent: stage, next step, timeline and notes. An application starts from an offer, when you click Applied on it. The extension, a CSV import, your Google Sheet and Claude Code add them too.",
   where: { href: "/applications", label: "Open applications" },
   groups: [
     {
@@ -1262,8 +1262,8 @@ const applicationsEn: FeatureSection = {
           body: "Active: Applied, Recruiter screen, Interviews, Take-home task, Final interview, Offer. Closed: Accepted, Rejected, Withdrew, No response. Undo a status change from its notification.",
         },
         {
-          label: "Add application",
-          body: "From an offer's link or by hand: company, role, location, salary, status and date. A duplicate opens the existing application.",
+          label: "From an offer to an application",
+          body: "First you add the offer in the To apply group. Once you've sent the application, click Applied in the list or on the offer's page: the offer moves to your applications with the status Applied.",
         },
         {
           label: "Import CSV, Export CSV",

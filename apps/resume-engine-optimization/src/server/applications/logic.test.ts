@@ -13,7 +13,6 @@ import {
   parseFormAnswers,
   planUpdate,
   rankByName,
-  refillForm,
   statedSalaryFrom,
   urlKey,
   type CurrentApplication,
@@ -372,29 +371,5 @@ describe("form answers", () => {
     expect(planUpdate({ ...base, statedSalary: "x" }, { statedSalary: null }, now).data).toEqual({
       statedSalary: null,
     })
-  })
-})
-
-describe("refillForm", () => {
-  const form = { url: "https://a.pl/1", company: "", title: "", location: "", salaryText: "" }
-
-  it("fills what is empty and leaves what was typed", () => {
-    const next = refillForm({ ...form, title: "Mój tytuł" }, null, {
-      company: "Acme",
-      title: "QA",
-      location: "Warszawa",
-    })
-    expect(next).toMatchObject({ company: "Acme", title: "Mój tytuł", location: "Warszawa" })
-  })
-
-  it("drops what the previous link filled, unless the person changed it", () => {
-    const previous = { company: "Acme", title: "QA", location: "Warszawa", salaryText: null }
-    const filled = { ...form, company: "Acme", title: "QA, poprawione", location: "Warszawa" }
-    expect(refillForm(filled, previous, null)).toMatchObject({
-      company: "",
-      title: "QA, poprawione",
-      location: "",
-    })
-    expect(refillForm(filled, previous, { company: "Bravo" })).toMatchObject({ company: "Bravo" })
   })
 })

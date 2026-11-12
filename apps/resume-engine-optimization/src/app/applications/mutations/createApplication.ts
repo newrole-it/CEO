@@ -4,7 +4,7 @@ import { createApplication } from "src/server/applications/service"
 import { requireMember } from "src/app/users/guard"
 import { CreateApplicationInput, rethrowApplication } from "../schema"
 
-/** "Dodaj aplikację": by offer URL (filled from the index) or company + role. Dedupes by offer and URL. */
+/** "Aplikowano" on an offer: the offer becomes an application. Dedupes by offer and URL. */
 export default resolver.pipe(
   resolver.zod(CreateApplicationInput),
   resolver.authorize(),

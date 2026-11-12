@@ -483,13 +483,6 @@ th[aria-sort="descending"] .apps-sort svg {
   display: grid;
   gap: 14px;
 }
-.app-add__found {
-  font-size: 13px;
-  font-weight: 500;
-}
-.app-add__found.is-found {
-  color: var(--success);
-}
 .app-add__pair {
   display: grid;
   gap: 14px;

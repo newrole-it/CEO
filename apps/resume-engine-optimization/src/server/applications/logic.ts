@@ -152,29 +152,6 @@ export function formatSalary(
   return `${range}${currency ? ` ${currency.toUpperCase()}` : ""}`
 }
 
-const OFFER_FIELDS = ["company", "title", "location", "salaryText"] as const
-
-type OfferFields = Partial<Record<(typeof OFFER_FIELDS)[number], string | null>>
-
-/**
- * The add form after a link was read. A field takes the new value unless the person typed over
- * what the previous link filled, so changing the link never keeps the old offer's company.
- */
-export function refillForm<T extends Record<(typeof OFFER_FIELDS)[number], string>>(
-  form: T,
-  previous: OfferFields | null,
-  next: OfferFields | null
-): T {
-  const out = { ...form }
-  for (const field of OFFER_FIELDS) {
-    const current = form[field]
-    if (!current || current === (previous?.[field] ?? "")) {
-      out[field] = (next?.[field] ?? "") as T[typeof field]
-    }
-  }
-  return out
-}
-
 /** The stored form. Anything that is not a list of answers reads as an empty form. */
 export function parseFormAnswers(value: unknown): FormAnswer[] {
   if (!Array.isArray(value)) return []
