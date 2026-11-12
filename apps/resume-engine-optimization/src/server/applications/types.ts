@@ -89,13 +89,3 @@ export type OfferFacts = {
  * what the link spells out is known. unreadable: fetching failed or found nothing.
  */
 export type OfferOutcome = "read" | "partial" | "link-only" | "unreadable"
-
-/** A posting link checked for the add form. */
-export type OfferUrlCheck = {
-  valid: boolean
-  /** The posting to store: an /apply page or an embed becomes the offer itself. */
-  url: string | null
-  outcome: OfferOutcome | null
-  job: OfferFacts | null
-  existing: { id: string; company: string; title: string; status: ApplicationStatus } | null
-}

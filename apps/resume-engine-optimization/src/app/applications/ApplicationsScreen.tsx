@@ -9,7 +9,6 @@ import {
   Download,
   ExternalLink,
   FileSpreadsheet,
-  Plus,
   Search,
   Upload,
 } from "lucide-react"
@@ -22,7 +21,6 @@ import { computeStats, matchesQuery, nextClosedAtStage } from "src/server/applic
 import { statusLabel, type ApplicationStatus } from "src/shared/applications"
 import updateApplication from "./mutations/updateApplication"
 import importApplicationsCsv from "./mutations/importApplicationsCsv"
-import { AddApplicationDialog } from "./AddApplicationDialog"
 import { ApplicationDrawer } from "./ApplicationDrawer"
 import { MailInbox } from "./MailInbox"
 import {
@@ -72,7 +70,6 @@ export function ApplicationsScreen({
   const [sort, setSort] = useState<Sort | null>(null)
   const [openId, setOpenId] = useState<string | null>(initialOpenId)
   const [revision, setRevision] = useState(0)
-  const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(false)
   const csvInput = useRef<HTMLInputElement>(null)
   const pushed = useRef(false)
@@ -269,9 +266,6 @@ export function ApplicationsScreen({
         </header>
         {signedIn ? (
           <div className="apps-head__actions">
-            <Button variant="primary" icon={<Plus />} onClick={() => setAdding(true)}>
-              {t("app.add")}
-            </Button>
             {rows.length ? (
               <ButtonLink
                 href="/applications/stats"
@@ -497,30 +491,6 @@ export function ApplicationsScreen({
           setRows((current) => current.filter((row) => row.id !== id))
           close()
           toast.show({ message: t("app.toast.deleted") })
-        }}
-      />
-
-      <AddApplicationDialog
-        open={adding}
-        onClose={() => setAdding(false)}
-        onShow={(id) => {
-          setAdding(false)
-          open(id)
-        }}
-        onAdded={(view, created) => {
-          setAdding(false)
-          const row = toRow(view)
-          if (created) {
-            setRows((current) => [row, ...current.filter((item) => item.id !== row.id)])
-            if (!inGroup(row.status, group)) pickGroup("all")
-            toast.show({
-              message: t("app.toast.added", { company: row.company, title: row.title }),
-            })
-          } else {
-            replace(row)
-            toast.show({ message: t("app.toast.exists") })
-            open(row.id)
-          }
         }}
       />
     </div>

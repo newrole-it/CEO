@@ -19,11 +19,11 @@ import { readPosting, type PostingResult } from "@newrole/offers/posting"
 import { decodeEntities, htmlToText } from "@newrole/offers/text"
 import { pageText } from "src/server/offers/text"
 import { formatSalary, urlKey } from "./logic"
-import { findApplicationByUrl, findJobById, findJobByUrl, type IndexedJob } from "./service"
-import type { ApplicationView, OfferFacts, OfferOutcome, OfferUrlCheck } from "./types"
+import { findJobById, findJobByUrl, type IndexedJob } from "./service"
+import type { OfferFacts, OfferOutcome } from "./types"
 
 /**
- * "Dodaj aplikację" and "Dodaj ofertę" by link: what we can say about a posting from its URL. The
+ * "Dodaj ofertę" by link: what we can say about a posting from its URL. The
  * offers already known first, then the ingest path (ATS API or JSON-LD, which also stores the
  * offer, src/server/offers/ingest.ts), then the text of the page it read. A job board's or
  * LinkedIn's offer is read once for the person, for its company, role and place. Other hosts under
@@ -237,56 +237,4 @@ export async function readOffer(rawUrl: string, deps: ReadOfferDeps = {}): Promi
   if (result.page) return readPage(url, result.page, deps)
   if (result.status === "link-only" && onBoard(url)) return readBoard(url, result, deps)
   return readLink(url, result)
-}
-
-async function trackedApplication(userId: number, url: string): Promise<ApplicationView | null> {
-  for (const candidate of postingUrlCandidates(url)) {
-    const found = await findApplicationByUrl(userId, candidate)
-    if (found) return found
-  }
-  return null
-}
-
-/**
- * A link for the add form: the application already tracked for it, then the offer behind it.
- * Without `read` only the index is asked, so this is cheap enough to run while typing.
- */
-export async function checkOfferUrl(
-  userId: number,
-  rawUrl: string,
-  opts: { read: boolean }
-): Promise<OfferUrlCheck> {
-  const raw = rawUrl.trim()
-  if (!urlKey(raw)) return { valid: false, url: null, outcome: null, job: null, existing: null }
-  const url = normalizePostingUrl(raw)
-  const existing = await trackedApplication(userId, raw)
-  if (existing) {
-    return {
-      valid: true,
-      url,
-      outcome: null,
-      job: null,
-      existing: {
-        id: existing.id,
-        company: existing.company,
-        title: existing.title,
-        status: existing.status,
-      },
-    }
-  }
-  if (opts.read) {
-    const reading = await readOffer(raw)
-    return {
-      valid: true,
-      url: reading.url,
-      outcome: reading.outcome,
-      job: reading.facts,
-      existing: null,
-    }
-  }
-  for (const candidate of postingUrlCandidates(raw)) {
-    const job = await findJobByUrl(candidate)
-    if (job) return { valid: true, url, outcome: "read", job: factsOf(job), existing: null }
-  }
-  return { valid: true, url, outcome: null, job: null, existing: null }
 }
