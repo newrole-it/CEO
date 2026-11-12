@@ -459,6 +459,196 @@ describe("lib/offer-notice.js", () => {
   })
 })
 
+describe('"Dopasuj CV" in the panel', () => {
+  const URL_HERE = "http://localhost:3000/"
+  const OFFER = { jobId: "j1", company: "Acme", title: "Java Developer", path: "/offers/j1" }
+  const SUMMARY = {
+    score: 72,
+    band: "good",
+    required: { met: 7, partial: 1, total: 9 },
+    gaps: ["Kubernetes w produkcji"],
+    critical: 0,
+    ats: { before: 40, after: 80 },
+  }
+  const CV = { id: "c1", path: "/cv/c1", matchPath: "/offers/j1/match", summary: SUMMARY }
+  const NONE = { applied: null, sameCompany: [] }
+
+  /** Answers offerFit with each of `fits` in turn, the last one from then on. */
+  function fitting(fits: unknown[], seen: Message[] = [], start: unknown = null): Handler {
+    let asked = 0
+    return (message) => {
+      seen.push(message)
+      if (message.type === "config") return CONNECTED
+      if (message.type === "offerStatus") return { ok: true, data: NONE }
+      if (message.type === "offerFit") {
+        const data = fits[Math.min(asked, fits.length - 1)]
+        asked += 1
+        return { ok: true, data }
+      }
+      if (message.type === "tailorOffer") return start
+      return { ok: true }
+    }
+  }
+
+  const button = () => shadow?.querySelector("button.btn") as HTMLButtonElement | null
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  beforeEach(() => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("pl-PL")
+  })
+
+  it("offers it on a page that reads as an offer", async () => {
+    setPage("Java Developer - Acme", posting("Acme", "Java Developer"))
+    await load(fitting([{ offer: null, cv: null, run: null }]))
+    expect(shadow?.textContent).toContain("Acme · Java Developer")
+    expect(button()?.textContent).toBe("Dopasuj CV")
+    expect(shadow?.textContent).not.toContain("aplikowano")
+  })
+
+  it("stays away from a page that is no offer and not the person's", async () => {
+    await load(fitting([{ offer: null, cv: null, run: null }]))
+    expect(panel()).toBeNull()
+  })
+
+  it("speaks the browser's language", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-GB")
+    setPage("Java Developer - Acme", posting("Acme", "Java Developer"))
+    await load(fitting([{ offer: null, cv: null, run: null }]))
+    expect(button()?.textContent).toBe("Tailor CV")
+  })
+
+  it("shows the match and the way to the editor for an offer that has its CV", async () => {
+    const seen: Message[] = []
+    await load(fitting([{ offer: OFFER, cv: CV, run: null }], seen))
+    const text = shadow?.textContent ?? ""
+    expect(text).toContain("CV gotowe")
+    expect(text).toContain("Dopasowanie: 72%")
+    expect(text).toContain("Dobre dopasowanie")
+    expect(text).toContain("Spełnione wymagania konieczne: 7 z 9")
+    expect(text).toContain("Spełnione częściowo: 1")
+    expect(text).toContain("Kubernetes w produkcji")
+    expect(text).toContain("Słowa kluczowe (ATS): 40% → 80%")
+    const links = [...(shadow?.querySelectorAll("a") ?? [])].map((link) => [
+      link.textContent,
+      (link as HTMLAnchorElement).href,
+    ])
+    expect(links).toEqual([
+      ["Otwórz w edytorze", "http://127.0.0.1:43123/cv/c1"],
+      ["Panel dopasowania", "http://127.0.0.1:43123/offers/j1/match"],
+    ])
+    expect(button()).toBeNull()
+    expect(seen.some((message) => message.type === "tailorOffer")).toBe(false)
+  })
+
+  it("starts the run on a click, shows its steps and then the result", async () => {
+    setPage("Java Developer - Acme", posting("Acme", "Java Developer"))
+    const seen: Message[] = []
+    const running = {
+      offer: OFFER,
+      cv: null,
+      run: {
+        state: "running",
+        steps: [
+          { step: "offer", state: "done" },
+          { step: "cv", state: "running" },
+        ],
+        error: null,
+      },
+    }
+    await load(
+      fitting(
+        [{ offer: null, cv: null, run: null }, running, { offer: OFFER, cv: CV, run: null }],
+        seen,
+        { ok: true, data: { kind: "started", jobId: "j1" } }
+      ),
+      { pollMs: 30 }
+    )
+    button()?.click()
+    await flush()
+    const start = seen.find((message) => message.type === "tailorOffer")
+    expect(start).toMatchObject({ url: URL_HERE, locale: "pl" })
+    const states = [...(shadow?.querySelectorAll("li.step") ?? [])].map(
+      (item) => (item as HTMLElement).dataset.state
+    )
+    expect(states).toEqual([
+      "done",
+      "running",
+      "waiting",
+      "waiting",
+      "waiting",
+      "waiting",
+      "waiting",
+    ])
+    expect(shadow?.textContent).toContain("Zapisana w ofertach")
+    expect(button()).toBeNull()
+
+    await wait(80)
+    await flush()
+    expect(shadow?.textContent).toContain("Dopasowanie: 72%")
+    expect(shadow?.querySelector("li.step")).toBeNull()
+    // the offer's id goes with every question after the start
+    const asks = seen.filter((message) => message.type === "offerFit")
+    expect(asks[asks.length - 1]).toMatchObject({ jobId: "j1" })
+  })
+
+  it("sends a page it cannot read to the app, to be checked there", async () => {
+    setPage("Java Developer - Acme", posting("Acme", "Java Developer"))
+    await load(
+      fitting([{ offer: null, cv: null, run: null }], [], {
+        ok: true,
+        data: { kind: "draft", path: "/offers?add=x", company: null, title: null },
+      })
+    )
+    button()?.click()
+    await flush()
+    expect(shadow?.textContent).toContain("Nie umiem sam odczytać tej strony.")
+    const link = shadow?.querySelector("a") as HTMLAnchorElement
+    expect(link.textContent).toBe("Sprawdź ofertę w newrole.it")
+    expect(link.href).toBe("http://127.0.0.1:43123/offers?add=x")
+    expect(button()?.textContent).toBe("Dopasuj CV")
+  })
+
+  it("says why a run failed and lets the person try again", async () => {
+    await load(
+      fitting([
+        { offer: OFFER, cv: null, run: { state: "failed", steps: [], error: "llm-unavailable" } },
+      ])
+    )
+    expect(shadow?.textContent).toContain("Model AI nie jest skonfigurowany")
+    expect(button()?.textContent).toBe("Spróbuj ponownie")
+  })
+
+  it("says when the app does not answer the click", async () => {
+    setPage("Java Developer - Acme", posting("Acme", "Java Developer"))
+    await load(
+      fitting([{ offer: null, cv: null, run: null }], [], {
+        ok: false,
+        status: 0,
+        error: "offline",
+      })
+    )
+    button()?.click()
+    await flush()
+    expect(shadow?.textContent).toContain("Nie mogę połączyć się z aplikacją")
+  })
+
+  it("keeps the applied notice above it", async () => {
+    await load((message) => {
+      if (message.type === "config") return CONNECTED
+      if (message.type === "offerStatus")
+        return { ok: true, data: { applied: APPLIED, sameCompany: [] } }
+      if (message.type === "offerFit")
+        return { ok: true, data: { offer: OFFER, cv: CV, run: null } }
+      return { ok: true }
+    })
+    const text = shadow?.textContent ?? ""
+    expect(text.indexOf("Już aplikowano na tę ofertę")).toBeGreaterThanOrEqual(0)
+    expect(text.indexOf("Dopasowanie: 72%")).toBeGreaterThan(
+      text.indexOf("Już aplikowano na tę ofertę")
+    )
+  })
+})
+
 describe("the built popup", () => {
   it("has every element popup.js looks for", () => {
     const extension = join(__dirname, "..")

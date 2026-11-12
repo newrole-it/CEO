@@ -1,51 +1,18 @@
 import { redirect } from "next/navigation"
-import { invoke } from "src/app/rpc"
-import { SiteFrame } from "src/app/components/site/SiteFrame"
-import { translator } from "src/app/i18n/copy"
-import { getLocale } from "src/app/i18n/server"
-import getCurrentUser from "src/app/users/queries/getCurrentUser"
-import { listOffers } from "src/server/offers/service"
-import { FirstSteps } from "src/app/components/onboarding/FirstSteps"
-import { visibleFirstSteps } from "src/app/components/onboarding/first-steps"
-import { AddOffer } from "./AddOffer"
-import { OfferList } from "./OfferList"
+import { toApplyPath } from "src/shared/applications"
 
 export const dynamic = "force-dynamic"
 
-export async function generateMetadata() {
-  const t = translator(await getLocale())
-  return { title: t("of.title") }
-}
-
+/**
+ * The list of the person's offers moved into Applications → "Do wysłania" (src/app/applications):
+ * one screen for an offer from the day it is added to the day it closes. Old links, and the ones
+ * an extension built before the move still makes (/offers?add=…), land there.
+ */
 export default async function OffersPage({
   searchParams,
 }: {
   searchParams: Promise<{ add?: string }>
 }) {
-  const [locale, user, query] = await Promise.all([
-    getLocale(),
-    invoke(getCurrentUser, null),
-    searchParams,
-  ])
-  const add = typeof query.add === "string" ? query.add.slice(0, 2000) : null
-  if (!user) {
-    const back = add ? `/offers?add=${encodeURIComponent(add)}` : "/offers"
-    redirect(`/login?returnTo=${encodeURIComponent(back)}`)
-  }
-  const t = translator(locale)
-  const offers = await listOffers(user.id)
-  const steps = await visibleFirstSteps(user.id, offers)
-  return (
-    <SiteFrame user={user} locale={locale} width="narrow">
-      <header className="page-head">
-        <h1 className="t-h1">{t("of.title")}</h1>
-        <p>{t("of.sub")}</p>
-      </header>
-      {steps ? <FirstSteps steps={steps} /> : null}
-      <div className="stack-lg">
-        <AddOffer autoFocus={offers.length === 0} initialUrl={add} />
-        <OfferList offers={offers} />
-      </div>
-    </SiteFrame>
-  )
+  const query = await searchParams
+  redirect(toApplyPath(typeof query.add === "string" ? query.add.slice(0, 2000) : null))
 }

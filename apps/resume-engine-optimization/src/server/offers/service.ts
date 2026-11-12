@@ -10,6 +10,8 @@ import { findJobByUrl } from "src/server/applications/service"
 import type { OfferFacts, OfferOutcome } from "src/server/applications/types"
 import { postingUrlCandidates } from "src/server/autofill/job-extract"
 import { matchScores, type MatchScore } from "src/server/cv/match-rounds"
+import type { HiringConfidence } from "src/shared/hiring-confidence"
+import { hiringConfidenceOf, hiringSelect } from "./hiring-confidence"
 import { ingestOfferPayload } from "./ingest"
 import { offerSourceSelect, readOfferText, toOfferSource } from "./text"
 
@@ -38,6 +40,8 @@ export type OfferRow = {
   /** The newest round of the match of the CV written for it (src/server/cv/match-rounds.ts) */
   match: MatchScore | null
   application: { id: string; status: string } | null
+  /** How much speaks for the company really hiring for it; null for a closed posting */
+  hiring: HiringConfidence | null
 }
 
 export type OfferDetail = OfferRow & {
@@ -261,12 +265,11 @@ export async function confirmOffer(
 }
 
 const rowSelect = {
-  id: true,
   title: true,
   locationText: true,
   originalUrl: true,
   canonicalUrl: true,
-  status: true,
+  ...hiringSelect,
   company: { select: { name: true } },
 } as const
 
@@ -306,8 +309,13 @@ export async function listOffers(userId: number): Promise<OfferRow[]> {
       documents.filter((row) => row.docType === "CV").map((row) => row.id)
     ),
   ])
+  const hiring = await Promise.all(
+    jobs.map((job) =>
+      hiringConfidenceOf(job, applications.find((row) => row.jobId === job.id)?.status ?? null)
+    )
+  )
   return jobs
-    .map((job) => {
+    .map((job, index) => {
       const cvId = documents.find((row) => row.jobId === job.id && row.docType === "CV")?.id ?? null
       const copy = kept.find((row) => row.jobId === job.id)
       const application = applications.find((row) => row.jobId === job.id)
@@ -325,6 +333,7 @@ export async function listOffers(userId: number): Promise<OfferRow[]> {
           documents.find((row) => row.jobId === job.id && row.docType === "LETTER")?.id ?? null,
         match: (cvId && scores.get(cvId)) || null,
         application: application ? { id: application.id, status: application.status } : null,
+        hiring: hiring[index],
       }
     })
     .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
@@ -360,7 +369,10 @@ export async function getOffer(userId: number, jobId: string): Promise<OfferDeta
   ])
   const firstDocument = documents.map((row) => row.createdAt).sort((a, b) => +a - +b)[0]
   const cvId = documents.find((row) => row.docType === "CV")?.id ?? null
-  const scores = await matchScores(userId, cvId ? [cvId] : [])
+  const [scores, hiring] = await Promise.all([
+    matchScores(userId, cvId ? [cvId] : []),
+    hiringConfidenceOf(job, application?.status ?? null),
+  ])
   return {
     jobId: job.id,
     title: job.title,
@@ -374,6 +386,7 @@ export async function getOffer(userId: number, jobId: string): Promise<OfferDeta
     letterId: documents.find((row) => row.docType === "LETTER")?.id ?? null,
     match: (cvId && scores.get(cvId)) || null,
     application: application ? { id: application.id, status: application.status } : null,
+    hiring,
     text: copy?.text ?? null,
     textOrigin: (copy?.textOrigin as OfferTextOrigin | null) ?? null,
     textReadAt: copy?.textReadAt ?? null,

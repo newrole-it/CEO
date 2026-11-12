@@ -1,10 +1,12 @@
 /**
- * "First steps" on /offers and /cv: the loop newrole.it is for, as pure rules. Facts from the
+ * "First steps" on /applications and /cv: the loop newrole.it is for, as pure rules. Facts from the
  * database go in, five steps come out, in the order a person does them: a profile, a general CV
  * (for a person without one: written from their description, then a template), an offer added by
  * its link, a CV tailored to it, an application. Text lives in src/app/i18n/copy-guide.ts under
  * fs.<id>.title, fs.<id>.body and fs.<id>.cta.
  */
+
+import { TO_APPLY_PATH } from "src/shared/applications"
 
 export type FirstStepId = "profile" | "cv" | "offer" | "tailor" | "apply"
 
@@ -47,7 +49,7 @@ export function firstSteps(facts: FirstStepFacts): FirstStep[] {
     {
       id: "offer",
       done: facts.offers.length > 0,
-      href: "/offers",
+      href: TO_APPLY_PATH,
     },
     {
       id: "tailor",
@@ -56,13 +58,17 @@ export function firstSteps(facts: FirstStepFacts): FirstStep[] {
         ? `/cv/${tailored.cvId}`
         : untailored
           ? `/offers/${untailored.jobId}/cv`
-          : "/offers",
+          : TO_APPLY_PATH,
     },
     {
       id: "apply",
       done: facts.applications > 0,
       href:
-        facts.applications > 0 ? "/applications" : toApply ? `/offers/${toApply.jobId}` : "/offers",
+        facts.applications > 0
+          ? "/applications"
+          : toApply
+            ? `/offers/${toApply.jobId}`
+            : TO_APPLY_PATH,
     },
   ]
 }

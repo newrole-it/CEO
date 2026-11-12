@@ -1,4 +1,5 @@
 /** Popup: connection state, actions for the current tab, and the switches. */
+import { errorKey, localeOf, translator } from "./copy.js"
 import { isGmail } from "./gmail.js"
 import { linkedInJobId, statusLine } from "./offer.js"
 
@@ -34,6 +35,12 @@ const SIGNALS = {
 }
 
 const LINKEDIN_PROFILE = /^https:\/\/www\.linkedin\.com\/in\/[^/?#]+\/?(?:[?#].*)?$/
+
+/** How often the popup asks for the steps of a run of "Dopasuj CV" while it is open */
+const FIT_POLL_MS = 2000
+
+const locale = localeOf(navigator.language)
+const t = translator(locale)
 
 const $ = (id) => document.getElementById(id)
 const ask = (message) => chrome.runtime.sendMessage(message)
@@ -197,6 +204,77 @@ async function addOffer(button, base) {
   await chrome.tabs.create({ url: `${base}${data.path}` })
 }
 
+/** The offer's id once "Dopasuj CV" added it: its address alone may not find it again. */
+let fitJobId = null
+let fitWasRunning = false
+
+/**
+ * What the app knows about the offer on this tab as the person's own: the step of a run that is
+ * going, or the match of the CV written for it with the way to the editor. "Dopasuj CV" stays
+ * only while there is no CV and no run.
+ */
+async function showFit(tab, base) {
+  const result = await ask({ type: "offerFit", url: tab.url, jobId: fitJobId })
+  const fit = result?.ok ? result.data : null
+  if (!fit) return
+  const running = fit.run?.state === "running"
+  const failed = fit.run?.state === "failed"
+  const score = fit.cv?.summary?.score
+  let line = ""
+  if (running) {
+    const step = fit.run.steps.find((entry) => entry.state === "running")
+    line = step ? t(`fit.step.${step.step}`) : ""
+  } else if (fit.cv) {
+    line = score == null ? t("fit.stage.cv") : t("fit.score", { n: score })
+  } else if (fit.offer) {
+    line = t("fit.stage.saved")
+  }
+  $("fitLine").textContent = line
+  show("fitLine", Boolean(line))
+  if (fit.cv) {
+    $("fitEditor").textContent = t("fit.openEditor")
+    $("fitEditor").href = `${base}${fit.cv.path}`
+    $("fitMatch").textContent = t("fit.openMatch")
+    $("fitMatch").href = `${base}${fit.cv.matchPath}`
+  }
+  show("fitLinks", Boolean(fit.cv) && !running)
+  $("tailor").textContent = t(failed ? "fit.retry" : "popup.tailor")
+  show("tailor", !fit.cv && !running)
+  if (running) {
+    say(t("fit.running"))
+    fitWasRunning = true
+    setTimeout(() => void showFit(tab, base), FIT_POLL_MS)
+  } else if (fitWasRunning) {
+    fitWasRunning = false
+    if (failed) say(t(errorKey(fit.run.error)), "err")
+    else say("")
+  }
+}
+
+/** "Dopasuj CV": the app adds the offer on this tab and tailors a CV for it; showFit follows it. */
+async function tailorOffer(button, tab, base) {
+  if (!tab?.url || !/^https?:/.test(tab.url)) return say(ERRORS.restricted, "err")
+  button.disabled = true
+  say(t("fit.starting"))
+  const result = await ask({ type: "tailorOffer", url: tab.url, locale })
+  button.disabled = false
+  const data = result?.ok ? result.data : null
+  if (!data) {
+    return say(t(errorKey(result?.status === 401 ? "not-connected" : result?.error)), "err")
+  }
+  if (data.kind === "invalid" || data.kind === "limited") return say(t(`fit.${data.kind}`), "err")
+  if (data.kind === "draft") {
+    say(t("fit.draft"), "err")
+    await chrome.tabs.create({ url: `${base}${data.path}` })
+    return
+  }
+  fitJobId = data.jobId
+  fitWasRunning = true
+  // The panel on the page follows the same run.
+  void chrome.tabs.sendMessage(tab.id, { type: "nr:fit", jobId: data.jobId }).catch(() => null)
+  await showFit(tab, base)
+}
+
 async function act(type, button, working) {
   const tab = await activeTab()
   if (!tab?.id) return say(ERRORS.restricted, "err")
@@ -259,7 +337,11 @@ async function init() {
   const onMail = isGmail(tab?.url)
   show("fill", !onProfile && !onMail)
   show("save", !onProfile && !onMail)
-  show("addOffer", !onProfile && !onMail && /^https:/.test(tab?.url || ""))
+  const onWeb = !onProfile && !onMail && /^https:/.test(tab?.url || "")
+  show("addOffer", onWeb)
+  $("tailor").textContent = t("popup.tailor")
+  show("tailor", onWeb)
+  $("tailor").addEventListener("click", () => void tailorOffer($("tailor"), tab, base))
   show("audit", onProfile)
   show("readMail", onMail)
   $("audit").addEventListener("click", () => void auditProfile($("audit")))
@@ -289,7 +371,7 @@ async function init() {
       : !(await chrome.permissions.remove({ origins: [ALL_SITES] }))
   })
 
-  await Promise.all([showApplied(tab), showScore()])
+  await Promise.all([showApplied(tab), showScore(), onWeb ? showFit(tab, base) : null])
 }
 
 export function startPopup() {

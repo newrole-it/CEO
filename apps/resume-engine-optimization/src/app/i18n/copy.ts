@@ -8,6 +8,7 @@ import { gmailEn, gmailPl } from "./copy-gmail"
 import { linkedinEn, linkedinPl } from "./copy-linkedin"
 import { matchEn, matchPl } from "./copy-match"
 import { guideEn, guidePl } from "./copy-guide"
+import { hiringEn, hiringPl } from "./copy-hiring"
 import { offerAddEn, offerAddPl } from "./copy-offer-add"
 import { offersEn, offersPl } from "./copy-offers"
 import { setupEn, setupPl } from "./copy-setup"
@@ -650,6 +651,7 @@ const pl = {
   ...usagePl,
   ...offerAddPl,
   ...offersPl,
+  ...hiringPl,
   ...guidePl,
   ...matchPl,
   ...linkedinPl,
@@ -674,6 +676,7 @@ const en: Dict = {
   ...usageEn,
   ...offerAddEn,
   ...offersEn,
+  ...hiringEn,
   ...guideEn,
   ...matchEn,
   ...linkedinEn,

@@ -9,7 +9,7 @@ import { ButtonLink } from "@newrole/ui/Button"
 import { cx } from "@newrole/ui/cx"
 import { EmptyState, Segmented } from "@newrole/ui/primitives"
 import { computeInsights, type InsightsInput } from "src/server/applications/insights"
-import { CHANNELS, statusLabel, type Channel } from "src/shared/applications"
+import { CHANNELS, statusLabel, type Channel, TO_APPLY_PATH } from "src/shared/applications"
 import { StatusPill } from "../StatusSelect"
 import { dayLabel, longDate, sourceKey } from "../rows"
 import { DropOffBars, Funnel, Meter, StackedColumns, type Series } from "./charts"
@@ -151,7 +151,7 @@ export function StatsScreen({
           <ButtonLink href="/applications" variant="primary">
             {t("stx.empty.tracker")}
           </ButtonLink>
-          <ButtonLink href="/offers" variant="outline">
+          <ButtonLink href={TO_APPLY_PATH} variant="outline">
             {t("app.empty.offers")}
           </ButtonLink>
         </EmptyState>

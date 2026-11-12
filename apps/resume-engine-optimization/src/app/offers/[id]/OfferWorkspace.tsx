@@ -19,13 +19,15 @@ import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Modal, ModalHead, useToast } from "@newrole/ui/interactive"
 import { Badge, Banner } from "@newrole/ui/primitives"
 import { relativeTime } from "@newrole/ui/time"
-import { statusLabel } from "src/shared/applications"
+import { statusLabel, TO_APPLY_PATH } from "src/shared/applications"
 import type { OfferDetail } from "src/server/offers/service"
 import createApplication from "src/app/applications/mutations/createApplication"
+import deleteCvDocument from "src/app/cv/mutations/deleteCvDocument"
 import generateCoverLetter from "src/app/cv/mutations/generateCoverLetter"
 import refreshOfferText from "../mutations/refreshOfferText"
 import removeOffer from "../mutations/removeOffer"
 import updateOffer from "../mutations/updateOffer"
+import { HiringConfidenceCard } from "../HiringConfidenceCard"
 
 const WORKPLACE = {
   REMOTE: "oa.workplace.remote",
@@ -46,9 +48,11 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
   const [note, setNote] = useState(offer.note ?? "")
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<
-    null | "text" | "refresh" | "note" | "app" | "remove" | "letter"
+    null | "text" | "refresh" | "note" | "app" | "remove" | "letter" | "doc"
   >(null)
   const [confirm, setConfirm] = useState(false)
+  /** The document written for the offer the person is asked about deleting */
+  const [doomed, setDoomed] = useState<null | "cv" | "letter">(null)
 
   async function run(kind: NonNullable<typeof busy>, work: () => Promise<void>) {
     setBusy(kind)
@@ -114,11 +118,21 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
       router.push(`/cv/${letter.id}`)
     })
 
+  const removeDoc = () =>
+    run("doc", async () => {
+      const documentId = doomed === "cv" ? offer.cvId : offer.letterId
+      if (!doomed || !documentId) return
+      await invoke(deleteCvDocument, { id: documentId })
+      toast.show({ message: t(doomed === "cv" ? "ow.docs.removedCv" : "ow.docs.removedLetter") })
+      setDoomed(null)
+      router.refresh()
+    })
+
   const remove = () =>
     run("remove", async () => {
       await invoke(removeOffer, { jobId: offer.jobId })
       toast.show({ message: t("ow.removed") })
-      router.push("/offers")
+      router.push(TO_APPLY_PATH)
     })
 
   const workplace =
@@ -267,6 +281,7 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
         </div>
 
         <aside className="offer-ws__side">
+          {offer.hiring ? <HiringConfidenceCard hiring={offer.hiring} /> : null}
           <section className="card card--pad offer-section" aria-labelledby={`${id}-docs`}>
             <h2 id={`${id}-docs`} className="t-h3">
               {t("ow.docs.title")}
@@ -284,6 +299,15 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
                     >
                       {t("ow.docs.openCv")}
                     </ButtonLink>
+                    <Button
+                      size="sm"
+                      variant="danger-ghost"
+                      iconOnly
+                      icon={<Trash2 />}
+                      aria-label={t("ow.docs.removeCv")}
+                      title={t("ow.docs.removeCv")}
+                      onClick={() => setDoomed("cv")}
+                    />
                   </div>
                 ) : null}
                 {offer.letterId ? (
@@ -297,6 +321,15 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
                     >
                       {t("ow.docs.openLetter")}
                     </ButtonLink>
+                    <Button
+                      size="sm"
+                      variant="danger-ghost"
+                      iconOnly
+                      icon={<Trash2 />}
+                      aria-label={t("ow.docs.removeLetter")}
+                      title={t("ow.docs.removeLetter")}
+                      onClick={() => setDoomed("letter")}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -407,6 +440,27 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
           </Button>
           <Button variant="danger" loading={busy === "remove"} onClick={() => void remove()}>
             {t("ow.remove.confirm")}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={Boolean(doomed)} onClose={() => setDoomed(null)} labelledBy={`${id}-doc`}>
+        <ModalHead
+          id={`${id}-doc`}
+          title={t(doomed === "letter" ? "ow.docs.removeLetter.title" : "ow.docs.removeCv.title")}
+          onClose={() => setDoomed(null)}
+        />
+        <div className="modal__body">
+          <p className="muted">
+            {t(doomed === "letter" ? "ow.docs.removeLetter.body" : "ow.docs.removeCv.body")}
+          </p>
+        </div>
+        <div className="modal__foot">
+          <Button variant="ghost" onClick={() => setDoomed(null)}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="danger" loading={busy === "doc"} onClick={() => void removeDoc()}>
+            {t("ow.docs.remove.confirm")}
           </Button>
         </div>
       </Modal>

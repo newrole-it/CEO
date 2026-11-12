@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { invoke } from "src/app/rpc"
 import {
   ChartNoAxesColumn,
@@ -33,6 +34,10 @@ import {
 } from "./ApplicationTable"
 import { GROUPS, inGroup, sourceKey, toRow, type AppGroup, type AppRow } from "./rows"
 import type { MatchScore } from "src/server/cv/match-rounds"
+import type { OfferRow } from "src/server/offers/service"
+import { AddOffer } from "src/app/offers/AddOffer"
+import { OfferList } from "src/app/offers/OfferList"
+import createApplication from "./mutations/createApplication"
 
 export function ApplicationsScreen({
   signedIn,
@@ -41,9 +46,15 @@ export function ApplicationsScreen({
   initialOpenId,
   sheetUrl,
   matches,
+  offers,
+  addUrl,
 }: {
   signedIn: boolean
   initialRows: AppRow[]
+  /** The offers the person keeps and has not applied to yet, newest first: "Do wysłania" */
+  offers: OfferRow[]
+  /** A link for "Dodaj ofertę" to read at once (?add=, from the extension) */
+  addUrl: string | null
   /** The newest match score of the CV written for each offer, by the offer's id */
   matches: Record<string, MatchScore>
   initialGroup: AppGroup
@@ -53,7 +64,9 @@ export function ApplicationsScreen({
 }) {
   const { t, locale } = useCopy()
   const toast = useToast()
+  const router = useRouter()
   const [rows, setRows] = useState(initialRows)
+  const [applying, setApplying] = useState<string | null>(null)
   const [group, setGroup] = useState<AppGroup>(initialGroup)
   const [q, setQ] = useState("")
   const [sort, setSort] = useState<Sort | null>(null)
@@ -163,6 +176,35 @@ export function ApplicationsScreen({
     [locale, replace, t, toast]
   )
 
+  /** "Aplikowano" on an offer in "Do wysłania": it becomes an application and moves on. */
+  async function markApplied(offer: OfferRow) {
+    setApplying(offer.jobId)
+    try {
+      const result = await invoke(createApplication, {
+        jobId: offer.jobId,
+        url: offer.url,
+        company: offer.company,
+        title: offer.title,
+        location: offer.location,
+        status: "APPLIED",
+      })
+      const row = toRow(result.application)
+      setRows((current) => [row, ...current.filter((item) => item.id !== row.id)])
+      toast.show({ message: t("app.toast.added", { company: row.company, title: row.title }) })
+      // the server's list of offers to apply to no longer has this one
+      router.refresh()
+    } catch {
+      toast.show({ message: t("app.err.save"), tone: "danger" })
+    } finally {
+      setApplying(null)
+    }
+  }
+
+  const todo = useMemo(
+    () => offers.filter((offer) => !rows.some((row) => row.jobId === offer.jobId)),
+    [offers, rows]
+  )
+
   const stats = useMemo(
     () =>
       computeStats(
@@ -179,10 +221,15 @@ export function ApplicationsScreen({
   const counts = useMemo(
     () =>
       Object.fromEntries(
-        GROUPS.map((value) => [value, rows.filter((row) => inGroup(row.status, value)).length])
+        GROUPS.map((value) => [
+          value,
+          value === "todo" ? todo.length : rows.filter((row) => inGroup(row.status, value)).length,
+        ])
       ),
-    [rows]
+    [rows, todo]
   ) as Record<AppGroup, number>
+
+  const visibleOffers = useMemo(() => todo.filter((offer) => matchesQuery(offer, q)), [todo, q])
 
   const visible = useMemo(() => {
     const filtered = rows.filter((row) => inGroup(row.status, group) && matchesQuery(row, q))
@@ -206,6 +253,7 @@ export function ApplicationsScreen({
   const nf = numberFormat(locale)
   const openRow = rows.find((row) => row.id === openId) ?? null
   const groupKey: Record<AppGroup, CopyKey> = {
+    todo: "app.filter.todo",
     active: "app.filter.active",
     all: "app.filter.all",
     closed: "app.filter.closed",
@@ -290,45 +338,44 @@ export function ApplicationsScreen({
         />
       ) : null}
 
-      {rows.length === 0 ? (
+      {!signedIn ? (
         <EmptyState
           icon={<ClipboardList />}
           title={t("app.empty.title")}
-          body={signedIn ? t("app.empty.body") : `${t("app.empty.body")} ${t("app.signIn")}`}
+          body={`${t("app.empty.body")} ${t("app.signIn")}`}
         >
-          <ButtonLink href="/offers" variant="primary">
-            {t("app.empty.offers")}
-          </ButtonLink>
           <ButtonLink href="/settings#st-extension" variant="outline">
             {t("app.empty.extension")}
           </ButtonLink>
         </EmptyState>
       ) : (
         <>
-          <dl className="apps-stats" aria-label={t("app.stats.label")}>
-            <div className="card">
-              <dt>{t("app.stats.active")}</dt>
-              <dd>{nf.format(stats.active)}</dd>
-            </div>
-            <div className="card">
-              <dt>{t("app.stats.interviewing")}</dt>
-              <dd>{nf.format(stats.interviewing)}</dd>
-            </div>
-            <div className="card">
-              <dt>{t("app.stats.offers")}</dt>
-              <dd>{nf.format(stats.offers)}</dd>
-            </div>
-            <div className="card">
-              <dt>{t("app.stats.rejected")}</dt>
-              <dd>{nf.format(stats.rejected)}</dd>
-            </div>
-            <div className="card">
-              <dt>{t("app.stats.response")}</dt>
-              <dd>
-                {stats.responseRate == null ? "—" : `${Math.round(stats.responseRate * 100)}%`}
-              </dd>
-            </div>
-          </dl>
+          {rows.length ? (
+            <dl className="apps-stats" aria-label={t("app.stats.label")}>
+              <div className="card">
+                <dt>{t("app.stats.active")}</dt>
+                <dd>{nf.format(stats.active)}</dd>
+              </div>
+              <div className="card">
+                <dt>{t("app.stats.interviewing")}</dt>
+                <dd>{nf.format(stats.interviewing)}</dd>
+              </div>
+              <div className="card">
+                <dt>{t("app.stats.offers")}</dt>
+                <dd>{nf.format(stats.offers)}</dd>
+              </div>
+              <div className="card">
+                <dt>{t("app.stats.rejected")}</dt>
+                <dd>{nf.format(stats.rejected)}</dd>
+              </div>
+              <div className="card">
+                <dt>{t("app.stats.response")}</dt>
+                <dd>
+                  {stats.responseRate == null ? "—" : `${Math.round(stats.responseRate * 100)}%`}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
 
           <div className="stack">
             <div className="apps-toolbar">
@@ -374,13 +421,41 @@ export function ApplicationsScreen({
               </div>
             </div>
 
-            {stats.overdue ? (
+            {group === "todo" ? (
+              <div id="apps-list" role="tabpanel" aria-label={t("app.filter.todo")}>
+                <div className="stack-lg">
+                  <p className="muted">{t("app.todo.sub")}</p>
+                  <AddOffer
+                    autoFocus={todo.length === 0 && rows.length === 0}
+                    initialUrl={addUrl}
+                  />
+                  {todo.length && !visibleOffers.length ? (
+                    <div className="card card--quiet card--pad stack-sm">
+                      <p className="muted">{t("app.empty.search", { q: q.trim() })}</p>
+                      <div>
+                        <Button size="sm" variant="ghost" onClick={() => setQ("")}>
+                          {t("app.clearSearch")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <OfferList
+                      offers={visibleOffers}
+                      applying={applying}
+                      onApplied={(offer) => void markApplied(offer)}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {group === "todo" ? null : stats.overdue ? (
               <p className="t-sm" style={{ color: "var(--danger)", fontWeight: 600 }}>
                 {t("app.stats.overdue", { n: stats.overdue })}
               </p>
             ) : null}
 
-            {visible.length ? (
+            {group === "todo" ? null : visible.length ? (
               <div role="tabpanel" aria-label={t(groupKey[group])}>
                 <ApplicationTable
                   listId="apps-list"

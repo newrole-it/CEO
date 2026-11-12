@@ -8,6 +8,7 @@ import {
   withToken,
 } from "src/server/autofill/http"
 import { addOfferByLink } from "src/server/offers/service"
+import { toApplyPath } from "src/shared/applications"
 
 export const dynamic = "force-dynamic"
 
@@ -18,7 +19,8 @@ const Body = z.object({ url: z.string().trim().min(4).max(2000) })
 /**
  * "Dodaj tę ofertę do newrole.it" in the extension's popup: the offer on the open tab, read whole and
  * kept for the person, as Add offer under Offers does (src/server/offers/service.ts). A page that
- * needs checking comes back as a draft; the extension then opens Offers with the link filled in.
+ * needs checking comes back as a draft; the extension then opens Applications → "Do wysłania"
+ * with the link filled in.
  */
 export const POST = withToken(async (request, { userId }) => {
   const { url } = await readJson(request, Body)
@@ -49,7 +51,7 @@ export const POST = withToken(async (request, { userId }) => {
       kind: "draft",
       company: check.facts?.company ?? null,
       title: check.facts?.title ?? null,
-      path: `/offers?add=${encodeURIComponent(check.url)}`,
+      path: toApplyPath(check.url),
     })
   }
   return jsonResponse(request, { kind: check.kind })

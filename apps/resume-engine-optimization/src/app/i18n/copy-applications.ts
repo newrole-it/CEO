@@ -8,7 +8,8 @@ export const applicationsPl = {
 
   // tracker page
   "app.title": "Aplikacje",
-  "app.sub": "Każda wysłana aplikacja w jednym miejscu: etap, następny krok i notatki.",
+  "app.sub":
+    "Każda oferta, nad którą pracujesz, od dodania do decyzji: CV pod nią, etap, następny krok i notatki.",
   "app.add": "Dodaj aplikację",
   "app.export": "Eksportuj CSV",
   "app.import": "Importuj CSV",
@@ -24,6 +25,9 @@ export const applicationsPl = {
   "app.stats.response": "Odsetek odpowiedzi",
   "app.stats.overdue": "Kroki po terminie: {n}",
   "app.filter.label": "Filtr aplikacji",
+  "app.filter.todo": "Do wysłania",
+  "app.todo.sub":
+    "Oferty czekające na Twoją aplikację. Dodaj ofertę z linku, dopasuj do niej CV, a po wysłaniu kliknij „Aplikowano”.",
   "app.filter.active": "Aktywne",
   "app.filter.all": "Wszystkie",
   "app.filter.closed": "Zakończone",
@@ -328,7 +332,8 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "nav.applications": "Applications",
 
   "app.title": "Applications",
-  "app.sub": "Every application you sent in one place: stage, next step and notes.",
+  "app.sub":
+    "Every offer you work on, from adding it to the decision: its CV, stage, next step and notes.",
   "app.add": "Add application",
   "app.export": "Export CSV",
   "app.import": "Import CSV",
@@ -344,6 +349,9 @@ export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
   "app.stats.response": "Response rate",
   "app.stats.overdue": "Overdue steps: {n}",
   "app.filter.label": "Filter applications",
+  "app.filter.todo": "To apply",
+  "app.todo.sub":
+    "Offers you haven't applied to yet. Add an offer by its link, tailor a CV to it, and click Applied once you've sent it.",
   "app.filter.active": "Active",
   "app.filter.all": "All",
   "app.filter.closed": "Closed",

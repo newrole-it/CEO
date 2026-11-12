@@ -30,7 +30,7 @@ import { Dropzone, isPdf, Modal, ModalHead, useMenu, useToast } from "@newrole/u
 import { Badge, EmptyState } from "@newrole/ui/primitives"
 import { useCopy } from "src/app/i18n/Locale"
 import { relativeTime } from "@newrole/ui/time"
-import { statusLabel, statusTone } from "src/shared/applications"
+import { statusLabel, statusTone, TO_APPLY_PATH } from "src/shared/applications"
 import { importCvHtml } from "@newrole/cv-core/import-html"
 import { downloadPdf } from "@newrole/cv-editor/download"
 import { AddLetter } from "@newrole/cv-editor/AddLetter"
@@ -486,7 +486,7 @@ export function CvList({
               title={t("cvt.offers.empty.title")}
               body={t("cvt.offers.empty.body")}
             >
-              <ButtonLink href="/offers" variant="primary" icon={<BriefcaseBusiness />}>
+              <ButtonLink href={TO_APPLY_PATH} variant="primary" icon={<BriefcaseBusiness />}>
                 {t("cvt.offers.add")}
               </ButtonLink>
             </EmptyState>

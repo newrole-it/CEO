@@ -45,12 +45,12 @@ export function FirstSteps({ steps }: { steps: FirstStep[] }) {
   }
 
   /**
-   * On /offers the form is right below, and on /cv the "Nowe CV" button: focus it instead of
+   * On /applications ("Do wysłania") the form is right below, and on /cv the "Nowe CV" button: focus it instead of
    * reloading the page.
    */
   function onCta(event: React.MouseEvent, step: FirstStep) {
     const target =
-      step.id === "offer" && pathname === "/offers"
+      step.id === "offer" && pathname === "/applications"
         ? `#${ADD_OFFER_ANCHOR} input`
         : step.id === "cv" && pathname === "/cv"
           ? `#${NEW_CV_ANCHOR}`

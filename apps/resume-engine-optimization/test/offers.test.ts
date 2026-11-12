@@ -214,6 +214,50 @@ test("a LinkedIn link is kept as its link, with the text the person pastes", asy
   assert.deepEqual(await addOfferByLink(user.id, "no link here"), { kind: "invalid" })
 })
 
+test("an offer shows how much speaks for the company really hiring", async () => {
+  const user = await makeUser()
+  const role = `Hiring ${stamp}`
+  const stored = await storeOffer(listed(40))
+  await db.job.update({
+    where: { id: stored.id },
+    // a title of its own: the other tests store the same role at the same company
+    data: { publishedAt: new Date(Date.now() - 200 * 86_400_000), normalizedTitle: role },
+  })
+  const old = await getOffer(user.id, stored.id)
+  // 60 to start, −30 for 200 days, +10 for the company's own ATS
+  assert.equal(old?.hiring?.score, 40)
+  assert.deepEqual(
+    old?.hiring?.signals.map((signal) => signal.code),
+    ["age", "own-site"]
+  )
+
+  // the same title open twice more at the company, and an application nobody answered
+  const others = [await storeOffer(listed(41)), await storeOffer(listed(42))]
+  await db.job.updateMany({
+    where: { id: { in: others.map((job) => job.id) } },
+    data: { normalizedTitle: role },
+  })
+  await db.application.create({
+    data: {
+      userId: user.id,
+      jobId: stored.id,
+      company: `Acme ${stamp}`,
+      title: "Senior Backend Developer",
+      status: "GHOSTED",
+    },
+  })
+  const [row] = await listOffers(user.id)
+  assert.equal(row?.hiring?.score, 20)
+  assert.equal(row?.hiring?.level, "low")
+
+  await db.job.updateMany({
+    where: { id: { in: others.map((job) => job.id) } },
+    data: { status: "CLOSED" },
+  })
+  await db.job.update({ where: { id: stored.id }, data: { status: "CLOSED" } })
+  assert.equal((await getOffer(user.id, stored.id))?.hiring, null)
+})
+
 test("erasing the account deletes the person's copies", async () => {
   const user = await makeUser()
   const stored = await storeOffer(listed(3))
