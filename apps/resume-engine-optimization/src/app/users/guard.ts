@@ -1,4 +1,4 @@
-import { AuthenticationError } from "blitz"
+import { AuthenticationError } from "src/shared/errors"
 import { createGuestUser } from "src/server/auth/accounts"
 
 type Session = { userId?: number | null; role?: string | null }

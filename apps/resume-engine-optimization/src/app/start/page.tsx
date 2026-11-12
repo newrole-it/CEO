@@ -1,7 +1,7 @@
 import { linkedInCredentials } from "src/server/auth/linkedin"
 import { linkedInBrowserAvailable } from "@newrole/profile/linkedin-browser"
 import { isLocalInstall } from "src/server/local-install"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"

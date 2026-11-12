@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
-import type { PromiseReturnType } from "blitz"
+import { invoke, ResolverResult } from "src/app/rpc"
 import { ChevronRight, ExternalLink, RefreshCw, Unplug } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
@@ -15,9 +14,9 @@ import saveSheetSettings from "src/app/applications/mutations/saveSheetSettings"
 import syncSheetNow from "src/app/applications/mutations/syncSheetNow"
 import { longDate } from "src/app/applications/rows"
 
-type Settings = PromiseReturnType<typeof getSheetSettings>
+type Settings = ResolverResult<typeof getSheetSettings>
 type Status = Settings["status"]
-type SyncReply = PromiseReturnType<typeof saveSheetSettings>
+type SyncReply = ResolverResult<typeof saveSheetSettings>
 
 const WEBHOOK =
   /^https:\/\/script\.google\.com\/(?:a\/macros\/[a-z0-9.-]+\/|macros\/)s\/[A-Za-z0-9_-]+\/exec$/

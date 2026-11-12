@@ -16,4 +16,4 @@ export function Editor(props) {
 
 Load the CSS after `@newrole/ui/styles.css`: `@newrole/cv-editor/cv.css` and `@newrole/cv-editor/tailor.css`. Strings are in `copy-cv.ts` and `copy-tailor.ts` (Polish and English); the language comes from `@newrole/ui/locale`'s `LocaleProvider`. Uses `useToast`, so render it under `ToastProvider` from `@newrole/ui/interactive`.
 
-newrole.it's backend: `apps/resume-engine-optimization/src/app/cv/backend.ts` (Blitz mutations).
+newrole.it's backend: `apps/resume-engine-optimization/src/app/cv/backend.ts` (Server Actions).

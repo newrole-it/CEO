@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "@newrole/ui/Button"
 import { Modal, ModalHead } from "@newrole/ui/interactive"

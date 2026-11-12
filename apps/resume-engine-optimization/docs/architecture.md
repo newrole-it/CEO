@@ -13,7 +13,7 @@ The rule that holds it together: **code lives once, in a package of the app that
 ```
 newrole.it/                         npm workspaces; the root holds .env, go.mjs and check-boundaries.mjs
 └── apps/
-    ├── resume-engine-optimization/ @newrole/app  newrole.it: src/ (Next, Blitz), db/ (Prisma), mcp/, docs/
+    ├── resume-engine-optimization/ @newrole/app  newrole.it: src/ (Next), db/ (Prisma), mcp/, docs/
     │   └── packages/
     │       ├── cv-core/     @newrole/cv-core     the CV and letter document model and its rules
     │       ├── cv-engine/   @newrole/cv-engine   writing with a model, the CV audit, printing HTML and PDF
@@ -68,7 +68,7 @@ newrole.it depends on nothing in `apps/jobs-lab`: `npm run check:boundaries` fai
    | `configureAts({ http, takeDetailSlot, detailFetchesRemaining })` (`@newrole/ats/host`) | `src/server/fetch/ats.ts`: the bot User-Agent, the per-host pace and the daily cap in Postgres | `src/server/http.ts`: its own User-Agent, pace and cap in memory |
    | `configureJobIndex({ db, llm, heartbeat })` (`@newrole/job-index/host`)                | not used                                                                                       | `scripts/bind.ts`: a Prisma client on the lab's own database     |
    | `LlmCacheStore` (`@newrole/llm/common`)                                                | Postgres `LlmCache`: `src/server/llm/cache.ts`                                                 | —                                                                |
-   | `CvEditorBackend` (`@newrole/cv-editor/backend`)                                       | `src/app/cv/backend.ts`: Blitz mutations                                                       | —                                                                |
+   | `CvEditorBackend` (`@newrole/cv-editor/backend`)                                       | `src/app/cv/backend.ts`: Server Actions                                                        | —                                                                |
    | The profile screens' calls (`@newrole/profile-ui`, as props)                           | `src/app/profile/profile-ui.ts`                                                                | —                                                                |
    | `createOriginGuard(appOrigin)` (`@newrole/app-kit/origin`)                             | `src/server/security/origin.ts` with `APP_ORIGIN`                                              | `src/server/guard.ts`                                            |
 

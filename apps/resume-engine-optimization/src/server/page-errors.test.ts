@@ -30,7 +30,7 @@ vi.mock("src/server/profile/facts", () => ({ listFacts: async () => [] }))
 vi.mock("src/app/setup/back", () => ({ setupBack: async () => null }))
 vi.mock("src/app/users/queries/getCurrentUser", () => ({ default: "getCurrentUser" }))
 vi.mock("src/app/profile/queries/getProfile", () => ({ default: "getProfile" }))
-vi.mock("src/app/blitz-server", () => ({
+vi.mock("src/app/rpc", () => ({
   invoke: async (query: string) => {
     if (query === "getCurrentUser") return { id: 7, role: "USER" }
     if (query === "getProfile") return state.profile()

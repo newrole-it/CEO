@@ -1,4 +1,4 @@
-import { getBlitzContext } from "src/app/blitz-server"
+import { getSession } from "src/server/auth/session"
 import { draftFromProfileText } from "src/server/profile/import"
 import { linkedInBrowserAvailable, readLinkedInViaClaude } from "@newrole/profile/linkedin-browser"
 import { runClaudePrompt } from "src/server/llm/claude-cli"
@@ -13,8 +13,8 @@ import { hasBrowserImportHeader } from "@newrole/profile/linkedin-import"
  */
 async function owner(): Promise<{ key: string; userId: number } | null> {
   try {
-    const ctx = await getBlitzContext()
-    if (ctx.session.userId) return { key: `user:${ctx.session.userId}`, userId: ctx.session.userId }
+    const session = await getSession()
+    if (session.userId) return { key: `user:${session.userId}`, userId: session.userId }
   } catch {
     // no usable session
   }

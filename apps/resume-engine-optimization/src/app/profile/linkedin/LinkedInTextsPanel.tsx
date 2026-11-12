@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useState } from "react"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { Sparkles } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { CopyButton } from "@newrole/ui/interactive"

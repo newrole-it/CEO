@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { Link2 } from "lucide-react"
 import { ADD_OFFER_ANCHOR } from "src/app/components/onboarding/FirstSteps"
 import { useCopy } from "src/app/i18n/Locale"

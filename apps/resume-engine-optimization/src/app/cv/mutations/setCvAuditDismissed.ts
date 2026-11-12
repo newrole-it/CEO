@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { setCvAuditDismissed } from "src/server/cv/audit-store"
 import { requireMember } from "src/app/users/guard"

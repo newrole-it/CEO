@@ -1,5 +1,6 @@
-import { resolver } from "@blitzjs/rpc"
-import { AuthorizationError } from "blitz"
+"use server"
+import { resolver } from "src/server/rpc"
+import { AuthorizationError } from "src/shared/errors"
 import { z } from "zod"
 import db from "db"
 import { requireMember } from "src/app/users/guard"

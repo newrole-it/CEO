@@ -1,5 +1,6 @@
-import { resolver } from "@blitzjs/rpc"
-import { AuthenticationError } from "blitz"
+"use server"
+import { resolver } from "src/server/rpc"
+import { AuthenticationError } from "src/shared/errors"
 import { z } from "zod"
 import { sessionRole } from "src/server/auth/accounts"
 import { takeLinkRequest } from "src/server/auth/link-request"

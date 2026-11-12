@@ -5,7 +5,7 @@ import { GITHUB_URL } from "src/app/components/site/links"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import { repoRoot } from "src/server/repo"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { parseChangelog } from "src/shared/changelog"
 

@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { createApplication } from "src/server/applications/service"
 import { requireMember } from "src/app/users/guard"
 import { CreateApplicationInput, rethrowApplication } from "../schema"

@@ -1,4 +1,3 @@
-const { withBlitz } = require("@blitzjs/next")
 const { REPO_ROOT, loadRootEnv } = require("./scripts/root-env.js")
 const { workspacePackages } = require("./scripts/workspace-packages.js")
 
@@ -47,4 +46,4 @@ const nextConfig = {
   },
 }
 
-module.exports = withBlitz(nextConfig)
+module.exports = nextConfig

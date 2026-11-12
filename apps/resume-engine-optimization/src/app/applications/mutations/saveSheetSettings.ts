@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { saveSheetLink, sheetStatus, syncSheet } from "src/server/applications/sheet"
 import { requireMember } from "src/app/users/guard"
 import { rethrowApplication, SheetSettingsInput } from "../schema"

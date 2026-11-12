@@ -1,6 +1,6 @@
 import { z } from "zod"
 import db from "db"
-import { getBlitzContext } from "src/app/blitz-server"
+import { getSession } from "src/server/auth/session"
 import { createApiToken } from "src/server/auth/api-tokens"
 import {
   defaultTokenName,
@@ -22,8 +22,8 @@ const BodySchema = z.object({ name: z.string().max(200).nullish() })
 export async function POST(request: Request) {
   try {
     if (!isSameOrigin(request)) return errorResponse(request, "Cross-site request refused.", 403)
-    const ctx = await getBlitzContext()
-    const userId = ctx.session.userId
+    const session = await getSession()
+    const userId = session.userId
     if (!userId) return errorResponse(request, "Sign in required.", 401)
     const user = await db.user.findUnique({
       where: { id: userId },

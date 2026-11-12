@@ -1,29 +1,12 @@
-import { resolver } from "@blitzjs/rpc"
-import { AuthenticationError } from "blitz"
-import db from "db"
+"use server"
+import { resolver } from "src/server/rpc"
+import { AuthenticationError } from "src/shared/errors"
+import { authenticateUser } from "src/server/auth/password"
 import { Login, LOGIN_LIMITED } from "../validations"
-import { SecurePassword } from "@blitzjs/auth/secure-password"
-import { Role } from "types"
+import type { Role } from "types"
 import { claimGuest } from "src/server/auth/accounts"
 import { assertLoginRateLimit, AuthRateLimitError } from "src/server/auth/magic-link"
 import { requestClientIp } from "src/server/security/client-ip"
-
-export const authenticateUser = async (rawEmail: string, rawPassword: string) => {
-  const { email, password } = Login.parse({ email: rawEmail, password: rawPassword })
-  const user = await db.user.findFirst({ where: { email } })
-  if (!user?.hashedPassword) throw new AuthenticationError()
-
-  const result = await SecurePassword.verify(user.hashedPassword, password)
-
-  if (result === SecurePassword.VALID_NEEDS_REHASH) {
-    // Upgrade hashed password with a more secure hash
-    const improvedHash = await SecurePassword.hash(password)
-    await db.user.update({ where: { id: user.id }, data: { hashedPassword: improvedHash } })
-  }
-
-  const { hashedPassword, ...rest } = user
-  return rest
-}
 
 export default resolver.pipe(resolver.zod(Login), async ({ email, password }, ctx) => {
   // Counted before the password is checked, so guessing costs a slot whether it hits or not.

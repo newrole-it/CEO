@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import db from "db"
 import { createGuestUser } from "src/server/auth/accounts"
 import { profileDraftSchema } from "@newrole/profile/schema"

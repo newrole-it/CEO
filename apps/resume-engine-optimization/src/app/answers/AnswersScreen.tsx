@@ -1,6 +1,6 @@
 "use client"
 
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CircleAlert, MessageSquareText, Plus, Search, SearchX } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"

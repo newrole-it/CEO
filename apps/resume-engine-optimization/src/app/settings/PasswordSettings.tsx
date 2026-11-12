@@ -1,8 +1,8 @@
 "use client"
 
 import { FormEvent, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
-import { AuthenticationError } from "blitz"
+import { useMutation } from "src/app/rpc-hooks"
+import { AuthenticationError } from "src/shared/errors"
 import { KeyRound } from "lucide-react"
 import setPassword from "src/app/(auth)/mutations/setPassword"
 import { useCopy } from "src/app/i18n/Locale"

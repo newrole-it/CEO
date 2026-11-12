@@ -1,10 +1,10 @@
 import db from "db"
-import { getBlitzContext } from "src/app/blitz-server"
+import { getSession } from "src/server/auth/session"
 import { exportAccount } from "src/server/privacy/export"
 
 export async function GET() {
-  const ctx = await getBlitzContext()
-  const userId = ctx.session.userId
+  const session = await getSession()
+  const userId = session.userId
   if (!userId) return Response.json({ error: "Sign in required." }, { status: 401 })
   const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } })
   if (!user || user.role === "GUEST") {

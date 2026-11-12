@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { listApplications } from "src/server/applications/service"
 import { CsvImportError, importCsv } from "src/server/applications/sheet"

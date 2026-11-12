@@ -261,7 +261,7 @@ Postgres and the web app, published on 127.0.0.1 only. Claude Code and headless 
 <details>
 <summary><b>Repository layout</b></summary>
 
-Next.js 16 with Blitz.js 3, Prisma and PostgreSQL, an MCP server built on `@modelcontextprotocol/sdk`, and a Chrome extension built with WXT. npm workspaces; the app runs as one process, with no worker to start.
+Next.js 16 (the App Router and Server Actions), Prisma and PostgreSQL, an MCP server built on `@modelcontextprotocol/sdk`, and a Chrome extension built with WXT. npm workspaces; the app runs as one process, with no worker to start.
 
 ```
 apps/

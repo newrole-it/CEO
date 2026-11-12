@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { assertOfferReadLimit } from "src/server/auth/magic-link"
 import { checkOfferUrl } from "src/server/applications/read-offer"

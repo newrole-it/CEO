@@ -21,7 +21,7 @@ export function clientIpFrom(headers: Headers, env: Env = process.env): string {
 }
 
 /**
- * The same key for code that has no Request, such as a Blitz resolver. Imported on call: client
+ * The same key for code that has no Request, such as a resolver. Imported on call: client
  * components import resolver files, and a static next/headers import fails the client build.
  */
 export async function requestClientIp(): Promise<string> {

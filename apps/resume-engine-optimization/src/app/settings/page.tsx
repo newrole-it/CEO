@@ -1,6 +1,6 @@
 import db from "db"
 import { linkedInCredentials } from "src/server/auth/linkedin"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { ButtonLink } from "@newrole/ui/Button"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"

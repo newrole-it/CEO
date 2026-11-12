@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import {
   ChartNoAxesColumn,
   ClipboardList,

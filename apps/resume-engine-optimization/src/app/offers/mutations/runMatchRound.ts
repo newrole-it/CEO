@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { nextMatchRound } from "src/server/cv/tailor"
 import { progressReporter } from "src/server/cv/tailor-progress"

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
+import { useMutation } from "src/app/rpc-hooks"
 import { ArrowRight, CircleAlert, FileUp, Info } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button, ButtonLink } from "@newrole/ui/Button"

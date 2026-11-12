@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { listVersions } from "src/server/cv/versions"
 import { requireMember } from "src/app/users/guard"

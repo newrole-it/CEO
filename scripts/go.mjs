@@ -444,7 +444,7 @@ async function start(env, { cv, others }) {
           `Stop it, or set APP_ORIGIN="http://127.0.0.1:<another port>" in .env.`
         )
       }
-      // Same as `npm run dev`: webpack, because Turbopack breaks Blitz RPC resolvers on Next 16.
+      // Same as `npm run dev`: webpack.
       commands.push({
         name: "web",
         command: `cd ${quote(APP)} && ${quote(BIN("next"))} dev --webpack -p ${port} -H 127.0.0.1`,

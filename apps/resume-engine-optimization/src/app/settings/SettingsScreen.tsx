@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
+import { useMutation } from "src/app/rpc-hooks"
 import { useRouter } from "next/navigation"
 import { Download, Trash2 } from "lucide-react"
 import deleteMyAccount from "src/app/profile/mutations/deleteMyAccount"

@@ -1,13 +1,13 @@
 "use client"
 
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import type { ApplicantInfo } from "@newrole/profile/applicant"
 import { BROWSER_IMPORT_HEADER } from "@newrole/profile/linkedin-import"
 import type { BrowserImport, BrowserImportJob } from "@newrole/profile-ui/LinkedInImport"
 import ensureGuest from "./mutations/ensureGuest"
 import saveApplicantDetails from "./mutations/saveApplicantDetails"
 
-/** @newrole/profile-ui over this app: the LinkedIn import route and the Blitz mutations. */
+/** @newrole/profile-ui over this app: the LinkedIn import route and the mutations. */
 
 export const newroleBrowserImport: BrowserImport = {
   async start() {

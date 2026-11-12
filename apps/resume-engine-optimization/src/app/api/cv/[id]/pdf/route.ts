@@ -1,5 +1,5 @@
 import { pdfResponse } from "@newrole/cv-engine/http"
-import { getBlitzContext } from "src/app/blitz-server"
+import { getSession } from "src/server/auth/session"
 import { cvPdf, getCv } from "src/server/cv/service"
 
 /**
@@ -8,8 +8,8 @@ import { cvPdf, getCv } from "src/server/cv/service"
  * Chrome); the editor then opens the print view.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const ctx = await getBlitzContext()
-  const userId = ctx.session.userId
+  const session = await getSession()
+  const userId = session.userId
   if (!userId) return Response.json({ error: "Sign in required." }, { status: 401 })
   const { id } = await params
   const cv = await getCv(userId, id)

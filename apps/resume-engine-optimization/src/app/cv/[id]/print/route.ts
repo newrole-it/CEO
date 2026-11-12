@@ -1,4 +1,4 @@
-import { getBlitzContext } from "src/app/blitz-server"
+import { getSession } from "src/server/auth/session"
 import { printViewResponse } from "@newrole/cv-engine/http"
 import { renderCvHtml } from "@newrole/cv-engine/render"
 import { getCv } from "src/server/cv/service"
@@ -10,8 +10,8 @@ import { getVersion } from "src/server/cv/versions"
  * ?auto=1 opens the print dialog once the pages are laid out. ?version=<id> shows an older version.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const ctx = await getBlitzContext()
-  const userId = ctx.session.userId
+  const session = await getSession()
+  const userId = session.userId
   const { id } = await params
   const url = new URL(request.url)
   if (!userId) {

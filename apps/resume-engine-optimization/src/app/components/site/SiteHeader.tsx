@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
+import { useMutation } from "src/app/rpc-hooks"
 import {
   BookOpen,
   BriefcaseBusiness,
@@ -148,7 +148,7 @@ export function SiteHeader({
   }
 
   async function signOut() {
-    await logoutMutation()
+    await logoutMutation(null)
     setMenu(false)
     router.refresh()
     router.push("/")

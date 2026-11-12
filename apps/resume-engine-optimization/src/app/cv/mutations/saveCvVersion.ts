@@ -1,5 +1,6 @@
-import { resolver } from "@blitzjs/rpc"
-import { NotFoundError } from "blitz"
+"use server"
+import { resolver } from "src/server/rpc"
+import { NotFoundError } from "src/shared/errors"
 import { z } from "zod"
 import { saveVersion } from "src/server/cv/versions"
 import { requireMember } from "src/app/users/guard"

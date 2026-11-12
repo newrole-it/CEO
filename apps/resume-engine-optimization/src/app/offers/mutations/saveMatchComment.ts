@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { COMMENT_MAX, MatchCommentKind } from "@newrole/cv-core/match"
 import { saveMatchComment } from "src/server/cv/match-rounds"

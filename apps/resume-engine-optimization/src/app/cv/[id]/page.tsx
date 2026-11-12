@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"

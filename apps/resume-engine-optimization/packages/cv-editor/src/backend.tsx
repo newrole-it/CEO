@@ -16,8 +16,8 @@ import type {
 import type { LetterSource } from "./AddLetter"
 
 /**
- * Everything the editor asks of the app around it. newrole.it answers through its Blitz
- * mutations; another app may use HTTP routes. A failed call rejects with an Error whose
+ * Everything the editor asks of the app around it. newrole.it answers through its Server
+ * Actions; another app may use HTTP routes. A failed call rejects with an Error whose
  * message is a code: "conflict" for a save older than what is stored (useCvDocument.ts), and
  * "llm-unavailable", "no-base" or "job-not-found" for tailoring (tailor-errors.ts).
  *
