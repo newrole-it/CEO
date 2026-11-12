@@ -1,4 +1,4 @@
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { LinkTabs } from "@newrole/ui/primitives"
 import { translator } from "src/app/i18n/copy"

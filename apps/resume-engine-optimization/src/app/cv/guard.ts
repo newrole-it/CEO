@@ -1,4 +1,4 @@
-import { NotFoundError } from "blitz"
+import { NotFoundError } from "src/shared/errors"
 import { CvError } from "src/server/cv/service"
 
 /** Maps CV domain errors to errors the client understands (the message carries the code). */

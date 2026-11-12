@@ -1,8 +1,8 @@
 "use client"
 
-import { AuthenticationError } from "blitz"
+import { AuthenticationError } from "src/shared/errors"
+import { useMutation } from "src/app/rpc-hooks"
 import { FormEvent, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CircleAlert, MailCheck } from "lucide-react"
 import login from "../mutations/login"

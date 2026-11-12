@@ -1,7 +1,8 @@
-import { Ctx } from "blitz"
+"use server"
+import { resolver } from "src/server/rpc"
 import db from "db"
 
-export default async function getCurrentUser(_: null, ctx: Ctx) {
+export default resolver.pipe(async (_: null, ctx) => {
   if (!ctx.session.userId) return null
   const user = await db.user.findFirst({
     where: { id: ctx.session.userId },
@@ -9,4 +10,4 @@ export default async function getCurrentUser(_: null, ctx: Ctx) {
   })
 
   return user
-}
+})

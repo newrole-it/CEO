@@ -1,4 +1,4 @@
-import { NotFoundError } from "blitz"
+import { NotFoundError } from "src/shared/errors"
 import { z } from "zod"
 import {
   MAX_ANSWER_LENGTH,
@@ -47,7 +47,7 @@ export const DraftAnswerInput = z.object({
   language: z.enum(["pl", "en"]).optional(),
 })
 
-/** Maps a missing answer to the Blitz error the client understands. */
+/** Maps a missing answer to the error the client understands. */
 export function rethrowAnswer(error: unknown): never {
   if (error instanceof AnswerError && error.code === "not-found")
     throw new NotFoundError(error.message)

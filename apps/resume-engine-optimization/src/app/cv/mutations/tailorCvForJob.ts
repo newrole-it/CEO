@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { CONSENT_COMPANY_MAX } from "@newrole/cv-core/blank"
 import { RunId } from "../run-id"

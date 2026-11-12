@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import db from "db"
 import { liveMatchingConfig } from "@newrole/matching/live-config"
 import { profileMonthlyPln } from "@newrole/profile/salary"

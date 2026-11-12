@@ -3,8 +3,8 @@ import { isLocalInstall } from "../local-install"
 
 /**
  * The sample values in .env.example are public, so on a server other people reach they protect
- * nothing: Blitz checks only the length of SESSION_SECRET_KEY, and a session cookie signed with
- * the sample key was accepted. A loopback install is left alone, only this computer reaches it.
+ * nothing: SESSION_SECRET_KEY seals the Gmail tokens (src/server/gmail/token-crypto.ts), and a
+ * sample key opens them. A loopback install is left alone, only this computer reaches it.
  */
 
 type Env = Record<string, string | undefined>

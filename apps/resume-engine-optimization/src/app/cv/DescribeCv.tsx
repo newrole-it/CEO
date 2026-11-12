@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { Button } from "@newrole/ui/Button"
 import { Modal, ModalHead, useToast } from "@newrole/ui/interactive"
 import { useCopy } from "src/app/i18n/Locale"

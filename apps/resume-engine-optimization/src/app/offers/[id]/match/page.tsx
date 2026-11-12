@@ -1,6 +1,6 @@
 import { Gauge } from "lucide-react"
 import { notFound, redirect } from "next/navigation"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { ButtonLink } from "@newrole/ui/Button"
 import { EmptyState } from "@newrole/ui/primitives"
 import { cvPdfFileName } from "@newrole/cv-core/filename"

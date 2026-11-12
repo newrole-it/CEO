@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
+import { useMutation } from "src/app/rpc-hooks"
 import { useRouter } from "next/navigation"
 import { CircleAlert } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"

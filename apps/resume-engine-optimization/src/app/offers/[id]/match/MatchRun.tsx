@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { Check, Circle, CircleAlert, Gauge, LoaderCircle, Minus, Sparkles } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { Modal } from "@newrole/ui/interactive"

@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react"
 import { useRouter } from "next/navigation"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import {
   ClipboardList,
   ExternalLink,

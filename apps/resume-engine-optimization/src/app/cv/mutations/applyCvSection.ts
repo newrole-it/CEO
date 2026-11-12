@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { z } from "zod"
 import { CvSection } from "@newrole/cv-core/schema"
 import { applyCvSection } from "src/server/cv/improve"

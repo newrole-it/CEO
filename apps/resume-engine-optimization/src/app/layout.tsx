@@ -12,7 +12,6 @@ import "./styles/setup.css"
 import "./styles/usage.css"
 import "./styles/offers.css"
 import type { Metadata } from "next"
-import { BlitzProvider } from "./blitz-client"
 import { translator, type Locale } from "./i18n/copy"
 import { LocaleProvider } from "./i18n/Locale"
 import { getLocale } from "./i18n/server"
@@ -83,9 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               "try{var t=localStorage.getItem('js-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;document.documentElement.classList.add('js')}catch(e){}",
           }}
         />
-        <BlitzProvider>
-          <LocaleProvider locale={locale}>{children}</LocaleProvider>
-        </BlitzProvider>
+        <LocaleProvider locale={locale}>{children}</LocaleProvider>
       </body>
     </html>
   )

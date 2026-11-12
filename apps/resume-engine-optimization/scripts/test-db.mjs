@@ -18,7 +18,7 @@ const APP = join(dirname(fileURLToPath(import.meta.url)), "..")
 // This app's schema and migrations.
 const SCHEMA = join(APP, "db", "schema.prisma")
 const FALLBACK = "postgresql://jobscanner:jobscanner@127.0.0.1:5432/jobscanner"
-// Only for tests: Blitz needs a 32-character secret, and these sessions never leave the test DB.
+// Only for tests: the Gmail token tests seal with a 32-character secret, which never leaves the test DB.
 const TEST_SESSION_SECRET = "jobscanner-dev-session-secret-key-32b"
 
 /** The app's own .env first, then the repository root's, where npm run go writes it. */

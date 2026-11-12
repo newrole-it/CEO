@@ -1,7 +1,7 @@
 import db from "db"
 import { FileText } from "lucide-react"
 import { notFound, redirect } from "next/navigation"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { ButtonLink } from "@newrole/ui/Button"
 import { EmptyState } from "@newrole/ui/primitives"
 import { SiteFrame } from "src/app/components/site/SiteFrame"

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { safeReturnTo } from "src/shared/return-to"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
+import { useMutation } from "src/app/rpc-hooks"
 import {
   ArrowRight,
   Check,

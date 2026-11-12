@@ -3,8 +3,7 @@
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { invoke } from "@blitzjs/rpc"
-import { getAntiCSRFToken } from "@blitzjs/auth"
+import { invoke } from "src/app/rpc"
 import {
   BriefcaseBusiness,
   ChevronDown,
@@ -222,11 +221,9 @@ export function CvList({
       const body = new FormData()
       body.append("file", file)
       body.append("language", locale)
-      const token = getAntiCSRFToken()
       const response = await fetch("/api/cv/upload", {
         method: "POST",
         body,
-        headers: token ? { "anti-csrf": token } : undefined,
       })
       const data = (await response.json().catch(() => ({}))) as { cv?: CvRow; code?: string }
       if (!response.ok || !data.cv) {

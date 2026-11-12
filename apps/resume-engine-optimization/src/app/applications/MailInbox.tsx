@@ -2,8 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
-import { invoke } from "@blitzjs/rpc"
-import type { PromiseReturnType } from "blitz"
+import { invoke, ResolverResult } from "src/app/rpc"
 import { ArrowRight, ShieldAlert, Undo2 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
@@ -16,7 +15,7 @@ import resolveMailEvent from "./mutations/resolveMailEvent"
 import getMailInbox from "./queries/getMailInbox"
 import { longDate } from "./rows"
 
-type Inbox = PromiseReturnType<typeof getMailInbox>
+type Inbox = ResolverResult<typeof getMailInbox>
 type Item = Inbox["pending"][number]
 type Action = "apply" | "dismiss" | "undo"
 

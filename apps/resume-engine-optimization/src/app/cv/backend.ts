@@ -1,6 +1,6 @@
 "use client"
 
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import type { CvEditorBackend } from "@newrole/cv-editor/backend"
 import answerTailorProposal from "./mutations/answerTailorProposal"
 import applyCvSection from "./mutations/applyCvSection"
@@ -21,7 +21,7 @@ import getOfferTextStatus from "./queries/getOfferTextStatus"
 import getTailorProgress from "./queries/getTailorProgress"
 import { cvPdfUrl, cvPrintUrl, cvVersionPdfUrl } from "./urls"
 
-/** @newrole/cv-editor over this app's Blitz mutations: one object for every page. */
+/** @newrole/cv-editor over this app's mutations: one object for every page. */
 export const newroleCvBackend: CvEditorBackend = {
   save: (patch) => invoke(updateCvDocument, patch),
   pdfUrl: cvPdfUrl,

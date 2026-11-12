@@ -1,6 +1,6 @@
 /**
- * Runs once when the Next server boots. blitz-server.ts checks the secrets too, but only when the
- * first request loads it; here a public server with sample secrets stops before it serves anyone.
+ * Runs once when the Next server boots: a public server with sample secrets stops before it serves
+ * anyone.
  * Then the server starts newrole.it's background work, so the app needs no second process, and
  * folds old pairs of an uploaded PDF and its editable copy into one CV (src/server/cv/structure.ts).
  */

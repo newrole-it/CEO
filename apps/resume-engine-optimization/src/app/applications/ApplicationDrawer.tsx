@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { ExternalLink, Trash2, X } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"

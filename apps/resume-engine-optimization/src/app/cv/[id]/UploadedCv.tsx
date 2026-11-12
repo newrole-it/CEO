@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { ArrowLeft, Download, Wand2 } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"

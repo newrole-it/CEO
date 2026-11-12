@@ -4,7 +4,8 @@ import { cx } from "@newrole/ui/cx"
 import { Banner } from "@newrole/ui/primitives"
 import { intlLocale, translator, type CopyKey, type Locale, type T } from "src/app/i18n/copy"
 import { usagePl } from "src/app/i18n/copy-usage"
-import { USAGE_PERIODS, type UsageCall, type UsageSnapshot } from "./queries/getUsage"
+import type { UsageCall, UsageSnapshot } from "./queries/getUsage"
+import { USAGE_PERIODS } from "src/shared/usage"
 
 const COSTS_DOCS = "https://code.claude.com/docs/en/costs"
 

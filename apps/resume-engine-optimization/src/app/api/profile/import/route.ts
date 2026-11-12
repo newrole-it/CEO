@@ -1,4 +1,4 @@
-import { getBlitzContext } from "src/app/blitz-server"
+import { getSession } from "src/server/auth/session"
 import { takeSlot } from "src/server/auth/magic-link"
 import { draftFromProfileText } from "src/server/profile/import"
 import { importText, MAX_IMPORT_BODY_BYTES } from "@newrole/profile/import-text"
@@ -10,9 +10,9 @@ const GUEST_IMPORTS_PER_IP = 60
 
 async function sessionOf(): Promise<{ userId: number; guest: boolean } | null> {
   try {
-    const ctx = await getBlitzContext()
-    const userId = ctx.session.userId
-    return userId ? { userId, guest: ctx.session.$publicData.role === "GUEST" } : null
+    const session = await getSession()
+    const userId = session.userId
+    return userId ? { userId, guest: session.$publicData.role === "GUEST" } : null
   } catch (error) {
     console.error("profile import session failed", error instanceof Error ? error.message : error)
     return null

@@ -1,4 +1,4 @@
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { GITHUB_ISSUES } from "src/app/components/site/links"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { botCopy } from "src/app/i18n/copy-bot"

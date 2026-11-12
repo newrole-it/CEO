@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { invoke } from "@blitzjs/rpc"
-import type { PromiseReturnType } from "blitz"
+import { invoke, ResolverResult } from "src/app/rpc"
 import { ChevronRight, ExternalLink, ShieldCheck, Unplug } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import type { CopyKey } from "src/app/i18n/copy"
@@ -14,7 +13,7 @@ import { GOOGLE_PERMISSIONS } from "src/shared/gmail"
 import disconnectGmail from "./gmail/mutations/disconnectGmail"
 import getGmailSettings from "./gmail/queries/getGmailSettings"
 
-type Settings = PromiseReturnType<typeof getGmailSettings>
+type Settings = ResolverResult<typeof getGmailSettings>
 
 /** Settings → Gmail. Loads its own data; rendered inside SettingsScreen. */
 export function GmailSettings() {

@@ -1,4 +1,4 @@
-import { NotFoundError } from "blitz"
+import { NotFoundError } from "src/shared/errors"
 import { z } from "zod"
 import { APPLICATION_STATUSES } from "src/shared/applications"
 import { ApplicationError } from "src/server/applications/logic"
@@ -49,7 +49,7 @@ export const SheetSettingsInput = z.object({
   test: z.boolean().optional(),
 })
 
-/** Domain errors as Blitz errors; the message is safe to show. */
+/** Domain errors as the errors the client understands; the message is safe to show. */
 export function rethrowApplication(error: unknown): never {
   if (
     error instanceof ApplicationError &&

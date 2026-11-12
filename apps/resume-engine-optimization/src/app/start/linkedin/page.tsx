@@ -1,6 +1,6 @@
 import { appOrigin } from "src/server/auth/email"
 import { linkedInSetup } from "src/server/auth/linkedin"
-import { invoke } from "src/app/blitz-server"
+import { invoke } from "src/app/rpc"
 import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"

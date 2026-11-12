@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation, useQuery } from "@blitzjs/rpc"
+import { useMutation, useQuery } from "src/app/rpc-hooks"
 import { KeyRound, Plus, Puzzle, Trash2 } from "lucide-react"
 import { Button, ButtonLink } from "@newrole/ui/Button"
 import { CodeBlock, Modal, ModalHead, useToast } from "@newrole/ui/interactive"
@@ -18,9 +18,7 @@ type Target = { id: string; name: string }
 export function ExtensionSettings() {
   const { t, locale } = useCopy()
   const toast = useToast()
-  const [data, { error, refetch }] = useQuery(getExtensionSettings, null, {
-    suspense: false,
-  })
+  const [data, { error, refetch }] = useQuery(getExtensionSettings, null)
   const [create, createState] = useMutation(createExtensionToken)
   const [revoke, revokeState] = useMutation(revokeExtensionToken)
   const [fresh, setFresh] = useState<string | null>(null)

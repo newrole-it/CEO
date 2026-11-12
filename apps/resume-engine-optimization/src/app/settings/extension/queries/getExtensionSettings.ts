@@ -1,4 +1,5 @@
-import { resolver } from "@blitzjs/rpc"
+"use server"
+import { resolver } from "src/server/rpc"
 import { requireMember } from "src/app/users/guard"
 import { listApiTokens } from "src/server/auth/api-tokens"
 import { extensionBuildPath } from "src/server/repo"

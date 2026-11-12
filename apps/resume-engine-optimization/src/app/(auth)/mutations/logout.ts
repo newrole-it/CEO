@@ -1,5 +1,6 @@
-import { Ctx } from "blitz"
+"use server"
+import { resolver } from "src/server/rpc"
 
-export default async function logout(_: any, ctx: Ctx) {
-  return await ctx.session.$revoke()
-}
+export default resolver.pipe(async (_: null, ctx) => {
+  await ctx.session.$revoke()
+})

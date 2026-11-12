@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { useMutation } from "@blitzjs/rpc"
+import { useMutation } from "src/app/rpc-hooks"
 import { Trash2 } from "lucide-react"
 import { useCopy } from "src/app/i18n/Locale"
 import { Button } from "@newrole/ui/Button"

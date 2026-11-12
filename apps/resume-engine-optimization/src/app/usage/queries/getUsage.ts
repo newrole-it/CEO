@@ -1,5 +1,6 @@
-import { resolver } from "@blitzjs/rpc"
-import { AuthorizationError } from "blitz"
+"use server"
+import { resolver } from "src/server/rpc"
+import { AuthorizationError } from "src/shared/errors"
 import { z } from "zod"
 import db from "db"
 import { DEFAULT_CONFIG } from "@newrole/matching/config"
@@ -13,10 +14,7 @@ import {
   type UsageTask,
   type UsageTotals,
 } from "src/server/llm/usage"
-
-export const USAGE_PERIODS = ["1", "7", "30", "all"] as const
-export type UsagePeriod = (typeof USAGE_PERIODS)[number]
-export const DEFAULT_USAGE_PERIOD: UsagePeriod = "30"
+import { DEFAULT_USAGE_PERIOD, USAGE_PERIODS, type UsagePeriod } from "src/shared/usage"
 
 const RECENT = 25
 

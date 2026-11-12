@@ -215,8 +215,7 @@ export function startInServer() {
       console.error("Could not requeue in-flight work", error)
     )
   }
-  // Ahead of the handlers that exit the process: Next's, and in next dev Blitz's SIGINT handler
-  // (withBlitz in next.config.js), which calls process.exit(0) at once.
+  // Ahead of the handlers that exit the process: Next's own.
   process.prependListener("SIGINT", () => stop("SIGINT"))
   process.prependListener("SIGTERM", () => stop("SIGTERM"))
   console.log("newrole.it background work started: Google Sheet syncs, company names")

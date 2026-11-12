@@ -11,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { invoke } from "@blitzjs/rpc"
+import { invoke } from "src/app/rpc"
 import { FilePlus2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { useToast } from "@newrole/ui/interactive"

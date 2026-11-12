@@ -12,7 +12,7 @@ generator client {
 }
 
 // --------------------------------------
-// Auth (Blitz). Session/Token shapes are what @blitzjs/auth expects.
+// Auth. Session keeps the shape @blitzjs/auth gave it (src/server/auth/session.ts).
 
 model User {
   id              Int       @id @default(autoincrement())
