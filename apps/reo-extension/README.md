@@ -39,9 +39,20 @@ Na `/connect/extension` i `/setup` rozszerzenie mówi stronie, że jest zainstal
 - Po wysłaniu formularza aplikacja zapisuje się w trackerze razem z pytaniami o pracę i Twoimi odpowiedziami, także z wcześniejszych kroków formularza. Podane wynagrodzenie trafia do osobnej kolumny. Automatyczne śledzenie wyłączysz w popupie.
 - Poza znanymi ATS automatyczny zapis obejmuje tylko prawdziwy formularz albo okno, które wygląda na aplikację (plik do wgrania albo słowa takie jak „aplikuj”, „rekrutacja”, „job”). W pozostałych przypadkach użyj „Zapisz jako aplikację”.
 
+## Dopasuj CV do otwartej oferty
+
+Na stronie oferty panel newrole.it w prawym górnym rogu ma przycisk „Dopasuj CV”. Pokazuje się tam, gdzie strona podaje firmę i stanowisko (dane `JobPosting`, karta oferty na LinkedIn), oraz na ofertach, które już masz w newrole.it. Na innych stronach ten sam przycisk jest w popupie.
+
+Po kliknięciu rozszerzenie wysyła adres otwartej karty (`POST /api/ext/tailor`). Aplikacja dodaje ofertę do Twoich ofert, tak jak „Dodaj ofertę”, i dopasowuje do niej Twoje domyślne CV, w języku oferty. Praca trwa w aplikacji, więc panel można zamknąć albo przejść na inną kartę. Panel pokazuje kolejne kroki, a na końcu wynik dopasowania, liczbę spełnionych wymagań koniecznych, do trzech braków, słowa kluczowe (ATS) przed i po oraz linki „Otwórz w edytorze” i „Panel dopasowania”.
+
+- Oferta, która ma już dopasowane CV, pokazuje ten wynik od razu. Nic nie uruchamia się drugi raz; kolejną rundę robisz w panelu dopasowania w aplikacji.
+- Zanim klikniesz, rozszerzenie nie woła modelu: pyta tylko, czy ta oferta jest już Twoja.
+- Gdy aplikacja nie umie sama odczytać strony, panel daje link „Sprawdź ofertę w newrole.it”, gdzie sprawdzasz firmę, stanowisko i treść.
+- Teksty tej części są po polsku albo po angielsku, według języka przeglądarki.
+
 ## Dodaj ofertę do newrole.it
 
-Na stronie oferty kliknij w popupie „Dodaj tę ofertę do newrole.it”. Rozszerzenie wysyła tylko adres otwartej karty, a ofertę czyta aplikacja, tak jak „Dodaj ofertę” w zakładce Oferty (`POST /api/ext/offer`): przez API systemu rekrutacji albo dane `JobPosting` strony, z zapisaniem całej treści dla Ciebie. Potem otwiera stronę tej oferty w aplikacji. Gdy strona nie ma danych strukturalnych, otwiera Oferty z wklejonym linkiem, żebyś sprawdził firmę, stanowisko i treść przed dodaniem. Ofert z LinkedIn aplikacja nie czyta.
+Na stronie oferty kliknij w popupie „Dodaj tę ofertę do newrole.it”. Rozszerzenie wysyła tylko adres otwartej karty, a ofertę czyta aplikacja, tak jak „Dodaj ofertę” w Aplikacjach (`POST /api/ext/offer`): przez API systemu rekrutacji albo dane `JobPosting` strony, z zapisaniem całej treści dla Ciebie. Potem otwiera stronę tej oferty w aplikacji. Gdy strona nie ma danych strukturalnych, otwiera Aplikacje → „Do wysłania” z wklejonym linkiem, żebyś sprawdził firmę, stanowisko i treść przed dodaniem. Ofert z LinkedIn aplikacja nie czyta.
 
 ## Status aplikacji na ofercie
 
@@ -81,6 +92,7 @@ Tylko do Twojej aplikacji (domyślnie `127.0.0.1:43123`):
 - Po wysłaniu aplikacji: adres, tytuł i tekst strony oraz odpowiedzi na pytania o pracę, w tym podane wynagrodzenie, okres wypowiedzenia i datę rozpoczęcia. Danych kontaktowych, linków do profili i plików nie wysyła.
 - Sprawdzenie „już aplikowano”: adres otwartej strony oraz firma i stanowisko, jeśli strona je podaje (na znanych ATS tytuł okna). Dzieje się to na znanych ATS i portalach z ofertami, a przy zgodzie na wszystkie strony także na innych. Na LinkedIn tylko na stronach ofert (`/jobs/view/…` albo `currentJobId=` w adresie), nigdy na profilach, w feedzie ani w wiadomościach.
 - Po kliknięciu „Dodaj tę ofertę do newrole.it”: adres otwartej karty. Ofertę czyta aplikacja.
+- Po kliknięciu „Dopasuj CV”: adres otwartej karty i język przeglądarki (pl albo en). Ofertę czyta aplikacja. Pytanie, czy oferta jest już Twoja, idzie razem ze sprawdzeniem „już aplikowano” i niesie tylko adres strony.
 - Na Twoim profilu LinkedIn: adres profilu i tekst jego sekcji widoczny na stronie. Nic z innych stron LinkedIn ani z cudzych profili.
 - W Gmailu, tylko po kliknięciu „Użyj tego maila w aplikacji”: nadawcę, temat, datę, identyfikator i tekst jednej otwartej wiadomości (albo tylko zaznaczony fragment). Po potwierdzeniu wysyła wybraną aplikację i status, już bez tekstu.
 

@@ -5,6 +5,7 @@ import { SiteFrame } from "src/app/components/site/SiteFrame"
 import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
+import { TO_APPLY_PATH } from "src/shared/applications"
 
 export async function generateMetadata() {
   return { title: translator(await getLocale())("notFound.title") }
@@ -27,7 +28,7 @@ export default async function NotFound() {
           <ButtonLink href="/" variant="primary">
             {t("notFound.home")}
           </ButtonLink>
-          <ButtonLink href="/offers" variant="outline">
+          <ButtonLink href={TO_APPLY_PATH} variant="outline">
             {t("notFound.offers")}
           </ButtonLink>
         </div>

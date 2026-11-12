@@ -413,6 +413,19 @@ async function handle(message, sender) {
         method: "POST",
         body: JSON.stringify({ url: message.url }),
       })
+    case "offerFit": {
+      // Is the open offer the person's, the match of its CV, and the steps of a run that is going.
+      const query = new URLSearchParams({ url: String(message.url || "") })
+      if (message.jobId) query.set("jobId", String(message.jobId))
+      return api(`/api/ext/tailor?${query}`)
+    }
+    case "tailorOffer":
+      // "Dopasuj CV" on the open offer: the app adds it and starts tailoring; offerFit follows it.
+      if (!isWebUrl(message.url)) return { ok: false, error: "restricted" }
+      return api("/api/ext/tailor", {
+        method: "POST",
+        body: JSON.stringify({ url: message.url, locale: message.locale }),
+      })
     case "offerStatus": {
       const result = await api(statusPath(message.offer))
       if (tabId != null) await setOfferBadge(tabId, result.ok ? result.data : null)

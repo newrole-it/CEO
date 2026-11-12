@@ -12,10 +12,13 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ### Changed
 
+- Offers and Applications are one tab now: Applications. Its first group, To apply, has the offers you added and have not applied to yet, with Add offer at the top; Applied on an offer turns it into an application and moves it to Active. The Offers tab is gone and /offers opens To apply. Each offer keeps its own page.
 - The repository is now github.com/newrole-it/CEO. Clone it with git clone https://github.com/newrole-it/CEO.git newrole.it. Security problems are reported privately on its Security → Advisories page.
 
 ### Added
 
+- An offer's page can delete the CV or the cover letter written for that offer (the bin next to each under Documents for this offer). The offer, its application and the other document stay, and you can tailor a CV again.
+- The Chrome extension has Tailor CV on the offer you have open. One click adds the offer to yours and tailors your default CV to it without leaving the page; the panel shows the steps and then the match score, the required requirements you meet, what is missing, the ATS keywords before and after, and a link to the editor. An offer that already has a CV shows its score right away.
 - Tailoring a CV to an offer runs in steps you can watch: reading the offer, checking your CV, the match score, tailoring, checking and rewriting bullets, an ATS check and a check of numbers and names, then the cover letter and its check. Each step shows what it found; one that fails is marked and the rest go on without it.
 - Each offer with a tailored CV has a match score page (Match score on the offer's page, /offers/<id>/match). Code counts the score from the offer's requirements: required 70 %, nice to have 30 %, a partial match counts as half, and a requirement only counts as met with a fragment of your CV or profile that shows it. The page also shows each requirement with its evidence, your strengths, what the CV leads with, points for the letter, the offer's keywords with how often each appears before and after tailoring, an ATS checklist, questions about numbers you could add, the offer's warning signs, and what each step did. A CV tailored earlier shows it after Generate again.
 - Profile has LinkedIn and CV (/profile/linkedin): your default CV beside the LinkedIn profile kept here (roles, titles, years, skills, headline, About), and texts for LinkedIn written from the CV for you to paste: a headline, About, role descriptions and skills.

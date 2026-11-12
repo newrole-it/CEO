@@ -16,6 +16,17 @@ export const APPLICATION_STATUSES = [
 
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
 
+/**
+ * Applications → "Do wysłania": the offers a person keeps and has not applied to yet. The list of
+ * offers they work on lives here, in the same screen as what they sent; /offers redirects to it.
+ */
+export const TO_APPLY_PATH = "/applications?group=todo"
+
+/** The same, with "Dodaj ofertę" reading this link at once (the extension hands it over). */
+export function toApplyPath(add?: string | null): string {
+  return add ? `${TO_APPLY_PATH}&add=${encodeURIComponent(add)}` : TO_APPLY_PATH
+}
+
 /** Still in play, in funnel order. */
 export const ACTIVE_STATUSES = [
   "APPLIED",

@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react"
 import { useMutation } from "src/app/rpc-hooks"
 import {
   BookOpen,
-  BriefcaseBusiness,
   ChevronDown,
   ClipboardList,
   Coins,
@@ -31,6 +30,7 @@ import { Button, ButtonLink } from "@newrole/ui/Button"
 import { Modal } from "@newrole/ui/interactive"
 import { LOCALE_COOKIE } from "@newrole/app-kit/languages"
 import { FIRST_STEPS_HIDDEN_COOKIE } from "src/server/onboarding/first-steps"
+import { TO_APPLY_PATH } from "src/shared/applications"
 import { LogoLockup } from "./Brand"
 import type { ShellUser } from "./links"
 
@@ -76,7 +76,6 @@ export function useLocaleToggle() {
 /** The screens of a person with a profile or an account, in the order of the work. */
 export const APP_TABS = [
   { href: "/cv", key: "nav.cv", icon: FileText },
-  { href: "/offers", key: "nav.offers", icon: BriefcaseBusiness },
   { href: "/applications", key: "nav.applications", icon: ClipboardList },
   { href: "/answers", key: "nav.answers", icon: MessageSquareText },
   { href: "/profile", key: "nav.profile", icon: UserRound },
@@ -139,11 +138,11 @@ export function SiteHeader({
     }
   }, [menu])
 
-  /** Brings the "First steps" card back after "Hide", on Offers where it starts. */
+  /** Brings the "First steps" card back after "Hide", on Applications where it starts. */
   function showFirstSteps() {
     document.cookie = `${FIRST_STEPS_HIDDEN_COOKIE}=; path=/; max-age=0; samesite=lax`
     setMenu(false)
-    router.push("/offers")
+    router.push(TO_APPLY_PATH)
     router.refresh()
   }
 

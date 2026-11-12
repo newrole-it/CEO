@@ -69,7 +69,7 @@ const startPl: FeatureSection = {
         {
           id: "first-steps",
           label: "Karta „Pierwsze kroki”",
-          state: "Oferty i Moje CV",
+          state: "Aplikacje i Moje CV",
           body: "Pięć kroków pracy w newrole.it: profil, CV ogólne, pierwsza oferta, CV dopasowane do niej i zapisana aplikacja. Aktualny krok ma opis i przycisk, zrobione prowadzą do tego, co powstało. Znika, gdy zrobisz wszystkie pięć.",
         },
         {
@@ -171,7 +171,7 @@ const tailoringPl: FeatureSection = {
   id: "tailoring",
   title: "CV i list pod ofertę",
   lead: "Model proponuje sformułowania i kolejność pod ofertę, a kod scala tylko to, co wolno zmienić. Firm, szkół, danych kontaktowych, zdjęcia i kolejności stanowisk nie rusza; pole, do którego model dopisał liczbę spoza Twoich danych, zostaje z Twoim tekstem. Nowe nazwy narzędzi tylko pokazuje Ci do sprawdzenia.",
-  where: { href: "/offers", label: "Otwórz Oferty" },
+  where: { href: "/applications?group=todo", label: "Otwórz Aplikacje" },
   groups: [
     {
       title: "„Dostosuj CV i list” na stronie oferty",
@@ -239,9 +239,9 @@ const tailoringPl: FeatureSection = {
 
 const offersPl: FeatureSection = {
   id: "offers",
-  title: "Oferty",
-  lead: "Oferty, nad którymi pracujesz. Każda ma swoją stronę: całe ogłoszenie, CV i list pod nie, aplikację i notatkę.",
-  where: { href: "/offers", label: "Otwórz Oferty" },
+  title: "Oferty do wysłania",
+  lead: "Oferty, nad którymi pracujesz, zanim wyślesz aplikację. Są w Aplikacjach, w grupie „Do wysłania”. Każda ma swoją stronę: całe ogłoszenie, CV i list pod nie, aplikację i notatkę. CV i list pod ofertę usuniesz na jej stronie.",
+  where: { href: "/applications?group=todo", label: "Otwórz „Do wysłania”" },
   groups: [
     {
       title: "Dodaj ofertę z linku",
@@ -305,7 +305,7 @@ const extensionPl: FeatureSection = {
         },
         {
           label: "Dodaj tę ofertę do newrole.it",
-          body: "Wysyła tylko adres otwartej karty; ofertę czyta aplikacja, jak „Dodaj ofertę” w Ofertach, i otwiera jej stronę. Gdy strona nie ma danych strukturalnych, otwiera Oferty z wklejonym linkiem do sprawdzenia.",
+          body: "Wysyła tylko adres otwartej karty; ofertę czyta aplikacja, jak „Dodaj ofertę” w Aplikacjach, i otwiera jej stronę. Gdy strona nie ma danych strukturalnych, otwiera „Do wysłania” z wklejonym linkiem do sprawdzenia.",
         },
         {
           label: "Zapisz tę stronę jako aplikację",
@@ -756,7 +756,7 @@ const startEn: FeatureSection = {
         {
           id: "first-steps",
           label: "The “First steps” card",
-          state: "Offers and My CV",
+          state: "Applications and My CV",
           body: "The five steps of working in newrole.it: a profile, a general CV, a first offer, a CV tailored to it and a recorded application. The current step has a description and a button; done ones link to what was made. It goes away once all five are done.",
         },
         {
@@ -858,7 +858,7 @@ const tailoringEn: FeatureSection = {
   id: "tailoring",
   title: "A CV and letter for an offer",
   lead: "The model proposes wording and order for the offer, and code merges only what may change. Companies, schools, contact details, the photo and the order of roles are out of its reach; a field where the model added a number that is not in your data keeps your text. New tool names are only listed for you to check.",
-  where: { href: "/offers", label: "Open Offers" },
+  where: { href: "/applications?group=todo", label: "Open Applications" },
   groups: [
     {
       title: "“Tailor CV and letter” on an offer's page",
@@ -926,9 +926,9 @@ const tailoringEn: FeatureSection = {
 
 const offersEn: FeatureSection = {
   id: "offers",
-  title: "Offers",
-  lead: "The offers you work on. Each has its own page: the whole posting, the CV and letter for it, its application and a note.",
-  where: { href: "/offers", label: "Open Offers" },
+  title: "Offers to apply to",
+  lead: "The offers you work on before you apply. They are in Applications, in the To apply group. Each has its own page: the whole posting, the CV and letter for it, its application and a note. You delete an offer's CV or letter on its page.",
+  where: { href: "/applications?group=todo", label: "Open To apply" },
   groups: [
     {
       title: "Add an offer by its link",
@@ -992,7 +992,7 @@ const extensionEn: FeatureSection = {
         },
         {
           label: "Dodaj tę ofertę do newrole.it (Add this offer)",
-          body: "Sends only the open tab's address; the app reads the offer, like “Add offer” in Offers, and opens its page. When the page has no structured data, it opens Offers with the link pasted, for you to check.",
+          body: "Sends only the open tab's address; the app reads the offer, like “Add offer” in Applications, and opens its page. When the page has no structured data, it opens To apply with the link pasted, for you to check.",
         },
         {
           label: "Zapisz tę stronę jako aplikację (Save this page as an application)",

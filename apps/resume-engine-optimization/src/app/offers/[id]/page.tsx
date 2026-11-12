@@ -7,6 +7,7 @@ import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { getOffer } from "src/server/offers/service"
 import { OfferWorkspace } from "./OfferWorkspace"
+import { TO_APPLY_PATH } from "src/shared/applications"
 
 export const dynamic = "force-dynamic"
 
@@ -37,7 +38,7 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
   return (
     <SiteFrame user={user} locale={locale}>
       <p style={{ marginBottom: 16 }}>
-        <Link className="link link--quiet t-sm" href="/offers">
+        <Link className="link link--quiet t-sm" href={TO_APPLY_PATH}>
           {t("ow.back")}
         </Link>
       </p>

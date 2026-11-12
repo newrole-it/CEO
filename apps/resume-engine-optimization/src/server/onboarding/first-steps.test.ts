@@ -36,8 +36,8 @@ describe("firstSteps", () => {
 
   it("sends a person with a profile and a CV to add an offer", () => {
     const steps = firstSteps(fresh())
-    expect(nextFirstStep(steps)).toMatchObject({ id: "offer", href: "/offers" })
-    expect(steps.find((step) => step.id === "tailor")?.href).toBe("/offers")
+    expect(nextFirstStep(steps)).toMatchObject({ id: "offer", href: "/applications?group=todo" })
+    expect(steps.find((step) => step.id === "tailor")?.href).toBe("/applications?group=todo")
   })
 
   it("tailors the newest offer that has no CV yet", () => {

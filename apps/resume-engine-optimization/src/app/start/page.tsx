@@ -8,6 +8,7 @@ import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { setupBack } from "src/app/setup/back"
 import { Onboarding, type Step } from "./Onboarding"
+import { TO_APPLY_PATH } from "src/shared/applications"
 
 export async function generateMetadata() {
   const t = translator(await getLocale())
@@ -44,7 +45,7 @@ export default async function StartPage({
         firstName={user && user.role !== "GUEST" ? firstName : null}
         photo={user?.imageUrl ?? null}
         // A saved profile is enough to tailor: the next thing to do is the first offer.
-        after={back ?? "/offers"}
+        after={back ?? TO_APPLY_PATH}
       />
     </SiteFrame>
   )

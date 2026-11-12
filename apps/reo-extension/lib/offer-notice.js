@@ -1,8 +1,12 @@
 /**
- * Content script on offer pages: asks the app whether the person already applied and, only when
- * they did, says so in the corner of the page with the status and the next step. The form panel
- * (content.js) keeps the bottom corner; this one sits at the top, so both fit on one page.
+ * Content script on offer pages: asks the app whether the person already applied and says so in
+ * the corner of the page with the status and the next step. On a page that reads as an offer, or
+ * an offer the person keeps, the same panel has "Dopasuj CV": the app adds the offer and tailors
+ * a CV for it, the panel shows the steps and then the match in short with the way to the editor.
+ * The form panel (content.js) keeps the bottom corner; this one sits at the top, so both fit on
+ * one page.
  */
+import { errorKey, localeOf, translator } from "./copy.js"
 import { offerKey, readOffer } from "./offer.js"
 import { element, formatDate, send, session } from "./page.js"
 
@@ -14,6 +18,13 @@ export function startOffer(options = {}) {
   const PURPLE = "#5b3df5"
   /** After moving on, details equal to the last offer's count as not replaced yet for this long. */
   const SETTLE_MS = options.settleMs ?? 2000
+  /** How often the panel asks for the steps of a run that is going */
+  const POLL_MS = options.pollMs ?? 2000
+  /** The steps of "Dostosuj CV", in order: TAILOR_STEPS in @newrole/cv-core/progress */
+  const STEPS = ["offer", "cv", "match", "tailor", "bullets", "ats", "facts"]
+  const MARKS = { waiting: "○", running: "…", done: "✓", skipped: "–", failed: "!" }
+  const locale = localeOf(navigator.language)
+  const t = translator(locale)
 
   const state = {
     config: { connected: false, apiBase: "http://127.0.0.1:43123", offerCheck: true },
@@ -26,6 +37,15 @@ export function startOffer(options = {}) {
     data: null,
     /** The tab's icon says something about this offer */
     marked: false,
+    /** What readOffer found on the page for the question now asked */
+    offer: null,
+    /** The app's answer about the offer as the person's own: its CV, its match, its run */
+    fit: null,
+    /** The offer's id once "Dopasuj CV" added it: its address alone may not find it again */
+    fitJobId: null,
+    /** Why the last "Dopasuj CV" started nothing: { text, link? } */
+    fitNote: null,
+    starting: false,
   }
 
   const dismissKey = () => `nr-offer-dismissed:${offerKey(location.href)}`
@@ -58,11 +78,30 @@ export function startOffer(options = {}) {
     .link { color: ${PURPLE}; text-decoration: underline; overflow-wrap: anywhere; }
     .list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
     .others { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid #e4e4ec; }
+    .fit { display: grid; gap: 8px; }
+    .fit.after { padding-top: 8px; border-top: 1px solid #e4e4ec; }
+    .name { font-weight: 650; overflow-wrap: anywhere; }
+    .score { font-size: 18px; font-weight: 700; }
+    .err { color: #a8200f; }
+    .btn {
+      all: unset; box-sizing: border-box; cursor: pointer; padding: 7px 12px; border-radius: 8px;
+      text-align: center; font-weight: 650; background: ${PURPLE}; color: #fff;
+    }
+    .btn:focus-visible { outline: 2px solid ${PURPLE}; outline-offset: 2px; }
+    .steps { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+    .step { display: flex; gap: 8px; color: #55556a; }
+    .step[data-state="running"] { color: inherit; font-weight: 650; }
+    .step[data-state="done"] { color: inherit; }
+    .step[data-state="failed"] { color: #a8200f; }
+    .mark { flex: none; width: 14px; text-align: center; }
+    .gaps { margin: 0; padding-left: 18px; }
     @media (prefers-color-scheme: dark) {
       .panel { background: #15161d; color: #f2f2f7; border-color: #2a2b36; }
       .x, .msg, .brand { color: #a7a7b8; }
       .link { color: #a99bff; }
-      .others { border-color: #2a2b36; }
+      .others, .fit.after { border-color: #2a2b36; }
+      .step { color: #a7a7b8; }
+      .err, .step[data-state="failed"] { color: #ffb4ac; }
       .chip { background: #24252f; color: #f2f2f7; }
       .chip.progress { background: #2a2456; color: #cfc6ff; }
       .chip.late { background: #372c78; color: #e0daff; }
@@ -166,10 +205,157 @@ export function startOffer(options = {}) {
     return list
   }
 
+  // -------------------------------------------------------------------- "Dopasuj CV"
+
+  function appLink(path, text, className) {
+    const link = element("a", className, text)
+    link.href = `${state.config.apiBase}${path}`
+    link.target = "_blank"
+    link.rel = "noreferrer noopener"
+    return link
+  }
+
+  /** The steps of the run as the app reports them; the ones not reached yet wait. */
+  function runBlock(run) {
+    if (!run) return [element("div", "msg", t("fit.starting"))]
+    const list = element("ol", "steps")
+    for (const step of STEPS) {
+      const stepState = run.steps.find((entry) => entry.step === step)?.state ?? "waiting"
+      const item = element("li", "step")
+      item.dataset.state = stepState
+      item.title = t(`fit.state.${stepState}`)
+      const mark = element("span", "mark", MARKS[stepState])
+      mark.setAttribute("aria-hidden", "true")
+      item.append(mark, element("span", "", t(`fit.step.${step}`)))
+      list.append(item)
+    }
+    return [list, element("div", "msg", t("fit.running"))]
+  }
+
+  /** The match of the CV written for the offer, in short, and the way to the editor. */
+  function summaryBlock(cv) {
+    const nodes = []
+    const summary = cv.summary
+    if (!summary) nodes.push(element("div", "msg", t("fit.noMatch")))
+    else {
+      if (summary.score == null) nodes.push(element("div", "msg", t("fit.noScore")))
+      else {
+        nodes.push(element("div", "score", t("fit.score", { n: summary.score })))
+        if (summary.band) nodes.push(element("div", "msg", t(`fit.band.${summary.band}`)))
+      }
+      if (summary.required.total) {
+        nodes.push(element("div", "", t("fit.required", summary.required)))
+        if (summary.required.partial)
+          nodes.push(element("div", "msg", t("fit.partial", summary.required)))
+      }
+      if (summary.gaps.length) {
+        const gaps = element("ul", "gaps")
+        for (const gap of summary.gaps) gaps.append(element("li", "", gap))
+        nodes.push(element("div", "msg", t("fit.gaps")), gaps)
+      }
+      if (summary.ats.after != null) {
+        const key = summary.ats.before == null ? "fit.ats.after" : "fit.ats"
+        nodes.push(element("div", "msg", t(key, summary.ats)))
+      }
+    }
+    nodes.push(
+      appLink(cv.path, t("fit.openEditor"), "btn"),
+      appLink(cv.matchPath, t("fit.openMatch"), "link")
+    )
+    return nodes
+  }
+
+  /** Something to say about tailoring: the offer is the person's, or the page reads as an offer. */
+  function fitShown() {
+    return Boolean(state.fit && (state.fit.offer || (state.offer?.company && state.offer.title)))
+  }
+
+  function fitBlock(after) {
+    const fit = state.fit
+    const block = element("div", after ? "fit after" : "fit")
+    const named = fit.offer ?? state.offer
+    const head = element("div", "row")
+    if (fit.cv) head.append(element("span", "chip success", t("fit.stage.cv")))
+    else if (fit.offer) head.append(element("span", "chip progress", t("fit.stage.saved")))
+    if (named?.company && named.title) head.append(element("span", "name", t("fit.offer", named)))
+    block.append(head)
+    if (state.starting || fit.run?.state === "running") {
+      block.append(...runBlock(fit.run?.state === "running" ? fit.run : null))
+      return block
+    }
+    if (fit.cv) {
+      block.append(...summaryBlock(fit.cv))
+      return block
+    }
+    const failed = fit.run?.state === "failed"
+    if (failed) block.append(element("div", "err", t(errorKey(fit.run.error))))
+    if (state.fitNote) {
+      block.append(element("div", "err", state.fitNote.text))
+      if (state.fitNote.link)
+        block.append(appLink(state.fitNote.link.path, state.fitNote.link.text, "link"))
+    }
+    const start = element("button", "btn", t(failed ? "fit.retry" : "fit.tailor"))
+    start.type = "button"
+    start.addEventListener("click", () => void startTailor())
+    block.append(start)
+    if (fit.offer) block.append(appLink(fit.offer.path, t("fit.openOffer"), "link"))
+    return block
+  }
+
+  let poll = null
+  /** Asks again while a run is going; the answer after its last step has the CV and its match. */
+  function followRun() {
+    if (poll || state.fit?.run?.state !== "running") return
+    poll = setTimeout(() => {
+      poll = null
+      void refreshFit()
+    }, POLL_MS)
+  }
+
+  async function refreshFit() {
+    const asked = state.asked
+    if (!asked || !state.offer) return
+    const result = await send("offerFit", { url: state.offer.url, jobId: state.fitJobId })
+    if (state.asked !== asked) return
+    // The app not answering once is no reason to drop a run from the screen.
+    if (result.ok) state.fit = result.data
+    render()
+    followRun()
+  }
+
+  async function startTailor() {
+    const asked = state.asked
+    if (!state.offer || state.starting) return
+    state.starting = true
+    state.fitNote = null
+    render()
+    const result = await send("tailorOffer", { url: state.offer.url, locale })
+    if (state.asked !== asked) return
+    state.starting = false
+    const data = result.ok ? result.data : null
+    if (!data) {
+      const code = result.status === 401 ? "not-connected" : result.error
+      state.fitNote = { text: t(errorKey(code)) }
+    } else if (data.kind === "draft") {
+      state.fitNote = {
+        text: t("fit.draft"),
+        link: { path: data.path, text: t("fit.draft.link") },
+      }
+    } else if (data.kind === "invalid" || data.kind === "limited") {
+      state.fitNote = { text: t(`fit.${data.kind}`) }
+    } else {
+      state.fitJobId = data.jobId
+      await refreshFit()
+      return
+    }
+    render()
+  }
+
   function render() {
     const applied = state.data?.applied
     const others = state.data?.sameCompany ?? []
-    if ((!applied && !others.length) || session("get", dismissKey())) {
+    const fit = fitShown()
+    if ((!applied && !others.length && !fit) || session("get", dismissKey())) {
       if (ui.host) ui.host.style.display = "none"
       return
     }
@@ -177,29 +363,42 @@ export function startOffer(options = {}) {
     ui.host.style.display = ""
     ui.body.textContent = ""
     if (applied) ui.body.append(...appliedBlock(applied))
-    else ui.body.append(element("div", "lead", "W tej firmie już aplikowano"))
+    else if (others.length) ui.body.append(element("div", "lead", "W tej firmie już aplikowano"))
     if (others.length) {
       const block = applied ? element("div", "others") : element("div")
       if (applied) block.append(element("div", "msg", "W tej firmie także:"))
       block.append(sameCompanyList(others))
       ui.body.append(block)
     }
+    if (fit) ui.body.append(fitBlock(Boolean(applied || others.length)))
   }
 
   // -------------------------------------------------------------------- asking
 
   async function check(offer, asked) {
-    const result = await send("offerStatus", { offer })
+    const [result, fit] = await Promise.all([
+      send("offerStatus", { offer }),
+      send("offerFit", { url: offer.url, jobId: state.fitJobId }),
+    ])
     if (state.asked !== asked) return
     // The app being off is no news on someone's job offer; the popup says so when opened.
     state.data = result.ok ? result.data : null
     state.marked = Boolean(state.data?.applied || state.data?.sameCompany?.length)
+    state.fit = fit.ok ? (fit.data ?? null) : null
     render()
+    followRun()
   }
 
   function forget() {
     state.asked = ""
     state.data = null
+    state.offer = null
+    state.fit = null
+    state.fitJobId = null
+    state.fitNote = null
+    state.starting = false
+    if (poll) clearTimeout(poll)
+    poll = null
     render()
     if (state.marked) void send("offerLeft", {})
     state.marked = false
@@ -236,6 +435,7 @@ export function startOffer(options = {}) {
     const asked = JSON.stringify(offer)
     if (asked === state.asked) return
     state.asked = asked
+    state.offer = offer
     void check(offer, asked)
   }
 
@@ -255,6 +455,12 @@ export function startOffer(options = {}) {
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "nr:fit") {
+      // The popup started "Dopasuj CV" for this tab: the panel follows the same run.
+      if (message.jobId) state.fitJobId = message.jobId
+      void refreshFit()
+      return false
+    }
     if (message?.type !== "nr:offer") return false
     sendResponse(state.data ? { ok: true, data: state.data } : null)
     return false

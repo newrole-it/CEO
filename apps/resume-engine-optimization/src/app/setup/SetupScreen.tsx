@@ -25,6 +25,7 @@ import {
   type StepGroup,
   type StepState,
 } from "src/server/setup/steps"
+import { TO_APPLY_PATH } from "src/shared/applications"
 
 const POLL_MS = 4000
 const GROUPS: StepGroup[] = ["run", "you", "connect"]
@@ -170,7 +171,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
               <strong>{t("setup.ready.title")}</strong> {t("setup.ready.body")}
             </p>
             <div style={{ marginTop: 8 }}>
-              <ButtonLink href="/offers" variant="primary" size="sm">
+              <ButtonLink href={TO_APPLY_PATH} variant="primary" size="sm">
                 {t("setup.ready.cta")}
               </ButtonLink>
             </div>
@@ -220,7 +221,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
           <Button variant="ghost" onClick={closeCelebration}>
             {t("setup.done.stay")}
           </Button>
-          <ButtonLink href="/offers" variant="primary" onClick={closeCelebration}>
+          <ButtonLink href={TO_APPLY_PATH} variant="primary" onClick={closeCelebration}>
             {t("setup.done.cta")}
           </ButtonLink>
         </div>

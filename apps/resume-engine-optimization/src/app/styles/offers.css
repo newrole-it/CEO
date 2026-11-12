@@ -137,6 +137,32 @@
   justify-content: space-between;
   gap: 6px 12px;
 }
+.hiring-score {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.hiring-signals {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+.hiring-signals li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hiring-signals__points {
+  flex: none;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .offer-doc {
   display: flex;
   align-items: center;
@@ -702,4 +728,8 @@ a.cvo-card__status:hover {
 .pr-facts__body p {
   margin: 0;
   white-space: pre-wrap;
+}
+
+.offer-doc > span {
+  flex: 1;
 }

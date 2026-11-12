@@ -25,10 +25,16 @@ export function toRow(view: ApplicationView): AppRow {
   }
 }
 
-export type AppGroup = "active" | "all" | "closed" | "rejected"
-export const GROUPS: AppGroup[] = ["active", "all", "closed", "rejected"]
+/** "todo" holds no application: it is the offers the person has not applied to yet. */
+export type AppGroup = "todo" | "active" | "all" | "closed" | "rejected"
+export const GROUPS: AppGroup[] = ["todo", "active", "all", "closed", "rejected"]
+
+export function isAppGroup(value: unknown): value is AppGroup {
+  return typeof value === "string" && (GROUPS as string[]).includes(value)
+}
 
 export function inGroup(status: ApplicationStatus, group: AppGroup): boolean {
+  if (group === "todo") return false
   if (group === "all") return true
   if (group === "active") return isActiveStatus(status)
   if (group === "rejected") return status === "REJECTED"
