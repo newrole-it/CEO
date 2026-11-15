@@ -61,6 +61,8 @@ function byLabel(collection: Collection, label: string): Entry {
 }
 
 beforeEach(() => {
+  // These tests read the Polish interface; the English one has its own tests.
+  vi.spyOn(navigator, "language", "get").mockReturnValue("pl-PL")
   document.head.innerHTML = ""
   document.body.innerHTML = ""
 })

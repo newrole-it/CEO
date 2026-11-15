@@ -1,5 +1,6 @@
 "use client"
 
+import { replyNumbers } from "src/app/dashboard/reply-numbers"
 import Link from "next/link"
 import { useCallback, useMemo, useState } from "react"
 import { ArrowLeft, ChartNoAxesColumn } from "lucide-react"
@@ -67,10 +68,7 @@ export function StatsScreen({
   }, [])
 
   const hasAny = input.applications.length > 0
-  const total = insights.sent
-  const replied = Math.round((insights.rates.response ?? 0) * total)
-  const interviews = insights.funnel.find((row) => row.stage === "INTERVIEW")?.reached ?? 0
-  const offers = insights.funnel.find((row) => row.stage === "OFFER")?.reached ?? 0
+  const { sent: total, replied, interviews, offers } = replyNumbers(insights)
   const week = (iso: string) => ({
     label: dayLabel(iso, locale),
     title: t("stx.week.of", { date: dayLabel(iso, locale) }),

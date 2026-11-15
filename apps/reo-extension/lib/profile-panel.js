@@ -4,12 +4,17 @@
  * page is never edited; the person makes every change in LinkedIn's own editor.
  */
 import * as L from "./linkedin.js"
-import { connectionError, element, formatDate, send, session } from "./page.js"
+import { localeOf, translator } from "./copy.js"
+import { formatDate, pluralKind } from "./i18n.js"
+import { connectionError, element, send, session } from "./page.js"
 
 export function startLinkedIn(options = {}) {
   if (globalThis.__newRoleLinkedIn) return
   globalThis.__newRoleLinkedIn = true
   if (window.top !== window) return
+
+  const locale = localeOf(navigator.language)
+  const t = translator(locale)
 
   const PURPLE = "#5b3df5"
   /** The page must look the same twice, this far apart, before it is sent: sections load late. */
@@ -129,16 +134,16 @@ export function startLinkedIn(options = {}) {
     }
     const panel = element("div", "panel")
     panel.setAttribute("role", "region")
-    panel.setAttribute("aria-label", "newrole.it: ocena profilu LinkedIn")
+    panel.setAttribute("aria-label", t("linkedin.region"))
     const head = element("div", "head")
     const close = element("button", "x", "×")
     close.type = "button"
-    close.setAttribute("aria-label", "Ukryj")
+    close.setAttribute("aria-label", t("linkedin.hide"))
     close.addEventListener("click", () => {
       session("set", dismissKey())
       host.style.display = "none"
     })
-    head.append(element("span", "", "newrole.it · Profil LinkedIn"), close)
+    head.append(element("span", "", t("linkedin.title")), close)
     ui.body = element("div", "")
     ui.body.style.display = "grid"
     ui.body.style.gap = "10px"
@@ -158,11 +163,11 @@ export function startLinkedIn(options = {}) {
   }
 
   function errorText(result) {
-    const known = connectionError(result)
+    const known = connectionError(result, t)
     if (known) return known
-    if (result.error === "no-sections")
-      return "Nie widzę tu sekcji profilu. Przewiń stronę, żeby LinkedIn je załadował, i spróbuj ponownie."
-    return result.error || "Coś poszło nie tak. Spróbuj ponownie."
+    if (result.error === "no-sections") return t("linkedin.err.no-sections")
+    // What the server said is never shown.
+    return t("err.generic.retry")
   }
 
   function button(text, className, onClick) {
@@ -190,10 +195,10 @@ export function startLinkedIn(options = {}) {
       } catch (_err) {}
       area.remove()
     }
-    node.textContent = done ? "Skopiowano" : "Nie udało się skopiować"
+    node.textContent = t(done ? "linkedin.copied" : "linkedin.copyFailed")
     node.className = done ? "small done" : "small"
     setTimeout(() => {
-      node.textContent = "Kopiuj"
+      node.textContent = t("linkedin.copy")
       node.className = "small"
     }, 2000)
   }
@@ -219,18 +224,18 @@ export function startLinkedIn(options = {}) {
     top.append(element("span", "where", note.section))
     item.append(top)
     if (note.quote && note.quote.length <= 160)
-      item.append(element("div", "quote", `„${note.quote}”`))
+      item.append(element("div", "quote", t("linkedin.quote", { quote: note.quote })))
     item.append(element("div", "", note.why))
     if (note.rewrite) item.append(element("div", "rewrite", note.rewrite))
     const row = element("div", "row")
     if (note.rewrite) {
-      const copy = element("button", "small", "Kopiuj")
+      const copy = element("button", "small", t("linkedin.copy"))
       copy.type = "button"
       copy.addEventListener("click", () => void copyText(note.rewrite, copy))
       row.append(copy)
     }
     if (L.sectionTarget(state.targets, note.sectionId)) {
-      row.append(button("Pokaż", "small", () => reveal(note.sectionId)))
+      row.append(button(t("linkedin.show"), "small", () => reveal(note.sectionId)))
     }
     if (row.childNodes.length) item.append(row)
     return item
@@ -238,68 +243,62 @@ export function startLinkedIn(options = {}) {
 
   function readLine(read) {
     if (!read) return null
+    const counted = (what, n) => t(`linkedin.read.${what}.${pluralKind(n, locale)}`, { n })
     const parts = []
-    if (read.about) parts.push("O mnie")
-    if (read.experience)
-      parts.push(`${read.experience} ${plural(read.experience, "rola", "role", "ról")}`)
-    if (read.education)
-      parts.push(`${read.education} ${plural(read.education, "szkoła", "szkoły", "szkół")}`)
-    if (read.skills)
-      parts.push(
-        `${read.skills} ${plural(read.skills, "umiejętność", "umiejętności", "umiejętności")}`
-      )
-    return `Oceniam to, co widać na tej stronie: ${
-      parts.join(", ") || "nagłówek"
-    }. Wpisy schowane pod „Pokaż wszystkie” nie są czytane.`
-  }
-
-  function plural(count, one, few, many) {
-    if (count === 1) return one
-    const mod10 = count % 10
-    const mod100 = count % 100
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
-    return many
+    if (read.about) parts.push(t("linkedin.read.about"))
+    if (read.experience) parts.push(counted("roles", read.experience))
+    if (read.education) parts.push(counted("schools", read.education))
+    if (read.skills) parts.push(counted("skills", read.skills))
+    // A list of what was read: the items are whole phrases, joined the way lists are.
+    return t("linkedin.read", { list: parts.join(", ") || t("linkedin.read.headline") })
   }
 
   function renderAudit(audit) {
     const body = ui.body
     const tone = audit.score >= 80 ? "good" : audit.score >= 60 ? "mid" : "low"
     const score = element("div", `score ${tone}`)
-    score.append(element("b", "", String(audit.score)), element("span", "", "/ 100"))
+    score.append(element("b", "", String(audit.score)), element("span", "", t("linkedin.outOf")))
     body.append(score)
-    const when = [`Ocena z ${formatDate(audit.auditedAt)}`]
-    if (audit.progress) when.push(audit.progress)
-    else if (!audit.fresh) when.push("profil bez zmian od ostatniej oceny")
-    body.append(element("div", "msg", when.join(" · ")))
+    const date = formatDate(audit.auditedAt, locale)
+    const when = audit.progress
+      ? t("linkedin.when.progress", { date, progress: audit.progress })
+      : t(audit.fresh ? "linkedin.when" : "linkedin.when.same", { date })
+    body.append(element("div", "msg", when))
     body.append(element("div", "", audit.summary))
 
     const top = audit.notes.slice(0, 5)
     const rest = audit.notes.slice(5)
     if (top.length) {
-      body.append(element("h3", "", "Najważniejsze zmiany"))
+      body.append(element("h3", "", t("linkedin.top")))
       const list = element("ul", "notes")
       for (const note of top) list.append(noteCard(note))
       body.append(list)
     } else {
-      body.append(element("div", "msg", "Brak uwag. Ten profil czyta się dobrze."))
+      body.append(element("div", "msg", t("linkedin.noNotes")))
     }
     if (rest.length) {
       const details = element("details")
-      details.append(element("summary", "", `Pozostałe uwagi (${rest.length})`))
+      details.append(element("summary", "", t("linkedin.rest", { n: rest.length })))
       const list = element("ul", "notes")
       for (const note of rest) list.append(noteCard(note))
       details.append(list)
       body.append(details)
     }
     if (audit.demand.length) {
-      body.append(element("h3", "", "Czego szukają oferty dla Ciebie"))
+      body.append(element("h3", "", t("linkedin.demand")))
       const list = element("ul", "demand")
       for (const fact of audit.demand.slice(0, 6)) {
         list.append(
           element(
             "li",
             "",
-            `${fact.percent}% ofert „${fact.role}” wspomina: ${fact.phrase} (${fact.matchingOffers} z ${fact.totalOffers}). W profilu tego nie ma.`
+            t("linkedin.demand.fact", {
+              percent: fact.percent,
+              role: fact.role,
+              phrase: fact.phrase,
+              matching: fact.matchingOffers,
+              total: fact.totalOffers,
+            })
           )
         )
       }
@@ -308,12 +307,12 @@ export function startLinkedIn(options = {}) {
     const read = readLine(audit.read)
     if (read) body.append(element("div", "msg", read))
     const foot = element("div", "foot")
-    const link = element("a", "link", "Profil w newrole.it")
+    const link = element("a", "link", t("linkedin.profileLink"))
     link.href = appLink("/profile")
     link.target = "_blank"
     link.rel = "noreferrer noopener"
     foot.append(
-      button("Oceń ponownie", "btn alt", () => void run({ force: true })),
+      button(t("linkedin.again"), "btn alt", () => void run({ force: true })),
       link
     )
     body.append(foot)
@@ -325,8 +324,8 @@ export function startLinkedIn(options = {}) {
     body.textContent = ""
     if (!state.config.connected) {
       body.append(
-        element("div", "msg", "Połącz rozszerzenie z newrole.it, żeby ocenić ten profil."),
-        button("Połącz rozszerzenie", "btn", () => void send("openOptions", {}))
+        element("div", "msg", t("linkedin.connect.body")),
+        button(t("linkedin.connect"), "btn", () => void send("openOptions", {}))
       )
       return
     }
@@ -336,7 +335,7 @@ export function startLinkedIn(options = {}) {
     }
     if (state.error) {
       body.append(element("div", "err", state.error))
-      body.append(button("Spróbuj ponownie", "btn", () => void run({ force: true })))
+      body.append(button(t("linkedin.retry"), "btn", () => void run({ force: true })))
       return
     }
     if (state.audit) {
@@ -344,12 +343,8 @@ export function startLinkedIn(options = {}) {
       return
     }
     body.append(
-      element(
-        "div",
-        "msg",
-        "Ocena pokaże, jak ten profil czytają rekruterzy i czego brakuje mu wobec ofert dla Ciebie."
-      ),
-      button("Oceń mój profil", "btn", () => void run({ force: true }))
+      element("div", "msg", t("linkedin.intro")),
+      button(t("linkedin.start"), "btn", () => void run({ force: true }))
     )
   }
 
@@ -373,7 +368,7 @@ export function startLinkedIn(options = {}) {
     state.targets = targets
     state.busy = true
     state.error = null
-    state.stage = "Czytam profil i oceniam go. To może potrwać kilkanaście sekund…"
+    state.stage = t("linkedin.working")
     render()
     try {
       const slug = L.profileSlug(location.pathname)
@@ -381,6 +376,7 @@ export function startLinkedIn(options = {}) {
         sections,
         force: Boolean(force),
         profileUrl: `${location.origin}${location.pathname}`,
+        locale,
         slug: slug === "me" ? null : slug,
       })
       state.sentAt = Date.now()

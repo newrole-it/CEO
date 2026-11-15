@@ -22,7 +22,7 @@ function registered(): Map<string, Registered> {
       tools.set(name, { config })
     },
   } as unknown as McpServer
-  registerApplicationTools(server)
+  registerApplicationTools(server, "pl")
   return tools
 }
 
@@ -121,7 +121,7 @@ describe("application tools", () => {
       },
       { now, weeks: 12 }
     )
-    const text = insightsText(insights, 12)
+    const text = insightsText(insights, 12, "pl")
     expect(text).toContain("Statystyki (ostatnie 12 tyg.): wysłane 2")
     expect(text).toContain("odpowiedzi 50%")
     expect(text).toContain("Lejek: Aplikowano 2 → Rozmowa z rekruterem 1 (50%) → Rozmowy 1 (100%)")
@@ -129,6 +129,17 @@ describe("application tools", () => {
     expect(text).toContain("Najdłużej bez odpowiedzi: Acme · Head of Engineering (30 dni, id a2)")
     expect(text).toContain("zapisane automatycznie 50% (1 z 2)")
     expect(text).toContain("z powodem 100% (1 z 1)")
+
+    const english = insightsText(insights, 12, "en")
+    expect(english).toContain("Statistics (last 12 weeks): sent 2")
+    expect(english).toContain("replies 50%")
+    expect(english).toContain("Funnel: Applied 2 → Recruiter screen 1 (50%) → Interviews 1 (100%)")
+    expect(english).toContain("Where I drop out: Interviews: 1 rejected")
+    expect(english).toContain(
+      "Longest without a reply: Acme · Head of Engineering (30 days, id a2)"
+    )
+    expect(english).toContain("saved automatically 50% (1 of 2)")
+    expect(english).not.toMatch(/[ąćęłńóśźż]/i)
   })
 
   it("validates input", () => {
@@ -184,6 +195,7 @@ describe("helpers", () => {
         nextStep: "feedback",
         nextStepAt: new Date("2026-11-03T11:00:00Z"),
       }),
+      "pl",
       0,
       new Date("2026-10-25T10:00:00Z").getTime()
     )
@@ -194,8 +206,23 @@ describe("helpers", () => {
     expect(line).toContain("id a1")
   })
 
+  it("writes an application's line in English, with the day count in the right form", () => {
+    const now = new Date("2026-10-25T10:00:00Z").getTime()
+    const rejected = app({
+      status: "REJECTED",
+      closedAtStage: "INTERVIEW",
+      nextStep: "feedback",
+      nextStepAt: new Date("2026-11-03T11:00:00Z"),
+    })
+    const line = applicationLine(rejected, "en", 0, now)
+    expect(line).toContain("Rejected, after the stage: Interviews")
+    expect(line).toContain("in this stage for 5 days")
+    expect(line).toContain("next step: feedback 2026-11-03")
+    expect(line).not.toMatch(/[ąćęłńóśźż]/i)
+  })
+
   it("serialises dates for structured content", () => {
-    const json = applicationJson(app({ nextStepAt: null }))
+    const json = applicationJson(app({ nextStepAt: null }), "pl")
     expect(json.appliedAt).toBe("2026-10-01T10:00:00.000Z")
     expect(json.nextStepAt).toBeNull()
     expect(json.statusLabel).toBe("Aplikowano")

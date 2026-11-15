@@ -34,6 +34,29 @@ describe("renderCvHtml", () => {
     expect(html.match(/<script>/g)).toHaveLength(1)
   })
 
+  it("draws every paragraph of a text and of a job summary in a block of its own", () => {
+    const cv = syntheticCv(1)
+    cv.sections[0] = {
+      id: "p",
+      type: "text",
+      title: "T",
+      body: "<strong>one<br>two</strong><br><br>four",
+    }
+    const jobs = cv.sections.find((section) => section.type === "experience")
+    if (jobs?.type !== "experience") throw new Error("no experience section")
+    jobs.items[0].summary = "first<br>second"
+    const html = renderCvAtoms(cv)
+    expect(html).toContain('<p class="cv-text"><strong>one</strong></p>')
+    expect(html).toContain('<p class="cv-text"><strong>two</strong></p>')
+    // a blank line in the middle is still a line
+    expect(html).toContain('<p class="cv-text"><br></p>')
+    expect(html).toContain('<p class="cv-text">four</p>')
+    expect(html).toMatch(/data-key="p:text:0"[^>]*padding-top:3mm/)
+    expect(html).toMatch(/data-key="p:text:1"[^>]*padding-top:0mm/)
+    expect(html).toContain('<p class="cv-summary">first</p>')
+    expect(html).toContain('<p class="cv-summary">second</p>')
+  })
+
   it("only opens the print dialog on request", () => {
     expect(renderCvHtml(syntheticCv(1))).not.toContain("window.print()")
     expect(renderCvHtml(syntheticCv(1), { autoPrint: true })).toContain("window.print()")

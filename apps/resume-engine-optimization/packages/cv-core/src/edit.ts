@@ -1,4 +1,5 @@
-import type { CvContent, CvExperienceItem, CvHeader, CvSection } from "./schema"
+import { normalizeHref } from "./sanitize"
+import type { CvContent, CvExperienceItem, CvHeader, CvLink, CvSection } from "./schema"
 
 /**
  * Pure edits for the CV editor. Each returns a new CvContent that shares unchanged parts with
@@ -17,6 +18,19 @@ function moved<T>(list: T[], index: number, direction: MoveDirection): T[] {
 
 export function updateHeader(content: CvContent, patch: Partial<CvHeader>): CvContent {
   return { ...content, header: { ...content.header, ...patch } }
+}
+
+/**
+ * A header link with new visible text. While the address is empty or was derived from the text,
+ * it follows the text: typing "github.com/anna" on the sheet is enough, and clearing the text
+ * clears it. Text that is no address ("GitHub") never takes an address away, and one set by
+ * hand in the links box stays.
+ */
+export function relabelLink(link: CvLink, label: string): CvLink {
+  const derived = !link.url.trim() || link.url === normalizeHref(link.label)
+  if (!derived) return { label, url: link.url }
+  if (!label.trim()) return { label, url: "" }
+  return { label, url: normalizeHref(label) ?? link.url }
 }
 
 export function updateSection(
@@ -168,6 +182,23 @@ export function removeBullet(
   )
 }
 
+/** Joins a bullet to the one before it (Backspace at its start). The first one stays. */
+export function mergeBullet(
+  content: CvContent,
+  sectionId: string,
+  itemId: string,
+  index: number
+): CvContent {
+  return withBullets(content, sectionId, itemId, (bullets) => joined(bullets, index))
+}
+
+function joined(list: string[], index: number): string[] {
+  if (index <= 0 || index >= list.length) return list
+  const next = [...list]
+  next.splice(index - 1, 2, list[index - 1] + list[index])
+  return next
+}
+
 export function moveBullet(
   content: CvContent,
   sectionId: string,
@@ -222,6 +253,11 @@ export function removeParagraph(content: CvContent, sectionId: string, index: nu
   return withParagraphs(content, sectionId, (paragraphs) =>
     paragraphs.filter((_, at) => at !== index)
   )
+}
+
+/** Joins a letter's paragraph to the one before it (Backspace at its start). */
+export function mergeParagraph(content: CvContent, sectionId: string, index: number): CvContent {
+  return withParagraphs(content, sectionId, (paragraphs) => joined(paragraphs, index))
 }
 
 export function moveParagraph(

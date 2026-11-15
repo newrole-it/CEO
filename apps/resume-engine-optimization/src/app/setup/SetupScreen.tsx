@@ -130,7 +130,7 @@ export function SetupScreen({ initial }: { initial: SetupStatus }) {
 
   function skip() {
     document.cookie = `${SETUP_SKIP_COOKIE}=1; path=/; max-age=31536000; samesite=lax`
-    router.push("/cv")
+    router.push("/")
   }
 
   return (

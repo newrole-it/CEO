@@ -3,6 +3,7 @@
  * it through messages and never see the token. See apps/resume-engine-optimization/docs/product/plan-aplikacje.md §5.3 and §5.4.
  */
 import { isGmail, parseMailDate, readOpenMail } from "./gmail.js"
+import { localeOf, translator } from "./copy.js"
 import { linkedInJobId, statusLine } from "./offer.js"
 
 const DEFAULT_APP = "http://127.0.0.1:43123"
@@ -164,7 +165,10 @@ async function setOfferBadge(tabId, data) {
   const applied = data?.applied
   const text = applied ? "✓" : data?.sameCompany?.length ? "•" : ""
   const color = applied ? TONE_COLORS[applied.tone] || TONE_COLORS.neutral : TONE_COLORS.muted
-  const title = text ? `newrole.it: ${statusLine(data)}` : ""
+  // The service worker draws nothing itself; the icon's tooltip is in the browser's language.
+  const locale = localeOf(navigator.language)
+  const t = translator(locale)
+  const title = text ? t("notice.badge.title", { line: statusLine(data, t, locale) }) : ""
   await chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => undefined)
   await chrome.action.setBadgeText({ tabId, text }).catch(() => undefined)
   await chrome.action.setTitle({ tabId, title }).catch(() => undefined)
@@ -370,7 +374,8 @@ async function handle(message, sender) {
           sections: message.sections,
           force: Boolean(message.force),
           profileUrl: message.profileUrl,
-          locale: "pl",
+          // The language of the audit's notes: the panel's, which is the browser's.
+          locale: localeOf(message.locale ?? navigator.language),
         }),
       })
       if (!result.ok) return result
@@ -381,7 +386,9 @@ async function handle(message, sender) {
       return result
     }
     case "linkedinLatest":
-      return api("/api/ext/linkedin-profile?locale=pl")
+      return api(
+        `/api/ext/linkedin-profile?locale=${localeOf(message.locale ?? navigator.language)}`
+      )
     case "linkedinTab":
       if (!fromExtensionPage(sender)) return { ok: false, error: "forbidden" }
       return auditInTab(message.tabId)

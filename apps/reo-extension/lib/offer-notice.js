@@ -7,8 +7,9 @@
  * one page.
  */
 import { errorKey, localeOf, translator } from "./copy.js"
-import { offerKey, readOffer } from "./offer.js"
-import { element, formatDate, send, session } from "./page.js"
+import { offerKey, readOffer, statusText } from "./offer.js"
+import { formatDate } from "./i18n.js"
+import { element, send, session } from "./page.js"
 
 export function startOffer(options = {}) {
   if (globalThis.__newRoleOffer) return
@@ -131,7 +132,7 @@ export function startOffer(options = {}) {
     const head = element("div", "head")
     const close = element("button", "x", "×")
     close.type = "button"
-    close.setAttribute("aria-label", "Ukryj")
+    close.setAttribute("aria-label", t("notice.hide"))
     close.addEventListener("click", () => {
       session("set", dismissKey())
       host.style.display = "none"
@@ -145,7 +146,7 @@ export function startOffer(options = {}) {
   }
 
   function chip(application) {
-    return element("span", `chip ${application.tone || ""}`, application.statusLabel)
+    return element("span", `chip ${application.tone || ""}`, statusText(application, t))
   }
 
   function trackerLink(application, text) {
@@ -157,28 +158,28 @@ export function startOffer(options = {}) {
   }
 
   function dates(application) {
-    const sent = `Wysłano ${formatDate(application.appliedAt)}`
-    if (application.status === "APPLIED") return sent
-    return `${sent} · status od ${formatDate(application.statusChangedAt)}`
+    const date = formatDate(application.appliedAt, locale)
+    if (application.status === "APPLIED") return t("notice.sent", { date })
+    return t("notice.sent.since", {
+      date,
+      since: formatDate(application.statusChangedAt, locale),
+    })
   }
 
   function nextStep(application) {
-    const when = application.nextStepAt ? formatDate(application.nextStepAt) : ""
-    const parts = [application.nextStep, when].filter(Boolean)
-    return parts.length ? `Następny krok: ${parts.join(", ")}` : ""
+    const date = application.nextStepAt ? formatDate(application.nextStepAt, locale) : ""
+    const step = application.nextStep
+    if (step && date) return t("notice.next.when", { step, date })
+    if (step) return t("notice.next", { step })
+    return date ? t("notice.next.date", { date }) : ""
   }
 
   function whyLikely(applied) {
-    return applied.companyMatch === "similar"
-      ? "Inny adres. Stanowisko się zgadza, a nazwa firmy jest podobna."
-      : "Inny adres, ale zgadzają się firma i stanowisko."
+    return t(applied.companyMatch === "similar" ? "notice.why.similar" : "notice.why.same")
   }
 
   function appliedBlock(applied) {
-    const lead =
-      applied.match === "role"
-        ? "Prawdopodobnie już aplikowano na tę ofertę"
-        : "Już aplikowano na tę ofertę"
+    const lead = t(applied.match === "role" ? "notice.lead.probably" : "notice.lead.applied")
     const status = element("div", "row")
     status.append(chip(applied))
     if (applied.stageNote) status.append(element("span", "msg", applied.stageNote))
@@ -363,10 +364,10 @@ export function startOffer(options = {}) {
     ui.host.style.display = ""
     ui.body.textContent = ""
     if (applied) ui.body.append(...appliedBlock(applied))
-    else if (others.length) ui.body.append(element("div", "lead", "W tej firmie już aplikowano"))
+    else if (others.length) ui.body.append(element("div", "lead", t("notice.lead.company")))
     if (others.length) {
       const block = applied ? element("div", "others") : element("div")
-      if (applied) block.append(element("div", "msg", "W tej firmie także:"))
+      if (applied) block.append(element("div", "msg", t("notice.alsoCompany")))
       block.append(sameCompanyList(others))
       ui.body.append(block)
     }

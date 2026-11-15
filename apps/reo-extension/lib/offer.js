@@ -4,7 +4,8 @@
  * clicks or loads more.
  */
 import { clean, fold, knownAts } from "./form.js"
-import { formatDate } from "./page.js"
+import { COPY } from "./copy.js"
+import { formatDate } from "./i18n.js"
 
 const LINKEDIN_HOST = /(^|\.)linkedin\.com$/
 const LINKEDIN_VIEW = /\/jobs\/view\/(?:[^/]*-)?(\d+)\/?$/
@@ -111,16 +112,35 @@ export function offerKey(href) {
   return `${url.pathname}${url.search}`
 }
 
+/**
+ * An application's status in the language of `t`, from its code. The app's own label stays for a
+ * status this extension does not know, and for a closed application from an app that does not yet
+ * say which stage it reached.
+ */
+export function statusText(application, t) {
+  const { status, closedAtStage, statusLabel } = application
+  const key = `status.${status}`
+  if (!(key in COPY.pl)) return statusLabel || status || ""
+  const after = `status.closedAfter.${status}`
+  if (after in COPY.pl) {
+    if (closedAtStage === undefined && statusLabel) return statusLabel
+    if (closedAtStage && `status.${closedAtStage}` in COPY.pl) {
+      return t(after, { stage: t(`status.${closedAtStage}`) })
+    }
+  }
+  return t(key)
+}
+
 /** The answer in one line, for the popup, the form panel and the icon's tooltip. */
-export function statusLine(data) {
+export function statusLine(data, t, locale) {
   const applied = data?.applied
   if (applied) {
-    const lead = applied.match === "role" ? "Prawdopodobnie już aplikowano" : "Już aplikowano"
-    return `${lead} ${formatDate(applied.appliedAt)}. Status: ${
-      applied.statusLabel || applied.status
-    }.`
+    return t(applied.match === "role" ? "notice.badge.probably" : "notice.badge.applied", {
+      date: formatDate(applied.appliedAt, locale),
+      status: statusText(applied, t),
+    })
   }
   const other = data?.sameCompany?.[0]
-  if (other) return `W tej firmie już aplikowano: ${other.title}. Status: ${other.statusLabel}.`
+  if (other) return t("notice.badge.company", { title: other.title, status: statusText(other, t) })
   return ""
 }

@@ -1,7 +1,16 @@
 import db from "db"
+import type { Locale } from "@newrole/ui/i18n"
+import { mcpLocale, systemLanguage } from "./copy"
 import { mcpHost } from "./host"
 
-export type McpUser = { id: number; email: string; name: string | null; how: string }
+export type McpUser = {
+  id: number
+  email: string
+  name: string | null
+  how: string
+  /** The language the tools answer this person in */
+  locale: Locale
+}
 
 type Candidate = { id: number; email: string; name: string | null; role: string }
 
@@ -62,6 +71,7 @@ export async function currentUser(): Promise<McpUser> {
     email: picked.user.email,
     name: picked.user.name,
     how: picked.how,
+    locale: mcpLocale(process.env, systemLanguage()),
   }
   return resolved
 }

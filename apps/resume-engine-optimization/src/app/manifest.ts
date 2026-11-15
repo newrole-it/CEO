@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next"
+import { translator } from "./i18n/copy"
+import { getLocale } from "./i18n/server"
 
-export default function manifest(): MetadataRoute.Manifest {
+/** The name is the same everywhere; the description and `lang` follow the request's language. */
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const locale = await getLocale()
   return {
     name: "newrole.it",
     short_name: "newrole.it",
-    description:
-      "Oferty z całego świata, wyniki z Twojego kraju. Prosto od pracodawców, dopasowane do Ciebie.",
-    lang: "pl",
+    description: translator(locale)("meta.description"),
+    lang: locale,
     start_url: "/",
     display: "standalone",
     background_color: "#f7f7fa",

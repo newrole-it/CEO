@@ -1,3 +1,4 @@
+import { translator, type Locale } from "src/app/i18n/copy"
 import { formPairVerdict } from "src/server/answers/filter"
 import { formPrivacy, recordFormAnswers } from "src/server/answers/service"
 import { answerKey } from "src/server/applications/logic"
@@ -25,11 +26,6 @@ export type TrackResult = {
   created: boolean
   answers: { saved: number; reused: number }
 }
-
-export const RESENT_NOTE = "Wysłano ponownie przez rozszerzenie"
-
-/** Better than the host: "linkedin.com" would read as the employer, here and in later matching. */
-export const UNKNOWN_COMPANY = "Nieznana firma"
 
 /** Kinds whose answers go to the answer bank. Contact details, EEO, consents and secrets never do. */
 const BANK_KINDS: readonly FieldKind[] = [
@@ -150,11 +146,15 @@ export function formAnswers(
 
 export async function trackSubmission(input: {
   userId: number
+  /** The language of what goes into the person's data: the note, a company or role nobody named */
+  locale: Locale
   page: PageInput & { title: string; text: string }
   job?: { company?: string | null; title?: string | null } | null
   fields: SubmittedField[]
 }): Promise<TrackResult> {
   const { userId } = input
+  const t = translator(input.locale)
+  const resentNote = t("app.note.resent")
   const page = { ...input.page, url: normalizePostingUrl(input.page.url) }
   const existing = await findApplicationByUrl(userId, page.url)
 
@@ -163,7 +163,7 @@ export async function trackSubmission(input: {
   if (existing) {
     application = existing
     if (existing.status === "APPLIED") {
-      application = await addApplicationNote(userId, existing.id, RESENT_NOTE, "extension")
+      application = await addApplicationNote(userId, existing.id, resentNote, "extension")
     }
   } else {
     const given = input.job?.company?.trim() && input.job?.title?.trim() ? input.job : null
@@ -171,12 +171,13 @@ export async function trackSubmission(input: {
     const result = await createApplication({
       userId,
       url: page.url,
-      company: given?.company?.trim() || extracted?.company || UNKNOWN_COMPANY,
+      // Better than the host: "linkedin.com" would read as the employer, here and in later matching.
+      company: given?.company?.trim() || extracted?.company || t("app.default.company"),
       title:
         given?.title?.trim() ||
         extracted?.title ||
         cleanTitle(page.title ?? "").slice(0, 200) ||
-        "Aplikacja",
+        t("app.default.title"),
       location: extracted?.location ?? null,
       source: "extension",
       channel: "extension",
@@ -185,12 +186,7 @@ export async function trackSubmission(input: {
     created = result.created
     if (!created && result.application.status === "APPLIED") {
       // The URL matched an application through the index (same offer, other link).
-      application = await addApplicationNote(
-        userId,
-        result.application.id,
-        RESENT_NOTE,
-        "extension"
-      )
+      application = await addApplicationNote(userId, result.application.id, resentNote, "extension")
     }
   }
 

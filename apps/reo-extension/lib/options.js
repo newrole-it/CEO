@@ -1,6 +1,11 @@
 /** Options: app address, pairing, manual token, disconnect. */
+import { localeOf, translator } from "./copy.js"
+import { applyCopy } from "./i18n.js"
 
 const LOCAL_APPS = ["http://127.0.0.1:43123", "http://localhost:43123"]
+
+const locale = localeOf(navigator.language)
+const t = translator(locale)
 
 const $ = (id) => document.getElementById(id)
 const ask = (message) => chrome.runtime.sendMessage(message)
@@ -14,11 +19,10 @@ function say(id, text, tone) {
 }
 
 function connectionError(result) {
-  if (result?.status === 401) return "Token jest nieważny albo został unieważniony."
-  if (result?.error === "offline")
-    return "Nie mogę połączyć się z aplikacją. Czy newrole.it działa?"
-  if (result?.error === "invalid-token") return "To nie wygląda na token newrole.it (nr_…)."
-  return result?.error || "Coś poszło nie tak."
+  if (result?.status === 401) return t("options.token.invalid")
+  if (result?.error === "offline") return t("conn.offline")
+  if (result?.error === "invalid-token") return t("options.token.shape")
+  return t("err.generic")
 }
 
 async function refresh() {
@@ -27,16 +31,17 @@ async function refresh() {
   $("apiBase").value = data?.apiBase || LOCAL_APPS[0]
   $("disconnect").classList.toggle("hidden", !data?.connected)
   if (!data?.connected) {
-    say("state", "Nie połączono.")
+    say("state", t("options.notConnected"))
     return null
   }
   const me = await ask({ type: "me" })
-  if (me?.ok) say("state", `Połączono jako ${me.data.user.email}`, "ok")
+  if (me?.ok) say("state", t("options.connected", { email: me.data.user.email }), "ok")
   else say("state", connectionError(me), "err")
   return me
 }
 
 export function startOptions() {
+  applyCopy(document, t, locale)
   $("pair").addEventListener("click", async () => {
     const config = await ask({ type: "config" })
     await chrome.tabs.create({ url: `${config?.data?.apiBase || LOCAL_APPS[0]}/connect/extension` })
@@ -50,12 +55,12 @@ export function startOptions() {
 
   $("test").addEventListener("click", async () => {
     const token = $("token").value.trim()
-    if (!token) return say("tokenMessage", "Wklej token.", "err")
+    if (!token) return say("tokenMessage", t("options.token.empty"), "err")
     const saved = await ask({ type: "setToken", token })
     if (!saved?.ok) return say("tokenMessage", connectionError(saved), "err")
     $("token").value = ""
     const me = await refresh()
-    if (me?.ok) say("tokenMessage", `Połączono jako ${me.data.user.email}`, "ok")
+    if (me?.ok) say("tokenMessage", t("options.connected", { email: me.data.user.email }), "ok")
     else say("tokenMessage", connectionError(me), "err")
   })
 
@@ -64,24 +69,19 @@ export function startOptions() {
     try {
       origin = new URL($("apiBase").value.trim()).origin
     } catch (_error) {
-      return say("baseMessage", "To nie jest poprawny adres.", "err")
+      return say("baseMessage", t("options.base.invalid"), "err")
     }
     if (!LOCAL_APPS.includes(origin)) {
       if (!origin.startsWith("https://")) {
-        return say("baseMessage", "Inny adres niż lokalny musi używać https.", "err")
+        return say("baseMessage", t("options.base.https"), "err")
       }
       // Must run inside the click: Chrome asks only during a user gesture.
       const granted = await chrome.permissions.request({ origins: [`${origin}/*`] })
-      if (!granted)
-        return say(
-          "baseMessage",
-          "Bez zgody Chrome rozszerzenie nie połączy się z tym adresem.",
-          "err"
-        )
+      if (!granted) return say("baseMessage", t("options.base.denied"), "err")
     }
     const result = await ask({ type: "setApiBase", apiBase: origin })
-    if (!result?.ok) return say("baseMessage", "Nie zapisano adresu.", "err")
-    say("baseMessage", "Zapisano.", "ok")
+    if (!result?.ok) return say("baseMessage", t("options.base.failed"), "err")
+    say("baseMessage", t("options.base.saved"), "ok")
     await refresh()
   })
 

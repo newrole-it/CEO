@@ -77,7 +77,10 @@ export async function sheetTable(userId: number, locale: SheetLocale = "pl"): Pr
 export type SyncResult = {
   status: "synced" | "not-configured" | "failed"
   rows: number
+  /** A line for logs. What a person reads is translated from `status`, `code` and `rows`. */
   message: string
+  /** Why a failed sync failed */
+  code?: SyncErrorCode
   /** What came in from the sheet in this sync */
   imported?: { created: number; updated: number; deleted: number; skipped: number }
   /**
@@ -306,7 +309,7 @@ export async function syncSheet(userId: number): Promise<SyncResult> {
       where: { userId },
       data: { lastError: syncErrorText(code, detail) },
     })
-    return { status: "failed", rows: 0, message: MESSAGES[code] }
+    return { status: "failed", rows: 0, message: MESSAGES[code], code }
   }
   if (!isWebhookUrl(link.webhookUrl)) return fail("url", "")
   const tab = link.tabName || SHEET_NAME

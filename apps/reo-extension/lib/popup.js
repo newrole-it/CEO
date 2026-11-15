@@ -1,37 +1,17 @@
 /** Popup: connection state, actions for the current tab, and the switches. */
-import { errorKey, localeOf, translator } from "./copy.js"
+import { COPY, errorKey, localeOf, translator } from "./copy.js"
 import { isGmail } from "./gmail.js"
-import { linkedInJobId, statusLine } from "./offer.js"
+import { applyCopy, formatDate, formatDateTime } from "./i18n.js"
+import { linkedInJobId, statusLine, statusText } from "./offer.js"
 
 const ALL_SITES = "https://*/*"
 
-const ERRORS = {
-  restricted: "Na tej stronie Chrome nie pozwala działać rozszerzeniom.",
-  "no-form": "Nie widzę tu formularza.",
-  "no-fields": "Nie widzę tu pól do wypełnienia.",
-  offline: "Nie mogę połączyć się z aplikacją. Czy newrole.it działa?",
-  disconnected: "Odśwież tę stronę i spróbuj ponownie.",
-  busy: "Już nad tym pracuję.",
-  "not-profile": "Otwórz swój profil LinkedIn (linkedin.com/in/…) i spróbuj ponownie.",
-  "no-sections": "Nie widzę sekcji profilu. Przewiń stronę i spróbuj ponownie.",
-  "not-gmail": "Otwórz mail w Gmailu i spróbuj ponownie.",
-  "no-mail":
-    "Nie widzę otwartego maila. Otwórz jedną wiadomość (nie listę) albo zaznacz jej treść i spróbuj ponownie.",
-  "no-sender": "Nie widzę adresu nadawcy. Rozwiń wiadomość w wątku i spróbuj ponownie.",
-  "already-used": "Ten mail jest już zapisany w trackerze.",
-}
-
-/** What the app read from the mail, in the popup's words. */
-const SIGNALS = {
-  CONFIRMATION: "potwierdzenie złożenia aplikacji",
-  NEXT_STAGE: "kolejny etap",
-  SCREENING: "rozmowa z rekruterem",
-  INTERVIEW: "zaproszenie na rozmowę",
-  TASK: "zadanie",
-  FINAL: "rozmowa finałowa",
-  OFFER: "oferta",
-  REJECTED: "odrzucenie",
-  OTHER: "nie widzę tu decyzji",
+/** The message for a failed action: the text of a code the popup knows, else a general one. */
+function problem(result) {
+  // The app answers 429 when it has read too many links for this person in an hour.
+  if (result?.status === 429) return t("fit.limited")
+  const key = `err.${result?.error}`
+  return t(key in COPY.pl ? key : "err.generic")
 }
 
 const LINKEDIN_PROFILE = /^https:\/\/www\.linkedin\.com\/in\/[^/?#]+\/?(?:[?#].*)?$/
@@ -69,7 +49,7 @@ async function showApplied(tab) {
   const fromPage = await chrome.tabs.sendMessage(tab.id, { type: "nr:offer" }).catch(() => null)
   const byAddress = await ask({ type: "status", url: tab.url })
   const direct = byAddress?.ok ? byAddress.data : null
-  const line = statusLine(direct?.applied ? direct : (fromPage?.data ?? direct))
+  const line = statusLine(direct?.applied ? direct : (fromPage?.data ?? direct), t, locale)
   if (!line) return
   $("applied").textContent = line
   show("applied", true)
@@ -77,27 +57,34 @@ async function showApplied(tab) {
 
 /** "Profil LinkedIn: 72/100 (31.10.2026)" from the latest audit, when there is one. */
 async function showScore() {
-  const result = await ask({ type: "linkedinLatest" })
+  const result = await ask({ type: "linkedinLatest", locale })
   const audit = result?.ok ? result.data.audit : null
   if (!audit) return
-  const date = new Date(audit.auditedAt).toLocaleDateString("pl-PL")
-  $("profileScore").textContent = `Profil LinkedIn: ${audit.score}/100 (${date})`
+  $("profileScore").textContent = t("popup.profileScore", {
+    score: audit.score,
+    date: formatDate(audit.auditedAt, locale),
+  })
   show("profileScore", true)
 }
 
 async function auditProfile(button) {
   const tab = await activeTab()
-  if (!tab?.id) return say(ERRORS.restricted, "err")
+  if (!tab?.id) return say(t("err.restricted"), "err")
   button.disabled = true
-  say("Czytam profil i oceniam go. To może potrwać kilkanaście sekund…")
+  say(t("popup.audit.working"))
   const result = await ask({ type: "linkedinTab", tabId: tab.id })
   button.disabled = false
   if (result?.ok) {
-    say(`Ocena profilu: ${result.score}/100. Szczegóły są na stronie.`, "ok")
+    say(t("popup.audit.done", { score: result.score }), "ok")
     await showScore()
     return
   }
-  say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+  say(problem(result), "err")
+}
+
+/** A status the mail form lists: the plain status, which the app sends with no stage. */
+function mailStatus(status, statusLabel) {
+  return statusText({ status, statusLabel, closedAtStage: null }, t)
 }
 
 function option(value, label) {
@@ -110,54 +97,62 @@ function option(value, label) {
 /** Reads the open mail, then lets the person pick the application and the status. */
 async function readMail(button) {
   const tab = await activeTab()
-  if (!tab?.id) return say(ERRORS.restricted, "err")
+  if (!tab?.id) return say(t("err.restricted"), "err")
   button.disabled = true
   show("mailForm", false)
-  say("Czytam ten mail…")
+  say(t("popup.mail.working"))
   const result = await ask({ type: "mailTab", tabId: tab.id })
   button.disabled = false
   if (!result?.ok) {
-    return say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+    return say(problem(result), "err")
   }
   say("")
 
   const { data, mail } = result
-  const date = new Date(data.mail.receivedAt).toLocaleString("pl-PL")
   $("mailSubject").textContent = data.mail.subject
-  $("mailMeta").textContent = `${data.mail.from} · ${date}${
-    result.fromSelection ? " · z zaznaczonego tekstu" : ""
-  }`
-  const reading = SIGNALS[data.reading.signal] || data.reading.signal
+  $("mailMeta").textContent = t(
+    result.fromSelection ? "popup.mail.meta.selection" : "popup.mail.meta",
+    { from: data.mail.from, date: formatDateTime(data.mail.receivedAt, locale) }
+  )
+  const kind = `mail.kind.${data.reading.signal}`
+  const reading = t(kind in COPY.pl ? kind : "mail.kind.OTHER")
   $("mailReading").textContent = data.reading.evidence
-    ? `Odczyt: ${reading}. „${data.reading.evidence}”`
-    : `Odczyt: ${reading}.`
+    ? t("popup.mail.read.evidence", { reading, evidence: data.reading.evidence })
+    : t("popup.mail.read", { reading })
   const used = data.used
-  $("mailUsed").textContent = used
-    ? `Ten mail jest już zapisany${used.company ? ` przy: ${used.company} · ${used.title}` : ""}.`
-    : ""
+  $("mailUsed").textContent = !used
+    ? ""
+    : used.company
+      ? t("popup.mail.used.at", { company: used.company, title: used.title })
+      : t("popup.mail.used")
   show("mailUsed", Boolean(used))
 
   const apps = $("mailApp")
-  const empty = data.choices.length ? "Wybierz aplikację" : "Brak aplikacji w trackerze"
+  const empty = t(data.choices.length ? "popup.mail.choose" : "popup.mail.none")
   apps.replaceChildren(option("", empty))
   for (const choice of data.choices) {
-    const mark = choice.likely ? "★ " : ""
-    const label = `${mark}${choice.company} · ${choice.title} (${choice.statusLabel})`
+    const label = t(choice.likely ? "popup.mail.choice.likely" : "popup.mail.choice", {
+      company: choice.company,
+      title: choice.title,
+      status: mailStatus(choice.status, choice.statusLabel),
+    })
     apps.append(option(choice.id, label))
   }
   apps.value = data.suggestion.applicationId || ""
 
   const statuses = $("mailStatus")
-  statuses.replaceChildren(option("", "Bez zmiany, tylko wpis na osi czasu"))
-  for (const status of data.statuses) statuses.append(option(status.value, status.label))
+  statuses.replaceChildren(option("", t("popup.mail.noChange")))
+  for (const status of data.statuses) {
+    statuses.append(option(status.value, mailStatus(status.value, status.label)))
+  }
   statuses.value = data.suggestion.status || ""
 
   const form = $("mailForm")
   form.onsubmit = async (event) => {
     event.preventDefault()
-    if (!apps.value) return say("Wybierz aplikację, której dotyczy ten mail.", "err")
+    if (!apps.value) return say(t("popup.mail.pick"), "err")
     $("useMail").disabled = true
-    say("Zapisuję…")
+    say(t("popup.saving"))
     const saved = await ask({
       type: "useMail",
       mail,
@@ -169,14 +164,18 @@ async function readMail(button) {
     })
     $("useMail").disabled = false
     if (!saved?.ok) {
-      return say(ERRORS[saved?.error] || saved?.error || "Coś poszło nie tak.", "err")
+      return say(problem(saved), "err")
     }
     const app = saved.data.application
     show("mailForm", false)
     say(
       saved.data.changed
-        ? `Zapisano: ${app.company} · ${app.title} → ${statuses.selectedOptions[0].textContent}`
-        : `Dodano mail do osi czasu: ${app.company} · ${app.title}`,
+        ? t("popup.mail.saved", {
+            company: app.company,
+            title: app.title,
+            status: statuses.selectedOptions[0].textContent,
+          })
+        : t("popup.mail.added", { company: app.company, title: app.title }),
       "ok"
     )
   }
@@ -187,19 +186,24 @@ async function readMail(button) {
 /** The offer on this tab into newrole.it, read whole there; its page opens in the app. */
 async function addOffer(button, base) {
   const tab = await activeTab()
-  if (!tab?.url || !/^https?:/.test(tab.url)) return say(ERRORS.restricted, "err")
+  if (!tab?.url || !/^https?:/.test(tab.url)) return say(t("err.restricted"), "err")
   button.disabled = true
-  say("Czytam ofertę. To może potrwać kilkanaście sekund…")
+  say(t("popup.offer.working"))
   const result = await ask({ type: "addOffer", url: tab.url })
   button.disabled = false
-  if (!result?.ok)
-    return say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+  if (!result?.ok) return say(problem(result), "err")
   const data = result.data
-  if (data.kind === "invalid") return say("To nie wygląda na stronę oferty.", "err")
+  if (data.kind === "invalid") return say(t("fit.invalid"), "err")
   if (data.kind === "added") {
-    say(`${data.added ? "Dodano" : "Już masz tę ofertę"}: ${data.company} · ${data.title}`, "ok")
+    say(
+      t(data.added ? "popup.offer.added" : "popup.offer.exists", {
+        company: data.company,
+        title: data.title,
+      }),
+      "ok"
+    )
   } else {
-    say("Sprawdź dane oferty w newrole.it i dodaj ją.", "ok")
+    say(t("popup.offer.check"), "ok")
   }
   await chrome.tabs.create({ url: `${base}${data.path}` })
 }
@@ -253,7 +257,7 @@ async function showFit(tab, base) {
 
 /** "Dopasuj CV": the app adds the offer on this tab and tailors a CV for it; showFit follows it. */
 async function tailorOffer(button, tab, base) {
-  if (!tab?.url || !/^https?:/.test(tab.url)) return say(ERRORS.restricted, "err")
+  if (!tab?.url || !/^https?:/.test(tab.url)) return say(t("err.restricted"), "err")
   button.disabled = true
   say(t("fit.starting"))
   const result = await ask({ type: "tailorOffer", url: tab.url, locale })
@@ -277,31 +281,38 @@ async function tailorOffer(button, tab, base) {
 
 async function act(type, button, working) {
   const tab = await activeTab()
-  if (!tab?.id) return say(ERRORS.restricted, "err")
+  if (!tab?.id) return say(t("err.restricted"), "err")
   button.disabled = true
   say(working)
   const result = await ask({ type, tabId: tab.id })
   button.disabled = false
   if (result?.ok) {
     if (result.application) {
-      say(`Zapisano: ${result.application.company} · ${result.application.title}`, "ok")
+      say(
+        t("popup.saved", {
+          company: result.application.company,
+          title: result.application.title,
+        }),
+        "ok"
+      )
       await showApplied(tab)
     } else {
-      say("Gotowe. Wyniki są na stronie. Sprawdź formularz i wyślij go sam.", "ok")
+      say(t("popup.fill.done"), "ok")
     }
     return
   }
-  say(ERRORS[result?.error] || result?.error || "Coś poszło nie tak.", "err")
+  say(problem(result), "err")
 }
 
 async function init() {
+  applyCopy(document, t, locale)
   const config = await ask({ type: "config" })
   const base = config?.data?.apiBase || "http://127.0.0.1:43123"
   $("connect").addEventListener("click", () =>
     chrome.tabs.create({ url: `${base}/connect/extension` })
   )
   if (!config?.data?.connected) {
-    $("state").textContent = "Rozszerzenie nie jest połączone z aplikacją."
+    $("state").textContent = t("popup.notConnected")
     show("connect", true)
     return
   }
@@ -309,25 +320,22 @@ async function init() {
   const me = await ask({ type: "me" })
   if (!me?.ok) {
     if (me?.status === 401) {
-      $("state").textContent = "Token jest nieważny. Połącz rozszerzenie ponownie."
+      $("state").textContent = t("popup.badToken")
       show("connect", true)
       return
     }
-    $("state").textContent = ERRORS[me?.error] || "Nie mogę połączyć się z aplikacją."
+    $("state").textContent = t(me?.error === "offline" ? "conn.offline" : "popup.unreachable")
     return
   }
 
-  $("state").textContent = `Połączono: ${me.data.user.email}`
+  $("state").textContent = t("popup.connected", { email: me.data.user.email })
   show("actions", true)
   $("tracker").href = `${base}/applications`
   $("answers").href = `${base}/answers`
   $("help").href = `${base}/features#extension`
 
-  $("fill").addEventListener(
-    "click",
-    () => void act("fillTab", $("fill"), "Wypełniam. Pytania otwarte mogą potrwać kilka sekund…")
-  )
-  $("save").addEventListener("click", () => void act("saveTab", $("save"), "Zapisuję…"))
+  $("fill").addEventListener("click", () => void act("fillTab", $("fill"), t("popup.fill.working")))
+  $("save").addEventListener("click", () => void act("saveTab", $("save"), t("popup.saving")))
   $("addOffer").addEventListener("click", () => void addOffer($("addOffer"), base))
 
   // On a LinkedIn profile the form actions make no sense; the audit takes their place.

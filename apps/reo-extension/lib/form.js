@@ -40,7 +40,7 @@ export function fold(value) {
   return String(value == null ? "" : value)
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase()
-    .replace(/ł/g, "l")
+    .replace(/ł/g, "l") // i18n-ignore: reads Polish text on the page
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
@@ -87,7 +87,7 @@ function foldLabel(value) {
   return String(value == null ? "" : value)
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase()
-    .replace(/ł/g, "l")
+    .replace(/ł/g, "l") // i18n-ignore: reads Polish text on the page
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9?]+/g, " ")

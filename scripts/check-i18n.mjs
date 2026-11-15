@@ -12,8 +12,8 @@
  * domain; the names in NAMES, which stay the same in every language. Anything else that must stay
  * as it is takes a comment with `i18n-ignore` and the reason, on its line or the line above.
  *
- * The Chrome extension (apps/reo-extension) has no dictionaries yet, so its HTML and lib/*.js are
- * not checked here.
+ * The Chrome extension (apps/reo-extension) is plain JavaScript and HTML, which this script does
+ * not read: its own test/i18n.test.ts keeps Polish text out of everything but lib/copy.js.
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { createRequire } from "node:module"

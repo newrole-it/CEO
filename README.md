@@ -137,7 +137,7 @@ npm run go
 2. Click **Load unpacked** and choose that folder.
 3. Chrome opens `/setup`. Click **Connect** there.
 
-After a `git pull`, run `npm run go` and click Reload next to the extension. The popup is in Polish for now; `/features#extension` explains each switch, and [apps/reo-extension/README.md](apps/reo-extension/README.md) (in Polish) lists the supported sites.
+After a `git pull`, run `npm run go` and click Reload next to the extension. The extension follows your browser's language, Polish or English; `/features#extension` explains each switch, and [apps/reo-extension/README.md](apps/reo-extension/README.md) (in Polish) lists the supported sites.
 
 > [!IMPORTANT]
 > The extension never submits for you: it fills and records, you click Submit. It never fills passwords, hidden fields, card numbers, PESEL, EEO fields or consents, and it sends data only to your own newrole.it.
@@ -150,7 +150,7 @@ The MCP server talks to the same database as the app; the app does not need to b
 claude mcp add newrole -s user -- npm --prefix /path/to/newrole.it run --silent mcp
 ```
 
-Add `-e NEWROLE_USER_EMAIL=you@example.com` when the database has more than one account.
+Add `-e NEWROLE_USER_EMAIL=you@example.com` when the database has more than one account. The tools answer in your system's language, Polish or English; `-e NEWROLE_LOCALE=en` (or `pl`) sets it.
 
 Things to ask:
 
@@ -170,8 +170,6 @@ Things to ask:
 | CV and answers | `cv_list`, `cv_get`, `cv_update`, `cv_export_pdf`, `answers_search`, `answer_save`, `answer_draft` |
 | Applications | `applications_list`, `application_get`, `application_add`, `application_update`, `applications_export`, `applications_stats`, `sheet_status`, `sheet_sync`, `gmail_status` |
 | Prompts | `onboard` (set up your profile), `apply` (one application end to end), `pipeline` (review your applications and the sheet) |
-
-The tools' replies are in Polish for now.
 
 </details>
 
@@ -215,7 +213,7 @@ Yes. The only thing that can cost money is the model: Claude Code uses the subsc
 No. newrole.it works on the offers you bring, by their link.
 
 **Which languages does it speak?**
-The interface is in Polish and English. CVs and letters are written in Polish or English. The Chrome extension and the MCP tools' replies are in Polish for now.
+The app, the Chrome extension and the MCP tools speak Polish and English. CVs and letters are written in Polish or English.
 
 ## Maintenance
 

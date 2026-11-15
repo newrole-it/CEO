@@ -4,9 +4,12 @@ import {
   insertBullet,
   insertItem,
   insertSection,
+  mergeBullet,
+  mergeParagraph,
   moveBullet,
   moveItem,
   moveSection,
+  relabelLink,
   removeBullet,
   removeItem,
   removeSection,
@@ -15,10 +18,17 @@ import {
   updateItem,
   updateSection,
 } from "./edit"
-import { syntheticCv } from "./fixtures"
+import { syntheticCv, syntheticLetter } from "./fixtures"
 import { cvPdfFileName } from "./filename"
 import { applyCvPatch } from "./patch"
-import { CvContent, type CvExperienceSection, type CvSkillsSection } from "./schema"
+import {
+  CV_LIMITS,
+  CvContent,
+  letterSection,
+  parseCvContent,
+  type CvExperienceSection,
+  type CvSkillsSection,
+} from "./schema"
 
 const job = (cv: CvContent) => (cv.sections[2] as CvExperienceSection).items[0]
 
@@ -153,5 +163,91 @@ describe("cvPdfFileName", () => {
     expect(cvPdfFileName('../"x"\r\n')).toBe("x_CV.pdf")
     expect(cvPdfFileName("")).toBe("CV.pdf")
     expect(cvPdfFileName(null)).toBe("CV.pdf")
+  })
+})
+
+describe("joining lines", () => {
+  it("joins a bullet to the one before it and leaves the first alone", () => {
+    const cv = updateItem(syntheticCv(1), "experience", "job1", {
+      bullets: ["a", "<em>b</em>", "c"],
+    })
+    expect(job(mergeBullet(cv, "experience", "job1", 1)).bullets).toEqual(["a<em>b</em>", "c"])
+    expect(job(mergeBullet(cv, "experience", "job1", 0)).bullets).toEqual(["a", "<em>b</em>", "c"])
+    expect(job(mergeBullet(cv, "experience", "job1", 9)).bullets).toEqual(["a", "<em>b</em>", "c"])
+  })
+
+  it("joins a letter's paragraph to the one before it", () => {
+    const letter = syntheticLetter("pl")
+    const id = letterSection(letter)!.id
+    const before = letterSection(letter)!.paragraphs
+    const after = letterSection(mergeParagraph(letter, id, 1))!.paragraphs
+    expect(after).toEqual([before[0] + before[1], ...before.slice(2)])
+  })
+})
+
+describe("header links typed on the sheet", () => {
+  it("derives the address from the text while nobody set one by hand", () => {
+    expect(relabelLink({ label: "", url: "" }, "github.com/x")).toEqual({
+      label: "github.com/x",
+      url: "https://github.com/x",
+    })
+    const typed = relabelLink(
+      { label: "github.com/x", url: "https://github.com/x" },
+      "github.com/xy"
+    )
+    expect(typed.url).toBe("https://github.com/xy")
+    // renaming a link whose text was its address keeps the address
+    expect(relabelLink(typed, "GitHub").url).toBe("https://github.com/xy")
+    // text typed before it is an address yet gives none
+    expect(relabelLink({ label: "", url: "" }, "git").url).toBe("")
+    // an emptied link has no address left to print
+    expect(relabelLink(typed, "").url).toBe("")
+  })
+
+  it("keeps an address set by hand", () => {
+    const link = { label: "GitHub", url: "https://github.com/anna" }
+    expect(relabelLink(link, "Mój GitHub")).toEqual({
+      label: "Mój GitHub",
+      url: "https://github.com/anna",
+    })
+  })
+})
+
+describe("limits and line breaks in the schema", () => {
+  it("takes as many entries as CV_LIMITS says and no more", () => {
+    const letter = syntheticLetter("pl")
+    const id = letterSection(letter)!.id
+    const full = updateSection(letter, id, { paragraphs: Array(CV_LIMITS.paragraphs).fill("a") })
+    expect(CvContent.safeParse(full).success).toBe(true)
+    const over = updateSection(letter, id, {
+      paragraphs: Array(CV_LIMITS.paragraphs + 1).fill("a"),
+    })
+    expect(CvContent.safeParse(over).success).toBe(false)
+    const cv = syntheticCv(1)
+    const link = { label: "x", url: "https://x.pl" }
+    expect(
+      CvContent.safeParse(updateHeader(cv, { links: Array(CV_LIMITS.links).fill(link) })).success
+    ).toBe(true)
+    expect(
+      CvContent.safeParse(updateHeader(cv, { links: Array(CV_LIMITS.links + 1).fill(link) }))
+        .success
+    ).toBe(false)
+  })
+
+  it("keeps the line breaks of a letter's addressee and signature, and of nothing else", () => {
+    const letter = syntheticLetter("pl")
+    const id = letterSection(letter)!.id
+    const parsed = parseCvContent(
+      updateSection(letter, id, {
+        recipient: "Firma\r\nul. Prosta\t1\n00-001 Warszawa",
+        signature: "Anna\nPrzykładowa",
+        greeting: "Dzień\ndobry",
+      })
+    )
+    expect(letterSection(parsed!)).toMatchObject({
+      recipient: "Firma\nul. Prosta 1\n00-001 Warszawa",
+      signature: "Anna\nPrzykładowa",
+      greeting: "Dzień dobry",
+    })
   })
 })

@@ -20,12 +20,12 @@ export function profileSlug(pathname) {
 
 const HEADINGS = {
   about: /^(about|informacje|o mnie)$/i,
-  experience: /^(experience|doświadczenie)$/i,
-  education: /^(education|wykształcenie)$/i,
-  skills: /^(skills|umiejętności)$/i,
+  experience: /^(experience|doświadczenie)$/i, // i18n-ignore: reads Polish text on the page
+  education: /^(education|wykształcenie)$/i, // i18n-ignore: reads Polish text on the page
+  skills: /^(skills|umiejętności)$/i, // i18n-ignore: reads Polish text on the page
   certifications:
     /^(licenses\s*&\s*certifications|licencje i certyfikaty|certifications|certyfikaty)$/i,
-  languages: /^(languages|języki)$/i,
+  languages: /^(languages|języki)$/i, // i18n-ignore: reads Polish text on the page
 }
 
 const ANCHORS = {
@@ -39,9 +39,9 @@ const ANCHORS = {
 
 const YEAR = /\b(?:19|20)\d{2}\b/g
 const HAS_YEAR = /\b(?:19|20)\d{2}\b/
-const PRESENT = /\b(present|current|obecnie|teraz|nadal|dziś)\b/i
-const FOOTER = /^(show all|pokaż wszystkie|zobacz wszystkie|wyświetl wszystkie)/i
-const TOP_SKILLS = /^(top skills|najważniejsze umiejętności)/i
+const PRESENT = /\b(present|current|obecnie|teraz|nadal|dziś)\b/i // i18n-ignore: reads Polish text on the page
+const FOOTER = /^(show all|pokaż wszystkie|zobacz wszystkie|wyświetl wszystkie)/i // i18n-ignore: reads Polish text on the page
+const TOP_SKILLS = /^(top skills|najważniejsze umiejętności)/i // i18n-ignore: reads Polish text on the page
 
 /** "Jan 2021 - Present · 2 yrs", "sty 2019 – gru 2020", "2010 - 2015". */
 export function isDateLine(line) {
@@ -151,7 +151,7 @@ function aboutText(section) {
   if (topSkills >= 0) lines = lines.slice(0, topSkills)
   return lines
     .join("\n")
-    .replace(/…\s*(see more|more|zobacz więcej|więcej)\s*$/i, "")
+    .replace(/…\s*(see more|more|zobacz więcej|więcej)\s*$/i, "") // i18n-ignore: reads Polish text on the page
     .trim()
 }
 
@@ -296,7 +296,7 @@ export function ownProfile(doc, pathname, knownSlug) {
   for (const control of main.querySelectorAll("button, a")) {
     const label = clean(control.getAttribute("aria-label") || "") || clean(textOf(control))
     if (/^(edit|edytuj)\b/i.test(label)) return true
-    if (/^(add profile section|dodaj sekcję profilu)/i.test(label)) return true
+    if (/^(add profile section|dodaj sekcję profilu)/i.test(label)) return true // i18n-ignore: reads Polish text on the page
   }
   return false
 }

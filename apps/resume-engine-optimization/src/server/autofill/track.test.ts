@@ -22,7 +22,7 @@ import {
   saveFormAnswers,
 } from "src/server/applications/service"
 import { personalNames, personalValues } from "src/server/answers/filter"
-import { answerPairs, formAnswers, RESENT_NOTE, trackSubmission, UNKNOWN_COMPANY } from "./track"
+import { answerPairs, formAnswers, trackSubmission } from "./track"
 
 const mocked = (fn: unknown) => fn as ReturnType<typeof vi.fn>
 
@@ -261,6 +261,7 @@ describe("trackSubmission", () => {
   it("creates an application for the posting URL and records the answers", async () => {
     const result = await trackSubmission({
       userId: 2,
+      locale: "pl",
       page,
       job: { company: "Acme", title: "Staff Engineer" },
       fields,
@@ -300,10 +301,10 @@ describe("trackSubmission", () => {
       { question: "Oczekiwania finansowe", answer: "20 000 PLN", kind: "salary" },
       { question: "Why us?", answer: "Bo tak.", kind: "openQuestion" },
     ]
-    await trackSubmission({ userId: 2, page, fields: form })
+    await trackSubmission({ userId: 2, locale: "pl", page, fields: form })
     expect(saveFormAnswers).toHaveBeenLastCalledWith(2, "app1", saved, "extension")
     mocked(findApplicationByUrl).mockResolvedValue({ ...application, status: "INTERVIEW" })
-    await trackSubmission({ userId: 2, page, fields: form })
+    await trackSubmission({ userId: 2, locale: "pl", page, fields: form })
     expect(saveFormAnswers).toHaveBeenCalledTimes(2)
     expect(saveFormAnswers).toHaveBeenLastCalledWith(2, "app1", saved, "extension")
   })
@@ -311,6 +312,7 @@ describe("trackSubmission", () => {
   it("does not put salary into the answer bank, which reuses answers in later forms", async () => {
     await trackSubmission({
       userId: 2,
+      locale: "pl",
       page,
       fields: [{ label: "Oczekiwania finansowe", value: "20 000 PLN" }],
     })
@@ -318,7 +320,7 @@ describe("trackSubmission", () => {
   })
 
   it("reads the job from the page when the extension sends none", async () => {
-    await trackSubmission({ userId: 2, page, fields: [] })
+    await trackSubmission({ userId: 2, locale: "pl", page, fields: [] })
     expect(createApplication).toHaveBeenCalledWith(
       expect.objectContaining({ company: "Acme", title: "Staff Engineer" })
     )
@@ -328,6 +330,7 @@ describe("trackSubmission", () => {
   it("saves a page that names no employer as an unknown company, not as the site", async () => {
     await trackSubmission({
       userId: 2,
+      locale: "pl",
       page: {
         url: "https://www.linkedin.com/feed/",
         title: "Kanał informacji | LinkedIn",
@@ -336,13 +339,14 @@ describe("trackSubmission", () => {
       fields: [],
     })
     expect(createApplication).toHaveBeenCalledWith(
-      expect.objectContaining({ company: UNKNOWN_COMPANY, title: "Kanał informacji" })
+      expect.objectContaining({ company: "Nieznana firma", title: "Kanał informacji" })
     )
   })
 
   it("keeps the company the page's own data names", async () => {
     await trackSubmission({
       userId: 2,
+      locale: "pl",
       page: {
         url: "https://apply.workable.com/j/ABC123",
         title: "Workable",
@@ -359,16 +363,43 @@ describe("trackSubmission", () => {
 
   it("adds a note when an APPLIED application is sent again", async () => {
     mocked(findApplicationByUrl).mockResolvedValue(application)
-    const result = await trackSubmission({ userId: 2, page, fields: [] })
+    const result = await trackSubmission({ userId: 2, locale: "pl", page, fields: [] })
     expect(createApplication).not.toHaveBeenCalled()
-    expect(addApplicationNote).toHaveBeenCalledWith(2, "app1", RESENT_NOTE, "extension")
+    expect(addApplicationNote).toHaveBeenCalledWith(
+      2,
+      "app1",
+      "Wysłano ponownie przez rozszerzenie",
+      "extension"
+    )
     expect(result.created).toBe(false)
     expect(result.answers).toEqual({ saved: 0, reused: 0 })
   })
 
+  it("writes what it adds to the person's data in their language", async () => {
+    mocked(findApplicationByUrl).mockResolvedValue(application)
+    await trackSubmission({ userId: 2, locale: "en", page, fields: [] })
+    expect(addApplicationNote).toHaveBeenCalledWith(
+      2,
+      "app1",
+      "Sent again through the extension",
+      "extension"
+    )
+
+    mocked(findApplicationByUrl).mockResolvedValue(null)
+    await trackSubmission({
+      userId: 2,
+      locale: "en",
+      page: { url: "https://www.linkedin.com/feed/", title: "| LinkedIn", text: "Post" },
+      fields: [],
+    })
+    expect(createApplication).toHaveBeenLastCalledWith(
+      expect.objectContaining({ company: "Unknown company", title: "Application" })
+    )
+  })
+
   it("leaves an application that moved on without a note", async () => {
     mocked(findApplicationByUrl).mockResolvedValue({ ...application, status: "INTERVIEW" })
-    const result = await trackSubmission({ userId: 2, page, fields })
+    const result = await trackSubmission({ userId: 2, locale: "pl", page, fields })
     expect(addApplicationNote).not.toHaveBeenCalled()
     expect(result.application.status).toBe("INTERVIEW")
   })
@@ -377,6 +408,7 @@ describe("trackSubmission", () => {
     mocked(createApplication).mockResolvedValue({ application, created: false })
     const result = await trackSubmission({
       userId: 2,
+      locale: "pl",
       page,
       job: { company: "Acme", title: "SRE" },
       fields: [],

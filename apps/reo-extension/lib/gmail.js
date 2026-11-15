@@ -78,7 +78,7 @@ const MONTH_NAMES = [
   ["jul", "lip"],
   ["aug", "sie"],
   ["sep", "wrz"],
-  ["oct", "paz", "paź"],
+  ["oct", "paz", "paź"], // i18n-ignore: reads Polish text on the page
   ["nov", "lis"],
   ["dec", "gru"],
 ]

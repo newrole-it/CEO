@@ -3,7 +3,13 @@ import { syntheticCv } from "@newrole/cv-core/fixtures"
 
 vi.mock("db", () => ({ default: {} }))
 vi.mock("./user", () => ({
-  currentUser: vi.fn(async () => ({ id: 2, email: "a@example.com", name: "A", how: "test" })),
+  currentUser: vi.fn(async () => ({
+    id: 2,
+    email: "a@example.com",
+    name: "A",
+    how: "test",
+    locale: "pl",
+  })),
   NoUserError: class extends Error {},
 }))
 vi.mock("./tools", () => ({
@@ -71,15 +77,18 @@ const registered = new Map<
   string,
   { config: { inputSchema: Record<string, unknown> }; handler: Handler }
 >()
-registerCvTools({
-  registerTool: (
-    name: string,
-    config: { inputSchema: Record<string, unknown> },
-    handler: Handler
-  ) => {
-    registered.set(name, { config, handler })
-  },
-} as never)
+registerCvTools(
+  {
+    registerTool: (
+      name: string,
+      config: { inputSchema: Record<string, unknown> },
+      handler: Handler
+    ) => {
+      registered.set(name, { config, handler })
+    },
+  } as never,
+  "pl"
+)
 const call = (name: string, args: Record<string, unknown> = {}) =>
   registered.get(name)!.handler(args)
 

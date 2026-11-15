@@ -1,5 +1,6 @@
 import { accountEn, accountPl } from "./copy-account"
 import { answersEn, answersPl } from "./copy-answers"
+import { dashboardEn, dashboardPl } from "./copy-dashboard"
 import { describeEn, describePl } from "./copy-describe"
 import { applicationsEn, applicationsPl } from "./copy-applications"
 import { cvEn, cvPl, lookEn, lookPl, tailorEn, tailorPl } from "@newrole/cv-editor/copy"
@@ -652,6 +653,7 @@ const pl = {
   ...offerAddPl,
   ...offersPl,
   ...hiringPl,
+  ...dashboardPl,
   ...guidePl,
   ...matchPl,
   ...linkedinPl,
@@ -677,6 +679,7 @@ const en: Dict = {
   ...offerAddEn,
   ...offersEn,
   ...hiringEn,
+  ...dashboardEn,
   ...guideEn,
   ...matchEn,
   ...linkedinEn,

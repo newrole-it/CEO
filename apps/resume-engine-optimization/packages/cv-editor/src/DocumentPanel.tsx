@@ -284,7 +284,8 @@ function VersionsTab({ id, doc }: { id: string; doc: PanelDoc }) {
                 <span className="cvt-version__label">
                   {version.origin === "offer" && version.label
                     ? t("tl.v.origin.offerFor", { offer: version.label })
-                    : (version.label ??
+                    : // a gathered version's label is the general CV's id, not a name
+                      ((version.origin === "gathered" ? null : version.label) ??
                       (version.origin === "restored"
                         ? t("tl.v.origin.restored", { n: version.sourceNumber ?? "?" })
                         : t(`tl.v.origin.${version.origin}`)))}

@@ -10,9 +10,21 @@ import type { TailorNotes } from "./tailor"
 /**
  * `offer`: a CV for an offer saved into the general CV it came from; the label names the offer.
  * `upload`: version 0, the PDF the CV was uploaded as. `pdf`: a PDF made from it that left the app.
+ * `merged`: what the person added in their other CVs, gathered into this one (./gather.ts).
+ * `gathered`: this CV as it was when its changes went into a general CV; the label is that CV's
+ * id, so the same changes are not offered to it again.
  */
 export type CvVersionOrigin =
-  "auto" | "manual" | "base" | "generated" | "restored" | "offer" | "upload" | "pdf"
+  | "auto"
+  | "manual"
+  | "base"
+  | "generated"
+  | "restored"
+  | "offer"
+  | "upload"
+  | "pdf"
+  | "merged"
+  | "gathered"
 
 export type CvVersionView = {
   id: string

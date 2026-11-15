@@ -19,13 +19,7 @@ import { safeReturnTo } from "src/shared/return-to"
  * `local`: the app runs on this machine, where an email opens the account with no link.
  * `after`: where to go once signed in when the URL has no returnTo (/setup mid-checklist).
  */
-export const LoginForm = ({
-  local = false,
-  after = "/cv",
-}: {
-  local?: boolean
-  after?: string
-}) => {
+export const LoginForm = ({ local = false, after = "/" }: { local?: boolean; after?: string }) => {
   const { t } = useCopy()
   const [loginMutation, { isPending: passwordPending }] = useMutation(login)
   const [requestLink, { isPending }] = useMutation(requestMagicLink)
