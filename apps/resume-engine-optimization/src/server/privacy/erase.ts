@@ -7,10 +7,12 @@ import { GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 type Writer = Prisma.TransactionClient | typeof db
 
 /**
- * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, and
- * CV-derived model cache rows.
+ * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, the
+ * evaluations of offers made from them (they quote the CV and the profile), and CV-derived model
+ * cache rows.
  */
 export async function eraseProfile(userId: number, client: Writer = db) {
+  await client.offerEvaluation.deleteMany({ where: { userId } })
   await client.profileAuditRun.deleteMany({ where: { userId } })
   await client.candidateProfile.deleteMany({ where: { userId } })
   await client.candidateFact.deleteMany({ where: { userId } })
@@ -59,8 +61,8 @@ export async function eraseAccount(userId: number) {
         payload: { path: ["userId"], equals: userId },
       },
     })
-    // Applications, CVs, the offers kept with their text, answers, API tokens, the sheet and Gmail
-    // links and the mail log cascade with the user row below.
+    // Applications, CVs, the offers kept with their text and their evaluations, answers, API
+    // tokens, the sheet and Gmail links and the mail log cascade with the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
     await tx.offerFeedback.deleteMany({ where: { userId } })
     await tx.watchedCompany.deleteMany({ where: { userId } })
