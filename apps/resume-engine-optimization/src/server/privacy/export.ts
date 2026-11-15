@@ -73,6 +73,13 @@ export async function exportAccount(userId: number) {
         },
       },
       answers: { orderBy: { updatedAt: "desc" } },
+      interviewStories: { orderBy: { updatedAt: "desc" } },
+      interviewPreps: {
+        orderBy: { updatedAt: "desc" },
+        include: {
+          job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
+        },
+      },
       apiTokens: { orderBy: { createdAt: "desc" } },
       sheetLink: true,
       gmailLink: true,
@@ -179,6 +186,13 @@ export async function exportAccount(userId: number) {
       url: job.originalUrl,
     })),
     answers: user.answers.map(({ userId: _userId, ...row }) => row),
+    interviewStories: user.interviewStories.map(({ userId: _userId, ...row }) => row),
+    interviewPreps: user.interviewPreps.map(({ userId: _userId, job, ...row }) => ({
+      ...row,
+      title: job.title,
+      company: job.company.name,
+      url: job.originalUrl,
+    })),
     apiTokens: user.apiTokens.map((token) => ({
       id: token.id,
       name: token.name,

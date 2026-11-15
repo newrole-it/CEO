@@ -1,0 +1,149 @@
+/* Story bank and interview preparation. Tokens from app.css; the list and the editor reuse the
+   answer bank's classes (answers.css). */
+
+.iv-note {
+  margin-bottom: 12px;
+}
+.iv-checks {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.iv-list {
+  display: grid;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.iv-quote {
+  margin: 4px 0 0;
+  padding: 2px 0 2px 10px;
+  border-left: 3px solid var(--border-strong);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------ preparation */
+
+.iv-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.iv-head .page-head {
+  flex: 1 1 320px;
+  margin-bottom: 16px;
+}
+.iv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+.iv-sections {
+  display: grid;
+  gap: 24px;
+}
+.iv-section {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+.iv-section > header {
+  display: grid;
+  gap: 4px;
+}
+.iv-section > header p {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+.iv-groups {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 1024px) {
+  .iv-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+.iv-group {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.iv-items {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+.iv-item {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.iv-item__main {
+  font-weight: 500;
+}
+.iv-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+.iv-item__note {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.iv-item[data-fit="none"],
+.iv-item[data-status="missing"] {
+  border-left: 3px solid var(--danger);
+}
+.iv-item[data-fit="partial"],
+.iv-item[data-status="partial"] {
+  border-left: 3px solid var(--warning);
+}
+.iv-item[data-fit="strong"] {
+  border-left: 3px solid var(--success);
+}
+
+/* ------------------------------------------------------------------- card */
+
+.iv-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  color: var(--text);
+  text-decoration: none;
+}
+.iv-card > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: var(--primary);
+}
+.iv-card__text {
+  display: grid;
+  gap: 2px;
+}

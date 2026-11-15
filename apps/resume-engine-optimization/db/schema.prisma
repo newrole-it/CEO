@@ -51,6 +51,8 @@ model User {
   candidateFacts   CandidateFact[]
   matchRounds      MatchRound[]
   offerEvaluations OfferEvaluation[]
+  interviewStories InterviewStory[]
+  interviewPreps   InterviewPrep[]
 }
 
 model Session {
@@ -409,14 +411,15 @@ model Job {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
-  observations JobObservation[]
-  matches      JobMatch[]
-  feedback     OfferFeedback[]
-  applications Application[]
-  cvDocuments  CvDocument[]
-  userOffers   UserOffer[]
-  facts        CandidateFact[]
-  evaluations  OfferEvaluation[]
+  observations   JobObservation[]
+  matches        JobMatch[]
+  feedback       OfferFeedback[]
+  applications   Application[]
+  cvDocuments    CvDocument[]
+  userOffers     UserOffer[]
+  facts          CandidateFact[]
+  evaluations    OfferEvaluation[]
+  interviewPreps InterviewPrep[]
 
   @@index([fingerprint])
   /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
@@ -1074,6 +1077,52 @@ model OfferEvaluation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  /// One reusable interview story of a person: situation, task, action, result and what they took
+  /// from it (@newrole/cv-core/stories). A model's draft stays DRAFT until the person saves it.
+  model InterviewStory {
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  situation  String   @default("") @db.Text
+  task       String   @default("") @db.Text
+  action     String   @default("") @db.Text
+  result     String   @default("") @db.Text
+  reflection String   @default("") @db.Text
+  /// The themes and questions it is best for, as the person names them: string[]
+  themes     Json     @default("[]")
+  /// Where it came from, in the person's words: the role or project
+  source     String?
+  /// manual | draft | mcp
+  origin     String   @default("manual")
+  /// DRAFT | SAVED
+  status     String   @default("SAVED")
+  /// For a draft: what code found when it checked it against the person's data (StoryChecks)
+  checks     Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@unique([userId, jobId])
   @@index([jobId])
+  @@index([userId, status, updatedAt])
+}
+
+/// The latest interview preparation of a person for one offer (@newrole/cv-core/stories-prep),
+/// kept so the page opens without a new model call.
+model InterviewPrep {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// InterviewPrepContent
+  content   Json
+  /// llm | rules
+  reader    String
+  /// The language it was written in: pl | en
+  locale    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, jobId])
 }

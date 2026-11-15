@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import { revokeGmailAccess } from "src/server/gmail/service"
+import { INTERVIEW_PURPOSES } from "@newrole/cv-engine/interview"
+import { INTERVIEW_LIMITS } from "src/server/interview/types"
 import { PERSONAL_LLM_PURPOSES } from "src/server/llm/client"
 import { GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 
@@ -17,7 +19,8 @@ export async function eraseProfile(userId: number, client: Writer = db) {
   await client.candidateProfile.deleteMany({ where: { userId } })
   await client.candidateFact.deleteMany({ where: { userId } })
   await client.llmCache.deleteMany({
-    where: { userId, purpose: { in: [...PERSONAL_LLM_PURPOSES] } },
+    // the interview steps read the CV too (their purposes are not in the package's list yet)
+    where: { userId, purpose: { in: [...PERSONAL_LLM_PURPOSES, ...INTERVIEW_PURPOSES] } },
   })
 }
 
@@ -61,8 +64,9 @@ export async function eraseAccount(userId: number) {
         payload: { path: ["userId"], equals: userId },
       },
     })
-    // Applications, CVs, the offers kept with their text and their evaluations, answers, API
-    // tokens, the sheet and Gmail links and the mail log cascade with the user row below.
+    // Applications, CVs, the offers kept with their text and their evaluations, answers, interview
+    // stories and preparations, API tokens, the sheet and Gmail links and the mail log cascade with
+    // the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
     await tx.offerFeedback.deleteMany({ where: { userId } })
     await tx.watchedCompany.deleteMany({ where: { userId } })
@@ -76,7 +80,16 @@ export async function eraseAccount(userId: number) {
     await tx.session.deleteMany({ where: { userId } })
     await tx.loginLink.deleteMany({ where: { email: user.email } })
     await tx.authRateLimit.deleteMany({
-      where: { key: { in: [`email:${user.email}`, `search:${userId}`] } },
+      where: {
+        key: {
+          in: [
+            `email:${user.email}`,
+            `search:${userId}`,
+            INTERVIEW_LIMITS.draft.key(userId),
+            INTERVIEW_LIMITS.prep.key(userId),
+          ],
+        },
+      },
     })
     await tx.user.delete({ where: { id: userId } })
   })
