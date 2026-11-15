@@ -53,6 +53,7 @@ model User {
   offerEvaluations OfferEvaluation[]
   interviewStories InterviewStory[]
   interviewPreps   InterviewPrep[]
+  companyBriefs    CompanyBrief[]
 }
 
 model Session {
@@ -282,6 +283,7 @@ model Company {
   careerPages CareerPage[]
   jobs        Job[]
   watchers    WatchedCompany[]
+  briefs      CompanyBrief[]
 }
 
 model CompanyAlias {
@@ -420,6 +422,7 @@ model Job {
   facts          CandidateFact[]
   evaluations    OfferEvaluation[]
   interviewPreps InterviewPrep[]
+  briefs         CompanyBrief[]
 
   @@index([fingerprint])
   /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
@@ -1127,4 +1130,34 @@ model InterviewPrep {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, jobId])
+}
+
+/// What a person should know about an employer before applying and before an interview: the
+/// latest brief of one company for one person (src/server/research/service.ts). It holds only
+/// statements whose source code confirmed, each with that source.
+model CompanyBrief {
+  id          String   @id @default(cuid())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// The offer whose text it was read from
+  jobId       String?
+  job         Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  /// The points with their sources, the candidate's angle and the questions
+  /// (@newrole/cv-core/research CompanyBriefResult)
+  result      Json
+  /// The interface language it was written in
+  locale      String
+  /// done | provider | not-asked | failed (@newrole/cv-core/research WebTierState)
+  webState    String
+  /// sha256 of the offer's text as it was read
+  offerHash   String
+  generatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([jobId])
 }
