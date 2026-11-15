@@ -306,10 +306,10 @@ export function refreshKeywordNotes(
 /* ---------------------------------------------------------------- merge */
 
 /** The schema's limits for the fields the model may write. */
-const MAX = { body: 12000, summary: 4000, bullet: 2000, tech: 2000, skill: 2000, card: 4000 }
+export const MAX = { body: 12000, summary: 4000, bullet: 2000, tech: 2000, skill: 2000, card: 4000 }
 
 /** Reads the model's proposals against the old values and keeps count of what it refused. */
-function createWriter(base: CvContent, evidence: string) {
+export function createWriter(base: CvContent, evidence: string) {
   const known = knownNumbers(evidence)
   const links = linksIn(base)
   const written: string[] = []

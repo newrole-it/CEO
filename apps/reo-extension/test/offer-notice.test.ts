@@ -10,6 +10,7 @@ import {
   readOffer,
   statusLine,
 } from "../lib/offer.js"
+import { translator } from "../lib/copy.js"
 import { startOffer } from "../lib/offer-notice.js"
 
 /**
@@ -46,6 +47,7 @@ const OTHER = {
   title: "Frontend Engineer",
   status: "REJECTED",
   statusLabel: "Odrzucono po: Rozmowy",
+  closedAtStage: "INTERVIEW",
   tone: "danger",
   stageNote: null,
   nextStep: null,
@@ -117,6 +119,8 @@ function visible() {
 }
 
 beforeEach(() => {
+  // The tests below read the Polish interface; "speaks the browser's language" covers English.
+  vi.spyOn(navigator, "language", "get").mockReturnValue("pl-PL")
   shadow = null
   sessionStorage.clear()
   history.replaceState({}, "", "/")
@@ -277,18 +281,43 @@ describe("offerKey", () => {
 })
 
 describe("statusLine", () => {
+  const pl = (data: unknown) => statusLine(data, translator("pl"), "pl")
+  const en = (data: unknown) => statusLine(data, translator("en"), "en")
+
   it("says what is known, and how sure it is", () => {
-    expect(statusLine({ applied: APPLIED, sameCompany: [] })).toMatch(
-      /^Już aplikowano .*2026\. Status: Rozmowy\.$/
+    expect(pl({ applied: APPLIED, sameCompany: [] })).toBe(
+      "Już aplikowano 12.10.2026. Status: Rozmowy."
     )
-    expect(statusLine({ applied: { ...APPLIED, match: "role" }, sameCompany: [] })).toMatch(
+    expect(pl({ applied: { ...APPLIED, match: "role" }, sameCompany: [] })).toMatch(
       /^Prawdopodobnie już aplikowano/
     )
-    expect(statusLine({ applied: null, sameCompany: [OTHER] })).toBe(
+    expect(pl({ applied: null, sameCompany: [OTHER] })).toBe(
       "W tej firmie już aplikowano: Frontend Engineer. Status: Odrzucono po: Rozmowy."
     )
-    expect(statusLine({ applied: null, sameCompany: [] })).toBe("")
-    expect(statusLine(null)).toBe("")
+    expect(pl({ applied: null, sameCompany: [] })).toBe("")
+    expect(pl(null)).toBe("")
+  })
+
+  it("says it in English, with the status translated from its code", () => {
+    expect(en({ applied: APPLIED, sameCompany: [] })).toBe(
+      "Already applied on 12/10/2026. Status: Interviews."
+    )
+    expect(en({ applied: { ...APPLIED, match: "role" }, sameCompany: [] })).toMatch(
+      /^Probably already applied on/
+    )
+    expect(en({ applied: null, sameCompany: [OTHER] })).toBe(
+      "Already applied at this company: Frontend Engineer. Status: Rejected after: Interviews."
+    )
+  })
+
+  it("keeps the app's own label for a status it does not know", () => {
+    const applied = { ...APPLIED, status: "ON_HOLD", statusLabel: "Wstrzymana" }
+    expect(en({ applied, sameCompany: [] })).toContain("Status: Wstrzymana.")
+  })
+
+  it("keeps the app's label for a closed application from an app that names no stage", () => {
+    const { closedAtStage: _stage, ...old } = OTHER
+    expect(en({ applied: null, sameCompany: [old] })).toContain("Status: Odrzucono po: Rozmowy.")
   })
 })
 
@@ -659,5 +688,39 @@ describe("the built popup", () => {
     )
     expect(wanted.length).toBeGreaterThan(5)
     expect(wanted.filter((id) => !html.includes(`id="${id}"`))).toEqual([])
+  })
+})
+
+describe("lib/offer-notice.js in a browser that is not Polish", () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-GB")
+  })
+
+  const answering =
+    (data: unknown): Handler =>
+    (message) => {
+      if (message.type === "config") return CONNECTED
+      if (message.type === "offerStatus") return { ok: true, data }
+      return { ok: true }
+    }
+
+  it("shows the application in English", async () => {
+    await load(answering({ applied: APPLIED, sameCompany: [OTHER] }))
+    const text = shadow?.textContent ?? ""
+    expect(text).toContain("Already applied to this offer")
+    expect(text).toContain("Interviews")
+    expect(text).toContain("Sent 12/10/2026 · status since 20/10/2026")
+    expect(text).toContain("Next step: Rozmowa z CTO, 03/11/2026")
+    expect(text).toContain("Also at this company:")
+    expect(text).toContain("Rejected after: Interviews")
+    expect(text).not.toContain("Rozmowy")
+  })
+
+  it("explains a likely match in English", async () => {
+    await load(answering({ applied: { ...APPLIED, match: "role" }, sameCompany: [] }))
+    expect(shadow?.textContent).toContain("Probably already applied to this offer")
+    expect(shadow?.textContent).toContain(
+      "A different address, but the company and the role match."
+    )
   })
 })

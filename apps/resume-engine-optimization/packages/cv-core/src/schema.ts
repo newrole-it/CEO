@@ -20,11 +20,35 @@ const plain = (max: number) =>
     .max(max)
     .transform((value) => value.replace(/[\u0000-\u001f\u007f]+/g, " "))
 
+/** Plain text that keeps its line breaks ("\n"), such as an address: other control characters become spaces. */
+const lines = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .transform((value) =>
+      value.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, " ")
+    )
+
 const rich = (max: number) =>
   z
     .string()
     .max(max)
     .transform((value) => sanitizeInline(value))
+
+/**
+ * How many entries each list of a CV takes. The editor reads these before it adds a line, so
+ * it never builds a CV the schema would refuse to save.
+ */
+export const CV_LIMITS = {
+  links: 8,
+  sections: 40,
+  skills: 60,
+  jobs: 60,
+  bullets: 40,
+  cards: 30,
+  education: 30,
+  paragraphs: 20,
+} as const
 
 export const CvId = z
   .string()
@@ -60,7 +84,7 @@ export const CvHeader = z.object({
   location: plain(160),
   email: plain(200),
   phone: plain(60),
-  links: z.array(CvLink).max(8),
+  links: z.array(CvLink).max(CV_LIMITS.links),
   photo: CvPhoto.nullable(),
   photoShape: CvPhotoShape.optional(),
 })
@@ -88,7 +112,7 @@ export const CvExperienceItem = z.object({
   role: plain(240),
   dates: plain(100),
   summary: rich(4000),
-  bullets: z.array(rich(2000)).max(40),
+  bullets: z.array(rich(2000)).max(CV_LIMITS.bullets),
   /** The "Technologie:" line, label included, e.g. "<strong>Technologie:</strong> Node.js" */
   tech: rich(2000),
   /** Older roles: tighter spacing after the entry */
@@ -113,39 +137,42 @@ export const CvSkillsSection = z.object({
   ...sectionBase,
   type: z.literal("skills"),
   columns: CvColumns.optional(),
-  items: z.array(CvSkillItem).max(60),
+  items: z.array(CvSkillItem).max(CV_LIMITS.skills),
 })
 export const CvExperienceSection = z.object({
   ...sectionBase,
   type: z.literal("experience"),
-  items: z.array(CvExperienceItem).max(60),
+  items: z.array(CvExperienceItem).max(CV_LIMITS.jobs),
 })
 export const CvCardsSection = z.object({
   ...sectionBase,
   type: z.literal("cards"),
   columns: CvColumns.optional(),
-  items: z.array(CvCardItem).max(30),
+  items: z.array(CvCardItem).max(CV_LIMITS.cards),
 })
 export const CvEducationSection = z.object({
   ...sectionBase,
   type: z.literal("education"),
-  items: z.array(CvEducationItem).max(30),
+  items: z.array(CvEducationItem).max(CV_LIMITS.education),
 })
 
 /**
  * The one section of a cover letter. It has no heading on the sheet: `title` is the document's
- * name in the footer ("List motywacyjny"). Only the paragraphs are rich text.
+ * name in the footer ("List motywacyjny"). Only the paragraphs are rich text; the addressee and
+ * the signature are plain text that keeps its line breaks.
  */
 export const CvLetterSection = z.object({
   ...sectionBase,
   type: z.literal("letter"),
   date: plain(160),
-  recipient: plain(400),
+  /** The addressee, one line each for the name, the company and the address */
+  recipient: lines(400),
   subject: plain(300),
   greeting: plain(300),
-  paragraphs: z.array(rich(4000)).max(20),
+  paragraphs: z.array(rich(4000)).max(CV_LIMITS.paragraphs),
   closing: plain(200),
-  signature: plain(200),
+  /** The name under the letter; a further line holds a role or a phone number */
+  signature: lines(200),
 })
 
 export const CvSection = z.discriminatedUnion("type", [
@@ -160,7 +187,7 @@ export const CvSection = z.discriminatedUnion("type", [
 export const CvContent = z.object({
   version: z.literal(CV_VERSION),
   header: CvHeader,
-  sections: z.array(CvSection).max(40),
+  sections: z.array(CvSection).max(CV_LIMITS.sections),
   /** GDPR consent in small print at the end; null hides it */
   consent: plain(3000).nullable(),
   theme: z.object({

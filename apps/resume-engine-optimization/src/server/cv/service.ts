@@ -67,6 +67,8 @@ export type CvErrorCode =
   | "conflict"
   /** Too many model calls of one kind in the last hour */
   | "limited"
+  /** Gathering into the general CV: no other CV holds anything the person added by hand */
+  | "no-changes"
 
 export class CvError extends Error {
   constructor(

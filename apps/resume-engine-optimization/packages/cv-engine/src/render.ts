@@ -13,6 +13,7 @@ import {
   type CvAtom,
 } from "@newrole/cv-core/flow"
 import { assignPages, computePageBreaks } from "@newrole/cv-core/paginate"
+import { splitParagraphs } from "@newrole/cv-core/paragraphs"
 import { escapeAttr, escapeHtml, sanitizeInline } from "@newrole/cv-core/sanitize"
 import { CV_ACCENT, type CvContent, type CvSection } from "@newrole/cv-core/schema"
 import { CV_CSS, PAGE_MM } from "@newrole/cv-core/styles"
@@ -41,6 +42,9 @@ export type RenderOptions = {
 
 const text = (value: string) => escapeHtml(value)
 const rich = (value: string) => sanitizeInline(value)
+/** One paragraph of a text or a job summary (cvFlow gives each an atom); a blank one is a line. */
+const paragraph = (value: string, index: number | undefined) =>
+  splitParagraphs(value)[index ?? 0] || "<br>"
 
 function sectionById(content: CvContent, id: string | undefined): CvSection | undefined {
   return content.sections.find((section) => section.id === id)
@@ -127,7 +131,7 @@ function atomInner(content: CvContent, atom: CvAtom, columns: boolean): string {
     return ""
   }
   if (atom.kind === "text" && section.type === "text")
-    return `<p class="cv-text">${rich(section.body)}</p>`
+    return `<p class="cv-text">${paragraph(section.body, atom.index)}</p>`
   if (atom.kind === "skills" && section.type === "skills") {
     const items = (atom.itemIds ?? [])
       .map((id) => section.items.find((item) => item.id === id))
@@ -175,7 +179,8 @@ function atomInner(content: CvContent, atom: CvAtom, columns: boolean): string {
       item.company
     )}</span>${role}</h3><div class="cv-dates">${text(item.dates)}</div></div>`
   }
-  if (atom.kind === "job-summary") return `<p class="cv-summary">${rich(item.summary)}</p>`
+  if (atom.kind === "job-summary")
+    return `<p class="cv-summary">${paragraph(item.summary, atom.index)}</p>`
   if (atom.kind === "bullet")
     return `<div class="cv-bullet">${rich(item.bullets[atom.index ?? 0] ?? "")}</div>`
   if (atom.kind === "tech") return `<p class="cv-tech">${rich(item.tech)}</p>`

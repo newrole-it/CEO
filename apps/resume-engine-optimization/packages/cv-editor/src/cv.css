@@ -431,6 +431,80 @@
   font-size: 9pt;
   cursor: pointer;
 }
+/* "add a link" at the end of the header's contact lines; never in the PDF. The anchor has no
+   size and the button hangs off it, so the sheet lays out exactly like the print view. */
+.cv-doc .cve-addlink-at {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+.cv-doc .cve-addlink {
+  position: absolute;
+  left: 2.4mm;
+  bottom: -0.25em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border: 1px dashed #a3afba;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--cv-muted);
+  font-size: 8pt;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* "remove this link": over the end of the link while it is pointed at or edited */
+.cv-doc .cve-linkdel-at {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+.cv-doc .cve-linkdel {
+  position: absolute;
+  left: -1px;
+  bottom: 0.55em;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid #a3afba;
+  border-radius: 50%;
+  /* on the white sheet in either theme */
+  background: #fff;
+  color: var(--cv-muted);
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+}
+.cv-contact__item:hover .cve-linkdel,
+.cv-contact__item:focus-within .cve-linkdel {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cve-linkdel:hover {
+  color: var(--danger, #b42318);
+  border-color: currentColor;
+}
+.cve-linkdel svg {
+  width: 9px;
+  height: 9px;
+}
+.cve-addlink svg {
+  width: 11px;
+  height: 11px;
+}
+.cve-addlink:hover,
+.cve-addlink:focus-visible {
+  color: var(--cv-accent);
+  border-color: var(--cv-accent);
+}
 .cve-empty svg {
   width: 14px;
   height: 14px;

@@ -4,6 +4,8 @@ import { composeDrafts } from "src/server/answers/compose"
 import { MAX_ANSWER_LENGTH, MAX_QUESTION_LENGTH } from "src/server/answers/filter"
 import { saveAnswer, searchAnswers } from "src/server/answers/service"
 import type { AnswerView, DraftReader } from "src/server/answers/types"
+import type { Locale } from "@newrole/ui/i18n"
+import { mcpT, type McpKey, type McpT } from "./copy"
 import { clampLimit } from "./format"
 import { failure, guard, reply } from "./tools"
 import { currentUser } from "./user"
@@ -120,30 +122,32 @@ function brief(row: AnswerView & { score?: number }) {
   }
 }
 
-function resultLine(row: AnswerView & { score?: number }, index: number): string {
+function resultLine(row: AnswerView & { score?: number }, index: number, t: McpT): string {
   const facts = [
-    row.score != null ? `podobieństwo ${Math.round(row.score * 100)}%` : "",
+    row.score != null ? t("mcp.answers.similarity", { n: Math.round(row.score * 100) }) : "",
     row.company ?? "",
     row.language ?? "",
-    `użyto ${row.useCount}×`,
-    `id ${row.id}`,
+    t("mcp.answers.used", { n: row.useCount }),
+    t("mcp.answers.id", { id: row.id }),
   ].filter(Boolean)
   return `${index + 1}. ${excerpt(row.question, 160)} (${facts.join(", ")})\n   ${excerpt(
     row.answer
   )}`
 }
 
-const READER_LABEL: Record<DraftReader, string> = {
-  reuse: "z bazy, bez modelu",
-  llm: "szkic Claude",
-  none: "brak szkicu",
+const READER_LABEL: Record<DraftReader, McpKey> = {
+  reuse: "mcp.answers.reader.reuse",
+  llm: "mcp.answers.reader.llm",
+  none: "mcp.answers.reader.none",
 }
 
-export function registerAnswerTools(server: McpServer) {
+export function registerAnswerTools(server: McpServer, locale: Locale) {
+  const title = mcpT(locale)
+
   server.registerTool(
     "answers_search",
     {
-      title: "Szukaj w bazie odpowiedzi",
+      title: title("mcp.tool.answers_search.title"),
       description:
         "Search the person's bank of answers to application questions. Pass `question` with a full question to rank by similarity (deterministic, Polish and English, score 0-1), or `q` with words to find in questions, answers, companies and tags. With neither, the newest come first. Use it when they ask what they answered before; for a new answer use answer_draft, which already includes this search.",
       inputSchema: searchInput,
@@ -151,6 +155,7 @@ export function registerAnswerTools(server: McpServer) {
     },
     guard(async (args: { q?: string; question?: string; tag?: string; limit?: number }) => {
       const user = await currentUser()
+      const t = mcpT(user.locale)
       const rows = await searchAnswers(user.id, {
         q: args.q,
         question: args.question,
@@ -158,8 +163,11 @@ export function registerAnswerTools(server: McpServer) {
         limit: clampLimit(args.limit, 10, 50),
       })
       const text = rows.length
-        ? [`Odpowiedzi (${rows.length}):`, ...rows.map(resultLine)].join("\n")
-        : "Brak pasujących odpowiedzi. Nową napiszesz z answer_draft."
+        ? [
+            t("mcp.answers.head", { n: rows.length }),
+            ...rows.map((row, index) => resultLine(row, index, t)),
+          ].join("\n")
+        : t("mcp.answers.none")
       return reply(text, { answers: rows.map(brief) })
     })
   )
@@ -167,7 +175,7 @@ export function registerAnswerTools(server: McpServer) {
   server.registerTool(
     "answer_save",
     {
-      title: "Zapisz odpowiedź",
+      title: title("mcp.tool.answer_save.title"),
       description:
         "Save the final wording of an answer to the person's bank (origin mcp). Pass `id` to update that answer. Without `id` it creates one: the same answer to the same question only counts one more use, and a different answer to the same question becomes a variant. Save only what the person approved. Do not save contact data, consents or EEO answers.",
       inputSchema: saveInput,
@@ -186,12 +194,13 @@ export function registerAnswerTools(server: McpServer) {
         applicationId?: string
       }) => {
         const user = await currentUser()
+        const t = mcpT(user.locale)
         const { answer, created } = await saveAnswer({ ...args, userId: user.id, origin: "mcp" })
         const text = args.id
-          ? `Zaktualizowano odpowiedź ${answer.id}.`
+          ? t("mcp.answers.updated", { id: answer.id })
           : created
-            ? `Zapisano nową odpowiedź ${answer.id}.`
-            : `Ta odpowiedź już była w bazie (${answer.id}). Użyto jej ${answer.useCount}×.`
+            ? t("mcp.answers.created", { id: answer.id })
+            : t("mcp.answers.repeated", { id: answer.id, n: answer.useCount })
         return reply(text, { answer: brief(answer), created })
       }
     )
@@ -200,7 +209,7 @@ export function registerAnswerTools(server: McpServer) {
   server.registerTool(
     "answer_draft",
     {
-      title: "Napisz szkic odpowiedzi",
+      title: title("mcp.tool.answer_draft.title"),
       description: [
         "Draft answers to one or more application questions. A stored answer that fits (similarity at least 0.85, same language, not naming another company, within the limit) comes back as it is; the rest go in one call to the writing model with the person's profile, CV, up to 5 similar past answers and the job context. It may take up to a minute.",
         "Show every draft to the person and say which saved answers it was based on. They decide the wording: drafts are never sent anywhere. Save the final wording with answer_save.",
@@ -221,6 +230,7 @@ export function registerAnswerTools(server: McpServer) {
       }) => {
         if (!args.questions.length) return failure("Pass at least one question.")
         const user = await currentUser()
+        const t = mcpT(user.locale)
         const questions = args.questions.map((item, index) => ({
           key: `q${index + 1}`,
           question: item.question,
@@ -251,23 +261,30 @@ export function registerAnswerTools(server: McpServer) {
         const text = results
           .map((item, index) => {
             const used = item.basedOn.length
-              ? `Na podstawie: ${item.basedOn
-                  .map((row) => `${excerpt(row.question, 80)} (id ${row.id})`)
-                  .join("; ")}`
+              ? t("mcp.answers.basedOn", {
+                  list: item.basedOn
+                    .map(
+                      (row) =>
+                        `${excerpt(row.question, 80)} (${t("mcp.answers.id", { id: row.id })})`
+                    )
+                    .join("; "),
+                })
               : ""
             return [
-              `${index + 1}. ${item.question} [${READER_LABEL[item.reader]}]`,
-              item.text || "(brak tekstu)",
+              `${index + 1}. ${item.question} [${t(READER_LABEL[item.reader])}]`,
+              item.text || t("mcp.answers.noText"),
               used,
             ]
               .filter(Boolean)
               .join("\n")
           })
           .join("\n\n")
-        return reply(
-          `${text}\n\nPokaż szkice osobie. Po akceptacji zapisz ostateczną wersję przez answer_save.`,
-          { drafts: results, company, jobTitle, jobFromIndex }
-        )
+        return reply(`${text}\n\n${t("mcp.answers.show")}`, {
+          drafts: results,
+          company,
+          jobTitle,
+          jobFromIndex,
+        })
       }
     )
   )

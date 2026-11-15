@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import type { Locale } from "@newrole/ui/i18n"
 import { mcpHost } from "./host"
 import { INSTRUCTIONS, registerPrompts } from "./prompts"
 import { registerTools } from "./tools"
@@ -45,17 +46,21 @@ function sharedOnly(server: McpServer): McpServer {
   } as unknown as McpServer
 }
 
-/** Every tool and prompt over the services in src/server, on no transport. Importing starts nothing. */
-export function createServer() {
+/**
+ * Every tool and prompt over the services in src/server, on no transport. Importing starts nothing.
+ * `locale` is the language of the titles Claude Code lists, which are fixed when the server starts;
+ * each reply is in the language of the person the call acts for.
+ */
+export function createServer({ locale }: { locale: Locale }) {
   const server = new McpServer(
     { name: "newrole", title: "newrole.it", version: "1.0.0" },
     { instructions: mcpHost().instructions ?? INSTRUCTIONS }
   )
   const target = mcpHost().localInstall ? server : sharedOnly(server)
-  registerTools(target)
-  registerApplicationTools(target)
-  registerCvTools(target)
-  registerAnswerTools(target)
-  registerPrompts(target)
+  registerTools(target, locale)
+  registerApplicationTools(target, locale)
+  registerCvTools(target, locale)
+  registerAnswerTools(target, locale)
+  registerPrompts(target, locale)
   return server
 }

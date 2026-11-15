@@ -5,7 +5,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@newrole/ui/Button"
 import { updateHeader } from "@newrole/cv-core/edit"
 import { normalizeHref } from "@newrole/cv-core/sanitize"
-import type { CvLink } from "@newrole/cv-core/schema"
+import { CV_LIMITS, type CvLink } from "@newrole/cv-core/schema"
 import type { EditorOps } from "./atoms"
 
 /** Edits the header links: visible text on the sheet, address here. */
@@ -94,7 +94,7 @@ export function LinksPopover({
           />
         </div>
       ))}
-      {links.length < 8 ? (
+      {links.length < CV_LIMITS.links ? (
         <Button
           size="sm"
           variant="outline"

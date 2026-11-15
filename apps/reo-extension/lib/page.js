@@ -34,18 +34,13 @@ export function element(tag, className, text) {
   return node
 }
 
-export function formatDate(value) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("pl-PL")
-}
-
-/** The message for a failed call to the service worker; null when the error is the caller's own. */
-export function connectionError(result) {
-  if (result.status === 401 || result.error === "not-connected") {
-    return "Rozszerzenie nie jest połączone. Połącz je ponownie."
-  }
-  if (result.error === "offline") return "Nie mogę połączyć się z aplikacją. Czy newrole.it działa?"
-  if (result.error === "disconnected")
-    return "Rozszerzenie zostało przeładowane. Odśwież tę stronę."
+/**
+ * The message for a failed call to the service worker, in the language of `t`; null when the error
+ * is the caller's own.
+ */
+export function connectionError(result, t) {
+  if (result.status === 401 || result.error === "not-connected") return t("conn.not-connected")
+  if (result.error === "offline") return t("conn.offline")
+  if (result.error === "disconnected") return t("conn.disconnected")
   return null
 }

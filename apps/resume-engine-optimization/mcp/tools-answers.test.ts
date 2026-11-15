@@ -10,7 +10,13 @@ vi.mock("src/server/answers/service", () => ({
 }))
 vi.mock("src/server/answers/compose", () => ({ composeDrafts: vi.fn() }))
 vi.mock("./user", () => ({
-  currentUser: vi.fn(async () => ({ id: 7, email: "a@b.c", name: null, how: "test" })),
+  currentUser: vi.fn(async () => ({
+    id: 7,
+    email: "a@b.c",
+    name: null,
+    how: "test",
+    locale: "pl",
+  })),
   NoUserError: class NoUserError extends Error {},
 }))
 // Only the three helpers are used; the real module pulls in the whole job search.
@@ -47,11 +53,18 @@ type Registered = {
 
 function tools(): Record<string, Registered> {
   const out: Record<string, Registered> = {}
-  registerAnswerTools({
-    registerTool: (name: string, config: Registered["config"], handler: Registered["handler"]) => {
-      out[name] = { config, handler }
-    },
-  } as never)
+  registerAnswerTools(
+    {
+      registerTool: (
+        name: string,
+        config: Registered["config"],
+        handler: Registered["handler"]
+      ) => {
+        out[name] = { config, handler }
+      },
+    } as never,
+    "pl"
+  )
   return out
 }
 
@@ -170,6 +183,19 @@ describe("answer_save", () => {
     expect(
       (await tools().answer_save.handler({ question: "Q", answer: "A" })).content[0].text
     ).toContain("już była")
+  })
+
+  it("answers in English for a person whose language is English", async () => {
+    const { currentUser } = await import("./user")
+    const english = { id: 7, email: "a@b.c", name: null, how: "test", locale: "en" } as never
+    vi.mocked(currentUser).mockResolvedValue(english)
+    save.mockResolvedValue({ answer: row, created: true })
+    const created = await tools().answer_save.handler({ question: "Q", answer: "A" })
+    expect(created.content[0].text).toBe(`Saved a new answer ${row.id}.`)
+    save.mockResolvedValue({ answer: row, created: false })
+    const repeated = await tools().answer_save.handler({ question: "Q", answer: "A" })
+    expect(repeated.content[0].text).toContain("was already in the bank")
+    vi.mocked(currentUser).mockResolvedValue({ ...(english as object), locale: "pl" } as never)
   })
 
   it("turns a domain error into a tool error", async () => {

@@ -2025,3 +2025,46 @@ details.disclosure > div {
   margin: 0;
   white-space: pre-wrap;
 }
+
+/* The dashboard at "/" (src/app/dashboard). The rows and the number tiles are My CV's and the statistics'. */
+.dash {
+  display: grid;
+  gap: 28px;
+}
+.dash .page-head {
+  margin-bottom: 0;
+}
+.dash__block {
+  display: grid;
+  gap: 12px;
+}
+.dash__head,
+.dash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.dash__head {
+  justify-content: space-between;
+}
+@media (min-width: 720px) {
+  .dash__kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.dash-gather__sub {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dash-gather__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+.dash-gather__list li > * + * {
+  margin-left: 8px;
+}

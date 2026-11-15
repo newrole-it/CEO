@@ -47,7 +47,11 @@ export type FormLetter = {
 export type LetterStatus =
   | { status: "pending" }
   | { status: "done"; letter: FormLetter }
-  | { status: "failed"; error: string }
+  | { status: "failed"; code: LetterFailure; error: string }
+
+/** Why no letter came out. The extension translates the code; `error` is for logs. */
+export type LetterFailure =
+  "unknown-offer" | "llm-unavailable" | "no-base" | "llm-failed" | "failed"
 
 export type LetterPage = { url: string; title: string; text: string }
 
@@ -67,7 +71,15 @@ const FRAME_CHARS = 80
 const TASK_TTL_MS = 15 * 60_000
 const MAX_TASKS = 100
 
-class LetterError extends Error {}
+class LetterError extends Error {
+  constructor(
+    readonly code: LetterFailure,
+    message: string
+  ) {
+    super(message)
+    this.name = "LetterError"
+  }
+}
 
 /** The letter as one text for a form field, cut to the field's limit when it has one. */
 export function letterText(content: CvContent, maxChars?: number): string {
@@ -201,7 +213,8 @@ export async function writeFormLetter(input: LetterInput): Promise<WrittenLetter
   const title = posting.title ?? facts?.title ?? (cleanTitle(page.title) || null)
   if (!company || !title)
     throw new LetterError(
-      "Nie wiem, do jakiej firmy i na jakie stanowisko jest ten formularz, więc nie piszę listu."
+      "unknown-offer",
+      "The form's company and role are unknown, so no letter is written."
     )
   // the server's read of the posting, else the open page; a site that opts out of AI gives neither
   const text = posting.withheld
@@ -231,18 +244,19 @@ export async function writeFormLetter(input: LetterInput): Promise<WrittenLetter
   return written(content, language, meta, maxChars)
 }
 
-/** What the panel says when no letter came out. */
-function failureText(error: unknown): string {
-  if (error instanceof LetterError) return error.message
+/** Why no letter came out, as a code for the panel and a line for logs. */
+function failure(error: unknown): { code: LetterFailure; error: string } {
+  if (error instanceof LetterError) return { code: error.code, error: error.message }
   if (error instanceof CvError) {
     if (error.code === "llm-unavailable")
-      return "Model nie jest skonfigurowany, więc nie napiszę listu."
+      return { code: "llm-unavailable", error: "No model is configured." }
     if (error.code === "no-base" || error.code === "no-content")
-      return "Nie masz jeszcze CV ani profilu, z którego mógłbym napisać list."
-    if (error.code === "llm-failed") return "Model nie zwrócił listu. Spróbuj ponownie."
+      return { code: "no-base", error: "No CV or profile to write the letter from." }
+    if (error.code === "llm-failed")
+      return { code: "llm-failed", error: "The model returned no letter." }
   }
   console.error("form letter failed", error instanceof Error ? error.message : error)
-  return "Nie udało się napisać listu. Spróbuj ponownie."
+  return { code: "failed", error: "The letter could not be written." }
 }
 
 // ---------------------------------------------------------------- letters in progress
@@ -253,7 +267,7 @@ type Task = {
   until: number
   state:
     | { status: "pending" }
-    | { status: "failed"; error: string }
+    | { status: "failed"; code: LetterFailure; error: string }
     | ({ status: "done" } & WrittenLetter)
 }
 
@@ -291,7 +305,7 @@ export function startFormLetter(
       task.state = { status: "done", ...result }
     },
     (error: unknown) => {
-      task.state = { status: "failed", error: failureText(error) }
+      task.state = { status: "failed", ...failure(error) }
     }
   )
   return id

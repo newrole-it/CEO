@@ -43,7 +43,10 @@ export type OfferApplication = {
   company: string
   title: string
   status: ApplicationStatus
+  /** For extensions built before they translated `status` themselves */
   statusLabel: string
+  /** The stage reached before a rejection or a withdrawal, when one was recorded */
+  closedAtStage: string | null
   tone: ReturnType<typeof statusTone>
   appliedAt: Date
   statusChangedAt: Date
@@ -238,6 +241,7 @@ function toOfferApplication(row: OfferRow): OfferApplication {
     title: row.title,
     status: row.status as ApplicationStatus,
     statusLabel: labelOf(row),
+    closedAtStage: row.closedAtStage,
     tone: statusTone(row.status),
     appliedAt: row.appliedAt,
     statusChangedAt: row.statusChangedAt,

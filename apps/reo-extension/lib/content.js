@@ -4,12 +4,17 @@
  */
 import * as F from "./form.js"
 import { readOffer, statusLine } from "./offer.js"
-import { connectionError, element, formatDate, send, session } from "./page.js"
+import { COPY, localeOf, translator } from "./copy.js"
+import { formatDate, pluralKind } from "./i18n.js"
+import { connectionError, element, send, session } from "./page.js"
 
 export function startContent() {
   // Injected again from the popup, or by both the manifest and the all-sites script.
   if (globalThis.__newRoleContent) return
   globalThis.__newRoleContent = true
+
+  const locale = localeOf(navigator.language)
+  const t = translator(locale)
 
   const PURPLE = "#5b3df5"
   const YELLOW = "#e6a700"
@@ -105,16 +110,16 @@ export function startContent() {
     ui.title = element("span", "", "newrole.it")
     const close = element("button", "x", "×")
     close.type = "button"
-    close.setAttribute("aria-label", "Ukryj")
+    close.setAttribute("aria-label", t("fill.hide"))
     close.addEventListener("click", () => {
       session("set", dismissKey())
       host.style.display = "none"
     })
     head.append(ui.title, close)
-    ui.main = element("button", "btn", "Wypełnij z newrole.it")
+    ui.main = element("button", "btn", t("fill.main"))
     ui.main.type = "button"
     ui.main.addEventListener("click", () => void onMainClick())
-    ui.save = element("button", "btn alt", "Zapisz jako aplikację")
+    ui.save = element("button", "btn alt", t("fill.save"))
     ui.save.type = "button"
     ui.save.addEventListener("click", () => void saveManually())
     ui.message = element("div", "msg hidden")
@@ -139,7 +144,7 @@ export function startContent() {
 
   function refreshPanel() {
     if (!ui.main) return
-    ui.main.textContent = state.config.connected ? "Wypełnij z newrole.it" : "Połącz rozszerzenie"
+    ui.main.textContent = t(state.config.connected ? "fill.main" : "fill.connect")
     ui.main.disabled = state.busy
     ui.save.className = state.config.connected ? "btn alt" : "btn alt hidden"
     ui.save.disabled = state.busy
@@ -158,7 +163,9 @@ export function startContent() {
     link.href = appLink(`/applications?id=${encodeURIComponent(application.id)}`)
     link.target = "_blank"
     link.rel = "noreferrer noopener"
-    ui.toast.append("Zapisano w trackerze: ", link)
+    // One sentence with the link inside it: the words around {link} differ between languages.
+    const [before, after] = t("fill.saved", { link: "\u0000" }).split("\u0000")
+    ui.toast.append(before, link, after ?? "")
   }
 
   /** The cover letter's line, with a link to the letter in the app when it is kept there. */
@@ -167,7 +174,7 @@ export function startContent() {
     ui.letter.textContent = text || ""
     ui.letter.className = `${tone === "error" ? "err" : "msg"}${text ? "" : " hidden"}`
     if (!text || !documentId) return
-    const link = element("a", "link", "Otwórz list w newrole.it")
+    const link = element("a", "link", t("fill.letter.open"))
     link.href = appLink(`/cv/${encodeURIComponent(documentId)}`)
     link.target = "_blank"
     link.rel = "noreferrer noopener"
@@ -179,7 +186,7 @@ export function startContent() {
     ui.list.className = drafts.length ? "list" : "list hidden"
     for (const draft of drafts) {
       const item = element("li")
-      const link = element("button", "link", draft.label || "Pole bez etykiety")
+      const link = element("button", "link", draft.label || t("fill.noLabel"))
       link.type = "button"
       link.addEventListener("click", () => {
         draft.target.scrollIntoView({ block: "center", behavior: "smooth" })
@@ -208,8 +215,7 @@ export function startContent() {
     const color = source === "ai" ? YELLOW : PURPLE
     target.style.setProperty("outline", `2px solid ${color}`, "important")
     target.style.setProperty("outline-offset", "1px", "important")
-    target.title =
-      source === "ai" ? "newrole.it: szkic AI, sprawdź przed wysłaniem" : "newrole.it: uzupełnione"
+    target.title = t(source === "ai" ? "fill.badge.ai" : "fill.badge.filled")
     return target
   }
 
@@ -222,8 +228,9 @@ export function startContent() {
     return new File([bytes], data.name || "CV.pdf", { type: data.type || "application/pdf" })
   }
 
+  /** A failed call in the person's language. What the server said is never shown. */
   function errorText(result) {
-    return connectionError(result) ?? (result.error || "Coś poszło nie tak. Spróbuj ponownie.")
+    return connectionError(result, t) ?? t("err.generic.retry")
   }
 
   /** The page for the server, with the company and role its own data names, when it does. */
@@ -238,13 +245,13 @@ export function startContent() {
     const root = currentRoot(true)
     if (!root) {
       ensurePanel()
-      say("Nie widzę tu formularza do wypełnienia.", "error")
+      say(t("fill.noForm"), "error")
       return { ok: false, error: "no-form" }
     }
     ensurePanel()
     state.busy = true
     refreshPanel()
-    say("Czytam formularz…")
+    say(t("fill.reading"))
     showDrafts([])
     showLetter("")
     try {
@@ -253,10 +260,10 @@ export function startContent() {
       // Secrets, EEO and consents do not even leave the page as labels.
       const fields = collection.fields.filter((field) => !F.neverTouch(field))
       if (!fields.length) {
-        say("Nie widzę tu pól do wypełnienia.", "error")
+        say(t("err.no-fields"), "error")
         return { ok: false, error: "no-fields" }
       }
-      say("Uzupełniam z Twoich danych. Pytania otwarte mogą potrwać kilka sekund…")
+      say(t("fill.working"))
       const result = await send("fill", { page: pageFacts(), fields })
       if (!result.ok) {
         if (result.status === 401) await refreshConfig()
@@ -272,7 +279,7 @@ export function startContent() {
       }
       const letterId = result.data.letter?.id
       if (letterId && summary.letters.length) {
-        showLetter("Piszę list motywacyjny pod tę ofertę. To może chwilę potrwać…")
+        showLetter(t("fill.letter.working"))
         const done = await waitForLetter(letterId)
         if (!done.letter) {
           showLetter(done.error, "error")
@@ -325,7 +332,7 @@ export function startContent() {
         if (!cvs.has(id)) cvs.set(id, await send("cv", id ? { id } : {}))
         const cv = cvs.get(id)
         if (!cv.ok) {
-          summary.cvError = cv.status === 404 ? "Nie masz jeszcze CV w PDF." : errorText(cv)
+          summary.cvError = cv.status === 404 ? t("fill.cv.none") : errorText(cv)
           continue
         }
         F.fillFile(entry.el, base64File(cv.data))
@@ -349,14 +356,17 @@ export function startContent() {
 
   function summaryText(summary, applied) {
     const known = summary.profile + summary.answers + summary.cv
-    const parts = [`Uzupełniono: ${known}`]
-    if (summary.ai) parts.push(`szkice AI do sprawdzenia: ${summary.ai}`)
-    if (summary.kept) parts.push(`zostawione bez zmian: ${summary.kept}`)
-    if (summary.skipped) parts.push(`pominięte: ${summary.skipped}`)
-    let text = `${parts.join(", ")}. Sprawdź formularz i wyślij go sam.`
-    if (summary.cvError) text += ` ${summary.cvError}`
-    if (applied) text += ` Już aplikowano: ${formatDate(applied.appliedAt)}.`
-    return text
+    // Each part is a sentence of its own, so no language has to fit another's word order.
+    const parts = [t("fill.sum.filled", { n: known })]
+    if (summary.ai) parts.push(t("fill.sum.ai", { n: summary.ai }))
+    if (summary.kept) parts.push(t("fill.sum.kept", { n: summary.kept }))
+    if (summary.skipped) parts.push(t("fill.sum.skipped", { n: summary.skipped }))
+    parts.push(t("fill.sum.check"))
+    if (summary.cvError) parts.push(summary.cvError)
+    if (applied) {
+      parts.push(t("fill.sum.applied", { date: formatDate(applied.appliedAt, locale) }))
+    }
+    return parts.join(" ")
   }
 
   // -------------------------------------------------------------------- cover letter
@@ -371,13 +381,15 @@ export function startContent() {
     while (Date.now() < until) {
       await wait(LETTER_POLL_MS)
       const result = await send("letter", { id })
-      if (result.status === 404)
-        return { error: "Aplikacja nie ma już tego listu. Wypełnij formularz jeszcze raz." }
+      if (result.status === 404) return { error: t("fill.letter.err.gone") }
       if (!result.ok) return { error: errorText(result) }
       if (result.data?.status === "done") return { letter: result.data.letter }
-      if (result.data?.status === "failed") return { error: result.data.error }
+      if (result.data?.status === "failed") {
+        const key = `fill.letter.err.${result.data.code}`
+        return { error: t(key in COPY.pl ? key : "fill.letter.err.failed") }
+      }
     }
-    return { error: "Pisanie listu motywacyjnego trwa zbyt długo. Wypełnij formularz jeszcze raz." }
+    return { error: t("fill.letter.err.timeout") }
   }
 
   /**
@@ -405,10 +417,7 @@ export function startContent() {
         }
         const file = await send("letterFile", { id })
         if (!file.ok) {
-          outcome.error =
-            file.status === 404
-              ? "Nie udało się zrobić PDF z listu motywacyjnego."
-              : errorText(file)
+          outcome.error = file.status === 404 ? t("fill.letter.err.pdf") : errorText(file)
           break
         }
         F.fillFile(entry.el, base64File(file.data))
@@ -422,20 +431,17 @@ export function startContent() {
 
   function letterLine(letter, outcome) {
     if (outcome.error) return outcome.error
-    if (!outcome.filled && !outcome.attached)
-      return outcome.kept ? "List motywacyjny: w polu już coś jest, więc go nie zmieniam." : ""
-    const many = letter.pastLetters
+    if (!outcome.filled && !outcome.attached) return outcome.kept ? t("fill.letter.kept") : ""
+    const past = letter.pastLetters
     const how = !letter.created
-      ? "ten, który masz już dla tej oferty"
+      ? "existing"
       : letter.general
-        ? "nowy, pod tę ofertę, z Twojego listu ogólnego"
-        : many > 1
-          ? `nowy, pod tę ofertę, na wzór ${many} ostatnich listów`
-          : many === 1
-            ? "nowy, pod tę ofertę, na wzór Twojego ostatniego listu"
-            : "nowy, pod tę ofertę"
-    const where = outcome.attached && !outcome.filled ? " (dołączony jako PDF)" : ""
-    return `List motywacyjny: ${how}${where}. Przeczytaj go przed wysłaniem.`
+        ? "fromGeneral"
+        : past > 0
+          ? `fromPast.${pluralKind(past, locale)}`
+          : "new"
+    const attached = outcome.attached && !outcome.filled ? ".attached" : ""
+    return t(`fill.letter.${how}${attached}`, { n: past })
   }
 
   async function onMainClick() {
@@ -486,7 +492,7 @@ export function startContent() {
 
   /**
    * A last step often has no fields, so no form is found there. Only the step before it vouches
-   * for the button: the same open dialog, or a known ATS. Elsewhere "Wyślij" may be a chat.
+   * for the button: the same open dialog, or a known ATS. Elsewhere "Wyślij" may be a chat. (i18n-ignore: names a button on the page)
    */
   function endsSteps(button) {
     if (!state.earlier.length) return false
@@ -499,7 +505,7 @@ export function startContent() {
     ensurePanel()
     state.busy = true
     refreshPanel()
-    say("Zapisuję…")
+    say(t("fill.saving"))
     try {
       const result = await report(snapshotFields())
       if (!result.ok) {
@@ -538,7 +544,7 @@ export function startContent() {
         sessionStorage.removeItem(sentKey())
       } catch (_error) {}
       ensurePanel()
-      say(`Nie zapisano w trackerze. ${errorText(result)}`, "error")
+      say(t("fill.notSaved", { reason: errorText(result) }), "error")
     })
   }
 
@@ -621,7 +627,7 @@ export function startContent() {
     state.statusFor = href
     const result = await send("status", { url: href })
     if (result.ok && result.data?.applied && location.href === href && !state.busy) {
-      say(statusLine(result.data))
+      say(statusLine(result.data, t, locale))
     }
   }
 

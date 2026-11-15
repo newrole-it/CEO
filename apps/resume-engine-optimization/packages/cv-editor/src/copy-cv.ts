@@ -62,6 +62,7 @@ export const cvPl = {
   "cv.ed.unsaved": "Nie zapisano",
   "cv.ed.invalid": "Nie zapisano: {reason}",
   "cv.ed.tooLong": "Nie zapisano: blok ma ponad {max} znaków. Skróć go.",
+  "cv.ed.limit": "Więcej się tu nie zmieści: limit to {max}.",
   "cv.ed.conflict":
     "Nie zapisano: to CV zmieniono w innym miejscu, na przykład w innej karcie. Odśwież stronę, żeby zobaczyć nowszą wersję.",
   "cv.ed.reload": "Odśwież",
@@ -144,19 +145,19 @@ export const cvPl = {
     "Najważniejsze w pół minuty. Wrócisz tu przyciskiem ze znakiem zapytania na pasku.",
   "cv.help.type.t": "Piszesz prosto na stronie",
   "cv.help.type.b":
-    "Kliknij dowolny tekst na arkuszu i pisz. Zmiany zapisują się same, a pasek pokazuje „Zapisano” i liczbę stron.",
+    "Kliknij dowolny tekst na arkuszu i pisz. Enter przenosi do następnej linii albo dodaje nową, a w dłuższym tekście zaczyna akapit. Zmiany zapisują się same, a pasek pokazuje „Zapisano” i liczbę stron.",
   "cv.help.photo.t": "Zdjęcie",
   "cv.help.photo.b":
     "Skopiuj zdjęcie do schowka i wklej je tutaj: {paste}. Wkleja się, gdy w schowku jest sam obraz, bez tekstu. Możesz też najechać na nagłówek CV i kliknąć ikonę „Dodaj albo wklej zdjęcie”. Kliknij zdjęcie, żeby je zmienić, ustawić w kole albo w kwadracie lub usunąć. JPEG, PNG albo WebP, przycięte do kwadratu.",
   "cv.help.blocks.t": "Przyciski przy wpisach",
   "cv.help.blocks.b":
-    "Najedź na wpis, punkt albo sekcję: obok pojawią się małe przyciski. Przesuniesz nimi w górę i w dół, dodasz coś pod spodem albo usuniesz, a przy doświadczeniu dodasz punkt, opis lub linię technologii.",
+    "Najedź na wpis, punkt albo sekcję: obok pojawią się małe przyciski. Przesuniesz nimi w górę i w dół, dodasz coś pod spodem albo usuniesz, a przy doświadczeniu dodasz punkt, opis lub linię technologii. Przy kompetencjach i kartach, takich jak projekty, wybierzesz też liczbę kolumn: jedną, dwie albo trzy.",
   "cv.help.ai.t": "Popraw z AI",
   "cv.help.ai.b":
     "Najedź na tytuł sekcji albo jej tekst i kliknij ikonę iskierek. Wybierz, co zrobić: popraw styl, skróć albo wzmocnij. Model przepisze tylko tę sekcję, bez nowych faktów, a zmiany zobaczysz w panelu z prawej, zanim je zastosujesz.",
   "cv.help.links.t": "Linki",
   "cv.help.links.b":
-    "Najedź na nagłówek i kliknij ikonę łańcucha, żeby dodać linki pod danymi kontaktowymi. W opisie albo punkcie zaznacz słowa i naciśnij {link}.",
+    "Kliknij „Dodaj link” pod danymi kontaktowymi i wpisz adres, na przykład github.com/twoj-profil. Link usuniesz krzyżykiem, który pojawia się przy nim, albo klawiszem Backspace, gdy jest pusty. Ikona łańcucha przy nagłówku pozwala pokazać inny tekst niż adres. W opisie albo punkcie zaznacz słowa i naciśnij {link}.",
   "cv.help.outline.t": "Konspekt",
   "cv.help.outline.b":
     "Lista sekcji z boku: zmienisz nazwę sekcji, ukryjesz ją bez usuwania, przestawisz kolejność, dodasz nową sekcję albo klauzulę RODO.",
@@ -328,6 +329,7 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
   "cv.ed.unsaved": "Not saved",
   "cv.ed.invalid": "Not saved: {reason}",
   "cv.ed.tooLong": "Not saved: a block is over {max} characters. Shorten it.",
+  "cv.ed.limit": "Nothing more fits here: the limit is {max}.",
   "cv.ed.conflict":
     "Not saved: this CV was changed somewhere else, such as another tab. Reload the page to see the newer version.",
   "cv.ed.reload": "Reload",
@@ -405,19 +407,19 @@ export const cvEn: Record<keyof typeof cvPl, string> = {
     "The essentials in half a minute. Come back with the question-mark button in the toolbar.",
   "cv.help.type.t": "You type on the page",
   "cv.help.type.b":
-    "Click any text on the sheet and type. Changes save by themselves, and the toolbar shows “Saved” and the number of pages.",
+    "Click any text on the sheet and type. Enter moves to the next line or adds one, and in a longer text it starts a paragraph. Changes save by themselves, and the toolbar shows “Saved” and the number of pages.",
   "cv.help.photo.t": "Photo",
   "cv.help.photo.b":
     "Copy a photo to the clipboard and paste it here: {paste}. It pastes when the clipboard holds only an image, with no text. You can also point at the CV's header and click the “Add or paste a photo” icon. Click the photo to change it, frame it in a circle or a square, or remove it. JPEG, PNG or WebP, cropped to a square.",
   "cv.help.blocks.t": "Buttons next to entries",
   "cv.help.blocks.b":
-    "Point at an entry, a bullet or a section: small buttons appear next to it. Use them to move it up or down, add something below or delete it, and on experience to add a bullet, a description or a technology line.",
+    "Point at an entry, a bullet or a section: small buttons appear next to it. Use them to move it up or down, add something below or delete it, and on experience to add a bullet, a description or a technology line. On skills and cards, such as projects, you also choose the number of columns: one, two or three.",
   "cv.help.ai.t": "Improve with AI",
   "cv.help.ai.b":
     "Point at a section's title or its text and click the sparkles icon. Choose what to do: polish, shorten or strengthen. The model rewrites only that section, with no new facts, and you see the changes in the panel on the right before you apply them.",
   "cv.help.links.t": "Links",
   "cv.help.links.b":
-    "Point at the header and click the chain icon to add links under your contact details. In a description or bullet, select words and press {link}.",
+    "Click “Add a link” under your contact details and type the address, for example github.com/your-profile. Remove a link with the cross that appears next to it, or with Backspace once it is empty. The chain icon on the header lets you show other text than the address. In a description or bullet, select words and press {link}.",
   "cv.help.outline.t": "Outline",
   "cv.help.outline.b":
     "The list of sections at the side: rename a section, hide it without deleting it, change the order, add a new section or a GDPR clause.",

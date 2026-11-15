@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html>
   <head>
     <meta charset="utf-8" />
     <title>newrole.it</title>
@@ -11,83 +11,90 @@
       <strong>newrole.it</strong>
     </header>
 
-    <p id="state" class="muted" role="status">Sprawdzam połączenie…</p>
-    <button id="connect" class="btn hidden" type="button">Połącz z newrole.it</button>
+    <p id="state" class="muted" role="status" data-i18n="popup.checking"></p>
+    <button id="connect" class="btn hidden" type="button" data-i18n="popup.connect"></button>
 
     <section id="actions" class="stack hidden">
       <p id="applied" class="applied hidden"></p>
       <p id="profileScore" class="applied hidden"></p>
-      <button id="fill" class="btn" type="button">Wypełnij formularz na tej stronie</button>
+      <button id="fill" class="btn" type="button" data-i18n="popup.fill"></button>
       <p id="fitLine" class="applied hidden"></p>
       <p id="fitLinks" class="links hidden">
         <a id="fitEditor" href="#" target="_blank" rel="noreferrer noopener"></a>
         <a id="fitMatch" href="#" target="_blank" rel="noreferrer noopener"></a>
       </p>
       <button id="tailor" class="btn hidden" type="button"></button>
-      <button id="addOffer" class="btn" type="button">Dodaj tę ofertę do newrole.it</button>
-      <button id="save" class="btn alt" type="button">Zapisz tę stronę jako aplikację</button>
-      <button id="audit" class="btn hidden" type="button">Oceń ten profil LinkedIn</button>
-      <button id="readMail" class="btn hidden" type="button">Użyj tego maila w aplikacji</button>
+      <button id="addOffer" class="btn" type="button" data-i18n="popup.addOffer"></button>
+      <button id="save" class="btn alt" type="button" data-i18n="popup.save"></button>
+      <button id="audit" class="btn hidden" type="button" data-i18n="popup.audit"></button>
+      <button id="readMail" class="btn hidden" type="button" data-i18n="popup.readMail"></button>
       <form id="mailForm" class="stack hidden">
         <p id="mailSubject" class="applied"></p>
         <p id="mailMeta" class="muted"></p>
         <p id="mailReading" class="muted"></p>
         <p id="mailUsed" class="err hidden"></p>
         <label class="field">
-          Której aplikacji dotyczy
+          <span data-i18n="popup.mail.app"></span>
           <select id="mailApp" required></select>
         </label>
         <label class="field">
-          Status
+          <span data-i18n="popup.mail.status"></span>
           <select id="mailStatus"></select>
         </label>
-        <button id="useMail" class="btn" type="submit">Zapisz w trackerze</button>
+        <button id="useMail" class="btn" type="submit" data-i18n="popup.mail.save"></button>
       </form>
       <p id="message" class="muted hidden" role="status"></p>
       <label class="toggle">
         <input id="autoTrack" type="checkbox" aria-describedby="autoTrackHint" />
         <span>
-          Automatyczne śledzenie wysłanych aplikacji
-          <small id="autoTrackHint" class="hint">
-            Wysłany formularz aplikacji sam zapisuje się w trackerze.
-          </small>
+          <span data-i18n="popup.autoTrack"></span>
+          <small id="autoTrackHint" class="hint" data-i18n="popup.autoTrack.hint"></small>
         </span>
       </label>
       <label class="toggle">
         <input id="offerCheck" type="checkbox" aria-describedby="offerCheckHint" />
         <span>
-          Pokazuj na ofertach, czy już aplikowano
-          <small id="offerCheckHint" class="hint">
-            Panel na stronie oferty i znak na ikonie, gdy aplikacja na nią albo do tej firmy już
-            jest.
-          </small>
+          <span data-i18n="popup.offerCheck"></span>
+          <small id="offerCheckHint" class="hint" data-i18n="popup.offerCheck.hint"></small>
         </span>
       </label>
       <label class="toggle">
         <input id="linkedinAuto" type="checkbox" aria-describedby="linkedinAutoHint" />
         <span>
-          Oceniaj mój profil LinkedIn, gdy go otworzę
-          <small id="linkedinAutoHint" class="hint">
-            Ocena 0–100 i podpowiedzi na Twoim profilu. Sama nie ocenia cudzych profili.
-          </small>
+          <span data-i18n="popup.linkedinAuto"></span>
+          <small id="linkedinAutoHint" class="hint" data-i18n="popup.linkedinAuto.hint"></small>
         </span>
       </label>
       <label class="toggle">
         <input id="allSites" type="checkbox" aria-describedby="allSitesHint" />
         <span>
-          Działaj na wszystkich stronach
-          <small id="allSitesHint" class="hint">
-            Wyłączone: rozszerzenie działa samo tylko na znanych systemach rekrutacji, portalach z
-            ofertami i LinkedIn. Włączone: także na innych stronach https, np. karierach firm.
-            Chrome poprosi o zgodę.
-          </small>
+          <span data-i18n="popup.allSites"></span>
+          <small id="allSitesHint" class="hint" data-i18n="popup.allSites.hint"></small>
         </span>
       </label>
       <nav class="links">
-        <a id="tracker" href="#" target="_blank" rel="noreferrer noopener">Tracker</a>
-        <a id="answers" href="#" target="_blank" rel="noreferrer noopener">Baza odpowiedzi</a>
-        <a id="options" href="options.html" target="_blank">Opcje</a>
-        <a id="help" href="#" target="_blank" rel="noreferrer noopener">Co robią te opcje?</a>
+        <a
+          id="tracker"
+          href="#"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-i18n="popup.link.tracker"
+        ></a>
+        <a
+          id="answers"
+          href="#"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-i18n="popup.link.answers"
+        ></a>
+        <a id="options" href="options.html" target="_blank" data-i18n="popup.link.options"></a>
+        <a
+          id="help"
+          href="#"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-i18n="popup.link.help"
+        ></a>
       </nav>
     </section>
 

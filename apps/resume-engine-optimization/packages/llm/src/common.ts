@@ -45,6 +45,7 @@ export const PERSONAL_LLM_PURPOSES = [
   "cv-describe",
   "cv-tailor",
   "cv-improve",
+  "cv-gather",
   "cover-letter",
   "mail-classify",
   // the offer's analysis can read the candidate's note

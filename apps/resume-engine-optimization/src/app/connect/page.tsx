@@ -46,7 +46,7 @@ async function availableTools(app: string): Promise<ToolKey[]> {
 
 export default async function ConnectPage() {
   // It shows commands for this machine, which mean nothing on a server others use.
-  if (!isLocalInstall()) redirect("/cv")
+  if (!isLocalInstall()) redirect("/")
   const [locale, user] = await Promise.all([getLocale(), invoke(getCurrentUser, null)])
   const repo = repoRoot()
   const [userCommand, tools] = await Promise.all([mcpUserCommand(repo), availableTools(appDir())])

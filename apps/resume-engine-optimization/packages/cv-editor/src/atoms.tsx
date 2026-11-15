@@ -19,7 +19,9 @@ import {
   Square,
   Tag,
   Trash2,
+  X,
 } from "lucide-react"
+import { isBlankInline } from "@newrole/cv-core/sanitize"
 import { isRewritable } from "@newrole/cv-core/tailor"
 import type { CvT } from "./copy"
 import {
@@ -34,10 +36,13 @@ import {
   insertBullet,
   insertItem,
   insertParagraph,
+  mergeBullet,
+  mergeParagraph,
   moveBullet,
   moveItem,
   moveParagraph,
   moveSection,
+  relabelLink,
   removeBullet,
   removeItem,
   removeParagraph,
@@ -51,6 +56,7 @@ import { atomKey, sectionColumns, type CvAtom } from "@newrole/cv-core/flow"
 import { documentTemplate } from "@newrole/cv-core/templates"
 import {
   CV_COLUMNS,
+  CV_LIMITS,
   CV_SECTION_TYPES,
   type CvCardsSection,
   type CvColumns,
@@ -60,7 +66,7 @@ import {
   type CvSectionType,
   type CvSkillsSection,
 } from "@newrole/cv-core/schema"
-import { Editable } from "./Editable"
+import { Editable, type CaretPlace } from "./Editable"
 
 /**
  * React views of the atoms in @newrole/cv-core/flow. The structure and classes mirror the print
@@ -74,7 +80,13 @@ export type EditorOps = {
   content: CvContent
   edit: (update: (content: CvContent) => CvContent, group?: string) => void
   /** Focus a field once it has rendered */
-  focusField: (field: string, where?: "start" | "end") => void
+  focusField: (field: string, where?: CaretPlace) => void
+  /** Enter in a one-line field: the caret goes to the field after it on the sheet */
+  focusNext: (field: string) => void
+  /** A line is about to be removed: the caret goes to the field before it on the sheet */
+  focusBefore: (field: string) => void
+  /** Whether a list with `count` entries takes one more; says so on the page when it does not */
+  room: (count: number, max: number) => boolean
   /** Keep an empty optional field (summary, tech) on the page while it is in use */
   keepField: (key: string, on: boolean) => void
   addSection: (type: CvSectionType, afterId: string | null) => void
@@ -84,6 +96,21 @@ export type EditorOps = {
   openLinks: (anchor: HTMLElement) => void
   /** "Popraw z AI" for this section; absent where the editor offers none */
   improve?: (sectionId: string) => void
+}
+
+/** How many characters a field on the sheet holds now: where the caret goes after a join. */
+function fieldLength(field: string): number {
+  const element = document.querySelector<HTMLElement>(`[data-field="${CSS.escape(field)}"]`)
+  return element?.textContent?.length ?? 0
+}
+
+/** The most entries a section's list takes (CV_LIMITS). */
+function itemLimit(section: CvSection): number {
+  if (section.type === "skills") return CV_LIMITS.skills
+  if (section.type === "experience") return CV_LIMITS.jobs
+  if (section.type === "cards") return CV_LIMITS.cards
+  if (section.type === "education") return CV_LIMITS.education
+  return CV_LIMITS.paragraphs
 }
 
 type Control = {
@@ -243,7 +270,13 @@ function itemControls(
     section.type === "text" || section.type === "letter" ? [] : (section.items as { id: string }[])
   const at = items.findIndex((item) => item.id === itemId)
   return [
-    { icon: <Plus />, label: t("cv.ctl.add"), onClick: onAdd },
+    {
+      icon: <Plus />,
+      label: t("cv.ctl.add"),
+      onClick: () => {
+        if (ops.room(items.length, itemLimit(section))) onAdd()
+      },
+    },
     {
       icon: <ArrowUp />,
       label: t("cv.ctl.up"),
@@ -316,6 +349,7 @@ function HeaderAtom({ ops, part = "all" }: { ops: EditorOps; part?: "all" | "nam
           label={t("cv.ph.name")}
           placeholder={t("cv.ph.name")}
           onChange={set("name")}
+          onEnter={() => ops.focusNext("header:name")}
         />
         <Editable
           as="p"
@@ -325,6 +359,7 @@ function HeaderAtom({ ops, part = "all" }: { ops: EditorOps; part?: "all" | "nam
           label={t("cv.ph.headline")}
           placeholder={t("cv.ph.headline")}
           onChange={set("headline")}
+          onEnter={() => ops.focusNext("header:headline")}
         />
         {own ? <ContactLines ops={ops} /> : null}
       </div>
@@ -334,12 +369,29 @@ function HeaderAtom({ ops, part = "all" }: { ops: EditorOps; part?: "all" | "nam
   )
 }
 
-/** Location, e-mail and phone, then the links: the header's contact line, edited in place. */
+/**
+ * Location, e-mail and phone, then the links: the header's contact line, edited in place. A
+ * link is typed like any other line: "Dodaj link" (or Enter in the last one) adds it, and its
+ * address follows the text (relabelLink) unless the links box set another.
+ */
 function ContactLines({ ops }: { ops: EditorOps }) {
   const { t, edit, content } = ops
   const header = content.header
+  const links = header.links
   const set = (key: "location" | "email" | "phone") => (value: string) =>
     edit((current) => updateHeader(current, { [key]: value }), `header:${key}`)
+  const linkKey = (index: number) => `header:link:${index}`
+  const removeLink = (index: number) =>
+    edit((current) =>
+      updateHeader(current, { links: current.header.links.filter((_, at) => at !== index) })
+    )
+  const addLink = () => {
+    if (!ops.room(links.length, CV_LIMITS.links)) return
+    edit((current) =>
+      updateHeader(current, { links: [...current.header.links, { label: "", url: "" }] })
+    )
+    ops.focusField(linkKey(links.length))
+  }
   return (
     <div className="cv-contact">
       <span className="cv-contact__item">
@@ -350,6 +402,7 @@ function ContactLines({ ops }: { ops: EditorOps }) {
           label={t("cv.ph.location")}
           placeholder={t("cv.ph.location")}
           onChange={set("location")}
+          onEnter={() => ops.focusNext("header:location")}
         />
       </span>
       <span className="cv-sep">·</span>
@@ -362,6 +415,7 @@ function ContactLines({ ops }: { ops: EditorOps }) {
             label={t("cv.ph.email")}
             placeholder={t("cv.ph.email")}
             onChange={set("email")}
+            onEnter={() => ops.focusNext("header:email")}
           />
         </a>
       </span>
@@ -375,18 +429,19 @@ function ContactLines({ ops }: { ops: EditorOps }) {
             label={t("cv.ph.phone")}
             placeholder={t("cv.ph.phone")}
             onChange={set("phone")}
+            onEnter={() => (links.length ? ops.focusField(linkKey(0)) : addLink())}
           />
         </a>
       </span>
-      {header.links.length ? <br /> : null}
-      {header.links.map((link, index) => (
+      {links.length ? <br /> : null}
+      {links.map((link, index) => (
         <Fragment key={index}>
           {index ? <span className="cv-sep">·</span> : null}
           <span className="cv-contact__item">
             <a>
               <Editable
                 as="span"
-                field={`header:link:${index}`}
+                field={linkKey(index)}
                 value={link.label}
                 label={t("cv.ph.link")}
                 placeholder={t("cv.ph.link")}
@@ -395,17 +450,54 @@ function ContactLines({ ops }: { ops: EditorOps }) {
                     (current) =>
                       updateHeader(current, {
                         links: current.header.links.map((entry, at) =>
-                          at === index ? { ...entry, label: value } : entry
+                          at === index ? relabelLink(entry, value) : entry
                         ),
                       }),
-                    `header:link:${index}`
+                    linkKey(index)
                   )
                 }
+                onEnter={() => {
+                  // an empty link is the new line already
+                  if (!link.label.trim()) return
+                  if (index < links.length - 1) ops.focusField(linkKey(index + 1))
+                  else addLink()
+                }}
+                onBackspaceEmpty={() => {
+                  ops.focusBefore(linkKey(index))
+                  removeLink(index)
+                }}
               />
             </a>
+            {/* an anchor of no size, like "add a link": the button moves no text */}
+            <span className="cve-linkdel-at">
+              <button
+                type="button"
+                className="cve-linkdel"
+                title={t("cv.links.remove", { label: link.label })}
+                aria-label={t("cv.links.remove", { label: link.label })}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => removeLink(index)}
+              >
+                <X aria-hidden />
+              </button>
+            </span>
           </span>
         </Fragment>
       ))}
+      {links.length < CV_LIMITS.links ? (
+        // an anchor of no size: the button hangs off the end of the line and moves no text, so
+        // the sheet keeps the layout of the PDF
+        <span className="cve-addlink-at">
+          <button
+            type="button"
+            className="cve-addlink"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={addLink}
+          >
+            <Plus aria-hidden /> {t("cv.links.add")}
+          </button>
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -520,6 +612,11 @@ function TitleAtom({ ops, section }: { ops: EditorOps; section: CvSection }) {
         onChange={(value) =>
           edit((current) => updateSection(current, section.id, { title: value }), field)
         }
+        onEnter={() => {
+          // an empty section gets its first entry; otherwise the caret goes into the first one
+          if (isEmptySection(section)) addFirstEntry(ops, section)
+          else ops.focusNext(field)
+        }}
       />
       <Controls
         items={[
@@ -606,6 +703,7 @@ function ExperienceAtom({
             label={t("cv.ph.company")}
             placeholder={t("cv.ph.company")}
             onChange={set("company")}
+            onEnter={() => ops.focusNext(atomKey(sid, iid, "company"))}
           />{" "}
           <span className="cv-role">
             ·{" "}
@@ -616,6 +714,7 @@ function ExperienceAtom({
               label={t("cv.ph.role")}
               placeholder={t("cv.ph.role")}
               onChange={set("role")}
+              onEnter={() => ops.focusNext(atomKey(sid, iid, "role"))}
             />
           </span>
         </h3>
@@ -627,6 +726,12 @@ function ExperienceAtom({
           label={t("cv.ph.dates")}
           placeholder={t("cv.ph.dates")}
           onChange={set("dates")}
+          onEnter={() => {
+            // on to the description or the first bullet; a role with neither gets a bullet
+            if (hasSummary || item.bullets.length) return ops.focusNext(atomKey(sid, iid, "dates"))
+            edit((current) => insertBullet(current, sid, iid, -1))
+            ops.focusField(atomKey(sid, iid, "bullet", 0))
+          }}
         />
         <Controls
           items={[
@@ -646,6 +751,7 @@ function ExperienceAtom({
               icon: <ListPlus />,
               label: t("cv.ctl.addBullet"),
               onClick: () => {
+                if (!ops.room(item.bullets.length, CV_LIMITS.bullets)) return
                 edit((current) => insertBullet(current, sid, iid, item.bullets.length - 1))
                 ops.focusField(atomKey(sid, iid, "bullet", item.bullets.length))
               },
@@ -688,7 +794,7 @@ function ExperienceAtom({
       <Editable
         as="div"
         rich
-        multiline
+        paragraphs
         className="cv-summary"
         field={key}
         value={item.summary}
@@ -704,6 +810,7 @@ function ExperienceAtom({
   if (atom.kind === "bullet") {
     const index = atom.index ?? 0
     const key = atomKey(sid, iid, "bullet", index)
+    const full = item.bullets.length >= CV_LIMITS.bullets
     return (
       <>
         <Editable
@@ -717,12 +824,33 @@ function ExperienceAtom({
           onChange={(value) =>
             edit((current) => updateBullet(current, sid, iid, index, value), key)
           }
-          onSplit={(before, after) => {
-            edit((current) =>
-              insertBullet(updateBullet(current, sid, iid, index, before), sid, iid, index, after)
-            )
-            ops.focusField(atomKey(sid, iid, "bullet", index + 1), "start")
-          }}
+          onSplit={
+            full
+              ? undefined
+              : (before, after) => {
+                  edit((current) =>
+                    insertBullet(
+                      updateBullet(current, sid, iid, index, before),
+                      sid,
+                      iid,
+                      index,
+                      after
+                    )
+                  )
+                  ops.focusField(atomKey(sid, iid, "bullet", index + 1), "start")
+                }
+          }
+          onEnter={() => ops.room(item.bullets.length, CV_LIMITS.bullets)}
+          onMergeBack={
+            index > 0
+              ? () => {
+                  const before = atomKey(sid, iid, "bullet", index - 1)
+                  const at = fieldLength(before)
+                  edit((current) => mergeBullet(current, sid, iid, index))
+                  ops.focusField(before, at)
+                }
+              : undefined
+          }
           onBackspaceEmpty={() => {
             edit((current) => removeBullet(current, sid, iid, index))
             if (index > 0) ops.focusField(atomKey(sid, iid, "bullet", index - 1))
@@ -735,6 +863,7 @@ function ExperienceAtom({
               icon: <Plus />,
               label: t("cv.ctl.add"),
               onClick: () => {
+                if (!ops.room(item.bullets.length, CV_LIMITS.bullets)) return
                 edit((current) => insertBullet(current, sid, iid, index))
                 ops.focusField(atomKey(sid, iid, "bullet", index + 1))
               },
@@ -814,6 +943,12 @@ function SkillsRow({
     <div className={`cv-skills cv-cols-${sectionColumns(section)}`}>
       {items.map((item) => {
         const iid = item!.id
+        const addSkill = () => {
+          if (!ops.room(section.items.length, CV_LIMITS.skills)) return
+          const skill = { ...newSkill(locale), label: "", text: "" }
+          edit((current) => insertItem(current, sid, skill, iid))
+          ops.focusField(atomKey(sid, skill.id, "label"))
+        }
         return (
           <div className="cv-skill cve-block" key={iid}>
             <strong>
@@ -828,6 +963,16 @@ function SkillsRow({
                     (current) => updateItem(current, sid, iid, { label: value }),
                     atomKey(sid, iid, "label")
                   )
+                }
+                onEnter={() => ops.focusNext(atomKey(sid, iid, "label"))}
+                onBackspaceEmpty={
+                  // an empty row goes with one more Backspace
+                  isBlankInline(item!.text)
+                    ? () => {
+                        ops.focusBefore(atomKey(sid, iid, "label"))
+                        edit((current) => removeItem(current, sid, iid))
+                      }
+                    : undefined
                 }
               />
               :
@@ -845,6 +990,7 @@ function SkillsRow({
                   atomKey(sid, iid, "text")
                 )
               }
+              onEnter={addSkill}
             />
             <Controls
               items={itemControls(ops, section, iid, () => {
@@ -852,7 +998,10 @@ function SkillsRow({
                 edit((current) => insertItem(current, sid, skill, iid))
                 ops.focusField(atomKey(sid, skill.id, "label"))
               })}
-            />
+            >
+              {/* also here, where the person is looking, not only on the heading */}
+              <ColumnsMenu ops={ops} section={section} />
+            </Controls>
           </div>
         )
       })}
@@ -893,6 +1042,7 @@ function CardsRow({
                   atomKey(sid, iid, "title")
                 )
               }
+              onEnter={() => ops.focusNext(atomKey(sid, iid, "title"))}
             />
             <Editable
               as="div"
@@ -916,7 +1066,10 @@ function CardsRow({
                 edit((current) => insertItem(current, sid, card, iid))
                 ops.focusField(atomKey(sid, card.id, "title"))
               })}
-            />
+            >
+              {/* also here, where the person is looking, not only on the heading */}
+              <ColumnsMenu ops={ops} section={section} />
+            </Controls>
           </div>
         )
       })}
@@ -951,6 +1104,16 @@ function EducationAtom({
             label={t("cv.ph.school")}
             placeholder={t("cv.ph.school")}
             onChange={set("school")}
+            onEnter={() => ops.focusNext(atomKey(sid, iid, "school"))}
+            onBackspaceEmpty={
+              // an empty entry goes with one more Backspace
+              !item.degree.trim() && !item.dates.trim()
+                ? () => {
+                    ops.focusBefore(atomKey(sid, iid, "school"))
+                    edit((current) => removeItem(current, sid, iid))
+                  }
+                : undefined
+            }
           />
         </strong>
         <span className="cv-small">
@@ -961,6 +1124,7 @@ function EducationAtom({
             label={t("cv.ph.degree")}
             placeholder={t("cv.ph.degree")}
             onChange={set("degree")}
+            onEnter={() => ops.focusNext(atomKey(sid, iid, "degree"))}
           />
         </span>
       </div>
@@ -972,6 +1136,12 @@ function EducationAtom({
         label={t("cv.ph.dates")}
         placeholder={t("cv.ph.dates")}
         onChange={set("dates")}
+        onEnter={() => {
+          if (!ops.room(section.items.length, CV_LIMITS.education)) return
+          const school = { ...newEducation(locale), school: "", degree: "", dates: "" }
+          edit((current) => insertItem(current, sid, school, iid))
+          ops.focusField(atomKey(sid, school.id, "school"))
+        }}
       />
       <Controls
         items={itemControls(ops, section, iid, () => {
@@ -996,9 +1166,14 @@ function LetterAtom({
 }) {
   const { t, edit } = ops
   const sid = section.id
+  const full = section.paragraphs.length >= CV_LIMITS.paragraphs
+  /** Enter in a one-line part of the letter: on to the next line of it */
+  const onward = (key: string) => () => ops.focusNext(atomKey(sid, key))
   const line = (
     key: "date" | "recipient" | "subject" | "greeting" | "closing" | "signature",
-    className: string
+    className: string,
+    /** `lines`: the part keeps its line breaks; otherwise what Enter does */
+    enter: "lines" | (() => void)
   ) => (
     <Editable
       as="p"
@@ -1007,6 +1182,8 @@ function LetterAtom({
       value={section[key]}
       label={t(`tl.ph.${key}`)}
       placeholder={t(`tl.ph.${key}`)}
+      lines={enter === "lines"}
+      onEnter={enter === "lines" ? undefined : enter}
       onChange={(value) =>
         edit((current) => updateSection(current, sid, { [key]: value }), atomKey(sid, key))
       }
@@ -1015,18 +1192,25 @@ function LetterAtom({
   if (atom.kind === "letter-head") {
     return (
       <>
-        {line("date", "cv-letter-date")}
-        {line("recipient", "cv-letter-to")}
+        {line("date", "cv-letter-date", onward("date"))}
+        {line("recipient", "cv-letter-to", "lines")}
       </>
     )
   }
-  if (atom.kind === "letter-subject") return line("subject", "cv-letter-subject")
-  if (atom.kind === "letter-greeting") return line("greeting", "cv-letter-text")
+  if (atom.kind === "letter-subject") return line("subject", "cv-letter-subject", onward("subject"))
+  if (atom.kind === "letter-greeting") {
+    return line("greeting", "cv-letter-text", () => {
+      // on to the first paragraph; a letter without one gets it
+      if (section.paragraphs.length) return ops.focusNext(atomKey(sid, "greeting"))
+      edit((current) => insertParagraph(current, sid, -1))
+      ops.focusField(atomKey(sid, "para", 0))
+    })
+  }
   if (atom.kind === "letter-closing") {
     return (
       <>
-        {line("closing", "cv-letter-text")}
-        {line("signature", "cv-letter-sign")}
+        {line("closing", "cv-letter-text", onward("closing"))}
+        {line("signature", "cv-letter-sign", "lines")}
       </>
     )
   }
@@ -1044,12 +1228,27 @@ function LetterAtom({
         label={t("tl.ph.paragraph")}
         placeholder={t("tl.ph.paragraph")}
         onChange={(value) => edit((current) => updateParagraph(current, sid, index, value), key)}
-        onSplit={(before, after) => {
-          edit((current) =>
-            insertParagraph(updateParagraph(current, sid, index, before), sid, index, after)
-          )
-          ops.focusField(atomKey(sid, "para", index + 1), "start")
-        }}
+        onSplit={
+          full
+            ? undefined
+            : (before, after) => {
+                edit((current) =>
+                  insertParagraph(updateParagraph(current, sid, index, before), sid, index, after)
+                )
+                ops.focusField(atomKey(sid, "para", index + 1), "start")
+              }
+        }
+        onEnter={() => ops.room(section.paragraphs.length, CV_LIMITS.paragraphs)}
+        onMergeBack={
+          index > 0
+            ? () => {
+                const before = atomKey(sid, "para", index - 1)
+                const at = fieldLength(before)
+                edit((current) => mergeParagraph(current, sid, index))
+                ops.focusField(before, at)
+              }
+            : undefined
+        }
         onBackspaceEmpty={() => {
           edit((current) => removeParagraph(current, sid, index))
           ops.focusField(index > 0 ? atomKey(sid, "para", index - 1) : atomKey(sid, "greeting"))
@@ -1061,6 +1260,7 @@ function LetterAtom({
             icon: <Plus />,
             label: t("cv.ctl.add"),
             onClick: () => {
+              if (!ops.room(section.paragraphs.length, CV_LIMITS.paragraphs)) return
               edit((current) => insertParagraph(current, sid, index))
               ops.focusField(atomKey(sid, "para", index + 1))
             },
@@ -1088,34 +1288,42 @@ function LetterAtom({
   )
 }
 
-function EmptySection({ ops, section }: { ops: EditorOps; section: CvSection }) {
-  const { t, edit, locale } = ops
-  const add = () => {
-    const sid = section.id
-    if (section.type === "letter") {
-      edit((current) => insertParagraph(current, sid, -1))
-      ops.focusField(atomKey(sid, "para", 0))
-    } else if (section.type === "skills") {
-      const skill = newSkill(locale)
-      edit((current) => insertItem(current, sid, skill))
-      ops.focusField(atomKey(sid, skill.id, "label"))
-    } else if (section.type === "experience") {
-      const job = newJob(locale)
-      edit((current) => insertItem(current, sid, job))
-      ops.focusField(atomKey(sid, job.id, "company"))
-    } else if (section.type === "cards") {
-      const card = newCard(locale)
-      edit((current) => insertItem(current, sid, card))
-      ops.focusField(atomKey(sid, card.id, "title"))
-    } else if (section.type === "education") {
-      const school = newEducation(locale)
-      edit((current) => insertItem(current, sid, school))
-      ops.focusField(atomKey(sid, school.id, "school"))
-    }
+/** A section with nothing in it yet: the sheet shows "add an entry" in its place. */
+function isEmptySection(section: CvSection): boolean {
+  if (section.type === "text") return false
+  return section.type === "letter" ? !section.paragraphs.length : !section.items.length
+}
+
+/** The first entry of an empty section, with the caret in it. */
+function addFirstEntry(ops: EditorOps, section: CvSection) {
+  const { edit, locale } = ops
+  const sid = section.id
+  if (section.type === "letter") {
+    edit((current) => insertParagraph(current, sid, -1))
+    ops.focusField(atomKey(sid, "para", 0))
+  } else if (section.type === "skills") {
+    const skill = newSkill(locale)
+    edit((current) => insertItem(current, sid, skill))
+    ops.focusField(atomKey(sid, skill.id, "label"))
+  } else if (section.type === "experience") {
+    const job = newJob(locale)
+    edit((current) => insertItem(current, sid, job))
+    ops.focusField(atomKey(sid, job.id, "company"))
+  } else if (section.type === "cards") {
+    const card = newCard(locale)
+    edit((current) => insertItem(current, sid, card))
+    ops.focusField(atomKey(sid, card.id, "title"))
+  } else if (section.type === "education") {
+    const school = newEducation(locale)
+    edit((current) => insertItem(current, sid, school))
+    ops.focusField(atomKey(sid, school.id, "school"))
   }
+}
+
+function EmptySection({ ops, section }: { ops: EditorOps; section: CvSection }) {
   return (
-    <button type="button" className="cve-empty" onClick={add}>
-      <Plus aria-hidden /> {t("cv.ctl.addItem")}
+    <button type="button" className="cve-empty" onClick={() => addFirstEntry(ops, section)}>
+      <Plus aria-hidden /> {ops.t("cv.ctl.addItem")}
     </button>
   )
 }
@@ -1162,7 +1370,7 @@ export function AtomContent({ ops, atom }: { ops: EditorOps; atom: CvAtom }) {
         <Editable
           as="div"
           rich
-          multiline
+          paragraphs
           className="cv-text"
           field={key}
           value={section.body}

@@ -25,7 +25,7 @@ import { newSection } from "@newrole/cv-core/blank"
 import { insertSection, removeSection, updateHeader } from "@newrole/cv-core/edit"
 import { atomKey, cvFlow, footerText, type CvAtom } from "@newrole/cv-core/flow"
 import { normalizeHref } from "@newrole/cv-core/sanitize"
-import type { CvContent, CvSection } from "@newrole/cv-core/schema"
+import { CV_LIMITS, type CvContent, type CvSection } from "@newrole/cv-core/schema"
 import { CV_CSS, MM, PAGE_MM } from "@newrole/cv-core/styles"
 import { readOnlyExcerpt } from "@newrole/cv-core/tailor"
 import {
@@ -40,7 +40,7 @@ import { CvEditorBackendProvider, useCvBackend, type CvEditorBackend } from "./b
 import { downloadPdf } from "./download"
 import { AuditBar, AuditRail } from "./AuditPanel"
 import { DocumentPanel, type PanelTab } from "./DocumentPanel"
-import { placeCaret } from "./Editable"
+import { placeCaret, type CaretPlace } from "./Editable"
 import { EditorHelp, useEditorHelp } from "./EditorHelp"
 import { LinksPopover } from "./LinksPopover"
 import { LookPanel } from "./LookPanel"
@@ -91,6 +91,46 @@ type EditorProps = {
   tailor?: TailorContext | null
   /** Set for a general CV and its general letter */
   pair?: PairContext | null
+}
+
+/**
+ * Arrow up on the first line of a field and arrow down on its last line go on to the field
+ * above or below, as in one document: every field is its own editable box, and the browser
+ * stops the caret at its edge. The caret lands on the nearest line, at the same place across.
+ */
+function crossFields(event: KeyboardEvent) {
+  if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return
+  const host = fieldHost(event.target as Node)
+  const selection = window.getSelection()
+  if (!host || !selection?.rangeCount || !selection.isCollapsed) return
+  const up = event.key === "ArrowUp"
+  const box = host.getBoundingClientRect()
+  const style = window.getComputedStyle(host)
+  const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4 || 16
+  // the caret has no box of its own on an empty line: the line's block stands in for it
+  const range = selection.getRangeAt(0)
+  const found = range.getBoundingClientRect()
+  const at = range.startContainer
+  const block = at instanceof Element ? at : at.parentElement
+  const caret = found.height ? found : (block ?? host).getBoundingClientRect()
+  if (up ? caret.top - box.top > line * 0.75 : box.bottom - caret.bottom > line * 0.75) return
+  const fields = [
+    ...(host.closest(".cve-doc")?.querySelectorAll<HTMLElement>("[data-field]") ?? []),
+  ]
+  const target = fields[fields.indexOf(host) + (up ? -1 : 1)]
+  if (!target) return
+  event.preventDefault()
+  target.focus()
+  const to = target.getBoundingClientRect()
+  const x = Math.min(Math.max(caret.left, to.left + 1), to.right - 1)
+  const y = up ? to.bottom - 3 : to.top + 3
+  const landing = document.caretRangeFromPoint?.(x, y)
+  if (landing && target.contains(landing.startContainer)) {
+    selection.removeAllRanges()
+    selection.addRange(landing)
+  } else {
+    placeCaret(target, up ? "end" : "start")
+  }
 }
 
 /** One atom on the sheet; usePagination reads data-keep and data-lead. */
@@ -210,8 +250,8 @@ function Editor({
   }, [])
 
   // focus a field once it exists (after adding a bullet, splitting one, and so on)
-  const pendingFocus = useRef<{ field: string; where: "start" | "end" } | null>(null)
-  const focusField = useCallback((field: string, where: "start" | "end" = "end") => {
+  const pendingFocus = useRef<{ field: string; where: CaretPlace } | null>(null)
+  const focusField = useCallback((field: string, where: CaretPlace = "end") => {
     pendingFocus.current = { field, where }
     setFocusTick((tick) => tick + 1)
   }, [])
@@ -227,6 +267,13 @@ function Editor({
     element.focus()
     placeCaret(element, pending.where)
   }, [atoms, focusTick])
+
+  /** The field before or after one on the sheet, in reading order. */
+  const fieldBeside = useCallback((field: string, step: -1 | 1): HTMLElement | null => {
+    const fields = [...(docRef.current?.querySelectorAll<HTMLElement>("[data-field]") ?? [])]
+    const at = fields.findIndex((element) => element.dataset.field === field)
+    return at < 0 ? null : (fields[at + step] ?? null)
+  }, [])
 
   const keepField = useCallback((key: string, on: boolean) => {
     setKeep((current) => {
@@ -252,8 +299,27 @@ function Editor({
     content,
     edit,
     focusField,
+    focusNext: (field) => {
+      const next = fieldBeside(field, 1)
+      if (!next) return
+      next.focus()
+      placeCaret(next, "end")
+    },
+    focusBefore: (field) => {
+      const before = fieldBeside(field, -1)?.dataset.field
+      if (before) focusField(before)
+    },
+    room: (count, max) => {
+      if (count < max) return true
+      toast.show({ message: t("cv.ed.limit", { max }) })
+      return false
+    },
     keepField,
     addSection: (type, afterId) => {
+      if (content.sections.length >= CV_LIMITS.sections) {
+        toast.show({ message: t("cv.ed.limit", { max: CV_LIMITS.sections }) })
+        return
+      }
       const section = newSection(type, t(`cv.sec.${type}`), doc.language)
       edit((current) => insertSection(current, section, afterId))
       focusField(atomKey(section.id, "title"))
@@ -395,6 +461,7 @@ function Editor({
     const root = rootRef.current
     if (!root) return
     function onKey(event: KeyboardEvent) {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") return crossFields(event)
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return
       const key = event.key.toLowerCase()
       const inField = Boolean(fieldHost(event.target as Node))

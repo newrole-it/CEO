@@ -60,9 +60,9 @@ const SHARED_TOOLS = [
 ]
 const SHARED_PROMPTS = ["apply", "onboard", "pipeline"]
 
-async function connect() {
+async function connect(locale: "pl" | "en" = "pl") {
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair()
-  await createServer().connect(serverSide)
+  await createServer({ locale }).connect(serverSide)
   const client = new Client({ name: "contract-test", version: "0" })
   await client.connect(clientSide)
   return client
@@ -78,6 +78,28 @@ describe("the local server", () => {
     expect(names((await client.listTools()).tools)).toEqual(TOOLS)
     expect(names((await client.listPrompts()).prompts)).toEqual(PROMPTS)
     expect(client.getInstructions()).toBe(INSTRUCTIONS)
+  })
+
+  it("names its prompts and tools in the language it was started in", async () => {
+    const title = async (locale: "pl" | "en") => {
+      const client = await connect(locale)
+      const prompt = (await client.listPrompts()).prompts.find((item) => item.name === "apply")
+      const tool = (await client.listTools()).tools.find((item) => item.name === "profile_get")
+      return [prompt?.title, tool?.title]
+    }
+    expect(await title("pl")).toEqual(["Pomóż mi zaaplikować", "Mój profil"])
+    expect(await title("en")).toEqual(["Help me apply", "My profile"])
+  })
+
+  it("writes the prompts for the model in English and names the person's language", async () => {
+    const text = async (locale: "pl" | "en") => {
+      const client = await connect(locale)
+      const prompt = await client.getPrompt({ name: "pipeline", arguments: {} })
+      return (prompt.messages[0].content as { text: string }).text
+    }
+    expect(await text("pl")).toContain("Answer me in Polish.")
+    expect(await text("en")).toContain("Answer me in English.")
+    expect(await text("pl")).not.toMatch(/[ąćęłńóśźż]/i)
   })
 
   it("gives every tool a title and says whether it changes anything", async () => {
@@ -158,7 +180,7 @@ describe("a server several people share", () => {
 
 describe("the host", () => {
   it("decides who a call acts for", async () => {
-    const person = { id: 7, email: "a@example.com", name: null, how: "test" }
+    const person = { id: 7, email: "a@example.com", name: null, how: "test", locale: "en" as const }
     configureHost({ currentUser: async () => person })
     expect(await currentUser()).toBe(person)
   })

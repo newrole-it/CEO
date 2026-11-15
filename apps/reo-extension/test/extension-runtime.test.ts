@@ -97,6 +97,8 @@ function connected(extra: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  // These tests read the Polish interface; the English one has its own tests.
+  vi.spyOn(navigator, "language", "get").mockReturnValue("pl-PL")
   shadow = null
   sessionStorage.clear()
   document.title = "Job Application for Staff Engineer at Acme"
@@ -266,7 +268,7 @@ describe("lib/content.js", () => {
     expect(el("q1").style.outline).toContain("rgb(230, 167, 0)")
     expect(el("q1").title).toContain("sprawdź")
     expect(panelText()).toContain("Uzupełniono: 2")
-    expect(panelText()).toContain("szkice AI do sprawdzenia: 1")
+    expect(panelText()).toContain("Szkice AI do sprawdzenia: 1.")
     expect(panelText()).toContain("Why do you want to join?")
     expect(panelText()).toContain("Acme · Staff Engineer")
   })
@@ -475,8 +477,10 @@ describe("lib/content.js", () => {
             "L3"
           )
         if (message.type === "letter") {
-          const error = "Model nie jest skonfigurowany, więc nie napiszę listu."
-          return { ok: true, data: { status: "failed", error } }
+          return {
+            ok: true,
+            data: { status: "failed", code: "llm-unavailable", error: "No model is configured." },
+          }
         }
         return { ok: false }
       })
@@ -784,6 +788,141 @@ describe("lib/content.js", () => {
     const respond = vi.fn()
     expect(listeners[0]({ type: "nr:fill" }, {}, respond)).toBe(false)
     expect(respond).not.toHaveBeenCalled()
+  })
+})
+
+describe("lib/content.js in a browser that is not Polish", () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-GB")
+  })
+
+  const values = [
+    { key: "first_name", value: "Rafał", kind: "firstName", source: "profile" },
+    { key: "email", value: "rafal@example.com", kind: "email", source: "profile" },
+    { key: "q1", value: "Draft.", kind: "openQuestion", source: "ai" },
+    { key: "resume", value: "", kind: "resume", source: "skip" },
+  ]
+  const filled = (extra: Record<string, unknown> = {}) => ({
+    ok: true,
+    data: { values, job: { company: "Acme", title: "Staff Engineer" }, applied: null, ...extra },
+  })
+
+  it("fills and sums up in English, in whole sentences", async () => {
+    stubChrome((message) => {
+      if (message.type === "config") return connected()
+      if (message.type === "takeToast") return { ok: true, data: null }
+      if (message.type === "fill")
+        return filled({ applied: { appliedAt: "2026-10-30T12:00:00.000Z" } })
+      return { ok: false, error: "unexpected" }
+    })
+    await loadContent()
+    panelButton("Fill from newrole.it").click()
+    await flush()
+    expect(panelText()).toContain(
+      "Filled in: 2. AI drafts to check: 1. Skipped: 1. Check the form and submit it yourself. Already applied: 30/10/2026."
+    )
+    expect((document.getElementById("q1") as HTMLElement).title).toBe(
+      "newrole.it: an AI draft, check it before you submit"
+    )
+    expect(panelText()).not.toMatch(/[ąćęłńóśźż]/i)
+  })
+
+  it("offers to connect when it is not connected", async () => {
+    stubChrome((message) => {
+      if (message.type === "config") return { ok: true, data: { connected: false } }
+      return { ok: true, data: null }
+    })
+    await loadContent()
+    expect(panelText()).toContain("Connect the extension")
+  })
+
+  it("never shows the server's own sentence for a failed fill", async () => {
+    stubChrome((message) => {
+      if (message.type === "config") return connected()
+      if (message.type === "takeToast") return { ok: true, data: null }
+      if (message.type === "fill") return { ok: false, status: 500, error: "Internal error." }
+      return { ok: false, error: "unexpected" }
+    })
+    await loadContent()
+    panelButton("Fill from newrole.it").click()
+    await flush()
+    expect(panelText()).toContain("Something went wrong. Try again.")
+    expect(panelText()).not.toContain("Internal error.")
+  })
+
+  it("links the saved application inside one sentence", async () => {
+    stubChrome((message) => {
+      if (message.type === "config") return connected()
+      if (message.type === "takeToast")
+        return { ok: true, data: { id: "a1", company: "Acme", title: "Staff Engineer" } }
+      return { ok: true, data: null }
+    })
+    await loadContent()
+    expect(panelText()).toContain("Saved in the tracker: Acme · Staff Engineer")
+  })
+
+  describe("the cover letter", () => {
+    async function afterFirstPoll() {
+      await flush()
+      await new Promise((resolve) => setTimeout(resolve, 2100))
+      await flush()
+    }
+
+    async function letterRun(reply: unknown) {
+      document
+        .getElementById("application_form")!
+        .insertAdjacentHTML(
+          "beforeend",
+          `<label for="cover_letter">Cover Letter</label><textarea id="cover_letter" name="cover_letter"></textarea>`
+        )
+      stubChrome((message) => {
+        if (message.type === "config") return connected()
+        if (message.type === "takeToast") return { ok: true, data: null }
+        if (message.type === "fill")
+          return filled({
+            values: [{ key: "cover_letter", value: "", kind: "coverLetter", source: "letter" }],
+            letter: { id: "L1" },
+          })
+        if (message.type === "letter") return reply
+        return { ok: false }
+      })
+      await loadContent()
+      panelButton("Fill from newrole.it").click()
+      await afterFirstPoll()
+    }
+
+    const done = (letter: Record<string, unknown>) => ({
+      ok: true,
+      data: { status: "done", letter: { text: "Dear Team,\n\nLetter.", ...letter } },
+    })
+
+    it("says how the letter was made, with the right plural", async () => {
+      await letterRun(done({ documentId: "doc1", created: true, pastLetters: 3 }))
+      expect(panelText()).toContain(
+        "Cover letter: a new one for this offer, modelled on your last 3 letters. Read it before you submit."
+      )
+      expect(panelText()).toContain("Open the letter in newrole.it")
+    })
+
+    it("says so when the letter follows the one letter the person has", async () => {
+      await letterRun(done({ documentId: null, created: true, pastLetters: 1 }))
+      expect(panelText()).toContain(
+        "Cover letter: a new one for this offer, modelled on your last letter. Read it before you submit."
+      )
+    })
+
+    it("translates the reason no letter came out", async () => {
+      await letterRun({
+        ok: true,
+        data: { status: "failed", code: "llm-unavailable", error: "No model is configured." },
+      })
+      expect(panelText()).toContain("No model is configured, so I can't write the letter.")
+    })
+
+    it("reads a reason it does not know as a failed letter", async () => {
+      await letterRun({ ok: true, data: { status: "failed", code: "new-code", error: "x" } })
+      expect(panelText()).toContain("The letter could not be written. Try again.")
+    })
   })
 })
 
@@ -1355,5 +1494,23 @@ describe("lib/background.js", () => {
   it("rejects unknown messages", async () => {
     const { call } = await loadBackground()
     expect(await call({ type: "nope" })).toEqual({ ok: false, error: "unknown-message" })
+  })
+
+  it("asks for the LinkedIn audit in the language of the panel that sent it", async () => {
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ audit: { score: 70 } })))
+    const { call } = await loadBackground()
+    const sender = { id: ID, tab: { id: 7 }, url: "https://www.linkedin.com/in/me/" }
+    await call(
+      { type: "linkedinAudit", sections: {}, profileUrl: sender.url, locale: "en" },
+      sender
+    )
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).locale).toBe("en")
+    await call({ type: "linkedinLatest", locale: "en" })
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "http://127.0.0.1:43123/api/ext/linkedin-profile?locale=en"
+    )
+    // A language the app has no dictionary for reads as English, as everywhere else.
+    await call({ type: "linkedinLatest", locale: "de" })
+    expect(fetchMock.mock.calls[2][0]).toContain("locale=en")
   })
 })

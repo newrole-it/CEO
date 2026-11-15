@@ -11,6 +11,7 @@ import {
   Coins,
   FileSearch,
   FileText,
+  LayoutDashboard,
   Flag,
   MessageSquareText,
   ListChecks,
@@ -75,6 +76,7 @@ export function useLocaleToggle() {
 
 /** The screens of a person with a profile or an account, in the order of the work. */
 export const APP_TABS = [
+  { href: "/", key: "nav.dashboard", icon: LayoutDashboard },
   { href: "/cv", key: "nav.cv", icon: FileText },
   { href: "/applications", key: "nav.applications", icon: ClipboardList },
   { href: "/answers", key: "nav.answers", icon: MessageSquareText },
@@ -185,7 +187,7 @@ export function SiteHeader({
     <>
       <header className="site-header">
         <div className="container site-header__inner">
-          <Link className="brand" href={app ? "/cv" : "/"} aria-label={t("brandHome")}>
+          <Link className="brand" href="/" aria-label={t("brandHome")}>
             <LogoLockup />
           </Link>
           {app ? (

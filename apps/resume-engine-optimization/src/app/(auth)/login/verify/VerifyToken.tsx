@@ -25,7 +25,7 @@ export function VerifyToken({
   const [consume, { isPending }] = useMutation(consumeLoginToken)
   const router = useRouter()
   const [failed, setFailed] = useState(!account)
-  const destination = safeReturnTo(next) ?? "/cv"
+  const destination = safeReturnTo(next) ?? "/"
 
   function signIn() {
     consume({ token })

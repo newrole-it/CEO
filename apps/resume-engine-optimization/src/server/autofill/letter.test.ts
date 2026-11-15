@@ -253,7 +253,7 @@ describe("writeFormLetter", () => {
   })
 
   it("does not write without knowing the company", async () => {
-    await expect(writeFormLetter(input())).rejects.toThrow(/do jakiej firmy/)
+    await expect(writeFormLetter(input())).rejects.toMatchObject({ code: "unknown-offer" })
     expect(writeLetterForPage).not.toHaveBeenCalled()
   })
 })
@@ -300,9 +300,24 @@ describe("letters in progress", () => {
     await settle()
     expect(formLetterStatus(1, id)).toEqual({
       status: "failed",
-      error: "Model nie jest skonfigurowany, więc nie napiszę listu.",
+      code: "llm-unavailable",
+      error: expect.stringMatching(/\S/),
     })
     expect(startFormLetter(input(), write)).not.toBe(id)
+  })
+
+  it.each([
+    [new CvError("no-base", "No CV."), "no-base"],
+    [new CvError("no-content", "Empty CV."), "no-base"],
+    [new CvError("llm-failed", "No result."), "llm-failed"],
+    [new Error("boom"), "failed"],
+  ])("names a failure by a code the extension translates", async (error, code) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const id = startFormLetter(input(), async () => {
+      throw error
+    })
+    await settle()
+    expect(formLetterStatus(1, id)).toMatchObject({ status: "failed", code })
   })
 
   it("renders the PDF of a letter kept nowhere, and the offer's letter as it is now", async () => {

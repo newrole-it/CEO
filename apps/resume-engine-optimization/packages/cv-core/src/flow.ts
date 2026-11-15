@@ -1,3 +1,4 @@
+import { splitParagraphs } from "./paragraphs"
 import { isBlankInline } from "./sanitize"
 import { documentTemplate, sectionOnSide } from "./templates"
 import {
@@ -48,7 +49,7 @@ export type CvAtom = {
   itemId?: string
   /** skills / cards rows: the items in this row (up to the section's columns) */
   itemIds?: string[]
-  /** bullet index within the item */
+  /** bullet index within the item; in print, the paragraph of a text or a job summary */
   index?: number
   /** Space above, in mm (dropped when the atom starts a page) */
   lead: number
@@ -66,6 +67,8 @@ export const LEAD = {
   jobAfterFull: 4.5,
   jobAfterCompact: 3.2,
   summary: 1,
+  /** A further paragraph of one text: the next line, as after a line break */
+  paragraph: 0,
   bulletAfterSummary: 2,
   bulletAfterHead: 1.5,
   bullet: 1,
@@ -82,8 +85,10 @@ export const LEAD = {
 
 export type FlowOptions = {
   /**
-   * Editor mode: empty bullets, items and sections stay visible so they can be typed into.
-   * Print mode (default) leaves out anything blank.
+   * Editor mode: empty bullets, items and sections stay visible so they can be typed into, and
+   * a text or a job summary is one atom (one field; the editor breaks pages between the
+   * paragraph blocks inside it, usePagination). Print mode (default) leaves out anything blank
+   * and gives every paragraph of a text or a job summary an atom of its own.
    */
   editing?: boolean
   /** Editor: optional fields (job summary / tech) kept although empty, e.g. while focused */
@@ -136,13 +141,24 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
   const body: CvAtom[] = []
 
   if (section.type === "text") {
-    if (editing || !isBlankInline(section.body)) {
+    if (editing) {
       body.push({
         key: atomKey(sid, "text"),
         kind: "text",
         sectionId: sid,
         lead: LEAD.afterTitle,
         keepWithNext: false,
+      })
+    } else {
+      splitParagraphs(section.body).forEach((_, index) => {
+        body.push({
+          key: atomKey(sid, "text", index),
+          kind: "text",
+          sectionId: sid,
+          index,
+          lead: index === 0 ? LEAD.afterTitle : LEAD.paragraph,
+          keepWithNext: false,
+        })
       })
     }
   } else if (section.type === "skills") {
@@ -216,7 +232,7 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
               : LEAD.jobAfterFull,
         keepWithNext: true,
       })
-      if (hasSummary) {
+      if (hasSummary && editing) {
         entry.push({
           key: summaryKey,
           kind: "job-summary",
@@ -224,6 +240,18 @@ function sectionAtoms(section: CvSection, opts: FlowOptions): CvAtom[] {
           itemId: iid,
           lead: LEAD.summary,
           keepWithNext: false,
+        })
+      } else if (hasSummary) {
+        splitParagraphs(item.summary).forEach((_, index) => {
+          entry.push({
+            key: atomKey(summaryKey, index),
+            kind: "job-summary",
+            sectionId: sid,
+            itemId: iid,
+            index,
+            lead: index === 0 ? LEAD.summary : LEAD.paragraph,
+            keepWithNext: false,
+          })
         })
       }
       bullets.forEach((bullet, position) => {

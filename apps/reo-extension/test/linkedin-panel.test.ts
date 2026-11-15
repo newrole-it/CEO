@@ -136,6 +136,8 @@ function panelButton(text: string): HTMLButtonElement {
 const audits = () => sent.filter((message) => message.type === "linkedinAudit")
 
 beforeEach(() => {
+  // These tests read the Polish interface; the English one has its own tests.
+  vi.spyOn(navigator, "language", "get").mockReturnValue("pl-PL")
   shadow = null
   sessionStorage.clear()
   document.body.innerHTML = page
@@ -264,5 +266,66 @@ describe("lib/profile-panel.js", () => {
     panelButton("Spróbuj ponownie").click()
     await wait(20)
     expect(panelText()).toContain("72")
+  })
+})
+
+describe("lib/profile-panel.js in a browser that is not Polish", () => {
+  beforeEach(() => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-GB")
+  })
+
+  const read = (experience: number, education: number, skills: number) => ({
+    ...AUDIT,
+    read: { about: true, experience, education, skills },
+  })
+
+  it("asks for the audit in English and shows it in English", async () => {
+    stubChrome(answering(read(1, 2, 5)))
+    await load("/in/jan-kowalski/")
+    await settled()
+    expect(audits()[0].locale).toBe("en")
+    const text = panelText()
+    expect(text).toContain("newrole.it · LinkedIn profile")
+    expect(text).toContain(
+      "Scoring what this page shows: About, 1 role, 2 schools, 5 skills. Entries hidden under “Show all” are not read."
+    )
+    expect(text).toContain("Score again")
+    expect(text).not.toMatch(/Oceń|Pokaż|Kopiuj|Ocena z/)
+  })
+
+  it("explains an app that is not running in English", async () => {
+    stubChrome((message) => {
+      if (message.type === "config") return connected()
+      return { ok: false, error: "offline" }
+    })
+    await load("/in/jan-kowalski/")
+    await settled()
+    expect(panelText()).toContain("I can't reach the app. Is newrole.it running?")
+    expect(panelText()).toContain("Try again")
+  })
+
+  it("never shows the server's own sentence", async () => {
+    stubChrome((message) => {
+      if (message.type === "config") return connected()
+      return { ok: false, status: 500, error: "Internal error." }
+    })
+    await load("/in/jan-kowalski/")
+    await settled()
+    expect(panelText()).toContain("Something went wrong. Try again.")
+    expect(panelText()).not.toContain("Internal error.")
+  })
+})
+
+describe("lib/profile-panel.js in Polish", () => {
+  it("counts what it read with the right plural forms", async () => {
+    stubChrome(
+      answering({ ...AUDIT, read: { about: false, experience: 22, education: 1, skills: 5 } })
+    )
+    await load("/in/jan-kowalski/")
+    await settled()
+    expect(audits()[0].locale).toBe("pl")
+    expect(panelText()).toContain(
+      "Oceniam to, co widać na tej stronie: 22 role, 1 szkoła, 5 umiejętności."
+    )
   })
 })

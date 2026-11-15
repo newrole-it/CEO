@@ -2,6 +2,7 @@ import "./env"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import db from "db"
 import { beat } from "src/server/setup/heartbeat"
+import { mcpLocale, systemLanguage } from "./copy"
 import { createServer } from "./create-server"
 
 /**
@@ -9,7 +10,7 @@ import { createServer } from "./create-server"
  * it talks to the same Postgres as the web app.
  */
 async function main() {
-  const server = createServer()
+  const server = createServer({ locale: mcpLocale(process.env, systemLanguage()) })
   await server.connect(new StdioServerTransport())
   void beat("mcp")
   const close = async () => {

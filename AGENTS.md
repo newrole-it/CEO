@@ -32,7 +32,7 @@ newrole.it is built to be used in any language. Today the interface comes in Pol
 ### Every string a person reads lives in a copy file
 
 - That covers components and pages, page titles and descriptions (`generateMetadata`), `aria-label`, `alt`, `title` and `placeholder`, toasts and confirmations, error messages a person sees, e-mails, the Chrome extension (popup, options, panels on pages), MCP prompt titles and tool replies a person reads, sheet headers, and default values written into a person's data.
-- The copy files: `apps/resume-engine-optimization/src/app/i18n/` (`copy.ts` and one `copy-*.ts` per feature), and in the packages `packages/ui/src/copy.ts`, `packages/profile-ui/src/copy-profile.ts`, `packages/cv-editor/src/copy-cv.ts` and `packages/cv-editor/src/copy-tailor.ts`. The Chrome extension has `apps/reo-extension/lib/copy.js`. A new feature gets its own `copy-<feature>.ts`, merged in `copy.ts`.
+- The copy files: `apps/resume-engine-optimization/src/app/i18n/` (`copy.ts` and one `copy-*.ts` per feature; `copy-mcp.ts` is the MCP server's, read through `mcp/copy.ts`), and in the packages `packages/ui/src/copy.ts`, `packages/profile-ui/src/copy-profile.ts`, `packages/cv-editor/src/copy-cv.ts` and `packages/cv-editor/src/copy-tailor.ts`. The Chrome extension has `apps/reo-extension/lib/copy.js`, read with `translator(localeOf(navigator.language))`; its HTML carries `data-i18n` keys filled by `applyCopy` from `lib/i18n.js`, and `test/i18n.test.ts` fails on Polish text anywhere else in it. A new feature gets its own `copy-<feature>.ts`, merged in `copy.ts`.
 - Short strings are flat dotted keys grouped by screen (`"sheet.err.auth"`), read with `t("key", vars)`. A long page with lists (privacy, terms, `/bot`) is one object per language in `i18n/copy-<page>.ts`, exported as `Record<Locale, typeof pagePl>`.
 - Add every key in every language in the same change. Polish is the source: each other dictionary is typed from the Polish one (`Record<keyof typeof xPl, string>`, `typeof xPl`), so `npm run typecheck` fails when a key is missing. Never leave text in the wrong language as a stand-in.
 - Polish uses the informal, capitalised "Ty".
@@ -79,11 +79,8 @@ Log lines, identifiers, test fixtures, regular expressions that read Polish or E
 
 These still hold text that cannot be translated. Do not copy their pattern. When you change one, move what you touch into copy files:
 
-- the Chrome extension, `apps/reo-extension` (Polish only, `lang="pl"`, `toLocaleDateString("pl-PL")`), except what is in `lib/copy.js`;
-- MCP prompt titles and tool replies, `apps/resume-engine-optimization/mcp/` (Polish only);
-- server messages shown in the extension or stored in data: `src/server/autofill/letter.ts`, `src/server/autofill/track.ts`, `src/server/applications/sheet.ts`;
+- server messages stored in data or thrown as text: `src/server/applications/sheet.ts` (the stored `lastError`, the CSV import and webhook errors);
 - the sign-in e-mail, `src/server/auth/email.ts` (English only);
-- raw server text shown to a person: `error.message` in `src/app/settings/SettingsScreen.tsx` and `src/app/(auth)/components/LoginForm.tsx`, English API messages matched by text in `errorFor` in `src/app/start/Onboarding.tsx`, and `result.error` in the extension popup;
-- the web app manifest, `src/app/manifest.ts` (Polish only);
+- raw server text shown to a person: `error.message` in `src/app/settings/SettingsScreen.tsx` and `src/app/(auth)/components/LoginForm.tsx`, and English API messages matched by text in `errorFor` in `src/app/start/Onboarding.tsx`;
 - `formatSalary` in `src/server/applications/logic.ts` (always `pl-PL`, and stored);
 - dictionaries written next to the code instead of in a copy file: `packages/cv-engine/src/audit.ts`, `packages/profile/src/audit.ts`, `demand.ts`, `linkedin-audit.ts`, `packages/cv-core/src/letter.ts`, `blank.ts`, `src/shared/applications.ts`, `src/server/applications/sheet-table.ts`.

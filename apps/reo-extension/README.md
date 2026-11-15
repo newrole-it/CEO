@@ -2,6 +2,8 @@
 
 Wypełnia formularze aplikacyjne z Twoich danych, CV i bazy odpowiedzi, a wysłane aplikacje zapisuje w trackerze. Formularz zawsze wysyłasz sam. Gdy oglądasz ofertę, mówi, czy już aplikowano i jaki jest status. Na Twoim profilu LinkedIn pokazuje ocenę profilu i co w nim zmienić.
 
+Rozszerzenie mówi po polsku albo po angielsku, według języka przeglądarki: po polsku w polskiej, po angielsku w każdej innej. Teksty są w `lib/copy.js`.
+
 ## Instalacja
 
 Potrzebujesz Node 22 lub nowszego.
@@ -48,7 +50,6 @@ Po kliknięciu rozszerzenie wysyła adres otwartej karty (`POST /api/ext/tailor`
 - Oferta, która ma już dopasowane CV, pokazuje ten wynik od razu. Nic nie uruchamia się drugi raz; kolejną rundę robisz w panelu dopasowania w aplikacji.
 - Zanim klikniesz, rozszerzenie nie woła modelu: pyta tylko, czy ta oferta jest już Twoja.
 - Gdy aplikacja nie umie sama odczytać strony, panel daje link „Sprawdź ofertę w newrole.it”, gdzie sprawdzasz firmę, stanowisko i treść.
-- Teksty tej części są po polsku albo po angielsku, według języka przeglądarki.
 
 ## Dodaj ofertę do newrole.it
 

@@ -12,7 +12,11 @@ export function fieldElement(flow: HTMLElement, field: string): HTMLElement | nu
   return flow.querySelector<HTMLElement>(`[data-field="${CSS.escape(field)}"]`)
 }
 
-/** The range of a quote in the field as it is on the page; <br> counts as one character. */
+/**
+ * The range of a quote in the field as it is on the page. A line break counts as one character,
+ * as in the stored value: a <br>, or the start of a further paragraph block of a text field
+ * (Editable `paragraphs`), whose own <br> only holds an empty block open.
+ */
 export function quoteRange(element: HTMLElement, quote: string): Range | null {
   const pieces: { node: Text; start: number }[] = []
   let text = ""
@@ -23,7 +27,12 @@ export function quoteRange(element: HTMLElement, quote: string): Range | null {
       pieces.push({ node: node as Text, start: text.length })
       text += (node as Text).data
     } else if (node.nodeName === "BR") {
-      text += "\n"
+      const block = node.parentElement
+      const holdsOpen =
+        block !== element && block?.tagName === "DIV" && block.childNodes.length === 1
+      if (!holdsOpen) text += "\n"
+    } else if (node.nodeName === "DIV" && node.parentElement === element) {
+      if (node.previousSibling) text += "\n"
     }
   }
   const start = foldMarks(text).indexOf(foldMarks(quote))

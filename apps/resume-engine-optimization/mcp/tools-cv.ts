@@ -17,6 +17,8 @@ import {
 import { applyCvPatch } from "@newrole/cv-core/patch"
 import { cvContentError, parseCvContent } from "@newrole/cv-core/schema"
 import { appLink, mcpHost } from "./host"
+import type { Locale } from "@newrole/ui/i18n"
+import { mcpT, type McpT } from "./copy"
 import { failure, guard, reply, type ToolResult } from "./tools"
 import { currentUser } from "./user"
 
@@ -39,13 +41,17 @@ function viewData(cv: CvView, letterId?: string | null) {
   }
 }
 
-function viewLine(cv: CvView, letterId: string | null): string {
-  const kind = cv.kind === "UPLOADED" ? "PDF" : "edytowalne"
-  const target = cv.target ? `, pod ofertę: ${cv.target.company}` : ""
-  const letter = letterId ? ` · list ${letterId}` : ""
-  return `- ${cv.isDefault ? "★ " : ""}${cv.title} (${
-    cv.language
-  }, ${kind}${target}, zmiana ${cv.updatedAt.toISOString().slice(0, 10)}) id ${cv.id}${letter}`
+function viewLine(cv: CvView, letterId: string | null, t: McpT): string {
+  const line = t(cv.target ? "mcp.cv.line.target" : "mcp.cv.line", {
+    title: cv.title,
+    language: cv.language,
+    kind: t(cv.kind === "UPLOADED" ? "mcp.cv.kind.uploaded" : "mcp.cv.kind.editable"),
+    company: cv.target?.company ?? "",
+    date: cv.updatedAt.toISOString().slice(0, 10),
+    id: cv.id,
+  })
+  const letter = letterId ? ` · ${t("mcp.cv.letter", { id: letterId })}` : ""
+  return `- ${cv.isDefault ? "★ " : ""}${line}${letter}`
 }
 
 /** Where cv_export_pdf writes: an absolute path, or ~/Downloads/<name>_CV.pdf. */
@@ -95,23 +101,26 @@ export async function notReplaceable(target: string): Promise<string | null> {
 /** The CV a tool works on: the given id, else the default (★), else the newest. */
 async function resolveCv(
   userId: number,
-  id: string | undefined
+  id: string | undefined,
+  t: McpT
 ): Promise<{ cv: CvDetail } | { error: ToolResult }> {
   let cvId = id
   if (!cvId) {
     const cvs = await listCvs(userId)
     cvId = cvs.find((cv) => cv.isDefault)?.id ?? cvs[0]?.id
-    if (!cvId) return { error: failure(`Brak CV. Utwórz je na ${appLink("/cv")}.`) }
+    if (!cvId) return { error: failure(t("mcp.cv.none", { link: appLink("/cv") })) }
   }
   const cv = await getCv(userId, cvId)
-  return cv ? { cv } : { error: failure(`Nie ma CV o id ${cvId}. Sprawdź cv_list.`) }
+  return cv ? { cv } : { error: failure(t("mcp.cv.notFound", { id: cvId })) }
 }
 
-export function registerCvTools(server: McpServer) {
+export function registerCvTools(server: McpServer, locale: Locale) {
+  const title = mcpT(locale)
+
   server.registerTool(
     "cv_list",
     {
-      title: "Moje CV",
+      title: title("mcp.tool.cv_list.title"),
       description:
         'List the person\'s CVs: editable documents and uploaded PDFs, with language and which one is the default (★). A general CV can have its general cover letter ("list <id>"), which the letters for offers start from. Use cv_get with either id to read it.',
       inputSchema: {},
@@ -119,17 +128,15 @@ export function registerCvTools(server: McpServer) {
     },
     guard(async () => {
       const user = await currentUser()
+      const t = mcpT(user.locale)
       const documents = await listCvs(user.id, { letters: true })
       const cvs = documents.filter((cv) => cv.docType !== "LETTER")
       const letterOf = (cv: CvView) =>
         documents.find((letter) => letter.forCvId === cv.id)?.id ?? null
       if (!cvs.length) {
-        return reply(
-          `Brak CV. Utwórz je na ${appLink("/cv")} (z profilu, puste, import HTML albo PDF).`,
-          { cvs: [] }
-        )
+        return reply(t("mcp.cv.none.how", { link: appLink("/cv") }), { cvs: [] })
       }
-      return reply(cvs.map((cv) => viewLine(cv, letterOf(cv))).join("\n"), {
+      return reply(cvs.map((cv) => viewLine(cv, letterOf(cv), t)).join("\n"), {
         cvs: cvs.map((cv) => viewData(cv, letterOf(cv))),
       })
     })
@@ -138,7 +145,7 @@ export function registerCvTools(server: McpServer) {
   server.registerTool(
     "cv_get",
     {
-      title: "Pokaż CV",
+      title: title("mcp.tool.cv_get.title"),
       description:
         "Read one CV: its structured content as JSON (with section and item ids for cv_update) and as plain text. Without an id it reads the default CV. An uploaded PDF has no content until the person makes it editable at /cv (the same CV; the file stays as its original).",
       inputSchema: {
@@ -148,11 +155,12 @@ export function registerCvTools(server: McpServer) {
     },
     guard(async ({ id }: { id?: string }) => {
       const user = await currentUser()
-      const found = await resolveCv(user.id, id)
+      const t = mcpT(user.locale)
+      const found = await resolveCv(user.id, id, t)
       if ("error" in found) return found.error
       const { cv } = found
       if (!cv.content) {
-        return reply(`${cv.title}: wgrany PDF bez wersji edytowalnej. Utwórz ją na /cv/${cv.id}.`, {
+        return reply(t("mcp.cv.uploadedOnly", { title: cv.title, id: cv.id }), {
           cv: viewData(cv),
           content: null,
           text: null,
@@ -165,7 +173,7 @@ export function registerCvTools(server: McpServer) {
       }
       const text = cvText(cv.content)
       return reply(
-        `${cv.title} (${cv.language}, id ${cv.id})\n\n${text}\n\nJSON:\n${JSON.stringify(content)}`,
+        `${t("mcp.cv.head", { title: cv.title, language: cv.language, id: cv.id })}\n\n${text}\n\nJSON:\n${JSON.stringify(content)}`,
         {
           cv: viewData(cv),
           content,
@@ -178,7 +186,7 @@ export function registerCvTools(server: McpServer) {
   server.registerTool(
     "cv_update",
     {
-      title: "Popraw CV",
+      title: title("mcp.tool.cv_update.title"),
       description: [
         "Change a CV: its title or language, one section or item by id (merge), or the whole content. Everything is validated before saving; a rejected change saves nothing.",
         "Read the ids with cv_get first. `section` merges into the section with that id (or adds one if you also pass its `type`). `item` merges into one skill, job, card or education entry (or adds it under a new id). `remove` deletes a section or an item.",
@@ -223,25 +231,21 @@ export function registerCvTools(server: McpServer) {
         remove?: { sectionId: string; itemId?: string }
       }) => {
         const user = await currentUser()
+        const t = mcpT(user.locale)
         const cv = await getCv(user.id, args.id)
-        if (!cv) return failure(`Nie ma CV o id ${args.id}. Sprawdź cv_list.`)
+        if (!cv) return failure(t("mcp.cv.notFound", { id: args.id }))
         const editsContent = Boolean(args.content || args.section || args.item || args.remove)
         if (editsContent && cv.kind === "UPLOADED") {
-          return failure(
-            `„${cv.title}” to wgrany PDF. Utwórz wersję edytowalną na /cv/${cv.id}, potem popraw ją tutaj.`
-          )
+          return failure(t("mcp.cv.isUpload", { title: cv.title, id: cv.id }))
         }
-        if (editsContent && !cv.content && !args.content)
-          return failure("To CV nie ma treści do poprawienia.")
+        if (editsContent && !cv.content && !args.content) return failure(t("mcp.cv.noContent"))
         if (
           !editsContent &&
           args.title === undefined &&
           args.language === undefined &&
           !args.copyAs
         ) {
-          return failure(
-            "Nie ma czego zmienić: podaj title, language, content, section, item, remove albo copyAs."
-          )
+          return failure(t("mcp.cv.nothing"))
         }
 
         let next: unknown = undefined
@@ -259,7 +263,7 @@ export function registerCvTools(server: McpServer) {
             return failure(error instanceof Error ? error.message : String(error))
           }
           const problem = cvContentError(next)
-          if (problem) return failure(`Nie zapisano. ${problem}`)
+          if (problem) return failure(t("mcp.cv.notSaved", { problem }))
         }
 
         const target = args.copyAs ? await duplicateCv(user.id, cv.id) : cv
@@ -268,14 +272,14 @@ export function registerCvTools(server: McpServer) {
           language: args.language,
           content: next === undefined ? undefined : (parseCvContent(next) ?? undefined),
         })
-        const where = args.copyAs ? `Utworzono kopię „${saved.title}”` : `Zapisano „${saved.title}”`
+        const done = args.copyAs ? "mcp.cv.copied" : "mcp.cv.saved"
         return reply(
-          `${where} (id ${saved.id}). ${
-            mcpHost().localInstall ? "PDF: cv_export_pdf, edycja" : "Edycja i PDF"
-          }: ${appLink(`/cv/${saved.id}`)}`,
-          {
-            cv: viewData(saved),
-          }
+          t(mcpHost().localInstall ? done : `${done}.shared`, {
+            title: saved.title,
+            id: saved.id,
+            link: appLink(`/cv/${saved.id}`),
+          }),
+          { cv: viewData(saved) }
         )
       }
     )
@@ -284,7 +288,7 @@ export function registerCvTools(server: McpServer) {
   server.registerTool(
     "cv_export_pdf",
     {
-      title: "Wygeneruj PDF",
+      title: title("mcp.tool.cv_export_pdf.title"),
       description:
         "Write a CV as a PDF file and return its path, by default ~/Downloads/<Name>_CV.pdf. Without an id it exports the default CV. Editable CVs are rendered with the local Chrome in the same layout as the editor; uploaded PDFs are written as they were uploaded. Fails clearly when Chrome is missing (set CHROME_PATH).",
       inputSchema: {
@@ -301,23 +305,18 @@ export function registerCvTools(server: McpServer) {
     },
     guard(async ({ id, path }: { id?: string; path?: string }) => {
       const user = await currentUser()
-      const found = await resolveCv(user.id, id)
+      const t = mcpT(user.locale)
+      const found = await resolveCv(user.id, id, t)
       if ("error" in found) return found.error
       const { cv } = found
       // a file written for the person to send: the CV's history keeps it
       const pdf = await cvPdf(user.id, cv.id, { leaves: true })
       if (!pdf) {
         if (cv.kind === "EDITABLE" && !findChrome()) {
-          return failure(
-            `Nie znaleziono Chrome, więc nie mogę wygenerować PDF. Ustaw CHROME_PATH albo otwórz ${appLink(
-              `/cv/${cv.id}/print`
-            )} i wydrukuj do PDF.`
-          )
+          return failure(t("mcp.cv.noChrome", { link: appLink(`/cv/${cv.id}/print`) }))
         }
         return failure(
-          `Nie udało się wygenerować PDF dla „${cv.title}”. Spróbuj z ${appLink(
-            `/cv/${cv.id}/print`
-          )}.`
+          t("mcp.cv.pdfFailed", { title: cv.title, link: appLink(`/cv/${cv.id}/print`) })
         )
       }
       // cvPdf names the file for both kinds (and adds the letter suffix for a cover letter)
@@ -327,7 +326,11 @@ export function registerCvTools(server: McpServer) {
       if (refused) return failure(refused)
       await mkdir(dirname(target), { recursive: true })
       await writeFile(target, new Uint8Array(pdf.bytes))
-      return reply(`Zapisano PDF: ${target}`, { path: target, bytes: pdf.bytes.length, id: cv.id })
+      return reply(t("mcp.cv.pdfSaved", { path: target }), {
+        path: target,
+        bytes: pdf.bytes.length,
+        id: cv.id,
+      })
     })
   )
 }

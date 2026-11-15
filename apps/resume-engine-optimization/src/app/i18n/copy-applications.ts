@@ -4,6 +4,9 @@
  * Every key in applicationsPl must exist in applicationsEn (the type enforces it).
  */
 export const applicationsPl = {
+  "app.note.resent": "Wysłano ponownie przez rozszerzenie",
+  "app.default.company": "Nieznana firma",
+  "app.default.title": "Aplikacja",
   "nav.applications": "Aplikacje",
 
   // tracker page
@@ -302,6 +305,9 @@ export const applicationsPl = {
 }
 
 export const applicationsEn: Record<keyof typeof applicationsPl, string> = {
+  "app.note.resent": "Sent again through the extension",
+  "app.default.company": "Unknown company",
+  "app.default.title": "Application",
   "nav.applications": "Applications",
 
   "app.title": "Applications",

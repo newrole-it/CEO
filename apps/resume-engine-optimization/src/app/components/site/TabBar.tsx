@@ -6,8 +6,11 @@ import { useEffect } from "react"
 import { useCopy } from "src/app/i18n/Locale"
 import { APP_TABS } from "./SiteHeader"
 
-/** On a phone the answer bank stays in the header menu: four tabs fit the bar. */
-const PHONE_TABS = APP_TABS.filter((tab) => tab.href !== "/answers")
+/**
+ * On a phone the answer bank stays in the header menu and the dashboard behind the logo: four
+ * tabs fit the bar.
+ */
+const PHONE_TABS = APP_TABS.filter((tab) => tab.href !== "/answers" && tab.href !== "/")
 
 /** Mobile bottom tab bar for people with a profile or an account. Hidden ≥ 768 px. */
 export function TabBar() {
