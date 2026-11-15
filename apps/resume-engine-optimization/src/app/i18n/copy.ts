@@ -14,6 +14,10 @@ import { offerAddEn, offerAddPl } from "./copy-offer-add"
 import { offersEn, offersPl } from "./copy-offers"
 import { setupEn, setupPl } from "./copy-setup"
 import { usageEn, usagePl } from "./copy-usage"
+import { evaluationEn, evaluationPl } from "./copy-evaluation"
+import { interviewEn, interviewPl } from "./copy-interview"
+import { researchEn, researchPl } from "./copy-research"
+import { patternsEn, patternsPl } from "./copy-patterns"
 import { profileEn, profilePl } from "@newrole/profile-ui/copy-profile"
 import { uiEn, uiPl } from "@newrole/ui/copy"
 import { fmt, intlLocale, type Locale } from "@newrole/ui/i18n"
@@ -657,6 +661,10 @@ const pl = {
   ...guidePl,
   ...matchPl,
   ...linkedinPl,
+  ...evaluationPl,
+  ...interviewPl,
+  ...researchPl,
+  ...patternsPl,
 }
 
 export type CopyKey = keyof typeof pl
@@ -683,6 +691,10 @@ const en: Dict = {
   ...guideEn,
   ...matchEn,
   ...linkedinEn,
+  ...evaluationEn,
+  ...interviewEn,
+  ...researchEn,
+  ...patternsEn,
   skip: "Skip to content",
   brandHome: "newrole.it, home",
   "nav.forYou": "For you",
