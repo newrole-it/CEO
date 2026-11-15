@@ -1077,9 +1077,13 @@ model OfferEvaluation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  /// One reusable interview story of a person: situation, task, action, result and what they took
-  /// from it (@newrole/cv-core/stories). A model's draft stays DRAFT until the person saves it.
-  model InterviewStory {
+  @@unique([userId, jobId])
+  @@index([jobId])
+}
+
+/// One reusable interview story of a person: situation, task, action, result and what they took
+/// from it (@newrole/cv-core/stories). A model's draft stays DRAFT until the person saves it.
+model InterviewStory {
   id         String   @id @default(cuid())
   userId     Int
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1102,8 +1106,6 @@ model OfferEvaluation {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([userId, jobId])
-  @@index([jobId])
   @@index([userId, status, updatedAt])
 }
 
