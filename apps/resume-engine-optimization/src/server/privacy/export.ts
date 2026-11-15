@@ -66,6 +66,12 @@ export async function exportAccount(userId: number) {
           job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
         },
       },
+      offerEvaluations: {
+        orderBy: { evaluatedAt: "desc" },
+        include: {
+          job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
+        },
+      },
       answers: { orderBy: { updatedAt: "desc" } },
       apiTokens: { orderBy: { createdAt: "desc" } },
       sheetLink: true,
@@ -160,6 +166,13 @@ export async function exportAccount(userId: number) {
     })),
     facts: user.candidateFacts.map(({ userId: _userId, ...row }) => row),
     offers: user.offers.map(({ userId: _userId, job, ...row }) => ({
+      ...row,
+      title: job.title,
+      company: job.company.name,
+      url: job.originalUrl,
+    })),
+    // "Is it worth applying": the latest evaluation of each offer (src/server/evaluation/service.ts)
+    offerEvaluations: user.offerEvaluations.map(({ userId: _userId, job, ...row }) => ({
       ...row,
       title: job.title,
       company: job.company.name,

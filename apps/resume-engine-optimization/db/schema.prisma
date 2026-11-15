@@ -50,6 +50,7 @@ model User {
   mailEvents       MailEvent[]
   candidateFacts   CandidateFact[]
   matchRounds      MatchRound[]
+  offerEvaluations OfferEvaluation[]
 }
 
 model Session {
@@ -415,6 +416,7 @@ model Job {
   cvDocuments  CvDocument[]
   userOffers   UserOffer[]
   facts        CandidateFact[]
+  evaluations  OfferEvaluation[]
 
   @@index([fingerprint])
   /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
@@ -1036,4 +1038,42 @@ model MailEvent {
   @@unique([userId, messageId])
   @@index([userId, outcome, receivedAt])
   @@index([applicationId])
+}
+
+/// "Is it worth applying": the latest evaluation of one offer for one person, made before they
+/// tailor a CV or apply (src/server/evaluation/service.ts). Every dimension and the decision are
+/// computed by code (@newrole/cv-core/evaluation); a new evaluation replaces the one before.
+/// The hashes say what it was made against, so the page can tell when it is out of date.
+model OfferEvaluation {
+  id          String   @id @default(cuid())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// apply | consider | skip | unknown (@newrole/cv-core/evaluation Decision)
+  decision    String
+  /// 0–100 from the dimensions that could be scored; null when the requirements could not be
+  score       Int?
+  /// Everything the page shows (@newrole/cv-core/evaluation OfferEvaluation)
+  result      Json
+  /// The interface language the notes were written in
+  locale      String
+  /// A model read the offer and checked the CV; false when only rules ran
+  usedModel   Boolean  @default(false)
+  /// The CV it was made against (CvDocument.id, kept as text: the CV can be deleted) and the
+  /// sha256 of its content then (src/server/cv/versions.ts contentHash)
+  cvId        String?
+  cvHash      String?
+  /// sha256 of the offer's text as it was read
+  offerHash   String
+  /// full | excerpt | withheld | none (@newrole/cv-core/tailor OfferTextOrigin)
+  offerOrigin String
+  /// sha256 of the person's profile fields and facts the dimensions read
+  profileHash String
+  evaluatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([jobId])
 }
