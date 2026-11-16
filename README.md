@@ -2,11 +2,11 @@
   <img src="apps/resume-engine-optimization/docs/screenshots/banner.png" alt="newrole.it: your CV, tailored to every job offer, on your machine" width="900">
 </p>
 
-<h3 align="center">A CV written for each job offer, from your own facts</h3>
+<h3 align="center">Every job application prepared from your own facts</h3>
 
 <p align="center">
-  Free, open-source CV builder for people in IT. Paste a link to a job offer and get a CV and a cover letter for it,<br>
-  with a match score that shows what the offer asks for and what your CV lacks.<br>
+  Free, open-source job application assistant for people in IT. Paste a link to a job offer and see whether it is worth applying,<br>
+  get a CV and a cover letter written for it, prepare for the interview, and learn from how your applications went.<br>
   Runs on your machine. Works with Claude Code on your own subscription.
 </p>
 
@@ -41,9 +41,9 @@
 
 | Part | What it does | Where |
 |---|---|---|
-| **Web app** | CV editor, offers, tailoring, match score, application tracker, answer bank | [apps/resume-engine-optimization](apps/resume-engine-optimization) |
+| **Web app** | CV editor, offers, whether an offer is worth applying, tailoring, match score, company brief, interview preparation, application tracker with patterns and follow-ups, answer bank | [apps/resume-engine-optimization](apps/resume-engine-optimization) |
 | **Chrome extension** | Fills application forms, records what you sent, scores your LinkedIn profile | [apps/reo-extension](apps/reo-extension) |
-| **MCP server** | 21 tools and 3 prompts, so Claude Code can do all of the above from the terminal | [apps/resume-engine-optimization/mcp](apps/resume-engine-optimization/mcp) |
+| **MCP server** | 27 tools and 3 prompts, so Claude Code can do all of the above from the terminal | [apps/resume-engine-optimization/mcp](apps/resume-engine-optimization/mcp) |
 | **Agent skills** | CV and job-search skills that load in Claude Code when you clone the repo | [.claude/skills](.claude/skills) |
 
 One command installs and starts everything: `npm run go`. See [Quick start](#quick-start).
@@ -52,13 +52,16 @@ One command installs and starts everything: `npm run go`. See [Quick start](#qui
 
 - **Tailored, never invented.** The model proposes wording; code decides what may change. Employers, schools, dates and contact details are out of the model's reach, and it does not guess numbers.
 - **A score you can check.** Code counts the match score, not the model: each requirement sits next to the fragment of your CV that shows it, or is marked as missing.
+- **The whole application, not just the CV.** Whether to apply, what to know about the company, what they will ask, who to follow up with, and what your results say.
 - **Your data, your machine.** Everything lives in a Postgres database on your computer.
 - **Free.** No sign-up with us, no paid plan, no API key needed.
 
 ## Use cases
 
 - **You apply to many offers** and each one needs a CV that speaks its language, without rewriting it by hand.
-- **You want to know where you stand** before you apply: which requirements your CV shows and which it does not.
+- **You want to know where you stand** before you apply: which requirements your CV shows, whether the level, pay and work mode fit you, and whether the offer is worth your time.
+- **You have an interview coming** and want likely questions, the stories that answer them and what to ask the company.
+- **You want to learn from your results**: which kinds of application get replies, and who you should write to again.
 - **You lose track of applications**: who answered, what the next step is, which CV you sent.
 - **You keep answering the same form questions** and want your earlier answers at hand.
 - **You work in Claude Code** and want to run your job search from the terminal.
@@ -69,9 +72,11 @@ One command installs and starts everything: `npm run go`. See [Quick start](#qui
 |---|---|---|
 | **1. Profile** | Upload your CV as a PDF, LinkedIn's data export, or paste text | Reads it into your profile and makes an editable CV from it |
 | **2. Offer** | Paste the link to a job posting | Reads the whole posting from the employer's ATS or the page's JobPosting data |
-| **3. Tailor** | Click **Tailor CV and letter** | Writes a CV and a cover letter for that offer, step by step in front of you, and opens the match score |
-| **4. Answer** | Comment on what is missing, answer the questions about numbers | Runs the next round with your answers and scores the CV again |
-| **5. Apply** | Download the PDF, or open the form and click Submit | The extension fills the form, attaches the CV and records the application in the tracker |
+| **3. Decide** | Open **Is it worth applying** | Scores the requirements, level, pay, work mode and the posting against your CV and profile, and says apply, consider or skip |
+| **4. Tailor** | Click **Tailor CV and letter** | Writes a CV and a cover letter for that offer, step by step in front of you, and opens the match score |
+| **5. Answer** | Comment on what is missing, answer the questions about numbers | Runs the next round with your answers and scores the CV again |
+| **6. Apply** | Download the PDF, or open the form and click Submit | The extension fills the form, attaches the CV and records the application in the tracker |
+| **7. Interview** | Open **Interview preparation** and **About the company** | Likely questions, your stories mapped to the requirements, risks, questions to ask, and what sources say about the company |
 
 Your answers are kept as facts about you and used for every later offer.
 
@@ -86,6 +91,11 @@ Your answers are kept as facts about you and used for every later offer.
 - **Version history**: compare and restore any version; every exported PDF is kept with its version
 - **Start from** your profile, a blank page, a PDF, an HTML file or a description in your own words
 
+### Before you apply
+
+- **Is it worth applying**: requirements, level, pay, work mode and the posting scored by code against your general CV and profile; a part with no data is unknown, never guessed; apply, consider or skip, with each gap and an honest way to handle it
+- **About the company**: its other open postings, your history with it, and statements on strategy, recent moves, engineering culture, challenges and competitors, each with its source: a quote from the offer, or a web page newrole.it read and found the quote on
+
 ### Offers and tailoring
 
 - **Offers by their link**: Greenhouse, Lever, Ashby, Workable, Teamtailor, Recruitee, Personio, Traffit, Pinpoint and other ATSes, or any page with schema.org JobPosting data
@@ -98,9 +108,16 @@ Your answers are kept as facts about you and used for every later offer.
 
 - **Tracker**: statuses from Applied to Offer, next steps with due dates, a timeline, notes, the CV that went out
 - **Statistics**: funnel, response rate, median days to a reply, week by week
+- **Patterns**: which kinds of application (match score, tailored CV, letter, work mode, publisher, posting age, source) got replies and interviews more often, shown only with enough data and with the counts behind them
+- **Follow-ups**: who to write to again, a week after applying or three days after a reply, and which applications have gone cold
 - **Google Sheet sync**, both ways, with no Google keys; CSV import and export
 - **Replies from Gmail**: open an email, click the extension, confirm the new status
 - **Answer bank**: every answer you gave to an application question, grouped by question, with per-company variants
+
+### Interviews
+
+- **Interview preparation** per offer: likely questions by who asks, each tied to a requirement of the offer or marked as general; which of your stories answers each requirement; risks with a way to talk about them; questions to ask them
+- **Story bank**: your interview stories as situation, task, action, result and reflection; the model can draft them from your CV, keeping only what your data states
 
 ### Profile and LinkedIn
 
@@ -157,6 +174,8 @@ Things to ask:
 - "Set up my profile from ~/Downloads/Profile.pdf"
 - "Add this offer: https://jobs.lever.co/… and tailor my CV to it"
 - "Help me apply to this offer"
+- "Is this offer worth applying to?"
+- "Prepare me for the interview at Acme"
 - "I have a final interview on Thursday"
 - "Review my applications and update the sheet"
 
@@ -166,9 +185,10 @@ Things to ask:
 | Area | Tools |
 |---|---|
 | Profile | `profile_get`, `profile_import` |
-| Offers | `offers_list`, `offer_add`, `offer_get` |
+| Offers | `offers_list`, `offer_add`, `offer_get`, `offer_evaluate`, `company_brief` |
 | CV and answers | `cv_list`, `cv_get`, `cv_update`, `cv_export_pdf`, `answers_search`, `answer_save`, `answer_draft` |
-| Applications | `applications_list`, `application_get`, `application_add`, `application_update`, `applications_export`, `applications_stats`, `sheet_status`, `sheet_sync`, `gmail_status` |
+| Interviews | `interview_prep`, `stories_list`, `story_save` |
+| Applications | `applications_list`, `application_get`, `application_add`, `application_update`, `applications_export`, `applications_stats`, `applications_patterns`, `sheet_status`, `sheet_sync`, `gmail_status` |
 | Prompts | `onboard` (set up your profile), `apply` (one application end to end), `pipeline` (review your applications and the sheet) |
 
 </details>

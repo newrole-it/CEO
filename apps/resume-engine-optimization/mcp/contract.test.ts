@@ -20,19 +20,25 @@ const TOOLS = [
   "application_update",
   "applications_export",
   "applications_list",
+  "applications_patterns",
   "applications_stats",
+  "company_brief",
   "cv_export_pdf",
   "cv_get",
   "cv_list",
   "cv_update",
   "gmail_status",
+  "interview_prep",
   "offer_add",
+  "offer_evaluate",
   "offer_get",
   "offers_list",
   "profile_get",
   "profile_import",
   "sheet_status",
   "sheet_sync",
+  "stories_list",
+  "story_save",
 ]
 const PROMPTS = ["apply", "onboard", "pipeline"]
 
@@ -46,6 +52,7 @@ const SHARED_TOOLS = [
   "application_update",
   "applications_export",
   "applications_list",
+  "applications_patterns",
   "applications_stats",
   "cv_get",
   "cv_list",
@@ -57,6 +64,8 @@ const SHARED_TOOLS = [
   "profile_import",
   "sheet_status",
   "sheet_sync",
+  "stories_list",
+  "story_save",
 ]
 const SHARED_PROMPTS = ["apply", "onboard", "pipeline"]
 

@@ -66,7 +66,24 @@ export async function exportAccount(userId: number) {
           job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
         },
       },
+      offerEvaluations: {
+        orderBy: { evaluatedAt: "desc" },
+        include: {
+          job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
+        },
+      },
+      companyBriefs: {
+        orderBy: { generatedAt: "desc" },
+        include: { company: { select: { name: true } }, job: { select: { title: true } } },
+      },
       answers: { orderBy: { updatedAt: "desc" } },
+      interviewStories: { orderBy: { updatedAt: "desc" } },
+      interviewPreps: {
+        orderBy: { updatedAt: "desc" },
+        include: {
+          job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
+        },
+      },
       apiTokens: { orderBy: { createdAt: "desc" } },
       sheetLink: true,
       gmailLink: true,
@@ -165,7 +182,27 @@ export async function exportAccount(userId: number) {
       company: job.company.name,
       url: job.originalUrl,
     })),
+    // "Is it worth applying": the latest evaluation of each offer (src/server/evaluation/service.ts)
+    offerEvaluations: user.offerEvaluations.map(({ userId: _userId, job, ...row }) => ({
+      ...row,
+      title: job.title,
+      company: job.company.name,
+      url: job.originalUrl,
+    })),
+    // The latest brief of each company, every statement with its source (src/server/research/service.ts)
+    companyBriefs: user.companyBriefs.map(({ userId: _userId, company, job, ...row }) => ({
+      ...row,
+      company: company.name,
+      offerTitle: job?.title ?? null,
+    })),
     answers: user.answers.map(({ userId: _userId, ...row }) => row),
+    interviewStories: user.interviewStories.map(({ userId: _userId, ...row }) => row),
+    interviewPreps: user.interviewPreps.map(({ userId: _userId, job, ...row }) => ({
+      ...row,
+      title: job.title,
+      company: job.company.name,
+      url: job.originalUrl,
+    })),
     apiTokens: user.apiTokens.map((token) => ({
       id: token.id,
       name: token.name,

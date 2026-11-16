@@ -1,16 +1,20 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import { revokeGmailAccess } from "src/server/gmail/service"
+import { INTERVIEW_LIMITS } from "src/server/interview/types"
 import { PERSONAL_LLM_PURPOSES } from "src/server/llm/client"
 import { GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
 
 type Writer = Prisma.TransactionClient | typeof db
 
 /**
- * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, and
- * CV-derived model cache rows.
+ * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, the
+ * evaluations of offers and the company briefs made from them (they quote the CV and the
+ * profile), and CV-derived model cache rows.
  */
 export async function eraseProfile(userId: number, client: Writer = db) {
+  await client.offerEvaluation.deleteMany({ where: { userId } })
+  await client.companyBrief.deleteMany({ where: { userId } })
   await client.profileAuditRun.deleteMany({ where: { userId } })
   await client.candidateProfile.deleteMany({ where: { userId } })
   await client.candidateFact.deleteMany({ where: { userId } })
@@ -59,8 +63,9 @@ export async function eraseAccount(userId: number) {
         payload: { path: ["userId"], equals: userId },
       },
     })
-    // Applications, CVs, the offers kept with their text, answers, API tokens, the sheet and Gmail
-    // links and the mail log cascade with the user row below.
+    // Applications, CVs, the offers kept with their text and their evaluations, the company
+    // briefs, answers, interview stories and preparations, API tokens, the sheet and Gmail links
+    // and the mail log cascade with the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
     await tx.offerFeedback.deleteMany({ where: { userId } })
     await tx.watchedCompany.deleteMany({ where: { userId } })
@@ -74,7 +79,16 @@ export async function eraseAccount(userId: number) {
     await tx.session.deleteMany({ where: { userId } })
     await tx.loginLink.deleteMany({ where: { email: user.email } })
     await tx.authRateLimit.deleteMany({
-      where: { key: { in: [`email:${user.email}`, `search:${userId}`] } },
+      where: {
+        key: {
+          in: [
+            `email:${user.email}`,
+            `search:${userId}`,
+            INTERVIEW_LIMITS.draft.key(userId),
+            INTERVIEW_LIMITS.prep.key(userId),
+          ],
+        },
+      },
     })
     await tx.user.delete({ where: { id: userId } })
   })

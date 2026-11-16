@@ -6,6 +6,7 @@ import { registerTools } from "./tools"
 import { registerAnswerTools } from "./tools-answers"
 import { registerApplicationTools } from "./tools-applications"
 import { registerCvTools } from "./tools-cv"
+import { registerCareerTools } from "./tools-career"
 
 /**
  * What a server shared by several people offers: each person's own records. It holds no index of
@@ -21,6 +22,7 @@ export const SHARED_SERVER_TOOLS = [
   "application_update",
   "applications_export",
   "applications_list",
+  "applications_patterns",
   "applications_stats",
   "cv_get",
   "cv_list",
@@ -32,6 +34,8 @@ export const SHARED_SERVER_TOOLS = [
   "profile_import",
   "sheet_status",
   "sheet_sync",
+  "stories_list",
+  "story_save",
 ]
 export const SHARED_SERVER_PROMPTS = ["apply", "onboard", "pipeline"]
 
@@ -61,6 +65,7 @@ export function createServer({ locale }: { locale: Locale }) {
   registerApplicationTools(target, locale)
   registerCvTools(target, locale)
   registerAnswerTools(target, locale)
+  registerCareerTools(target, locale)
   registerPrompts(target, locale)
   return server
 }

@@ -34,6 +34,7 @@ import {
   type AppRow,
 } from "./rows"
 import { StatusSelect } from "./StatusSelect"
+import { InterviewCard } from "src/app/offers/[id]/interview/InterviewCard"
 
 type Props = {
   id: string | null
@@ -299,6 +300,8 @@ function DrawerBody({
                 />
               </Field>
             </section>
+
+            {detail.jobId ? <InterviewCard jobId={detail.jobId} status={current.status} /> : null}
 
             <section className="app-drawer__sec" aria-labelledby="app-d-next">
               <h3 id="app-d-next">{t("app.d.next")}</h3>

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { useMutation } from "src/app/rpc-hooks"
 import {
   BookOpen,
+  BookOpenText,
   ChevronDown,
   ClipboardList,
   Coins,
@@ -80,6 +81,7 @@ export const APP_TABS = [
   { href: "/cv", key: "nav.cv", icon: FileText },
   { href: "/applications", key: "nav.applications", icon: ClipboardList },
   { href: "/answers", key: "nav.answers", icon: MessageSquareText },
+  { href: "/stories", key: "iv.nav.stories", icon: BookOpenText },
   { href: "/profile", key: "nav.profile", icon: UserRound },
 ] as const
 

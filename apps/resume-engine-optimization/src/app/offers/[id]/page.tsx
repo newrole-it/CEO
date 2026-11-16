@@ -6,6 +6,8 @@ import { translator } from "src/app/i18n/copy"
 import { getLocale } from "src/app/i18n/server"
 import getCurrentUser from "src/app/users/queries/getCurrentUser"
 import { getOffer } from "src/server/offers/service"
+import { evaluationSummary } from "src/server/evaluation/service"
+import { companyBriefSummary } from "src/server/research/service"
 import { OfferWorkspace } from "./OfferWorkspace"
 import { TO_APPLY_PATH } from "src/shared/applications"
 
@@ -34,6 +36,10 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
   // null means the offer is unknown; a database error goes to error.tsx, not to a 404
   const offer = await getOffer(user.id, jobId)
   if (!offer) notFound()
+  const [evaluation, company] = await Promise.all([
+    evaluationSummary(user.id, jobId),
+    companyBriefSummary(user.id, jobId),
+  ])
   const t = translator(locale)
   return (
     <SiteFrame user={user} locale={locale}>
@@ -42,7 +48,7 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
           {t("ow.back")}
         </Link>
       </p>
-      <OfferWorkspace offer={offer} />
+      <OfferWorkspace offer={offer} evaluation={evaluation} company={company} />
     </SiteFrame>
   )
 }

@@ -50,6 +50,10 @@ model User {
   mailEvents       MailEvent[]
   candidateFacts   CandidateFact[]
   matchRounds      MatchRound[]
+  offerEvaluations OfferEvaluation[]
+  interviewStories InterviewStory[]
+  interviewPreps   InterviewPrep[]
+  companyBriefs    CompanyBrief[]
 }
 
 model Session {
@@ -279,6 +283,7 @@ model Company {
   careerPages CareerPage[]
   jobs        Job[]
   watchers    WatchedCompany[]
+  briefs      CompanyBrief[]
 }
 
 model CompanyAlias {
@@ -408,13 +413,16 @@ model Job {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
-  observations JobObservation[]
-  matches      JobMatch[]
-  feedback     OfferFeedback[]
-  applications Application[]
-  cvDocuments  CvDocument[]
-  userOffers   UserOffer[]
-  facts        CandidateFact[]
+  observations   JobObservation[]
+  matches        JobMatch[]
+  feedback       OfferFeedback[]
+  applications   Application[]
+  cvDocuments    CvDocument[]
+  userOffers     UserOffer[]
+  facts          CandidateFact[]
+  evaluations    OfferEvaluation[]
+  interviewPreps InterviewPrep[]
+  briefs         CompanyBrief[]
 
   @@index([fingerprint])
   /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
@@ -1036,4 +1044,120 @@ model MailEvent {
   @@unique([userId, messageId])
   @@index([userId, outcome, receivedAt])
   @@index([applicationId])
+}
+
+/// "Is it worth applying": the latest evaluation of one offer for one person, made before they
+/// tailor a CV or apply (src/server/evaluation/service.ts). Every dimension and the decision are
+/// computed by code (@newrole/cv-core/evaluation); a new evaluation replaces the one before.
+/// The hashes say what it was made against, so the page can tell when it is out of date.
+model OfferEvaluation {
+  id          String   @id @default(cuid())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// apply | consider | skip | unknown (@newrole/cv-core/evaluation Decision)
+  decision    String
+  /// 0–100 from the dimensions that could be scored; null when the requirements could not be
+  score       Int?
+  /// Everything the page shows (@newrole/cv-core/evaluation OfferEvaluation)
+  result      Json
+  /// The interface language the notes were written in
+  locale      String
+  /// A model read the offer and checked the CV; false when only rules ran
+  usedModel   Boolean  @default(false)
+  /// The CV it was made against (CvDocument.id, kept as text: the CV can be deleted) and the
+  /// sha256 of its content then (src/server/cv/versions.ts contentHash)
+  cvId        String?
+  cvHash      String?
+  /// sha256 of the offer's text as it was read
+  offerHash   String
+  /// full | excerpt | withheld | none (@newrole/cv-core/tailor OfferTextOrigin)
+  offerOrigin String
+  /// sha256 of the person's profile fields and facts the dimensions read
+  profileHash String
+  evaluatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([jobId])
+}
+
+/// One reusable interview story of a person: situation, task, action, result and what they took
+/// from it (@newrole/cv-core/stories). A model's draft stays DRAFT until the person saves it.
+model InterviewStory {
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  situation  String   @default("") @db.Text
+  task       String   @default("") @db.Text
+  action     String   @default("") @db.Text
+  result     String   @default("") @db.Text
+  reflection String   @default("") @db.Text
+  /// The themes and questions it is best for, as the person names them: string[]
+  themes     Json     @default("[]")
+  /// Where it came from, in the person's words: the role or project
+  source     String?
+  /// manual | draft | mcp
+  origin     String   @default("manual")
+  /// DRAFT | SAVED
+  status     String   @default("SAVED")
+  /// For a draft: what code found when it checked it against the person's data (StoryChecks)
+  checks     Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, status, updatedAt])
+}
+
+/// The latest interview preparation of a person for one offer (@newrole/cv-core/stories-prep),
+/// kept so the page opens without a new model call.
+model InterviewPrep {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// InterviewPrepContent
+  content   Json
+  /// llm | rules
+  reader    String
+  /// The language it was written in: pl | en
+  locale    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, jobId])
+}
+
+/// What a person should know about an employer before applying and before an interview: the
+/// latest brief of one company for one person (src/server/research/service.ts). It holds only
+/// statements whose source code confirmed, each with that source.
+model CompanyBrief {
+  id          String   @id @default(cuid())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// The offer whose text it was read from
+  jobId       String?
+  job         Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  /// The points with their sources, the candidate's angle and the questions
+  /// (@newrole/cv-core/research CompanyBriefResult)
+  result      Json
+  /// The interface language it was written in
+  locale      String
+  /// done | provider | not-asked | failed (@newrole/cv-core/research WebTierState)
+  webState    String
+  /// sha256 of the offer's text as it was read
+  offerHash   String
+  generatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([jobId])
 }
