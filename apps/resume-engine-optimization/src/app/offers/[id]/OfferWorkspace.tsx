@@ -31,6 +31,8 @@ import { HiringConfidenceCard } from "../HiringConfidenceCard"
 import type { EvaluationSummary } from "src/server/evaluation/service"
 import { EvaluationCard } from "./evaluation/EvaluationCard"
 import { InterviewCard } from "./interview/InterviewCard"
+import type { CompanyBriefSummary } from "src/server/research/service"
+import { CompanyBriefCard } from "./company/CompanyBriefCard"
 
 const WORKPLACE = {
   REMOTE: "oa.workplace.remote",
@@ -44,9 +46,11 @@ const FOLD_CHARS = 1600
 export function OfferWorkspace({
   offer,
   evaluation,
+  company,
 }: {
   offer: OfferDetail
   evaluation: EvaluationSummary | null
+  company: CompanyBriefSummary | null
 }) {
   const { t, locale } = useCopy()
   const id = useId()
@@ -292,6 +296,7 @@ export function OfferWorkspace({
         <aside className="offer-ws__side">
           <EvaluationCard jobId={offer.jobId} summary={evaluation} />
           {offer.hiring ? <HiringConfidenceCard hiring={offer.hiring} /> : null}
+          <CompanyBriefCard jobId={offer.jobId} summary={company} />
           <InterviewCard jobId={offer.jobId} />
           <section className="card card--pad offer-section" aria-labelledby={`${id}-docs`}>
             <h2 id={`${id}-docs`} className="t-h3">

@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client"
 import db from "db"
 import { revokeGmailAccess } from "src/server/gmail/service"
-import { INTERVIEW_PURPOSES } from "@newrole/cv-engine/interview"
 import { INTERVIEW_LIMITS } from "src/server/interview/types"
 import { PERSONAL_LLM_PURPOSES } from "src/server/llm/client"
 import { GMAIL_SYNC, SHEET_SYNC } from "src/server/queue/enqueue"
@@ -20,12 +19,7 @@ export async function eraseProfile(userId: number, client: Writer = db) {
   await client.candidateProfile.deleteMany({ where: { userId } })
   await client.candidateFact.deleteMany({ where: { userId } })
   await client.llmCache.deleteMany({
-    // the interview steps and "company-brief" (src/server/research) read the CV too (their
-    // purposes are not in the package's list yet)
-    where: {
-      userId,
-      purpose: { in: [...PERSONAL_LLM_PURPOSES, ...INTERVIEW_PURPOSES, "company-brief"] },
-    },
+    where: { userId, purpose: { in: [...PERSONAL_LLM_PURPOSES] } },
   })
 }
 
