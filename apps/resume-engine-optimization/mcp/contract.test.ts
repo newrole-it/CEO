@@ -26,13 +26,17 @@ const TOOLS = [
   "cv_list",
   "cv_update",
   "gmail_status",
+  "interview_prep",
   "offer_add",
+  "offer_evaluate",
   "offer_get",
   "offers_list",
   "profile_get",
   "profile_import",
   "sheet_status",
   "sheet_sync",
+  "stories_list",
+  "story_save",
 ]
 const PROMPTS = ["apply", "onboard", "pipeline"]
 
@@ -57,6 +61,8 @@ const SHARED_TOOLS = [
   "profile_import",
   "sheet_status",
   "sheet_sync",
+  "stories_list",
+  "story_save",
 ]
 const SHARED_PROMPTS = ["apply", "onboard", "pipeline"]
 
