@@ -43,3 +43,17 @@ Kontakty na LinkedIn (`modes/contacto.md`) zostają poza planem: newrole.it nicz
 | Wzorce i przypomnienia | `src/server/applications/patterns*.ts`, `src/server/applications/followups*.ts`, `src/app/applications/stats/**`, `src/app/i18n/copy-patterns.ts`                                |
 
 Wspólne pliki (`copy.ts`, nawigacja, `OfferWorkspace.tsx`, `ApplicationDrawer.tsx`, `mcp/**`, README, CHANGELOG) zmienia tylko zadanie nadrzędne przy scalaniu.
+
+## 5. Stan na 16.11.2026
+
+| #   | Co                        | Stan                                                                                                                                                                                                                                                                  |
+| --- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Ocena oferty              | Zrobione: `packages/cv-core/src/evaluation.ts` (wagi 45/15/15/10/15, progi 60 i 50, reguły zmieniające decyzję), `src/server/evaluation/service.ts`, `/offers/[id]/evaluation`, karta na stronie oferty.                                                              |
+| 2   | Rozmowa i historie        | Zrobione: `packages/cv-core/src/stories*.ts`, `src/server/interview/`, `/stories`, `/offers/[id]/interview`, karta na stronie oferty i w szufladzie aplikacji.                                                                                                        |
+| 3   | Firma                     | Zrobione: `packages/cv-core/src/research.ts`, `src/server/research/`, `/offers/[id]/company`, karta na stronie oferty. Punkty z sieci tylko z Claude CLI i tylko po odczycie strony przez newrole.it.                                                                 |
+| 4   | Wzorce i przypomnienia    | Zrobione: `src/server/applications/patterns.ts`, `followups.ts`, `patterns-load.ts`, sekcje na `/applications/stats`.                                                                                                                                                 |
+| 5   | Wynagrodzenie, negocjacje | Nie zrobione. Ocena oferty porównuje widełki z oczekiwaniami z profilu, ale `Job` nie zapisuje okresu ani formy umowy, więc wymiar „wynagrodzenie" często wychodzi „nie wiadomo". Następny krok: odczyt okresu i umowy z treści oferty regułami, potem dziennik kwot. |
+| 6   | MCP                       | Zrobione: `offer_evaluate`, `company_brief`, `interview_prep`, `stories_list`, `story_save`, `applications_patterns` (`mcp/tools-career.ts`).                                                                                                                         |
+| 7   | Pozycjonowanie            | README i opis pakietu mówią o asystencie aplikowania. Opis repozytorium na GitHubie zmienia właściciel. Strona `/features` nie opisuje jeszcze nowych ekranów.                                                                                                        |
+
+Nie sprawdzone z prawdziwym modelem: ocena oferty i notatka o firmie (testy używają podstawionego modelu). Przygotowanie do rozmowy i szkice historii raz przeszły z Claude CLI na syntetycznym CV.
