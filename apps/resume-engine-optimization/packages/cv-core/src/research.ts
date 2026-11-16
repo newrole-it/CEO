@@ -90,7 +90,7 @@ export function numbersBacked(statement: string, ...sources: string[]): boolean 
  */
 const TOPIC: Record<SensitiveTopic, RegExp> = {
   headcount:
-    / (employees?|headcount|staff of|people strong|workforce|pracownik\p{L}*|zatrudnia\p{L}*|zatrudnien\p{L}*|etat\p{L}*) /u,
+    / (employees?|headcount|staff of|people strong|workforce|pracownik\p{L}*|zatrudnia\p{L}*|zatrudnien\p{L}*|etat\p{L}*|\d+\+? (?:people|persons|engineers?|developers?|specialists|experts|osob\p{L}*|inzynier\p{L}*|programist\p{L}*|specjalist\p{L}*|ekspert\p{L}*)) /u,
   funding:
     / (funding|funded|raised|raises|series [a-f]|seed round|valuation|valued|investors?|ipo|finansowani\p{L}*|dofinansowani\p{L}*|rund\p{L}* inwestycyjn\p{L}*|pozyskal\p{L}*|wycen\p{L}*|inwestor\p{L}*) /u,
   layoffs:
@@ -284,13 +284,11 @@ export function cleanOfferBrief(
         ),
       (item) => item.text
     )
-  ).map(
-    (item): BriefPoint => ({
-      axis: item.axis,
-      text: item.text,
-      source: { kind: "offer", quote: item.quote },
-    })
-  )
+  ).map((item): BriefPoint => ({
+    axis: item.axis,
+    text: item.text,
+    source: { kind: "offer", quote: item.quote },
+  }))
 
   const angle = unique(
     reply.angle

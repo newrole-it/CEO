@@ -185,7 +185,11 @@ export async function researchOnWeb(input: {
       "",
       wrapUntrusted("company", about.join("\n")),
       ...(offerUrls.length
-        ? ["", "The job offer's own page, not to be cited:", wrapUntrusted("offer_url", offerUrls.join("\n"))]
+        ? [
+            "",
+            "The job offer's own page, not to be cited:",
+            wrapUntrusted("offer_url", offerUrls.join("\n")),
+          ]
         : []),
     ].join("\n"),
     allowedTools: WEB_TOOLS,
