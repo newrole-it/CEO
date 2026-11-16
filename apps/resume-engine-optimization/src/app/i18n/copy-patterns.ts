@@ -61,7 +61,7 @@ export const patternsPl = {
   "pt.fu.sub":
     "Tydzień po wysłaniu bez odpowiedzi warto napisać; po kolejnym tygodniu jeszcze raz. Po {days} dniach ciszy aplikacja jest zimna. Po odpowiedzi firmy pytaj o dalsze kroki co 3 dni. Twoja data następnego kroku ma pierwszeństwo.",
   "pt.fu.none": "Nikomu nie trzeba teraz przypominać.",
-  "pt.fu.state.due": "dziś",
+  "pt.fu.state.due": "do zrobienia",
   "pt.fu.state.overdue": "zaległe",
   "pt.fu.state.cold": "zimna",
   "pt.fu.kind.no-reply": "Bez odpowiedzi od {n} dni",
@@ -133,7 +133,7 @@ export const patternsEn: Record<keyof typeof patternsPl, string> = {
   "pt.fu.sub":
     "A week after applying with no reply, it is worth writing; after another week, once more. After {days} days of silence the application is cold. Once the company has replied, ask about next steps every 3 days. Your own next-step date comes first.",
   "pt.fu.none": "Nobody needs a follow-up right now.",
-  "pt.fu.state.due": "today",
+  "pt.fu.state.due": "due",
   "pt.fu.state.overdue": "overdue",
   "pt.fu.state.cold": "cold",
   "pt.fu.kind.no-reply": "No reply for {n} days",

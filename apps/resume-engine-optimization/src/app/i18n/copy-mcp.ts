@@ -38,7 +38,8 @@ export const mcpPl = {
     "Na wzorce za wcześnie: aplikacji z wynikiem jest {decided}, potrzeba jeszcze {n}.",
   "mcp.patterns.head": "Aplikacji z wynikiem: {decided}. Wyraźnych różnic: {findings}.",
   "mcp.patterns.finding": "- {group}, {metric}: {hits} z {n}, w pozostałych {restHits} z {restN}",
-  "mcp.patterns.followups": "Do przypomnienia się: zaległe {overdue}, na dziś {due}, zimne {cold}.",
+  "mcp.patterns.followups":
+    "Do przypomnienia się: zaległe {overdue}, do zrobienia {due}, zimne {cold}.",
   "mcp.tool.interview_prep.title": "Przygotuj mnie do rozmowy",
   "mcp.tool.stories_list.title": "Moje historie na rozmowy",
   "mcp.tool.story_save.title": "Zapisz historię na rozmowę",
@@ -337,7 +338,7 @@ export const mcpEn: Record<keyof typeof mcpPl, string> = {
     "Too early for patterns: {decided} applications have an outcome, {n} more are needed.",
   "mcp.patterns.head": "Applications with an outcome: {decided}. Clear differences: {findings}.",
   "mcp.patterns.finding": "- {group}, {metric}: {hits} of {n}, in the rest {restHits} of {restN}",
-  "mcp.patterns.followups": "Follow-ups: {overdue} overdue, {due} due today, {cold} cold.",
+  "mcp.patterns.followups": "Follow-ups: {overdue} overdue, {due} due, {cold} cold.",
   "mcp.tool.interview_prep.title": "Prepare me for the interview",
   "mcp.tool.stories_list.title": "My interview stories",
   "mcp.tool.story_save.title": "Save an interview story",

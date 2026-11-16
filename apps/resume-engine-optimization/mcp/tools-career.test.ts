@@ -242,6 +242,6 @@ describe("applications_patterns", () => {
     fn(loadInsightsInput).mockResolvedValue({ applications: [], decisions: [], answers: [] })
     const text = (await tools().applications_patterns({})).content[0].text
     expect(text).toContain("aplikacji z wynikiem jest 2, potrzeba jeszcze 3")
-    expect(text).toContain("zaległe 0, na dziś 0, zimne 0")
+    expect(text).toContain("zaległe 0, do zrobienia 0, zimne 0")
   })
 })
