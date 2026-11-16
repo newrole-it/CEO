@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "license": "AGPL-3.0-only",
-  "description": "newrole.it: your CV tailored to every job offer you add by its link, with a cover letter, an application tracker, an answer bank, an MCP server for Claude Code and a Chrome extension. Runs on your machine.",
+  "description": "newrole.it: a job application assistant on your machine. For every job offer you add by its link: whether it is worth applying, a tailored CV and cover letter, a company brief with sources and interview preparation; an application tracker that learns from your results, an answer bank, an MCP server for Claude Code and a Chrome extension.",
   "scripts": {
     "dev": "next dev --webpack -p 43123 -H 127.0.0.1",
     "build": "next build --webpack",
