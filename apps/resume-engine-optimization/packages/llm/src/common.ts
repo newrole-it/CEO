@@ -53,6 +53,8 @@ export const PERSONAL_LLM_PURPOSES = [
   "cv-match",
   "cv-bullets",
   "linkedin-sync",
+  "interview-stories",
+  "interview-prep",
 ] as const
 
 export function isPersonalLlmPurpose(purpose: string): boolean {

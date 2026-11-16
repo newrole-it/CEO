@@ -28,6 +28,9 @@ import refreshOfferText from "../mutations/refreshOfferText"
 import removeOffer from "../mutations/removeOffer"
 import updateOffer from "../mutations/updateOffer"
 import { HiringConfidenceCard } from "../HiringConfidenceCard"
+import type { EvaluationSummary } from "src/server/evaluation/service"
+import { EvaluationCard } from "./evaluation/EvaluationCard"
+import { InterviewCard } from "./interview/InterviewCard"
 
 const WORKPLACE = {
   REMOTE: "oa.workplace.remote",
@@ -38,7 +41,13 @@ const WORKPLACE = {
 /** A text this long is shown folded until the person opens it. */
 const FOLD_CHARS = 1600
 
-export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
+export function OfferWorkspace({
+  offer,
+  evaluation,
+}: {
+  offer: OfferDetail
+  evaluation: EvaluationSummary | null
+}) {
   const { t, locale } = useCopy()
   const id = useId()
   const router = useRouter()
@@ -281,7 +290,9 @@ export function OfferWorkspace({ offer }: { offer: OfferDetail }) {
         </div>
 
         <aside className="offer-ws__side">
+          <EvaluationCard jobId={offer.jobId} summary={evaluation} />
           {offer.hiring ? <HiringConfidenceCard hiring={offer.hiring} /> : null}
+          <InterviewCard jobId={offer.jobId} />
           <section className="card card--pad offer-section" aria-labelledby={`${id}-docs`}>
             <h2 id={`${id}-docs`} className="t-h3">
               {t("ow.docs.title")}
