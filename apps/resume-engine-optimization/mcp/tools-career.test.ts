@@ -3,7 +3,18 @@ import { evaluateOffer, EvaluationError, getEvaluation } from "src/server/evalua
 import { getInterviewPrep } from "src/server/interview/prep"
 import { saveStory } from "src/server/interview/stories"
 import { InterviewError } from "src/server/interview/types"
+import { loadPatterns } from "src/server/applications/patterns-load"
+import { loadInsightsInput } from "src/server/applications/service"
+import { companyBrief, getCompanyBrief } from "src/server/research/service"
 import { registerCareerTools } from "./tools-career"
+
+vi.mock("src/server/research/service", () => ({
+  companyBrief: vi.fn(),
+  getCompanyBrief: vi.fn(),
+  CompanyBriefError: class CompanyBriefError extends Error {},
+}))
+vi.mock("src/server/applications/patterns-load", () => ({ loadPatterns: vi.fn() }))
+vi.mock("src/server/applications/service", () => ({ loadInsightsInput: vi.fn() }))
 
 vi.mock("src/server/evaluation/service", () => {
   class EvaluationError extends Error {
@@ -164,5 +175,73 @@ describe("story_save", () => {
     expect(saveStory).toHaveBeenCalledWith(7, { title: "x", origin: "mcp" })
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain("Historia potrzebuje tytułu")
+  })
+})
+
+describe("company_brief", () => {
+  const records = {
+    company: { id: "c1", name: "Acme", aliases: [], domain: null, careerPages: [] },
+    openPostings: { total: 2, items: [] },
+    applications: [],
+    offers: [],
+    hiring: null,
+  }
+
+  it("shows every point with its source and names what nothing confirmed", async () => {
+    fn(getCompanyBrief).mockResolvedValue({
+      jobId: "j1",
+      offer: { title: "Backend", url: null },
+      records,
+      unknown: ["competitors"],
+      recordQuestions: [],
+      model: { available: true, web: false, searchCap: 4 },
+      brief: {
+        generatedAt: new Date("2026-11-16T10:00:00Z"),
+        locale: "pl",
+        from: null,
+        otherOffer: false,
+        stale: false,
+        result: {
+          points: [
+            {
+              axis: "strategy",
+              text: "Buduje płatności.",
+              source: { kind: "offer", quote: "Budujemy platformę płatności" },
+            },
+          ],
+          angle: [],
+          questions: [],
+        },
+      },
+    })
+    const text = (await tools().company_brief({ jobId: "j1" })).content[0].text
+    expect(companyBrief).not.toHaveBeenCalled()
+    expect(text).toContain(
+      "Produkt i strategia: Buduje płatności. (z oferty: „Budujemy platformę płatności”)"
+    )
+    expect(text).toContain("Nic potwierdzonego o: Konkurencja.")
+  })
+
+  it("says so for an offer that is not known", async () => {
+    fn(getCompanyBrief).mockResolvedValue(null)
+    expect((await tools().company_brief({ jobId: "nope" })).isError).toBe(true)
+  })
+})
+
+describe("applications_patterns", () => {
+  it("says how many outcomes are still needed, and lists the follow-ups", async () => {
+    fn(loadPatterns).mockResolvedValue({
+      sent: 3,
+      decided: 2,
+      needed: 3,
+      baseline: { reply: null, interview: null },
+      comparisons: [],
+      thin: [],
+      rejections: null,
+    })
+    fn(loadInsightsInput).mockResolvedValue({ applications: [], decisions: [], answers: [] })
+    const text = (await tools().applications_patterns({})).content[0].text
+    expect(text).toContain("aplikacji z wynikiem jest 2, potrzeba jeszcze 3")
+    expect(text).toContain("zaległe 0, na dziś 0, zimne 0")
   })
 })

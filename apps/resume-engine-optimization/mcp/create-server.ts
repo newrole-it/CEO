@@ -22,6 +22,7 @@ export const SHARED_SERVER_TOOLS = [
   "application_update",
   "applications_export",
   "applications_list",
+  "applications_patterns",
   "applications_stats",
   "cv_get",
   "cv_list",

@@ -6,15 +6,20 @@ import { translator, type CopyKey } from "src/app/i18n/copy"
 import { EvaluationError, evaluateOffer, getEvaluation } from "src/server/evaluation/service"
 import { getInterviewPrep, prepareInterview } from "src/server/interview/prep"
 import { listStories, saveStory } from "src/server/interview/stories"
+import { computeFollowups } from "src/server/applications/followups"
+import { loadPatterns } from "src/server/applications/patterns-load"
+import { loadInsightsInput } from "src/server/applications/service"
+import { companyBrief, CompanyBriefError, getCompanyBrief } from "src/server/research/service"
 import { InterviewError, type StoryView } from "src/server/interview/types"
+import { sourceKey } from "src/app/applications/rows"
 import { mcpT } from "./copy"
 import { appLink } from "./host"
 import { failure, guard, reply } from "./tools"
 import { currentUser } from "./user"
 
 /**
- * Before and after applying: offer_evaluate (is it worth applying), interview_prep, stories_list
- * and story_save. The fixed wordings (decisions, rules, general questions) come from the app's own
+ * Before and after applying: offer_evaluate (is it worth applying), company_brief, interview_prep,
+ * stories_list, story_save and applications_patterns. The fixed wordings (decisions, rules, general questions) come from the app's own
  * copy files, so the reply says what the page says.
  */
 
@@ -143,6 +148,136 @@ export function registerCareerTools(server: McpServer, locale: Locale) {
         lead: evaluation.lead,
         redFlags: evaluation.analysis?.redFlags ?? [],
       })
+    })
+  )
+
+  server.registerTool(
+    "company_brief",
+    {
+      title: title("mcp.tool.company_brief.title"),
+      description: [
+        "What to know about the employer of one of the person's offers (`jobId`): the company's other open postings and the person's history with it, then statements on five axes (strategy and product, recent moves, engineering culture, likely challenges, competitors), the candidate's angle, and questions worth asking.",
+        "Every statement carries its source: a quote found in the offer's text, or a web page newrole.it read itself and found the quote on (web research runs only with the Claude CLI as the model; `web: false` leaves it out). Anything without a confirmed source is dropped, so an axis can be empty: say so, never fill it from your own knowledge.",
+        "Returns the stored brief when there is one; `refresh: true` writes a new one, which may take a few minutes.",
+      ].join("\n"),
+      inputSchema: {
+        jobId: z.string().min(1).max(64),
+        refresh: z.boolean().optional(),
+        web: z.boolean().optional(),
+      },
+      annotations: { destructiveHint: true },
+    },
+    guard(async (args: { jobId: string; refresh?: boolean; web?: boolean }) => {
+      const user = await currentUser()
+      const m = mcpT(user.locale)
+      const t = translator(user.locale)
+      let view = await getCompanyBrief(user.id, args.jobId)
+      if (!view) return failure(m("mcp.offer.notFound", { id: args.jobId }))
+      if (args.refresh || !view.brief) {
+        try {
+          view = await companyBrief(user.id, args.jobId, { locale: user.locale, web: args.web })
+        } catch (error) {
+          if (error instanceof CompanyBriefError)
+            return failure(m("mcp.offer.notFound", { id: args.jobId }))
+          throw error
+        }
+      }
+      const { records } = view
+      const result = view.brief?.result ?? null
+      const source = (point: NonNullable<typeof result>["points"][number]) =>
+        point.source.kind === "offer"
+          ? m("mcp.brief.fromOffer", { quote: point.source.quote })
+          : m("mcp.brief.fromWeb", { url: point.source.url, quote: point.source.quote })
+      const lines = [
+        m("mcp.brief.head", {
+          company: records.company.name,
+          postings: records.openPostings.total,
+          applications: records.applications.length,
+        }),
+        ...(result
+          ? result.points.map(
+              (point) =>
+                `- ${t(`cr.axis.${point.axis}` as CopyKey)}: ${point.text} ${source(point)}`
+            )
+          : [m("mcp.brief.noModel")]),
+        ...(view.unknown.length
+          ? [
+              m("mcp.brief.unknown", {
+                axes: view.unknown.map((axis) => t(`cr.axis.${axis}` as CopyKey)).join(", "),
+              }),
+            ]
+          : []),
+        ...(result?.angle.length ? [m("mcp.brief.angle")] : []),
+        ...(result?.angle ?? []).map((point) => `- ${point.text}`),
+        m("mcp.eval.page", { url: appLink(`/offers/${args.jobId}/company`) }),
+      ]
+      return reply(lines.join("\n"), {
+        jobId: view.jobId,
+        records,
+        brief: view.brief
+          ? { ...view.brief, generatedAt: view.brief.generatedAt.toISOString() }
+          : null,
+        unknown: view.unknown,
+        recordQuestions: view.recordQuestions,
+      })
+    })
+  )
+
+  server.registerTool(
+    "applications_patterns",
+    {
+      title: title("mcp.tool.applications_patterns.title"),
+      description: [
+        "What the outcomes of the person's applications say, counted by code: which kinds of application (the CV's match score, the offer's evaluation, a tailored CV, a cover letter, work mode, who published the offer, how old the posting was, how it reached the tracker) got replies and interviews more often than the rest, and the stage most rejections come at. Nothing is shown before 5 applications have an outcome, a group is compared only with 8 on each side, and a difference of 20 points or more is marked as a finding.",
+        "Also the follow-ups due: applied a week ago with no reply, quiet for 3 days after a reply, a next-step date that passed, or cold after 21 days (suggest the status GHOSTED).",
+        "Report what went together, never why; quote the counts behind every finding.",
+      ].join("\n"),
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    guard(async () => {
+      const user = await currentUser()
+      const m = mcpT(user.locale)
+      const t = translator(user.locale)
+      const now = new Date()
+      const [patterns, input] = await Promise.all([
+        loadPatterns(user.id, now),
+        loadInsightsInput(user.id),
+      ])
+      const followups = computeFollowups(input.applications, { now })
+      const lines = [
+        patterns.needed
+          ? m("mcp.patterns.need", { n: patterns.needed, decided: patterns.decided })
+          : m("mcp.patterns.head", {
+              decided: patterns.decided,
+              findings: patterns.comparisons.filter((row) => row.finding).length,
+            }),
+        ...patterns.comparisons
+          .filter((row) => row.finding)
+          .map((row) =>
+            m("mcp.patterns.finding", {
+              group: t("pt.group", {
+                dimension: t(`pt.dim.${row.dimension}` as CopyKey),
+                value:
+                  row.dimension === "source"
+                    ? t(sourceKey(row.value))
+                    : t(`pt.val.${row.dimension}.${row.value}` as CopyKey),
+              }),
+              metric: t(`pt.metric.${row.metric}` as CopyKey),
+              hits: row.hits,
+              n: row.n,
+              restHits: row.restHits,
+              restN: row.restN,
+            })
+          ),
+        m("mcp.patterns.followups", {
+          overdue: followups.counts.overdue,
+          due: followups.counts.due,
+          cold: followups.counts.cold,
+        }),
+        ...followups.rows.map((row) => `- ${row.company}: ${row.state} (id ${row.id})`),
+      ]
+      return reply(lines.join("\n"), { patterns, followups })
     })
   )
 
