@@ -10,17 +10,22 @@ type Writer = Prisma.TransactionClient | typeof db
 
 /**
  * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, the
- * evaluations of offers made from them (they quote the CV and the profile), and CV-derived model
- * cache rows.
+ * evaluations of offers and the company briefs made from them (they quote the CV and the
+ * profile), and CV-derived model cache rows.
  */
 export async function eraseProfile(userId: number, client: Writer = db) {
   await client.offerEvaluation.deleteMany({ where: { userId } })
+  await client.companyBrief.deleteMany({ where: { userId } })
   await client.profileAuditRun.deleteMany({ where: { userId } })
   await client.candidateProfile.deleteMany({ where: { userId } })
   await client.candidateFact.deleteMany({ where: { userId } })
   await client.llmCache.deleteMany({
-    // the interview steps read the CV too (their purposes are not in the package's list yet)
-    where: { userId, purpose: { in: [...PERSONAL_LLM_PURPOSES, ...INTERVIEW_PURPOSES] } },
+    // the interview steps and "company-brief" (src/server/research) read the CV too (their
+    // purposes are not in the package's list yet)
+    where: {
+      userId,
+      purpose: { in: [...PERSONAL_LLM_PURPOSES, ...INTERVIEW_PURPOSES, "company-brief"] },
+    },
   })
 }
 
@@ -64,9 +69,9 @@ export async function eraseAccount(userId: number) {
         payload: { path: ["userId"], equals: userId },
       },
     })
-    // Applications, CVs, the offers kept with their text and their evaluations, answers, interview
-    // stories and preparations, API tokens, the sheet and Gmail links and the mail log cascade with
-    // the user row below.
+    // Applications, CVs, the offers kept with their text and their evaluations, the company
+    // briefs, answers, interview stories and preparations, API tokens, the sheet and Gmail links
+    // and the mail log cascade with the user row below.
     await tx.savedSearch.deleteMany({ where: { userId } })
     await tx.offerFeedback.deleteMany({ where: { userId } })
     await tx.watchedCompany.deleteMany({ where: { userId } })

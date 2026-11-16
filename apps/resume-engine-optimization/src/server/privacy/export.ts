@@ -72,6 +72,10 @@ export async function exportAccount(userId: number) {
           job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
         },
       },
+      companyBriefs: {
+        orderBy: { generatedAt: "desc" },
+        include: { company: { select: { name: true } }, job: { select: { title: true } } },
+      },
       answers: { orderBy: { updatedAt: "desc" } },
       interviewStories: { orderBy: { updatedAt: "desc" } },
       interviewPreps: {
@@ -184,6 +188,12 @@ export async function exportAccount(userId: number) {
       title: job.title,
       company: job.company.name,
       url: job.originalUrl,
+    })),
+    // The latest brief of each company, every statement with its source (src/server/research/service.ts)
+    companyBriefs: user.companyBriefs.map(({ userId: _userId, company, job, ...row }) => ({
+      ...row,
+      company: company.name,
+      offerTitle: job?.title ?? null,
     })),
     answers: user.answers.map(({ userId: _userId, ...row }) => row),
     interviewStories: user.interviewStories.map(({ userId: _userId, ...row }) => row),

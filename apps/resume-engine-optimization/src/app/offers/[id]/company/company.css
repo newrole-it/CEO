@@ -1,0 +1,97 @@
+/* The company brief (/offers/[id]/company) and its card on the offer's page. */
+
+.cr p,
+.cr-card p {
+  margin: 0;
+}
+.cr-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+.cr-facts dt {
+  color: var(--text-muted);
+}
+.cr-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.cr-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cr-rows,
+.cr-points {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cr-rows > li,
+.cr-points > li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.cr-rows > li:first-child,
+.cr-points > li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.cr-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.cr-axes {
+  display: grid;
+  gap: 20px;
+}
+.cr-axis {
+  display: grid;
+  gap: 8px;
+}
+.cr-axis h3 {
+  margin: 0;
+}
+.cr-axis[data-known="false"] h3 {
+  color: var(--text-muted);
+}
+.cr-src {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.cr-src__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.cr-quote {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  font-style: italic;
+}
+.cr-run {
+  display: grid;
+  gap: 10px;
+}
+.cr-run__wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
