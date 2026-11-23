@@ -8,9 +8,18 @@ Screenshots for the root README and the docs. The older ones below come from a l
 | `reo-editor-help.png` | `/cv/[id]` — the CV editor with How to edit open (English UI) |
 | `reo-features.png` | `/features#extension` — what each button and switch of the Chrome extension does (English UI) |
 
-The root README shows `reo-editor-help.png` and `reo-features.png`. The three `reo-*.png` files come from a fresh clone (`npm run go`) with a fictional profile (Anna Przykładowa) and a fictional offer on example.com, 1440×900 at 2×, light theme, without the Next.js dev badge.
+The root README shows `reo-editor-help.png`, `match.webp` and the three clips. The three `reo-*.png` files come from a fresh clone (`npm run go`) with a fictional profile (Anna Przykładowa) and a fictional offer on example.com, 1440×900 at 2×, light theme, without the Next.js dev badge.
 
 `demo.webp` and `demo.mp4` are the 48-second tour at the top of the root README: the animated WebP plays inline and links to the MP4. It shows a fictional person and a fictional offer on a fresh clone. [demo/scenario.md](demo/scenario.md) has the scenario, and the captions; the scripts that record and cut it are in `scripts/demo/` in the repository root.
+
+The newer files come from a separate demo install with a fictional person and fictional companies (Acme Cloud, Blueprint Health, Northland Labs and others), dark theme, recorded with Playwright and cut with ffmpeg. Each clip is an animated WebP of about 15 seconds at 1280×704, with an MP4 of the same recording next to it; the README shows the WebP and links to the MP4.
+
+| File | Page |
+|---|---|
+| `match.webp` | `/offers/[id]/match` — the match score: 82%, required and nice-to-have items, ATS keywords, the offer's requirements with evidence (1440 px wide) |
+| `clip-evaluate.webp`, `.mp4` | `/offers/[id]` then `/offers/[id]/evaluation`: Evaluate the offer, the progress window, the result with each part scored |
+| `clip-tracker.webp`, `.mp4` | `/applications` — a status changed from Applied to Recruiter screen, then a next step with a date and a note |
+| `clip-interview.webp`, `.mp4` | `/offers/[id]` then `/offers/[id]/interview`: Prepare, then the likely questions and the stories for each requirement |
 
 The files below come from before newrole.it became the CV app, and the root README does not use them. Some show the feed, saved offers, companies and sources, which newrole.it no longer has.
 

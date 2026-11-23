@@ -89,12 +89,20 @@ Your answers are kept as facts about you and used for every later offer.
 - **Improve with AI**: Polish, Shorten or Strengthen one section, and see the changes before you apply them
 - **Audit on the text**: missing keywords, vague phrases, gaps and length, with a score out of 100
 - **Version history**: compare and restore any version; every exported PDF is kept with its version
+- **My CV**: all your CVs in one table, filtered by general or for an offer and searched by name, company or role; each CV shows the applications sent with it, where they ended up and how many employers replied, with its cover letter and a preview
 - **Start from** your profile, a blank page, a PDF, an HTML file or a description in your own words
 
 ### Before you apply
 
 - **Is it worth applying**: requirements, level, pay, work mode and the posting scored by code against your general CV and profile; a part with no data is unknown, never guessed; apply, consider or skip, with each gap and an honest way to handle it
 - **About the company**: its other open postings, your history with it, and statements on strategy, recent moves, engineering culture, challenges and competitors, each with its source: a quote from the offer, or a web page newrole.it read and found the quote on
+
+<p align="center">
+  <a href="apps/resume-engine-optimization/docs/screenshots/clip-evaluate.mp4">
+    <img src="apps/resume-engine-optimization/docs/screenshots/clip-evaluate.webp" alt="Clicking Evaluate the offer, the progress window, then the result: 83 out of 100, Worth applying, with each part scored and level and pay marked unknown" width="900">
+  </a><br>
+  <sub>Is it worth applying: the score, and what is unknown because your profile does not say. <a href="apps/resume-engine-optimization/docs/screenshots/clip-evaluate.mp4">Watch the MP4</a></sub>
+</p>
 
 ### Offers and tailoring
 
@@ -103,6 +111,10 @@ Your answers are kept as facts about you and used for every later offer.
 - **Keywords, an ATS checklist, your strengths and the offer's warning signs** on one page
 - **Rounds with your comments**: each round rewrites the CV with what you said and stays in the history
 - **A CV and a cover letter per offer**, in the offer's language, in the voice of your earlier letters
+
+<p align="center">
+  <img src="apps/resume-engine-optimization/docs/screenshots/match.webp" alt="The match score page: 82%, Excellent fit, required items at 89%, nice-to-haves at 67%, ATS keywords from 46% to 69%, and each requirement of the offer next to the fragment of the CV that shows it" width="900">
+</p>
 
 ### Applications and answers
 
@@ -114,10 +126,24 @@ Your answers are kept as facts about you and used for every later offer.
 - **Replies from Gmail**: open an email, click the extension, confirm the new status
 - **Answer bank**: every answer you gave to an application question, grouped by question, with per-company variants
 
+<p align="center">
+  <a href="apps/resume-engine-optimization/docs/screenshots/clip-tracker.mp4">
+    <img src="apps/resume-engine-optimization/docs/screenshots/clip-tracker.webp" alt="In the tracker, one application moves from Applied to Recruiter screen, then a next step with a due date and a note is added to another" width="900">
+  </a><br>
+  <sub>The tracker: change a status, add the next step with its date. <a href="apps/resume-engine-optimization/docs/screenshots/clip-tracker.mp4">Watch the MP4</a></sub>
+</p>
+
 ### Interviews
 
 - **Interview preparation** per offer: likely questions by who asks, each tied to a requirement of the offer or marked as general; which of your stories answers each requirement; risks with a way to talk about them; questions to ask them
 - **Story bank**: your interview stories as situation, task, action, result and reflection; the model can draft them from your CV, keeping only what your data states
+
+<p align="center">
+  <a href="apps/resume-engine-optimization/docs/screenshots/clip-interview.mp4">
+    <img src="apps/resume-engine-optimization/docs/screenshots/clip-interview.webp" alt="Generating interview preparation for an offer, then scrolling through the likely questions by who asks and the stories for each requirement" width="900">
+  </a><br>
+  <sub>Interview preparation for one offer, generated from the offer, your CV, the match and your story bank. <a href="apps/resume-engine-optimization/docs/screenshots/clip-interview.mp4">Watch the MP4</a></sub>
+</p>
 
 ### Profile and LinkedIn
 
