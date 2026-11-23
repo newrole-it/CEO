@@ -2,7 +2,7 @@
  * Strings for the match dashboard of one offer (/offers/[id]/match, src/app/offers/[id]/match):
  * how the person's CV and profile meet the offer, and what the steps of tailoring found. Keys
  * "mt.". The readings of a score and the targets are the resumeskills skills' own
- * (job-description-analyzer, resume-ats-optimizer); the dashboard names them.
+ * (job-description-analyzer, resume-ats-optimizer); only mt.source names them, as the credit.
  */
 export const matchPl = {
   "mt.title": "Ocena dopasowania",
@@ -21,23 +21,18 @@ export const matchPl = {
   "mt.score.none":
     "Nie da się policzyć wyniku: oferta nie miała treści do analizy albo ocena się nie udała.",
   "mt.band.top": "Spełniasz prawie wszystko",
-  "mt.band.top.hint":
-    "Według skilla job-description-analyzer przy 90–100% warto sprawdzić, czy rola nie jest poniżej Twojego poziomu.",
+  "mt.band.top.hint": "Przy 90–100% warto sprawdzić, czy rola nie jest poniżej Twojego poziomu.",
   "mt.band.excellent": "Bardzo dobre dopasowanie",
-  "mt.band.excellent.hint": "75–89%: według job-description-analyzer warto aplikować od razu.",
+  "mt.band.excellent.hint": "75–89%: warto aplikować od razu.",
   "mt.band.good": "Dobre dopasowanie",
-  "mt.band.good.hint":
-    "60–74%: według job-description-analyzer aplikuj z mocnym listem motywacyjnym.",
+  "mt.band.good.hint": "60–74%: aplikuj z mocnym listem motywacyjnym.",
   "mt.band.stretch": "Rola na wyrost",
-  "mt.band.stretch.hint":
-    "50–59%: według job-description-analyzer aplikuj, jeśli bardzo Ci na tej roli zależy.",
+  "mt.band.stretch.hint": "50–59%: aplikuj, jeśli bardzo Ci na tej roli zależy.",
   "mt.band.under": "Za mało spełnionych wymagań",
-  "mt.band.under.hint":
-    "Poniżej 50%: według job-description-analyzer lepiej odpuścić, chyba że to wymarzona rola.",
+  "mt.band.under.hint": "Poniżej 50%: lepiej odpuścić, chyba że to wymarzona rola.",
   "mt.formula":
     "Wynik liczy kod, nie model: wymagania obowiązkowe ważą 70%, mile widziane 30%, a częściowe spełnienie liczy się w połowie. Wymaganie jest spełnione tylko wtedy, gdy kod znalazł w Twoim CV lub profilu fragment, który to pokazuje.",
-  "mt.critical":
-    "Braki krytyczne: {n}. Skill job-description-analyzer uznaje taki brak za powód, by nie aplikować.",
+  "mt.critical": "Braki krytyczne: {n}. Taki brak to zwykle powód, by nie aplikować.",
   "mt.group.required": "Obowiązkowe",
   "mt.group.preferred": "Mile widziane",
   "mt.group.soft": "Kompetencje miękkie",
@@ -49,8 +44,7 @@ export const matchPl = {
   "mt.kpi.label": "Liczby z kontroli",
   "mt.kpi.ats": "Słowa kluczowe pod ATS",
   "mt.kpi.atsValue": "{before}% → {after}%",
-  "mt.kpi.atsSub":
-    "Wymagane w CV: {found} z {total}. Cel według resume-ats-optimizer: 80% i więcej.",
+  "mt.kpi.atsSub": "Wymagane w CV: {found} z {total}. Cel: 80% i więcej.",
   "mt.kpi.atsLink": "Zobacz, których brakuje",
   "mt.kpi.numbers": "Punkty z liczbą",
   "mt.kpi.change": "{before} → {after}",
@@ -83,7 +77,7 @@ export const matchPl = {
 
   "mt.kw.title": "Słowa kluczowe z oferty",
   "mt.kw.sub":
-    "Ile razy każde pada w gotowym CV. Według resume-ats-optimizer najważniejsze powinny paść 2–4 razy, pozostałe 1–2 razy.",
+    "Ile razy każde pada w gotowym CV. Najważniejsze powinny paść 2–4 razy, pozostałe 1–2 razy.",
   "mt.kw.count": "{n}×",
   "mt.kw.required.head": "Wymagane: w CV {found} z {total}",
   "mt.kw.preferred.head": "Mile widziane: w CV {found} z {total}",
@@ -96,8 +90,7 @@ export const matchPl = {
   "mt.kw.none": "Oferta nie dała słów kluczowych do sprawdzenia.",
 
   "mt.ats.title": "Kontrola pod ATS",
-  "mt.ats.sub":
-    "Co w gotowym CV sprawdza kod, według list resume-ats-optimizer i resume-bullet-writer.",
+  "mt.ats.sub": "Co w gotowym CV sprawdza kod.",
   "mt.ats.ok": "W porządku",
   "mt.ats.fix": "Do poprawy",
   "mt.ats.email": "Adres e-mail w nagłówku",
@@ -126,8 +119,7 @@ export const matchPl = {
   "mt.offer.seniority": "Poziom: {level}",
   "mt.offer.resp": "Główne zadania",
   "mt.offer.flags": "Sygnały ostrzegawcze",
-  "mt.offer.flagsNone":
-    "Model nie znalazł w treści sygnałów ostrzegawczych z listy job-description-analyzer.",
+  "mt.offer.flagsNone": "Model nie znalazł w treści sygnałów ostrzegawczych.",
   "mt.offer.signals": "Dobre sygnały",
   "mt.offer.none": "Oferta nie miała treści do analizy.",
 
@@ -214,22 +206,18 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
   "mt.score.none":
     "No score could be counted: the offer had no text to read, or the match step failed.",
   "mt.band.top": "You meet nearly everything",
-  "mt.band.top.hint":
-    "The job-description-analyzer skill says that at 90–100% it's worth checking the role isn't below your level.",
+  "mt.band.top.hint": "At 90–100%, it's worth checking the role isn't below your level.",
   "mt.band.excellent": "Excellent fit",
-  "mt.band.excellent.hint": "75–89%: job-description-analyzer says apply right away.",
+  "mt.band.excellent.hint": "75–89%: apply right away.",
   "mt.band.good": "Good fit",
-  "mt.band.good.hint": "60–74%: job-description-analyzer says apply with a strong cover letter.",
+  "mt.band.good.hint": "60–74%: apply with a strong cover letter.",
   "mt.band.stretch": "A stretch role",
-  "mt.band.stretch.hint":
-    "50–59%: job-description-analyzer says apply if you really want this role.",
+  "mt.band.stretch.hint": "50–59%: apply if you really want this role.",
   "mt.band.under": "Too few requirements met",
-  "mt.band.under.hint":
-    "Under 50%: job-description-analyzer says skip it, unless it's your dream job.",
+  "mt.band.under.hint": "Under 50%: better to skip it, unless it's your dream job.",
   "mt.formula":
     "Code counts the score, not the model: required items weigh 70%, nice-to-haves 30%, and a partial match counts as half. A requirement only counts as met when code found a fragment of your CV or profile that shows it.",
-  "mt.critical":
-    "Critical gaps: {n}. The job-description-analyzer skill treats such a gap as a reason not to apply.",
+  "mt.critical": "Critical gaps: {n}. A gap like this is usually a reason not to apply.",
   "mt.group.required": "Required",
   "mt.group.preferred": "Nice to have",
   "mt.group.soft": "Soft skills",
@@ -241,8 +229,7 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
   "mt.kpi.label": "Numbers from the checks",
   "mt.kpi.ats": "ATS keywords",
   "mt.kpi.atsValue": "{before}% → {after}%",
-  "mt.kpi.atsSub":
-    "Required in the CV: {found} of {total}. Target per resume-ats-optimizer: 80% or more.",
+  "mt.kpi.atsSub": "Required in the CV: {found} of {total}. Target: 80% or more.",
   "mt.kpi.atsLink": "See which are missing",
   "mt.kpi.numbers": "Bullets with a number",
   "mt.kpi.change": "{before} → {after}",
@@ -275,7 +262,7 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
 
   "mt.kw.title": "The offer's keywords",
   "mt.kw.sub":
-    "How many times each appears in the finished CV. Per resume-ats-optimizer, the most important ones should appear 2–4 times, the rest 1–2 times.",
+    "How many times each appears in the finished CV. The most important ones should appear 2–4 times, the rest 1–2 times.",
   "mt.kw.count": "{n}×",
   "mt.kw.required.head": "Required: {found} of {total} in the CV",
   "mt.kw.preferred.head": "Nice to have: {found} of {total} in the CV",
@@ -288,8 +275,7 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
   "mt.kw.none": "The offer gave no keywords to check.",
 
   "mt.ats.title": "ATS check",
-  "mt.ats.sub":
-    "What code checks in the finished CV, after the resume-ats-optimizer and resume-bullet-writer lists.",
+  "mt.ats.sub": "What code checks in the finished CV.",
   "mt.ats.ok": "Fine",
   "mt.ats.fix": "To fix",
   "mt.ats.email": "Email address in the header",
@@ -318,8 +304,7 @@ export const matchEn: Record<keyof typeof matchPl, string> = {
   "mt.offer.seniority": "Level: {level}",
   "mt.offer.resp": "Main responsibilities",
   "mt.offer.flags": "Warning signs",
-  "mt.offer.flagsNone":
-    "The model found none of the job-description-analyzer warning signs in the text.",
+  "mt.offer.flagsNone": "The model found no warning signs in the text.",
   "mt.offer.signals": "Good signs",
   "mt.offer.none": "The offer had no text to read.",
 

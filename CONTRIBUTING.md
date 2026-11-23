@@ -2,7 +2,6 @@
 
 Bug reports and pull requests are welcome. For anything larger, open an issue first, so we agree on the change before you build it.
 
-- A pull request needs your agreement to the [contributor licence agreement](CLA.md). Tick its box in the pull request template. A pull request without it is not merged.
 - Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
 - A security problem goes through [SECURITY.md](SECURITY.md), not a public issue.
 
@@ -145,4 +144,4 @@ Fill in the template: what the change does and how you checked it. Tick the CLA 
 
 ## Licence
 
-newrole.it is licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`). Your contribution stays available to everyone under the AGPL in this repository. The [CLA](CLA.md) also lets the people who run the project use it under other terms, and says why.
+newrole.it is licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`). By submitting a contribution, you license it under the same terms.
