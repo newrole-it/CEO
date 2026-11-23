@@ -1,10 +1,20 @@
 # Changelog
 
-Every change people can notice, newest first. newrole.it has no tagged releases yet, so entries are grouped by the date they reached the main branch. The app shows this file at /changelog.
+Every change people can notice, newest first. Releases are tagged from 0.1.0 on; earlier entries are grouped by the date they reached the main branch. The app shows this file at /changelog.
 
 When you change something people can notice, add a line under Unreleased in the same pull request. Keep to the format below, because the page reads it: `##` for a date, `###` for a group, `-` for one line of plain text.
 
 ## Unreleased
+
+## 0.1.0 (2026-11-23)
+
+The first tagged release. Everything below Unreleased up to here reached the main branch before it.
+
+### Changed
+
+- The contributor licence agreement is gone. A contribution is licensed under AGPL-3.0, like the rest of the project; the pull request template no longer asks you to agree to anything else.
+- The match score's readings and targets no longer name the skills they come from; the line at the end of the page still credits them.
+- The banner at the top of the README shows the newrole.it name only.
 
 ### Fixed
 

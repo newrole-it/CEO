@@ -4,7 +4,7 @@ Approved by the owner on 2026-11-13. Step 1 of 3 before the Show HN launch; step
 
 ## Why
 
-The product, CEO (CV Engine Optimiser), from newrole.it, is about to be shown to an English-speaking audience on Hacker News, with demo videos of the Chrome extension and a README that describes Claude Code use. Today those two parts speak Polish only, so a visitor who installs the product meets Polish panels, and a video of the form filler would show Polish text.
+The product, newrole.it, is about to be shown to an English-speaking audience on Hacker News, with demo videos of the Chrome extension and a README that describes Claude Code use. Today those two parts speak Polish only, so a visitor who installs the product meets Polish panels, and a video of the form filler would show Polish text.
 
 ## What is Polish-only today
 

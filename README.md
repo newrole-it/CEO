@@ -229,6 +229,9 @@ No. What the offer asks for and your data does not show is listed as a gap. If y
 **Is it really free?**
 Yes. The only thing that can cost money is the model: Claude Code uses the subscription you already have, and an API key is billed by its provider.
 
+**Will it stay open source?**
+Yes, the self-hosted version stays open source under AGPL-3.0. A paid hosted version may come later, for people who would rather not run it themselves.
+
 **Will it find job offers for me?**
 No. newrole.it works on the offers you bring, by their link.
 

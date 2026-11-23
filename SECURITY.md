@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-newrole.it has no tagged releases yet. Only the `main` branch is supported, and security fixes go there.
+Only the latest release and the `main` branch are supported. Security fixes go to `main` and ship in the next release. Releases are listed on the [Releases](https://github.com/newrole-it/CEO/releases) page.
 
 ## Reporting a vulnerability
 

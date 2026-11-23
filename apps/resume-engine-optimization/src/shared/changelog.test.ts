@@ -50,10 +50,16 @@ describe("CHANGELOG.md", () => {
     expect(releases.length).toBeGreaterThan(0)
   })
 
-  it("lists dates newest first, after Unreleased", () => {
+  it("lists releases and dates newest first, after Unreleased", () => {
     const titles = releases.map((release) => release.title).filter((t) => t !== "Unreleased")
-    for (const title of titles) expect(title).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(titles).toEqual([...titles].sort().reverse())
+    // A tagged release is "0.1.0 (2026-11-23)"; entries from before tags are a bare date.
+    const dateOf = /^(?:\d+\.\d+\.\d+ \((\d{4}-\d{2}-\d{2})\)|(\d{4}-\d{2}-\d{2}))$/
+    for (const title of titles) expect(title).toMatch(dateOf)
+    const dates = titles.map((title) => {
+      const m = dateOf.exec(title)
+      return m?.[1] ?? m?.[2] ?? ""
+    })
+    expect(dates).toEqual([...dates].sort().reverse())
   })
 
   it("holds plain text only, because the page shows each line as it is", () => {
