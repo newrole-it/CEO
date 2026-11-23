@@ -39,11 +39,14 @@ export type CvView = {
   /** A PDF is stored: the uploaded one, or the last render of an editable CV */
   hasPdf: boolean
   hasContent: boolean
+  createdAt: Date
   updatedAt: Date
   /** The offer a tailored CV or letter was written for; null for a general CV */
   target: { jobId: string | null; company: string; title: string } | null
   /** A general letter: the general CV it goes with; null for anything else, or when that CV is gone */
   forCvId: string | null
+  /** A CV for an offer: the general CV it was made from; null for anything else, or when that CV is gone */
+  basedOnId: string | null
   /** The PDF an editable CV was uploaded as, kept as its version 0; null when it was not uploaded */
   original: { versionId: string; name: string } | null
 }
@@ -88,6 +91,7 @@ const VIEW_FIELDS = {
   docType: true,
   isDefault: true,
   pdfUpdatedAt: true,
+  createdAt: true,
   updatedAt: true,
   jobId: true,
   targetCompany: true,
@@ -110,6 +114,7 @@ type ViewRow = {
   docType: string
   isDefault: boolean
   pdfUpdatedAt: Date | null
+  createdAt: Date
   updatedAt: Date
   jobId: string | null
   targetCompany: string | null
@@ -130,11 +135,13 @@ function toView(row: ViewRow, hasContent: boolean): CvView {
     isDefault: row.isDefault,
     hasPdf: Boolean(row.pdfUpdatedAt),
     hasContent,
+    createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     target: row.targetCompany
       ? { jobId: row.jobId, company: row.targetCompany, title: row.targetTitle ?? "" }
       : null,
     forCvId: row.docType === "LETTER" && !row.targetCompany ? row.baseCvId : null,
+    basedOnId: row.docType === "CV" && row.targetCompany ? row.baseCvId : null,
     original: row.versions[0]
       ? { versionId: row.versions[0].id, name: row.versions[0].pdfName ?? "CV.pdf" }
       : null,

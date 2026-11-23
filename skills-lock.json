@@ -7,6 +7,13 @@
       "skillPath": "skills/create-readme/SKILL.md",
       "computedHash": "59e7a20cc6e183f31c0161a619b66f96d05656378c1cef886522b6845d33c953"
     },
+    "designing-beautiful-websites": {
+      "source": "tristanmanchester/agent-skills",
+      "commit": "2b11ad44d295d6af3687c6b062474a50493fe41e",
+      "sourceType": "github",
+      "skillPath": "designing-beautiful-websites/SKILL.md",
+      "computedHash": "3f7d08a6c2492a0166c1bfaee0836d3780c0cae532e8bf12b8a5be6f42afdd96"
+    },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",

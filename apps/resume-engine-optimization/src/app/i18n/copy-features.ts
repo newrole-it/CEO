@@ -334,7 +334,7 @@ const extensionPl: FeatureSection = {
           id: "ext-auto-track",
           label: "Automatyczne śledzenie wysłanych aplikacji",
           state: "domyślnie włączone",
-          body: "Gdy wyślesz formularz, który wygląda na aplikację, zapisuje ją w trackerze razem z pytaniami i Twoimi odpowiedziami, także z wcześniejszych kroków formularza. Poza znanymi systemami rekrutacji liczy się tylko formularz z plikiem do wgrania albo ze słowami takimi jak „aplikuj” czy „rekrutacja”. Wyłączone: zapiszesz aplikację przyciskiem „Zapisz tę stronę jako aplikację”.",
+          body: "Gdy wyślesz formularz, który wygląda na aplikację, zapisuje ją w trackerze razem z pytaniami i Twoimi odpowiedziami, także z wcześniejszych kroków formularza. Poza znanymi systemami rekrutacji liczy się tylko formularz na stronie, której adres albo tytuł mówi o pracy, na przykład „kariera” czy „rekrutacja”. Wyłączone: zapiszesz aplikację przyciskiem „Zapisz tę stronę jako aplikację”.",
         },
         {
           id: "ext-offer-check",
@@ -1021,7 +1021,7 @@ const extensionEn: FeatureSection = {
           id: "ext-auto-track",
           label: "Automatyczne śledzenie wysłanych aplikacji (Track sent applications)",
           state: "on by default",
-          body: "When you submit a form that looks like an application, it is recorded in the tracker with the questions and your answers, earlier steps of the form included. Outside the known recruitment systems, only a form with a file to upload or words such as “apply” or “recruitment” counts. Off: record it with “Zapisz tę stronę jako aplikację”.",
+          body: "When you submit a form that looks like an application, it is recorded in the tracker with the questions and your answers, earlier steps of the form included. Outside the known recruitment systems, only a form on a page whose address or title is about a job counts, for example “careers” or “recruitment”. Off: record it with “Zapisz tę stronę jako aplikację”.",
         },
         {
           id: "ext-offer-check",

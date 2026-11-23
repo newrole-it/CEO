@@ -808,13 +808,15 @@ const APPLICATION_WORDS =
  * Whether a form just sent is a job application, so it may be recorded without being asked. With
  * all sites allowed the same click can send a message or a contact form, and what was typed in it
  * would land in the tracker. A whole page on an unknown site is never a form on its own.
+ *
+ * Outside the known ATS only the page's address and title count. A file to upload or a job word
+ * somewhere in the form's text is not enough: pull requests, mails and admin panels have both, and
+ * their forms were recorded as applications.
  */
 export function isApplicationForm(scope, doc, href, hostname) {
   if (knownAts(hostname)) return true
   if (!scope || scope === doc.body) return false
-  if (scope.querySelector("input[type='file']")) return true
-  const text = fold(`${href} ${doc.title} ${String(scope.textContent).slice(0, 20000)}`)
-  return APPLICATION_WORDS.test(text)
+  return APPLICATION_WORDS.test(fold(`${href} ${doc.title}`))
 }
 
 /**

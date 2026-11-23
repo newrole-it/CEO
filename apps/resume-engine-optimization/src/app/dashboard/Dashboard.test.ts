@@ -18,9 +18,11 @@ function cv(over: Partial<CvView>): CvView {
     isDefault: false,
     hasPdf: false,
     hasContent: true,
+    createdAt: new Date(2026, 9, 1, 12, counter),
     updatedAt: new Date(2026, 10, 1, 12, counter),
     target: null,
     forCvId: null,
+    basedOnId: null,
     original: null,
     ...over,
   }
