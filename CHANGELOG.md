@@ -6,6 +6,16 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ## Unreleased
 
+## 0.2.0 (2026-11-23)
+
+### Changed
+
+- My CV is one table of all your CVs, with a filter (all, general, for offers) and a search by name, company or role. Each CV shows when it was created and changed, the applications sent with it and where they ended up (offers, in process, waiting, rejections, no response, withdrawn), and how many employers replied. Each CV can show the applications sent with it, its cover letter and a preview; cover letters are listed below the CVs, by the CV they belong to.
+
+### Fixed
+
+- The extension no longer records a form as a job application because it has a file to upload or a job word somewhere in its text. Outside the known recruitment systems it now records only on a page whose address or title is about a job. Before, pull requests, a mail and an admin panel form were saved as applications, and what was typed in them went to the saved answers.
+
 ## 0.1.0 (2026-11-23)
 
 The first tagged release. Everything below Unreleased up to here reached the main branch before it.

@@ -461,9 +461,22 @@ describe("submission", () => {
     document.title = "Acme"
     const contact = "<label>Wiadomość <textarea></textarea></label><button>Wyślij</button>"
     expect(check(form(contact))).toBe(false)
-    expect(check(form(`${contact}<input type="file">`))).toBe(true)
-    expect(check(form(`<h2>Aplikuj na stanowisko</h2>${contact}`))).toBe(true)
     expect(check(form(contact), "https://acme.pl/kariera/qa")).toBe(true)
+    // Forms that are not applications were recorded from a pull request, a mail and an admin
+    // panel: a file to upload and job words inside the form are on such pages too. Only the
+    // page's own address or title counts.
+    const upload = `${contact}<input type="file">`
+    expect(check(form(upload))).toBe(false)
+    expect(check(form(`<h2>Aplikuj na stanowisko</h2>${contact}`))).toBe(false)
+    const pull = "https://github.com/acme/shop/compare/feat/applications-tab?expand=1"
+    document.title = "Comparing main...feat/applications-tab · acme/shop"
+    expect(check(form(`${upload}<p>Tailor the CV, apply the patch</p>`), pull, "github.com")).toBe(
+      false
+    )
+    document.title = "Acme Admin"
+    const admin = `<label>Stanowisko <input value="Lekarz"></label>${upload}`
+    expect(check(form(admin), "https://admin.acme.pl/specialists", "admin.acme.pl")).toBe(false)
+    document.title = "Acme"
     expect(check(form(contact), "https://www.linkedin.com/jobs/view/1", "www.linkedin.com")).toBe(
       true
     )
