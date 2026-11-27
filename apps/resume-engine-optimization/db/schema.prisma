@@ -54,6 +54,7 @@ model User {
   interviewStories InterviewStory[]
   interviewPreps   InterviewPrep[]
   companyBriefs    CompanyBrief[]
+  offerSearches    OfferSearch[]
 }
 
 model Session {
@@ -423,6 +424,7 @@ model Job {
   evaluations    OfferEvaluation[]
   interviewPreps InterviewPrep[]
   briefs         CompanyBrief[]
+  searchResults  OfferSearchResult[]
 
   @@index([fingerprint])
   /// The offer list's order (src/server/jobs/browse.ts): newest first, read in batches until a page fills.
@@ -1160,4 +1162,54 @@ model CompanyBrief {
   @@unique([userId, companyId])
   @@index([companyId])
   @@index([jobId])
+}
+
+/// A search for offers the person started on /offers/search (src/server/offer-search).
+model OfferSearch {
+  id         String    @id @default(cuid())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The filters as the person accepted them (src/server/offer-search/filters.ts SearchFilters)
+  filters    Json
+  /// queued | searching | reading | evaluating | done | failed
+  status     String    @default("queued")
+  /// Why it failed: no-cli | web-failed | interrupted | internal
+  errorCode  String?
+  /// Counts by outcome and reason (src/server/offer-search/run.ts SearchCounts)
+  counts     Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  results OfferSearchResult[]
+
+  @@index([userId, createdAt])
+}
+
+/// One link a search found, as newrole.it read and evaluated it.
+model OfferSearchResult {
+  id           String      @id @default(cuid())
+  searchId     String
+  search       OfferSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  userId       Int
+  /// Null when the link could not be read into an offer
+  jobId        String?
+  job          Job?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  url          String
+  /// ok | closed | unreadable | screened-out | not-evaluated | weaker
+  outcome      String
+  /// A code: pay-below | work-mode | level | excluded-word | too-old | limit | unread reason
+  reason       String?
+  /// Company and title came from the model's reading of the page (extractJobByModel)
+  factsByModel Boolean     @default(false)
+  decision     String?
+  score        Int?
+  /// @newrole/cv-core/evaluation OfferEvaluation, weighed against the search's filters
+  evaluation   Json?
+  rank         Int?
+  dismissedAt  DateTime?
+  addedAt      DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@unique([searchId, url])
+  @@index([userId, dismissedAt])
 }
