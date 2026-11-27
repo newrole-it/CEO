@@ -9,11 +9,12 @@ type Writer = Prisma.TransactionClient | typeof db
 
 /**
  * Removes the CV, the parsed profile, the facts the person added on matches, profile audits, the
- * evaluations of offers and the company briefs made from them (they quote the CV and the
+ * evaluations of offers, the offer searches and the company briefs made from them (they quote the CV and the
  * profile), and CV-derived model cache rows.
  */
 export async function eraseProfile(userId: number, client: Writer = db) {
   await client.offerEvaluation.deleteMany({ where: { userId } })
+  await client.offerSearch.deleteMany({ where: { userId } })
   await client.companyBrief.deleteMany({ where: { userId } })
   await client.profileAuditRun.deleteMany({ where: { userId } })
   await client.candidateProfile.deleteMany({ where: { userId } })

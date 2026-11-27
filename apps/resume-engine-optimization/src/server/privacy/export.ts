@@ -72,6 +72,10 @@ export async function exportAccount(userId: number) {
           job: { select: { title: true, originalUrl: true, company: { select: { name: true } } } },
         },
       },
+      offerSearches: {
+        orderBy: { createdAt: "desc" },
+        include: { results: { orderBy: { createdAt: "asc" } } },
+      },
       companyBriefs: {
         orderBy: { generatedAt: "desc" },
         include: { company: { select: { name: true } }, job: { select: { title: true } } },
@@ -188,6 +192,11 @@ export async function exportAccount(userId: number) {
       title: job.title,
       company: job.company.name,
       url: job.originalUrl,
+    })),
+    // Searches for offers with every link they found (src/server/offer-search)
+    offerSearches: user.offerSearches.map(({ userId: _userId, results, ...row }) => ({
+      ...row,
+      results: results.map(({ userId: _owner, ...result }) => result),
     })),
     // The latest brief of each company, every statement with its source (src/server/research/service.ts)
     companyBriefs: user.companyBriefs.map(({ userId: _userId, company, job, ...row }) => ({

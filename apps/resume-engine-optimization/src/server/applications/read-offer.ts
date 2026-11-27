@@ -42,6 +42,8 @@ export type OfferReading = {
   text?: string
   /** The site opts out of AI use */
   withheld?: boolean
+  /** Company or title came from the model's reading of the page (extractJobByModel); set only by readPage */
+  byModel?: boolean
 }
 
 export type ReadOfferDeps = {
@@ -121,6 +123,7 @@ async function readPage(
     text,
     withheld: optOut,
     outcome: model?.company && model.title ? "read" : "partial",
+    ...(model?.company || model?.title ? { byModel: true } : {}),
     facts: {
       jobId: null,
       company: job.company,

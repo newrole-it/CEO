@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import db from "db"
+import db, { type Prisma } from "db"
 import {
   buildEvaluation,
   parseEvaluation,
@@ -148,13 +148,27 @@ function toView(
   }
 }
 
+/** The columns an evaluation is kept in (OfferEvaluation without its user and offer). */
+export type StoredFields = {
+  decision: Decision
+  score: number | null
+  result: Prisma.InputJsonValue
+  locale: CvLanguage
+  usedModel: boolean
+  cvId: string | null
+  cvHash: string | null
+  offerHash: string
+  offerOrigin: string
+  profileHash: string
+  evaluatedAt: Date
+}
+
 /**
- * Evaluates the offer now and keeps the result in place of the one before. `locale` is the
- * language of the model's notes: the person's interface language. `llm` null runs the rules only;
- * left out, the app's writing client is used when a model is configured. `llm` and `http` are
- * injectable for tests. Throws EvaluationError("job-not-found") for an offer that is not in the index.
+ * Weighs the offer now and keeps nothing: what `evaluateOffer` does before it stores. `person`
+ * replaces the profile-based person side (a search's filters); `profileHash` still comes from the
+ * profile. Throws EvaluationError("job-not-found") for an offer that is not in the index.
  */
-export async function evaluateOffer(
+export async function computeEvaluation(
   userId: number,
   jobId: string,
   options: {
@@ -163,15 +177,21 @@ export async function evaluateOffer(
     http?: HttpClient
     /** Told about steps "offer" and "match" as they run (src/server/cv/tailor-progress.ts) */
     onStep?: StepReporter
+    person?: Person
   }
-): Promise<EvaluationView> {
+): Promise<{
+  evaluation: OfferEvaluation
+  usedModel: boolean
+  stored: StoredFields
+  cv: { id: string; title: string } | null
+}> {
   const { locale, onStep } = options
   const [row, offer] = await Promise.all([
     db.job.findUnique({ where: { id: jobId }, select: jobSelect }),
     loadTailorJob(jobId, { http: options.http }, userId),
   ])
   if (!row || !offer) throw new EvaluationError("job-not-found")
-  const [application, cv, { person, hash: profileHash }] = await Promise.all([
+  const [application, cv, { person: profilePerson, hash: profileHash }] = await Promise.all([
     db.application.findFirst({
       where: { userId, jobId },
       orderBy: { createdAt: "desc" },
@@ -219,14 +239,14 @@ export async function evaluateOffer(
       salaryCurrency: row.salaryCurrency,
       hiring,
     },
-    person,
+    person: options.person ?? profilePerson,
     analysis: fit?.analysis ?? null,
     report: fit?.report ?? null,
     missing,
   })
 
   const evaluatedAt = new Date()
-  const fields = {
+  const stored: StoredFields = {
     decision: evaluation.decision,
     score: evaluation.score,
     // a stored JSON value: without the undefined keys optional fields leave behind
@@ -240,18 +260,44 @@ export async function evaluateOffer(
     profileHash,
     evaluatedAt,
   }
+  return {
+    evaluation,
+    usedModel: stored.usedModel,
+    stored,
+    cv: cv ? { id: cv.id, title: cv.title } : null,
+  }
+}
+
+/**
+ * Evaluates the offer now and keeps the result in place of the one before. `locale` is the
+ * language of the model's notes: the person's interface language. `llm` null runs the rules only;
+ * left out, the app's writing client is used when a model is configured. `llm` and `http` are
+ * injectable for tests. Throws EvaluationError("job-not-found") for an offer that is not in the index.
+ */
+export async function evaluateOffer(
+  userId: number,
+  jobId: string,
+  options: {
+    locale: CvLanguage
+    llm?: LlmClient | null
+    http?: HttpClient
+    /** Told about steps "offer" and "match" as they run (src/server/cv/tailor-progress.ts) */
+    onStep?: StepReporter
+  }
+): Promise<EvaluationView> {
+  const { evaluation, usedModel, stored, cv } = await computeEvaluation(userId, jobId, options)
   await db.offerEvaluation.upsert({
     where: { userId_jobId: { userId, jobId } },
-    create: { userId, jobId, ...fields },
-    update: fields,
+    create: { userId, jobId, ...stored },
+    update: stored,
   })
   return {
     jobId,
     evaluation,
-    evaluatedAt,
-    locale,
-    usedModel: fields.usedModel,
-    cv: cv ? { id: cv.id, title: cv.title } : null,
+    evaluatedAt: stored.evaluatedAt,
+    locale: stored.locale,
+    usedModel,
+    cv,
     stale: { cv: false, offer: false, profile: false },
   }
 }

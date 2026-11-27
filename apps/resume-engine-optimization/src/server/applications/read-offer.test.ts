@@ -223,6 +223,25 @@ describe("readOffer", () => {
       ...unparsed('<title>QA Engineer - Acme</title><meta name="x" content="ai-input=no">'),
     })
     expect(reading.outcome).toBe("partial")
+    expect(reading.byModel).toBeUndefined()
+  })
+
+  it("marks facts the model read from the page", async () => {
+    const read = await readOffer("https://acme.pl/kariera/qa", {
+      ...unparsed("<title>Praca - Acme</title><p>QA Engineer</p>"),
+      model: async () => ({
+        company: "Acme S.A.",
+        title: "QA Engineer",
+        location: null,
+        salaryText: null,
+      }),
+    })
+    expect(read.byModel).toBe(true)
+    const rulesOnly = await readOffer("https://acme.pl/kariera/qa", {
+      ...unparsed("<title>QA Engineer - Acme</title>"),
+      model: async () => null,
+    })
+    expect(rulesOnly.byModel).toBeUndefined()
   })
 
   it("does not take a section title for a role", async () => {

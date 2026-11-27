@@ -5,6 +5,7 @@ import { PrismaClient } from "@prisma/client"
 import { pgAdapter } from "../db/client"
 import { createCv, updateCv } from "../src/server/cv/service"
 import {
+  computeEvaluation,
   evaluateOffer,
   evaluationSummary,
   EvaluationError,
@@ -410,4 +411,39 @@ test("the evaluation is in the person's export and goes with their profile and t
   await evaluateOffer(user.id, job.id, { locale: "pl", llm: null })
   await db.user.delete({ where: { id: user.id } })
   assert.equal(await db.offerEvaluation.count({ where: { jobId: job.id } }), 0)
+})
+
+test("computeEvaluation weighs the offer against another person's side and stores nothing", async () => {
+  const user = await makeUser(PROFILE)
+  const job = await makeJob()
+  await keepOffer(user.id, job.id, { text: OFFER_TEXT, origin: "pasted" })
+  await createCv({ userId: user.id, from: "content", content: syntheticCv(1) })
+  const kept = await evaluateOffer(user.id, job.id, { locale: "pl", llm: null })
+  assert.deepEqual(kept.evaluation.stops, [])
+  const before = await db.offerEvaluation.findMany({ where: { userId: user.id } })
+
+  const { evaluation, usedModel } = await computeEvaluation(user.id, job.id, {
+    locale: "pl",
+    llm: null,
+    person: {
+      seniority: "senior",
+      salaryFloor: 999999,
+      salaryTarget: null,
+      salaryCurrency: "PLN",
+      salaryPeriod: "month",
+      salaryContract: "b2b",
+      remotePreference: "remote",
+      homeCity: "Łódź",
+      locations: [],
+      relocation: null,
+    },
+  })
+  assert.equal(usedModel, false)
+  assert.deepEqual(evaluation.stops, [{ code: "pay-below-minimum", effect: "consider" }])
+
+  const after = await db.offerEvaluation.findMany({ where: { userId: user.id } })
+  assert.equal(after.length, 1)
+  assert.equal(before.length, 1)
+  assert.equal(after[0].evaluatedAt.getTime(), before[0].evaluatedAt.getTime())
+  assert.deepEqual(after[0].result, before[0].result)
 })

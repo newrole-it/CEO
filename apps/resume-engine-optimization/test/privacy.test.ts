@@ -194,11 +194,27 @@ test("profile deletion and account deletion remove personal data", async () => {
     },
   })
 
+  const offerSearch = await db.offerSearch.create({
+    data: {
+      userId: user.id,
+      filters: {},
+      results: {
+        create: {
+          userId: user.id,
+          url: `https://example.com/offer-${stamp}`,
+          outcome: "ok",
+          evaluation: { note: phrase },
+        },
+      },
+    },
+  })
+
   const exported = await exportAccount(user.id)
   const exportedJson = JSON.stringify(exported)
   assert.equal(exported?.profile?.headline, `Headline ${stamp}`)
   assert.equal(exported?.searches[0]?.phrase, phrase)
   assert.equal(exported?.searches[0]?.runs[0]?.matches[0]?.interestedAt != null, true)
+  assert.equal(exported?.offerSearches[0]?.results[0]?.url, `https://example.com/offer-${stamp}`)
   assert.equal(exportedJson.includes(`hashed-secret-${stamp}`), false)
   assert.equal(exportedJson.includes(`session-secret-${stamp}`), false)
   assert.equal(exportedJson.includes(`link-${stamp}`), false)
@@ -206,6 +222,8 @@ test("profile deletion and account deletion remove personal data", async () => {
   await eraseProfile(user.id)
   assert.equal(await db.candidateProfile.count({ where: { userId: user.id } }), 0)
   assert.equal(await db.profileAuditRun.count({ where: { userId: user.id } }), 0)
+  assert.equal(await db.offerSearch.count({ where: { userId: user.id } }), 0)
+  assert.equal(await db.offerSearchResult.count({ where: { searchId: offerSearch.id } }), 0)
   assert.equal(await db.llmCache.count({ where: { cacheKey: `cv-${stamp}` } }), 0)
   assert.equal(await db.llmCache.count({ where: { cacheKey: `expand-${stamp}` } }), 1)
   assert.equal(await db.savedSearch.count({ where: { id: search.id } }), 1)

@@ -418,7 +418,16 @@ export function ApplicationsScreen({
             {group === "todo" ? (
               <div id="apps-list" role="tabpanel" aria-label={t("app.filter.todo")}>
                 <div className="stack-lg">
-                  <p className="muted">{t("app.todo.sub")}</p>
+                  <div className="row row--between">
+                    <p className="muted">{t("app.todo.sub")}</p>
+                    <ButtonLink
+                      href="/offers/search"
+                      variant="outline"
+                      icon={<Search aria-hidden />}
+                    >
+                      {t("app.findOffers")}
+                    </ButtonLink>
+                  </div>
                   <AddOffer
                     autoFocus={todo.length === 0 && rows.length === 0}
                     initialUrl={addUrl}

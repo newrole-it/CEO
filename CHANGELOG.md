@@ -6,6 +6,10 @@ When you change something people can notice, add a line under Unreleased in the 
 
 ## Unreleased
 
+### Added
+
+- Find offers (Applications → To apply → Find offers): newrole.it proposes search filters from your profile, and when you click Search, the local Claude Code searches the web with those filters only, without your name or CV. newrole.it reads every link it finds itself, drops offers that clearly don't fit, evaluates up to 20 as "Is it worth applying" against your filters, and shows the best 15. Weaker ones and pages it couldn't read are listed separately. Add puts an offer into your offers, Dismiss hides it from later searches. It needs Claude Code.
+
 ## 0.2.0 (2026-11-23)
 
 ### Changed

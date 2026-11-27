@@ -15,6 +15,8 @@ export const seniorityValues = [
   "c_level",
 ] as const
 
+export const salaryCurrencies = ["PLN", "EUR", "USD", "GBP", "CHF"] as const
+
 export const industryModes = ["stick", "prefer", "any"] as const
 export type IndustryMode = (typeof industryModes)[number]
 
@@ -36,7 +38,7 @@ export const profileDraftSchema = z.object({
   languages: z.array(z.string().trim().min(1).max(40)).max(8),
   salaryFloor: z.number().min(0).max(10_000_000).nullable(),
   salaryTarget: z.number().min(0).max(10_000_000).nullable(),
-  salaryCurrency: z.preprocess(emptyToNull, z.enum(["PLN", "EUR", "USD", "GBP", "CHF"]).nullable()),
+  salaryCurrency: z.preprocess(emptyToNull, z.enum(salaryCurrencies).nullable()),
   salaryPeriod: z.preprocess(emptyToNull, z.enum(["month", "year"]).nullable()),
   salaryContract: z.preprocess(emptyToNull, z.enum(["uop", "b2b"]).nullable()),
   contracts: z.array(z.string().trim().min(1).max(40)).max(6),

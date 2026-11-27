@@ -19,6 +19,7 @@ import { interviewEn, interviewPl } from "./copy-interview"
 import { researchEn, researchPl } from "./copy-research"
 import { patternsEn, patternsPl } from "./copy-patterns"
 import { cvListEn, cvListPl } from "./copy-cvlist"
+import { searchEn, searchPl } from "./copy-search"
 import { profileEn, profilePl } from "@newrole/profile-ui/copy-profile"
 import { uiEn, uiPl } from "@newrole/ui/copy"
 import { fmt, intlLocale, type Locale } from "@newrole/ui/i18n"
@@ -667,6 +668,7 @@ const pl = {
   ...researchPl,
   ...patternsPl,
   ...cvListPl,
+  ...searchPl,
 }
 
 export type CopyKey = keyof typeof pl
@@ -698,6 +700,7 @@ const en: Dict = {
   ...researchEn,
   ...patternsEn,
   ...cvListEn,
+  ...searchEn,
   skip: "Skip to content",
   brandHome: "newrole.it, home",
   "nav.forYou": "For you",
